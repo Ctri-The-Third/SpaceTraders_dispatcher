@@ -3,6 +3,7 @@ import logging
 import urllib.parse
 
 ST_LOGGER = logging.getLogger("SpaceTradersAPI")
+DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 def get_and_validate(url, params=None, headers=None) -> requests.Response or None:

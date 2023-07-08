@@ -31,6 +31,9 @@ def main():
     print(resp.token)
     print(resp.user)
 
+    resp = st.my_account()
+    print(resp.user)
+
 
 if __name__ == "__main__":
     # subprocess.call(["setup.bat"], shell=True)

@@ -8,6 +8,9 @@ def test_successful_imports(caplog):
     """Check the imports"""
     try:
         import requests
+        import wheel
+        import setuptools
+
     except ImportError as err:
         logging.error("couldn't import a package: %s", err)
 

@@ -1,6 +1,8 @@
 import json
 import requests
+from datetime import datetime
 from .models import User, Ship, Loan
+from .utils import DATE_FORMAT
 
 
 class _STResponse:
@@ -46,6 +48,7 @@ class ClaimUsernameResponse(_STResponse):
     def parse(self):
         self.token = self._response["token"]
         self.user = User.from_dict(self._response["user"])
+        self.user.joined_at = datetime.now()
 
 
 class MyAccountResponse(_STResponse):

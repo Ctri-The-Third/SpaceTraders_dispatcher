@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from datetime import datetime
+from .utils import DATE_FORMAT
 
 
 @dataclass
@@ -7,9 +9,9 @@ class User:
     # will extrapolate into "new user" or "logged in user" depending on which is more appropriate
     username: str
     credits: int
-    joined_at = ""
-    ships: list = []
-    loans: list = []
+    joined_at: datetime = None
+    ships: list = None
+    loans: list = None
     ship_count: int = 0
     structure_count: int = 0
 
@@ -23,6 +25,11 @@ class User:
         loans = []
         if "loans" in data:
             loans = [Loan.from_dict(loan) for loan in data["loans"]]
+        joined_at = (
+            datetime.strptime(data["joinedAt"], DATE_FORMAT)
+            if "joinedAt" in data
+            else ""
+        )
         return cls(
             username=data["username"],
             credits=data["credits"],
@@ -30,6 +37,7 @@ class User:
             loans=loans,
             ship_count=ship_count,
             structure_count=data.get("structureCount", 0),
+            joined_at=joined_at,
         )
 
 
