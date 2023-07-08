@@ -12,11 +12,12 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python: main.py",
+            "name": "Python: game.py",
             "type": "python",
             "request": "launch",
-            "program": "main.py",
-            "console": "integratedTerminal"
+            "program": "game.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
         },
     ]
 }
