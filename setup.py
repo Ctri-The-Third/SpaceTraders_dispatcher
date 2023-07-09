@@ -1,5 +1,5 @@
 import setuptools
-from spacetraders_src.__version__ import VERSION
+from spacetraders_v1.__version__ import VERSION
 
 setuptools.setup(
     name="spacetraders",
@@ -10,7 +10,7 @@ setuptools.setup(
     author_email="python_packages@ctri.com",
     license="Apache License 2.0",
     packages=["spacetraders"],
-    package_dir={"spacetraders": "spacetraders_src"},
+    package_dir={"spacetraders": "spacetraders_v2"},
     classifiers=["Programming Language :: Python :: 3.10"],
     install_requires=["requests==2.31.0"],
     python_requires=">=3.10",

@@ -1,4 +1,4 @@
-from spacetraders_src import SpaceTraders
+from spacetraders_v1 import SpaceTraders
 import uuid
 
 TEST_TOKEN = "fd3c9cbf-7cc9-45be-b5e5-43a4153f5c35"
