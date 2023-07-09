@@ -1,5 +1,6 @@
 import setuptools
-from spacetraders_v1.__version__ import VERSION
+from spacetraders_v2.__version__ import VERSION
+
 
 setuptools.setup(
     name="spacetraders",

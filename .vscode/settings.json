@@ -6,5 +6,6 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.formatting.provider": "black",
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "search.useIgnoreFiles": false
 }

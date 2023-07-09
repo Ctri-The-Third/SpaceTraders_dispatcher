@@ -1,8 +1,9 @@
 import subprocess
 import logging
 import uuid
-from spacetraders_src import SpaceTraders
+from spacetraders_v2.spacetraders import SpaceTraders
 import sys
+import json
 
 
 def main():
@@ -14,13 +15,15 @@ def main():
     if not status:
         return
 
+    user = json.load(open("user.json", "r"))
+
     # Claim a username
-    username = str(uuid.uuid4())
-    resp = st.claim_username(username)
+    username = str(uuid.uuid4().hex)[0:14]
+    resp = st.register(username, faction=user["faction"], email=user["email"])
     if not resp:
         # Log an error message with detailed information about the failed claim attempt
         logging.error(
-            "Could not claim username %s, %d %s, error code: %s",
+            "Could not claim username %s, %d %s \n error code: %s",
             username,
             resp.status_code,
             resp.error,
@@ -29,10 +32,9 @@ def main():
         return
 
     print(resp.token)
-    print(resp.user)
-
-    resp = st.my_account()
-    print(resp.user)
+    print(resp.agent)
+    resp = st.view_self()
+    print(resp.agent)
 
 
 if __name__ == "__main__":
