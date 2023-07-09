@@ -6,19 +6,17 @@ import sys
 import json
 
 
-def main():
-    # Create a SpaceTraders instance
-    st = SpaceTraders()
-
-    # Get the game status
-    status = st.game_status()
-    if not status:
+def register_and_store_user(username):
+    try:
+        user = json.load(open("user.json", "r"))
+    except FileNotFoundError:
+        json.dump(
+            {"email": "", "faction": "COSMIC", "agents": []},
+            open("user.json", "w"),
+            indent=2,
+        )
         return
-
-    user = json.load(open("user.json", "r"))
-
-    # Claim a username
-    username = str(uuid.uuid4().hex)[0:14]
+    st = SpaceTraders()
     resp = st.register(username, faction=user["faction"], email=user["email"])
     if not resp:
         # Log an error message with detailed information about the failed claim attempt
@@ -30,11 +28,31 @@ def main():
             resp.error_code,
         )
         return
+    found = False
+    for agent in user["agents"]:
+        if resp.token == agent["token"]:
+            found = True
+    if not found:
+        user["agents"].append({"token": resp.token, "username": username})
+    json.dump(user, open("user.json", "w"), indent=2)
 
-    print(resp.token)
-    print(resp.agent)
-    resp = st.view_self()
-    print(resp.agent)
+
+def main():
+    # Create a SpaceTraders instance
+    user = json.load(open("user.json", "r"))
+
+    st = SpaceTraders(user["agents"][0]["token"])
+
+    # Get the game status
+    status = st.game_status()
+    if not status:
+        return
+
+    contracts = st.view_my_contracts().contracts
+    #    st.accept_contract("cljvdhlwy3j29s60cu9upccp1")
+    agent = st.view_my_self().agent
+    st.view_waypoints(agent.headquaters)
+    print(contracts)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from datetime import datetime
 import requests
 from .utils import DATE_FORMAT
-from .models import Announement, Agent
+from .models import Announement, Agent, Waypoint, Contract, ContractDeliverGood
 from .ship import Ship
 
 
@@ -65,13 +65,8 @@ class RegistrationResponse(SpaceTradersResponse):
     def parse(self):
         self.token = self._response["data"]["token"]
         agent = self._response["data"]["agent"]
-        self.agent = Agent(
-            agent["accountId"],
-            agent["symbol"],
-            agent["headquarters"],
-            agent["credits"],
-            agent["startingFaction"],
-        )
+        self.agent = Agent.from_json(agent)
+
         self.ship = Ship(self._response["data"]["ship"])
         self.contract = ""
         self.faction = ""
@@ -88,4 +83,54 @@ class MyAgentResponse(SpaceTradersResponse):
             data["headquarters"],
             data["credits"],
             data["startingFaction"],
+        )
+
+
+class MyContractsResponse(SpaceTradersResponse):
+    "response from {url}/{version}/my/contracts"
+
+    def parse(self):
+        self.contracts: list[Contract] = [
+            Contract.from_json(contract_d) for contract_d in self._response["data"]
+        ]
+
+
+class AcceptContractResponse(SpaceTradersResponse):
+    "response from {url}/{version}/my/contracts/accept"
+
+    def parse(self):
+        contract_d = self._response["data"]
+        self.contract = Contract.from_json(contract_d)
+        self.agent = Agent.from_json(contract_d["agent"])
+
+
+class ViewWaypointResponse(SpaceTradersResponse):
+    "response from {url}/{version}/systems/:systemSymbol/waypoints/:waypointSymbol"
+
+    def parse(self):
+        data = self._response["data"]
+        self.waypoints = Waypoint(
+            data["systemSymbol"],
+            data["symbol"],
+            data["type"],
+            data["x"],
+            data["y"],
+            ["ORBITALS NOT YET PARSED"],
+            ["TRAITS NOT YET PARSED"],
+        )
+
+
+class ViewWaypointsResponse(SpaceTradersResponse):
+    "response from {url}/{version}/systems/:systemSymbol/waypoints/:waypointSymbol"
+
+    def parse(self):
+        data = self._response["data"]
+        self.waypoint = Waypoint(
+            data["systemSymbol"],
+            data["symbol"],
+            data["type"],
+            data["x"],
+            data["y"],
+            ["ORBITALS NOT YET PARSED"],
+            ["TRAITS NOT YET PARSED"],
         )

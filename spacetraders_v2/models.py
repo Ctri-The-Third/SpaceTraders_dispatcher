@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from .utils import DATE_FORMAT
 
 
 @dataclass
@@ -96,3 +97,69 @@ class Agent:
     headquaters: str
     credits: int
     starting_faction: str
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(*json_data.values())
+
+
+@dataclass
+class Waypoint:
+    system_symbol: str
+    symbol: str
+    type: str
+    x: int
+    y: int
+    oribtals: list
+    traits: list
+
+
+@dataclass
+class ContractDeliverGood:
+    trade_symbol: str
+    destination_symbol: str
+    units_required: int
+    units_fulfilled: int
+
+
+# this should probably be its own thing
+@dataclass
+class Contract:
+    id: str
+    faction_symbol: str
+    type: str
+    deadline: datetime
+    payment_upfront: int
+    payment_completion: int
+    deliver: list[ContractDeliverGood]
+    accepted: bool
+    fulfilled: bool
+    expiration: datetime
+    deadline_for_accept: datetime
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        deadline = datetime.strptime(json_data["terms"]["deadline"], DATE_FORMAT)
+        expiration = datetime.strptime(json_data["expiration"], DATE_FORMAT)
+        deadline_to_accept = datetime.strptime(
+            json_data["deadlineToAccept"], DATE_FORMAT
+        )
+        upfront = json_data["terms"]["payment"]["onAccepted"]
+        on_success = json_data["terms"]["payment"]["onFulfilled"]
+        deliveries = [
+            ContractDeliverGood(*d.values()) for d in json_data["terms"]["deliver"]
+        ]
+
+        return cls(
+            json_data["id"],
+            json_data["factionSymbol"],
+            json_data["type"],
+            deadline,
+            upfront,
+            on_success,
+            deliveries,
+            json_data["accepted"],
+            json_data["fulfilled"],
+            expiration,
+            deadline_to_accept,
+        )

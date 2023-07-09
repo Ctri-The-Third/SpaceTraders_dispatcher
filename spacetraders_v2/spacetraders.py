@@ -1,6 +1,7 @@
 from .utils import get_and_validate, post_and_validate
 from .responses import GameStatusResponse, SpaceTradersResponse, RegistrationResponse
-from .responses import MyAgentResponse
+from .responses import MyAgentResponse, ViewWaypointResponse, MyContractsResponse
+from .responses import AcceptContractResponse
 
 # Attempted relative import beyond top-level packagePylintE0402:relative-beyond-top-level
 
@@ -35,14 +36,43 @@ class SpaceTraders:
         if email is not None:
             data["email"] = email
         resp = RegistrationResponse(post_and_validate(url, data))
-        self.token = resp.token
+        if resp:
+            self.token = resp.token
         return resp
 
-    def view_self(self):
+    def view_my_self(self):
         """view the current agent"""
         url = self._url("my/agent")
         resp = get_and_validate(url, headers=self._headers())
+
         return MyAgentResponse(resp)
+
+    def view_my_contracts(self):
+        """view the current contracts the agent has"""
+        url = self._url("my/contracts")
+        resp = get_and_validate(url, headers=self._headers())
+
+        return MyContractsResponse(resp)
+
+    def accept_contract(self, contract_id):
+        """accept a contract"""
+        url = self._url(f"my/contracts/{contract_id}/accept")
+        resp = post_and_validate(url, headers=self._headers())
+
+        return AcceptContractResponse(resp)
+
+    # curl 'https://api.spacetraders.io/v2/systems/:systemSymbol/waypoints/:waypointSymbol' \
+    def view_waypoint(self, system_symbol, waypoint_symbol):
+        url = self._url(f"systems/{system_symbol}/waypoints/{waypoint_symbol}")
+        resp = get_and_validate(url, headers=self._headers())
+
+        return ViewWaypointResponse(resp)
+
+    def view_waypoints(self, system_symbol):
+        url = self._url(f"systems/{system_symbol}/waypoints")
+        resp = get_and_validate(url, headers=self._headers())
+
+        return ViewWaypointResponse(resp)
 
     def _url(self, endpoint):
         return f"{self.base_url}/{self.version}/{endpoint}"
