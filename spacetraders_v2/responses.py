@@ -109,15 +109,7 @@ class ViewWaypointResponse(SpaceTradersResponse):
 
     def parse(self):
         data = self._response["data"]
-        self.waypoints = Waypoint(
-            data["systemSymbol"],
-            data["symbol"],
-            data["type"],
-            data["x"],
-            data["y"],
-            ["ORBITALS NOT YET PARSED"],
-            ["TRAITS NOT YET PARSED"],
-        )
+        self.waypoints = Waypoint.from_json(data)
 
 
 class ViewWaypointsResponse(SpaceTradersResponse):
@@ -125,12 +117,10 @@ class ViewWaypointsResponse(SpaceTradersResponse):
 
     def parse(self):
         data = self._response["data"]
-        self.waypoint = Waypoint(
-            data["systemSymbol"],
-            data["symbol"],
-            data["type"],
-            data["x"],
-            data["y"],
-            ["ORBITALS NOT YET PARSED"],
-            ["TRAITS NOT YET PARSED"],
-        )
+        self.waypoints = []
+        for waypoint in data:
+            self.waypoints.append(Waypoint.from_json(waypoint))
+
+class AvailableShipsResponse(SpaceTradersResponse)
+    def parse(self):
+        pass 

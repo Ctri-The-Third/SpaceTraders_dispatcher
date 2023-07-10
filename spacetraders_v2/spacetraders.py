@@ -1,7 +1,10 @@
 from .utils import get_and_validate, post_and_validate
 from .responses import GameStatusResponse, SpaceTradersResponse, RegistrationResponse
 from .responses import MyAgentResponse, ViewWaypointResponse, MyContractsResponse
-from .responses import AcceptContractResponse
+from .responses import AcceptContractResponse, ViewWaypointsResponse
+from .responses import AvailableShipsResponse
+
+from .models import Waypoint
 
 # Attempted relative import beyond top-level packagePylintE0402:relative-beyond-top-level
 
@@ -72,7 +75,28 @@ class SpaceTraders:
         url = self._url(f"systems/{system_symbol}/waypoints")
         resp = get_and_validate(url, headers=self._headers())
 
-        return ViewWaypointResponse(resp)
+        return ViewWaypointsResponse(resp)
+
+    def view_available_ships(
+        self, waypoint: Waypoint, system_symbol=None, shipyard_wp_symbol=None
+    ):
+        if waypoint:
+            system_symbol = waypoint.system_symbol
+            shipyard_wp_symbol = waypoint.symbol
+        elif not system_symbol and shipyard_wp_symbol:
+            system_symbol = shipyard_wp_symbol[0:6]
+            pass
+        elif not shipyard_wp_symbol:
+            raise ValueError(
+                "Must provide a waypoint or system_symbol and shipyard_wp_symbol"
+            )
+
+        url = self._url(
+            f"systems/{system_symbol}/waypoints/{shipyard_wp_symbol}/shipyard"
+        )
+        resp = get_and_validate(url, headers=self._headers())
+        return AvailableShipsResponse(resp)
+        return resp
 
     def _url(self, endpoint):
         return f"{self.base_url}/{self.version}/{endpoint}"
