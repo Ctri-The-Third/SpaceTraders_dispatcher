@@ -2,7 +2,7 @@ from datetime import datetime
 import requests
 from .utils import DATE_FORMAT
 from .models import Announement, Agent, Waypoint, Contract, ContractDeliverGood
-from .ship import Ship
+from .ship import Ship, ShipyardShip
 
 
 class SpaceTradersResponse:
@@ -121,6 +121,12 @@ class ViewWaypointsResponse(SpaceTradersResponse):
         for waypoint in data:
             self.waypoints.append(Waypoint.from_json(waypoint))
 
-class AvailableShipsResponse(SpaceTradersResponse)
+
+class AvailableShipsResponse(SpaceTradersResponse):
     def parse(self):
-        pass 
+        self.types: list[str] = [t["type"] for t in self._response["data"]["shipTypes"]]
+        self.ships: list[ShipyardShip] = [
+            ShipyardShip.from_json(s) for s in self._response["data"]["ships"]
+        ]
+        self.transaction_history = ["not parsed"]
+        pass

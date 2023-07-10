@@ -71,32 +71,18 @@ class SpaceTraders:
 
         return ViewWaypointResponse(resp)
 
-    def view_waypoints(self, system_symbol):
+    def view_waypoints(self, system_symbol: str) -> ViewWaypointsResponse:
         url = self._url(f"systems/{system_symbol}/waypoints")
         resp = get_and_validate(url, headers=self._headers())
 
         return ViewWaypointsResponse(resp)
 
-    def view_available_ships(
-        self, waypoint: Waypoint, system_symbol=None, shipyard_wp_symbol=None
-    ):
-        if waypoint:
-            system_symbol = waypoint.system_symbol
-            shipyard_wp_symbol = waypoint.symbol
-        elif not system_symbol and shipyard_wp_symbol:
-            system_symbol = shipyard_wp_symbol[0:6]
-            pass
-        elif not shipyard_wp_symbol:
-            raise ValueError(
-                "Must provide a waypoint or system_symbol and shipyard_wp_symbol"
-            )
-
+    def view_available_ships(self, waypoint: Waypoint) -> AvailableShipsResponse:
         url = self._url(
-            f"systems/{system_symbol}/waypoints/{shipyard_wp_symbol}/shipyard"
+            f"systems/{waypoint.system_symbol}/waypoints/{waypoint.symbol}/shipyard"
         )
         resp = get_and_validate(url, headers=self._headers())
         return AvailableShipsResponse(resp)
-        return resp
 
     def _url(self, endpoint):
         return f"{self.base_url}/{self.version}/{endpoint}"

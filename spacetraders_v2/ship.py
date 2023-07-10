@@ -7,7 +7,7 @@ from .models import ShipRequirements
 
 class Ship:
     def __init__(self, json_data: dict) -> None:
-        self.name: str = json_data["registration"]["name"]
+        self.name: str = json_data.get("registration", {}).get("name", "")
         self.role: str = json_data["registration"]["role"]
         self.faction: str = json_data["registration"]["factionSymbol"]
 
@@ -15,6 +15,10 @@ class Ship:
         self.current_waypoint: str = json_data["nav"]["waypointSymbol"]
         self.status: str = json_data["nav"]["status"]
         self.flight_mode: str = json_data["nav"]["flightMode"]
+
+        self.frame = _frame_from_json(json_data["frame"])
+        self.reactor = _reactor_from_json(json_data["reactor"])
+        self.engine = _engine_from_json(json_data["engine"])
 
         # ---- ROUTE INFO  ----
         route = json_data["nav"]["route"]
@@ -52,23 +56,6 @@ class Ship:
         self.cargo_units_used: int = json_data["cargo"]["units"]
         self.cargo_inventory: list = json_data["cargo"]["inventory"]
 
-        # ---- ENGINE INFO ----
-        engine_data: dict = json_data["engine"]
-        engine_requirements = ShipRequirements(
-            engine_data.get("requirements", {}).get("crew", 0),
-            engine_data.get("requirements", {}).get("power", 0),
-            engine_data.get("requirements", {}).get("slots", 0),
-        )
-
-        self.engine = ShipEngine(
-            engine_data["symbol"],
-            engine_data["name"],
-            engine_data["description"],
-            engine_data["condition"],
-            engine_data["speed"],
-            engine_requirements,
-        )
-
         # ---- FUEL INFO ----
 
         self.fuel_capacity = json_data["fuel"]["capacity"]
@@ -77,22 +64,89 @@ class Ship:
         # needs expanded out into a class probably
 
         # ----  REACTOR INFO ----
-        reactor_data: dict = json_data["reactor"]
-        reactor_requirements = ShipRequirements(
-            reactor_data.get("requirements", {}).get("crew", 0),
-            reactor_data.get("requirements", {}).get("power", 0),
-            reactor_data.get("requirements", {}).get("slots", 0),
-        )
-        self.reactor = ShipReactor(
-            reactor_data["symbol"],
-            reactor_data["name"],
-            reactor_data["description"],
-            reactor_data["condition"],
-            reactor_data["powerOutput"],
-            reactor_requirements,
-        )
 
         # todo: modules and mounts
         self.modules = []
         self.mounts = []
         pass
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(json_data)
+
+
+class ShipyardShip:
+    def __init__(self, json_data: dict) -> None:
+        self.frame = _frame_from_json(json_data["frame"])
+        self.reactor = _reactor_from_json(json_data["reactor"])
+        self.engine = _engine_from_json(json_data["engine"])
+        self.name = json_data["name"]
+        self.description = json_data["description"]
+        self.type = json_data["type"]
+        self.purchase_price = json_data["purchasePrice"]
+        # ------------------
+        # ---- CREW INFO ----
+
+        # needs expanded out into a class probably
+
+        # ----  REACTOR INFO ----
+
+        # todo: modules and mounts
+        self.modules = []
+        self.mounts = []
+        pass
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(json_data)
+
+
+def _reactor_from_json(json_data: dict) -> ShipReactor:
+    reactor_requirements = ShipRequirements(
+        json_data.get("requirements", {}).get("crew", 0),
+        json_data.get("requirements", {}).get("power", 0),
+        json_data.get("requirements", {}).get("slots", 0),
+    )
+    return ShipReactor(
+        json_data["symbol"],
+        json_data["name"],
+        json_data["description"],
+        json_data.get("condition", 0),
+        json_data["powerOutput"],
+        reactor_requirements,
+    )
+
+
+def _engine_from_json(json_data: dict) -> ShipEngine:
+    engine_requirements = ShipRequirements(
+        json_data.get("requirements", {}).get("crew", 0),
+        json_data.get("requirements", {}).get("power", 0),
+        json_data.get("requirements", {}).get("slots", 0),
+    )
+    return ShipEngine(
+        json_data["symbol"],
+        json_data["name"],
+        json_data["description"],
+        json_data.get("condition", 0),
+        json_data["speed"],
+        engine_requirements,
+    )
+
+
+def _frame_from_json(json_data: dict) -> ShipFrame:
+    frame_requirements = ShipRequirements(
+        json_data.get("requirements", {}).get("crew", 0),
+        json_data.get("requirements", {}).get("power", 0),
+        json_data.get("requirements", {}).get("slots", 0),
+    )
+    frame = ShipFrame(
+        json_data["symbol"],
+        json_data["name"],
+        json_data["description"],
+        json_data["moduleSlots"],
+        json_data["mountingPoints"],
+        json_data["fuelCapacity"],
+        json_data.get("condition", 0),
+        frame_requirements,
+    )
+    return frame

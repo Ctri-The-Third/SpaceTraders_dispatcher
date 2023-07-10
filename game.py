@@ -76,8 +76,11 @@ def main():
         if trait.symbol == "SHIPYARD"
     ]
     print(shipyards)
+    print("--------")
 
-    st.view_available_ships(shipyards[0])
+    ships = st.view_available_ships(shipyards[0]).ships
+    for ship in ships:
+        print(f"{ship.name}\t{ship.purchase_price}\t{ship.description}")
     print("--------")
 
 
