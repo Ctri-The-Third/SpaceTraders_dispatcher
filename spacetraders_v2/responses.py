@@ -1,7 +1,7 @@
 from datetime import datetime
 import requests
 from .utils import DATE_FORMAT
-from .models import Announement, Agent, Waypoint, Contract, ContractDeliverGood
+from .models import Announement, Agent, Waypoint, Contract, ContractDeliverGood, Nav
 from .ship import Ship, ShipyardShip
 
 
@@ -109,7 +109,7 @@ class ViewWaypointResponse(SpaceTradersResponse):
 
     def parse(self):
         data = self._response["data"]
-        self.waypoints = Waypoint.from_json(data)
+        self.waypoint = Waypoint.from_json(data)
 
 
 class ViewWaypointsResponse(SpaceTradersResponse):
@@ -129,4 +129,39 @@ class AvailableShipsResponse(SpaceTradersResponse):
             ShipyardShip.from_json(s) for s in self._response["data"]["ships"]
         ]
         self.transaction_history = ["not parsed"]
+        pass
+
+
+class MyShipsResponse(SpaceTradersResponse):
+    def parse(self):
+        self.ships: list[Ship] = [Ship.from_json(s) for s in self._response["data"]]
+        pass
+
+
+class PurchaseShipResponse(SpaceTradersResponse):
+    def parse(self):
+        self.ship = Ship.from_json(self._response["data"]["ship"])
+        self.agent = Agent.from_json(self._response["data"]["agent"])
+        pass
+
+
+class ShipOrbitResponse(SpaceTradersResponse):
+    def parse(self):
+        self.nav = Nav.from_json(self._response["data"]["nav"])
+
+
+class ShipNavigateResponse(SpaceTradersResponse):
+    def parse(self):
+        self.nav = Nav.from_json(self._response["data"]["nav"])
+        self.fuel_current = self._response["data"]["fuel"]["current"]
+        self.fuel_capacity = self._response["data"]["fuel"]["max"]
+        self.fuel_consumed = self._response["data"]["fuel"]["consumed"]
+
+
+class ShipExtractResponse(SpaceTradersResponse):
+    def parse(self):
+        # TODO: create models
+        self.cooldown = self._response["data"]["cooldown"]
+        self.extraction = self._response["data"]["extraction"]
+        self.cargo = self._response["data"]["cargo"]
         pass

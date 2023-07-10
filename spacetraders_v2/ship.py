@@ -1,8 +1,8 @@
 from datetime import datetime
 from .utils import DATE_FORMAT
 from .models import CrewInfo, ShipFrame, FuelInfo, ShipModule, ShipMount
-from .models import NavInfo, ShipReactor, ShipEngine, NavInfo, ShipRoute
-from .models import ShipRequirements
+from .models import RouteNode, ShipReactor, ShipEngine, RouteNode, ShipRoute
+from .models import ShipRequirements, Nav
 
 
 class Ship:
@@ -11,37 +11,11 @@ class Ship:
         self.role: str = json_data["registration"]["role"]
         self.faction: str = json_data["registration"]["factionSymbol"]
 
-        self.current_system: str = json_data["nav"]["systemSymbol"]
-        self.current_waypoint: str = json_data["nav"]["waypointSymbol"]
-        self.status: str = json_data["nav"]["status"]
-        self.flight_mode: str = json_data["nav"]["flightMode"]
+        self.nav = Nav.from_json(json_data["nav"])
 
         self.frame = _frame_from_json(json_data["frame"])
         self.reactor = _reactor_from_json(json_data["reactor"])
         self.engine = _engine_from_json(json_data["engine"])
-
-        # ---- ROUTE INFO  ----
-        route = json_data["nav"]["route"]
-        destination = NavInfo(
-            route["destination"]["symbol"],
-            route["destination"]["type"],
-            route["destination"]["systemSymbol"],
-            route["destination"]["x"],
-            route["destination"]["y"],
-        )
-        departure = NavInfo(
-            route["departure"]["symbol"],
-            route["departure"]["type"],
-            route["departure"]["systemSymbol"],
-            route["departure"]["x"],
-            route["departure"]["y"],
-        )
-        self.route = ShipRoute(
-            departure,
-            destination,
-            datetime.strptime(route["arrival"], DATE_FORMAT),
-            datetime.strptime(route["departureTime"], DATE_FORMAT),
-        )
 
         # ------------------
         # ---- CREW INFO ----

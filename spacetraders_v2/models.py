@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from .utils import DATE_FORMAT
 
 
@@ -81,18 +81,50 @@ class ShipEngine(symbol_class):
 
 
 @dataclass
-class NavInfo:
+class RouteNode:
     symbol: str
     type: str
     systemSymbol: str
     x: int
     y: int
 
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(*json_data.values())
+
+
+@dataclass
+class Nav:
+    system_symbol: str
+    waypoint_symbol: str
+    destination: RouteNode
+    origin: RouteNode
+    arrival_time: datetime
+    departure_time: datetime
+    status: str
+    flight_mode: str
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(
+            json_data["systemSymbol"],
+            json_data["waypointSymbol"],
+            RouteNode.from_json(json_data["route"]["destination"]),
+            RouteNode.from_json(json_data["route"]["departure"]),
+            datetime.strptime(json_data["route"]["arrival"], DATE_FORMAT),
+            datetime.strptime(json_data["route"]["departureTime"], DATE_FORMAT),
+            json_data["status"],
+            json_data["flightMode"],
+        )
+
+    def time_remaining(self):
+        return max(self.arrival_time - datetime.now(), timedelta(0))
+
 
 @dataclass
 class ShipRoute:
-    origin: NavInfo
-    destination: NavInfo
+    origin: RouteNode
+    destination: RouteNode
     departure_time: datetime
     arrival: datetime
 

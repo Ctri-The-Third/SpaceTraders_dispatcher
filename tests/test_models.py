@@ -11,7 +11,7 @@ from spacetraders_v2.models import (
     ShipMount,
     ShipReactor,
     ShipEngine,
-    NavInfo,
+    RouteNode,
     ShipRoute,
     Agent,
     Waypoint,
@@ -123,7 +123,7 @@ def test_ship_engine():
 
 
 def test_nav_info():
-    nav_info = NavInfo("identifier", "type", "parent_system_identifier", 4, 4)
+    nav_info = RouteNode("identifier", "type", "parent_system_identifier", 4, 4)
     assert nav_info is not None
 
     assert nav_info.symbol == "identifier"
@@ -134,8 +134,8 @@ def test_nav_info():
 
 
 def test_ship_route():
-    destination = NavInfo("dest_id", "planet", "dest_sys_id", 5, 5)
-    origin = NavInfo("orig_id", "planet", "orig_sys_id", 5, 5)
+    destination = RouteNode("dest_id", "planet", "dest_sys_id", 5, 5)
+    origin = RouteNode("orig_id", "planet", "orig_sys_id", 5, 5)
     departure = datetime.now()
     arrival = datetime.now() + timedelta(hours=1)
     ship_route = ShipRoute(origin, destination, departure, arrival)
