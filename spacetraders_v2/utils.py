@@ -1,38 +1,179 @@
 import requests
 import logging
 import urllib.parse
+import aiohttp
+from dataclasses import dataclass
+from logging import FileHandler, StreamHandler
+from sys import stdout
+from datetime import datetime
+
+import pytz
+import time
 
 ST_LOGGER = logging.getLogger("SpaceTradersAPI")
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
-# todo - add a handler for 429 and 502 errors
+SURVEYOR_SYMBOLS = ["MOUNT_SURVEYOR_I", "MOUNT_SURVEYOR_II", "MOUNT_SURVEYOR_III"]
+ERRROR_COOLDOWN = 4000
+from .responses import RemoteSpaceTradersRespose, SpaceTradersResponse
 
 
-def get_and_validate(url, params=None, headers=None) -> requests.Response or None:
-    "wraps the requests.get function to make it easier to use"
-    try:
-        response = requests.get(url, params=params, headers=headers, timeout=5)
-        response: requests.Response
-    except requests.exceptions.ConnectionError as err:
-        logging.error("ConnectionError: %s, %s", url, err)
-        return None
+@dataclass
+class GlobalConfig:
+    __instance = None
+    base_url: str = "https://api.spacetraders.io"
+    version: str = "v2"
 
+    def __new__(cls, base_url=None, version=None):
+        if cls.__instance is None:
+            cls.__instance = super(GlobalConfig, cls).__new__(cls)
+
+        return cls.__instance
+
+    def __init__(self, base_url=None, version=None):
+        if base_url:
+            self.base_url = base_url
+        if version:
+            self.version = version
+
+
+def get_and_validate_paginated(
+    url, per_page: int, page_limit: int, params=None, headers=None
+) -> SpaceTradersResponse or None:
+    params = params or {}
+    params["limit"] = per_page
+    data = []
+    for i in range(1, page_limit or 1):
+        params["page"] = i
+        response = get_and_validate(url, params=params, headers=headers)
+        if response and response.data:
+            data.extend(response.data)
+        elif response:
+            response.data = data
+            return response
+        else:
+            return response
+    response.data = data
     return response
 
 
-def post_and_validate(
-    url, data=None, json=None, headers=None
-) -> requests.Response or None:
+def get_and_validate(
+    url, params=None, headers=None, pages=None, per_page=None
+) -> SpaceTradersResponse or None:
+    "wraps the requests.get function to make it easier to use"
+    for i in range(1, 5):
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+            logging.error("ConnectionError: %s, %s", url, err)
+            return None
+        except Exception as err:
+            logging.error("Error: %s, %s", url, err)
+            raise Exception from err
+        _log_response(response)
+        if response.status_code == 429:
+            logging.debug("Rate limited. Waiting %s seconds", i)
+            time.sleep(i * i)
+        else:
+            return RemoteSpaceTradersRespose(response)
+
+
+async def get_and_validate_async(url, params=None, headers=None):
+    "wraps the aiohttp.get function to make it easier to use"
+    attempts = 0
+    try:
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(url, params=params, headers=headers, timeout=5)
+
+    except aiohttp.ClientError as err:
+        logging.error("Async ClientError: %s, %s", url, err)
+        return None
+
+
+def rate_limit_check(response: requests.Response):
+    if response.status_code != 429:
+        return
+
+
+def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
     "wraps the requests.post function to make it easier to use"
 
-    try:
-        response = requests.post(url, data=data, json=json, headers=headers, timeout=5)
-        response: requests.Response
-    except requests.exceptions.ConnectionError as err:
-        logging.error("ConnectionError: %s, %s", url, err)
-        return None
-    except Exception as err:
-        logging.error("Error: %s, %s", url, err)
-        raise Exception from err
+    # repeat 5 times with staggered wait
+    # if still 429, skip
 
-    return response
+    for i in range(5):
+        try:
+            response = requests.post(
+                url, data=data, json=json, headers=headers, timeout=5
+            )
+        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+            logging.error("ConnectionError: %s, %s", url, err)
+            return None
+        except Exception as err:
+            logging.error("Error: %s, %s", url, err)
+            raise Exception from err
+        _log_response(response)
+        if response.status_code == 429:
+            logging.debug("Rate limited. Waiting %s seconds", i)
+            time.sleep(i * i)
+        else:
+            return RemoteSpaceTradersRespose(response)
+
+
+def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
+    for i in range(5):
+        try:
+            response = requests.patch(
+                url, data=data, json=json, headers=headers, timeout=5
+            )
+        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+            logging.error("ConnectionError: %s, %s", url, err)
+            return None
+        except Exception as err:
+            logging.error("Error: %s, %s", url, err)
+            raise Exception from err
+        _log_response(response)
+        if response.status_code == 429:
+            logging.debug("Rate limited. Waiting %s seconds", i)
+            time.sleep(i * i)
+        else:
+            return RemoteSpaceTradersRespose(response)
+
+
+def _url(endpoint) -> str:
+    "wraps the `endpoint` in the base_url and version"
+    config = GlobalConfig()
+    return f"{config.base_url}/{config.version}/{endpoint}"
+
+
+def _log_response(response: requests.Response) -> None:
+    "log the response from the server"
+    # time, status_code, url, error details if present
+    data = response.json() if response.content else {}
+    url_stub = urllib.parse.urlparse(response.url).path
+
+    error_text = f" {data['error']['code']}{data['error']}" if "error" in data else ""
+    ST_LOGGER.debug("%s %s %s", response.status_code, url_stub, error_text)
+
+
+def set_logging(filename: str = None):
+    format = "%(asctime)s:%(levelname)s:%(threadName)s:%(name)s  %(message)s"
+
+    log_file = filename if filename else "ShipTrader.log"
+    logging.basicConfig(
+        handlers=[FileHandler(log_file), StreamHandler(stdout)],
+        level=logging.INFO,
+        format=format,
+    )
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+def parse_timestamp(timestamp: str) -> datetime:
+    ts = datetime.strptime(timestamp, DATE_FORMAT)
+    return ts
+
+
+def sleep(seconds: int):
+    if seconds > 0 and seconds < 6000:
+        ST_LOGGER.info(f"Sleeping for {seconds} seconds")
+        time.sleep(seconds)

@@ -19,5 +19,27 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "Python: procure-quest",
+            "type": "python",
+            "request": "launch",
+            "program": "procure-quest.py",
+            "args": [
+                "CTRI"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: procure-quest (Harb_alpha)",
+            "type": "python",
+            "request": "launch",
+            "program": "procure-quest.py",
+            "args": [
+                "O2O"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
     ]
 }

@@ -14,3 +14,17 @@ Eventually will be used to build an interactive gameplay UI built on top of the 
 - [Overview](#Overview)
 - [Environment setup](#Setup)
 - [Deployment](#Deploy)
+
+
+## Overview
+
+
+## Setup
+
+```bash
+# build 
+py setup.py bdist_wheel
+
+# install
+py -m pip install dist/spacetraders-0.1.0-py3-none-any.whl
+```

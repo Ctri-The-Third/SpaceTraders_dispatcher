@@ -1,167 +1,53 @@
-from datetime import datetime
 import requests
-from .utils import DATE_FORMAT
-from .models import Announement, Agent, Waypoint, Contract, ContractDeliverGood, Nav
-from .ship import Ship, ShipyardShip
+from typing import Protocol
+
+# We have just turn the Ship into a client (so it can do things like move, buy sell)
+# however now it also needs responses, which has caused a circular import.
+# now presently we have one class per kind of response.
+# research suggests I need abstracts for this, which I really want to avoid!
+# GitHub copilot autosuggested: "this is a bit of a pain, but it will be worth it in the end." :sob:
 
 
-class SpaceTradersResponse:
+# I've looked at a couple of libraries by peers. In one case, they don't bother with a custom Response class at all, they just .update() the ship based on the json.
+# as a design pattern, this avoids the circular import and lets the ship remain an interactive
+# as such, I'm keeping these classes for posterity, but going to switch to the update/ from_json pattern.
+class SpaceTradersResponse(Protocol):
+    data: dict
+    response_json: dict
+    error: str
+    status_code: int
+    error_code: int
+
+    def __bool__(self):
+        pass
+
+
+class RemoteSpaceTradersRespose:
     "base class for all responses"
 
     def __init__(self, response: requests.Response):
-        self._response = response.json()
+        self.data = {}
+        self.response_json = response.json() if response.content else {}
         self.error = None
         self.status_code = response.status_code
         self.error_code = None
-        if "error" in self._response:
+        if "error" in self.response_json:
             self.error_parse()
         else:
-            self.parse()
-
-    def parse(self):
-        "takes the response object and parses it into the class attributes"
-        pass
+            self.data = self.response_json.get("data", {})
 
     def error_parse(self):
         "takes the response object and parses it an error response was sent"
-        self.error = self._response["error"]["message"]
-        self.error_code = self._response["error"]["code"]
-        if "data" in self._response["error"]:
-            self._response["error"]["data"]: dict
-            for key, value in self._response["error"]["data"].items():
+
+        self.error = self.response_json["error"]["message"]
+        self.error_code = self.response_json["error"]["code"]
+        if "data" in self.response_json["error"]:
+            self.data = self.response_json["error"]["data"]
+
+        if "data" in self.response_json["error"]:
+            self.response_json["error"]["data"]: dict
+            for key, value in self.response_json["error"]["data"].items():
                 self.error += f"\n  {key}: {value}"
 
     def __bool__(self):
         return self.error_code is None
-
-
-class GameStatusResponse(SpaceTradersResponse):
-    "response from {url}/{version}/"
-
-    def parse(self):
-        self.status = self._response["status"]
-        self.version = self._response["version"]
-        self.reset_date = self._response["resetDate"]
-        self.description = self._response["description"]
-        self.total_agents = self._response["stats"]["agents"]
-        self.total_systems = self._response["stats"]["systems"]
-        self.total_ships = self._response["stats"]["ships"]
-        self.total_waypoints = self._response["stats"]["waypoints"]
-        self.next_reset = datetime.strptime(
-            self._response["serverResets"]["next"], DATE_FORMAT
-        )
-        self.announcements = []
-        for announcement in self._response["announcements"]:
-            self.announcements.append(
-                Announement(
-                    len(self.announcements), announcement["title"], announcement["body"]
-                )
-            )
-
-
-class RegistrationResponse(SpaceTradersResponse):
-    "response from {url}/{version}/register"
-
-    def parse(self):
-        self.token = self._response["data"]["token"]
-        agent = self._response["data"]["agent"]
-        self.agent = Agent.from_json(agent)
-
-        self.ship = Ship(self._response["data"]["ship"])
-        self.contract = ""
-        self.faction = ""
-
-
-class MyAgentResponse(SpaceTradersResponse):
-    "response from {url}/{version}/my/agent"
-
-    def parse(self):
-        data = self._response["data"]
-        self.agent = Agent(
-            data["accountId"],
-            data["symbol"],
-            data["headquarters"],
-            data["credits"],
-            data["startingFaction"],
-        )
-
-
-class MyContractsResponse(SpaceTradersResponse):
-    "response from {url}/{version}/my/contracts"
-
-    def parse(self):
-        self.contracts: list[Contract] = [
-            Contract.from_json(contract_d) for contract_d in self._response["data"]
-        ]
-
-
-class AcceptContractResponse(SpaceTradersResponse):
-    "response from {url}/{version}/my/contracts/accept"
-
-    def parse(self):
-        contract_d = self._response["data"]
-        self.contract = Contract.from_json(contract_d)
-        self.agent = Agent.from_json(contract_d["agent"])
-
-
-class ViewWaypointResponse(SpaceTradersResponse):
-    "response from {url}/{version}/systems/:systemSymbol/waypoints/:waypointSymbol"
-
-    def parse(self):
-        data = self._response["data"]
-        self.waypoint = Waypoint.from_json(data)
-
-
-class ViewWaypointsResponse(SpaceTradersResponse):
-    "response from {url}/{version}/systems/:systemSymbol/waypoints/:waypointSymbol"
-
-    def parse(self):
-        data = self._response["data"]
-        self.waypoints = []
-        for waypoint in data:
-            self.waypoints.append(Waypoint.from_json(waypoint))
-
-
-class AvailableShipsResponse(SpaceTradersResponse):
-    def parse(self):
-        self.types: list[str] = [t["type"] for t in self._response["data"]["shipTypes"]]
-        self.ships: list[ShipyardShip] = [
-            ShipyardShip.from_json(s) for s in self._response["data"]["ships"]
-        ]
-        self.transaction_history = ["not parsed"]
-        pass
-
-
-class MyShipsResponse(SpaceTradersResponse):
-    def parse(self):
-        self.ships: list[Ship] = [Ship.from_json(s) for s in self._response["data"]]
-        pass
-
-
-class PurchaseShipResponse(SpaceTradersResponse):
-    def parse(self):
-        self.ship = Ship.from_json(self._response["data"]["ship"])
-        self.agent = Agent.from_json(self._response["data"]["agent"])
-        pass
-
-
-class ShipOrbitResponse(SpaceTradersResponse):
-    def parse(self):
-        self.nav = Nav.from_json(self._response["data"]["nav"])
-
-
-class ShipNavigateResponse(SpaceTradersResponse):
-    def parse(self):
-        self.nav = Nav.from_json(self._response["data"]["nav"])
-        self.fuel_current = self._response["data"]["fuel"]["current"]
-        self.fuel_capacity = self._response["data"]["fuel"]["max"]
-        self.fuel_consumed = self._response["data"]["fuel"]["consumed"]
-
-
-class ShipExtractResponse(SpaceTradersResponse):
-    def parse(self):
-        # TODO: create models
-        self.cooldown = self._response["data"]["cooldown"]
-        self.extraction = self._response["data"]["extraction"]
-        self.cargo = self._response["data"]["cargo"]
-        pass

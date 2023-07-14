@@ -15,8 +15,6 @@ from spacetraders_v2.models import (
     ShipRoute,
     Agent,
     Waypoint,
-    ContractDeliverGood,
-    Contract,
 )
 
 
@@ -93,9 +91,34 @@ def test_agent_from_json():
     assert agent.starting_faction == "COSMIC"
 
 
-def test_ship_module():
-    ship_module = ShipModule()
-    assert ship_module is not None
+@pytest.fixture
+def ship_module_json_data():
+    return {
+        "symbol": "S1",
+        "capacity": 100,
+        "range": 500,
+        "name": "Ship 1",
+        "description": "This is Ship 1",
+        "requirements": {},
+    }
+
+
+def test_ship_module_init(ship_module_json_data):
+    module = ShipModule(ship_module_json_data)
+    assert module.symbol == "S1"
+    assert module.capacity == 100
+    assert module.range == 500
+    assert module.name == "Ship 1"
+    assert module.description == "This is Ship 1"
+
+
+def test_ship_module_from_json(ship_module_json_data):
+    module = ShipModule.from_json(ship_module_json_data)
+    assert module.symbol == "S1"
+    assert module.capacity == 100
+    assert module.range == 500
+    assert module.name == "Ship 1"
+    assert module.description == "This is Ship 1"
 
 
 def test_ship_reactor():
