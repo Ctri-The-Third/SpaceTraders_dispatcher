@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from dataclasses import dataclass
-import pytz
 from .models import CrewInfo, ShipFrame, FuelInfo, ShipModule, ShipMount
 from .models import RouteNode, ShipReactor, ShipEngine, RouteNode, ShipRoute
 from .models import ShipRequirements, Nav, Survey, Deposit

@@ -7,7 +7,6 @@ from logging import FileHandler, StreamHandler
 from sys import stdout
 from datetime import datetime
 
-import pytz
 import time
 
 ST_LOGGER = logging.getLogger("SpaceTradersAPI")
