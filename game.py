@@ -3,7 +3,7 @@ import logging
 from sys import stdout
 from logging import FileHandler, StreamHandler
 import uuid
-from spacetraders_v2.spacetraders import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.contracts import Contract
 from spacetraders_v2.models import (

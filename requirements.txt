@@ -4,3 +4,4 @@ setuptools
 wheel
 textual 
 aiohttp
+psycopg2

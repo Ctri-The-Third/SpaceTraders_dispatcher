@@ -1,30 +1,40 @@
 from .utils import get_and_validate, get_and_validate_paginated, post_and_validate, _url
-from .client import SpaceTradersClient
+from .utils import ApiConfig, _log_response
+from .client_interface import SpaceTradersInteractive, SpaceTradersClient
+
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
 from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey
 from .ship import Ship
-from .utils import GlobalConfig
+from .client_api import SpaceTradersApiClient
 from threading import Lock
-
 import logging
 
 # Attempted relative import beyond top-level packagePylintE0402:relative-beyond-top-level
 from datetime import datetime
 
 
-class SpaceTraders(SpaceTradersClient):
-    """SpaceTraders API client."""
+class SpaceTradersMediatorClient:
+    """SpaceTraders API client, with in-memory caching, and DB lookup."""
 
+    api_client: SpaceTradersClient
+    db_client: SpaceTradersClient
     current_agent: Agent
     ships: dict[str, Ship]
     waypoints: dict[str, Waypoint]
     system_waypoints: dict[str : list[Waypoint]]
 
-    def __init__(self, token=None, base_url=None, version=None) -> None:
+    def __init__(
+        self,
+        token=None,
+        base_url=None,
+        version=None,
+    ) -> None:
         self.token = token
-        self.config = GlobalConfig(
+
+        self.api_client = SpaceTradersApiClient(base_url, version)
+        self.config = ApiConfig(
             base_url=base_url, version=version
         )  # set up the global config for other things to use.
         self.ships = {}
@@ -176,46 +186,47 @@ class SpaceTraders(SpaceTradersClient):
     def update(self, json_data):
         """Parses the json data from a response to update the agent, add a new survey, or add/update a new contract.
 
-        This method is present on all Classes that can interact with the API."""
+        This method is present on all Classes that can cache responses from the API."""
+        if isinstance(json_data, dict):
+            if "agent" in json_data:
+                self.current_agent.update(json_data)
+            if "surveys" in json_data:
+                for survey in json_data["surveys"]:
+                    self.surveys[survey["signature"]] = Survey.from_json(survey)
+            if "contract" in json_data:
+                self.contracts[json_data["contract"]["id"]] = Contract(
+                    json_data["contract"], self
+                )
+        if isinstance(json_data, list):
+            for contract in json_data:
+                self.contracts[contract["id"]] = Contract(contract, self)
 
-        if "agent" in json_data:
-            self.current_agent.update(json_data)
-        if "surveys" in json_data:
-            for survey in json_data["surveys"]:
-                self.surveys[survey["signature"]] = Survey.from_json(survey)
-        if "contract" in json_data:
-            self.contracts[json_data["contract"]["id"]] = Contract(
-                json_data["contract"], self
-            )
+        if isinstance(json_data, Waypoint):
+            self.waypoints[json_data.symbol] = json_data
 
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
     ) -> Waypoint or SpaceTradersResponse:
-        """view a single waypoint in a system. Uses cached values by default.
-
-        Args:
-            `system_symbol` (str): The symbol of the system to search for the waypoint in.
-            `waypoint_symbol` (str): The symbol of the waypoint to search for.
-            `force` (bool): Optional - Force a refresh of the waypoint. Defaults to False.
-
-        Returns:
-            Either a Waypoint object or a SpaceTradersResponse object on failure."""
-
+        # check self
         if waypoint_symbol in self.waypoints and not force:
             return self.waypoints[waypoint_symbol]
 
-        url = _url(f"systems/{system_symbol}/waypoints/{waypoint_symbol}")
-        resp = get_and_validate(url, headers=self._headers())
-        wayp = Waypoint.from_json(resp.data)
-        if not resp:
-            print(resp.error)
-            return resp
-        self.waypoints[waypoint_symbol] = wayp
+        # check db
+        wayp = self.db_client.waypoints_view_one(system_symbol, waypoint_symbol)
+        if wayp:
+            self.update(wayp)
+            return wayp
+        # check api
+        wayp = self.api_client.waypoints_view_one(system_symbol, waypoint_symbol)
+        if wayp:
+            self.update(wayp)
+            self.db_client.update(wayp)
+            return wayp
         return wayp
 
     def waypoints_view(
         self, system_symbol: str
-    ) -> dict[str:list] or SpaceTradersResponse:
+    ) -> dict[str:Waypoint] or SpaceTradersResponse:
         """view all waypoints in a system. Uses cached values by default.
 
         Args:
@@ -224,16 +235,22 @@ class SpaceTraders(SpaceTradersClient):
         Returns:
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
+        # check cache
         if system_symbol in self.system_waypoints:
             return self.system_waypoints[system_symbol]
-        url = _url(f"systems/{system_symbol}/waypoints")
-        resp = get_and_validate(url, headers=self._headers())
-        if resp:
-            new_wayps = {d["symbol"]: Waypoint.from_json(d) for d in resp.data}
-            self.waypoints = self.waypoints | new_wayps
-            self.system_waypoints[system_symbol] = new_wayps
+
+        new_wayps = self.db_client.waypoints_view(system_symbol)
+        if new_wayps:
+            for new_wayp in new_wayps.values():
+                self.update(new_wayp)
             return new_wayps
-        return resp
+
+        new_wayps = self.api_client.waypoints_view(system_symbol)
+        if new_wayps:
+            for new_wayp in new_wayps.values():
+                self.db_client.update(new_wayp)
+                self.update(new_wayp)
+        return new_wayps
 
     def view_my_ships_one(
         self, ship_id: str, force=False
@@ -424,3 +441,6 @@ class SpaceTraders(SpaceTradersClient):
             for trait in waypoint.traits:
                 if trait.symbol == trait_symbol:
                     return waypoint
+
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.token}"}

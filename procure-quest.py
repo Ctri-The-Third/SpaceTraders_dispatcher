@@ -1,4 +1,4 @@
-from spacetraders_v2.spacetraders import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
 from spacetraders_v2.contracts import Contract

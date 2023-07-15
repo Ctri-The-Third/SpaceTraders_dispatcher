@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from .models import CrewInfo, ShipFrame, FuelInfo, ShipModule, ShipMount
 from .models import RouteNode, ShipReactor, ShipEngine, RouteNode, ShipRoute
 from .models import ShipRequirements, Nav, Survey, Deposit
-from .client import SpaceTradersClient
+from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 import logging
@@ -51,19 +51,13 @@ class ShipInventory:
         return cls(*json_data.values())
 
 
-class Ship(SpaceTradersClient):
+class Ship(SpaceTradersInteractive):
     def __init__(
         self,
         json_data: dict,
-        parent: SpaceTradersClient = None,
-        token: str = None,
+        client: SpaceTradersClient,
+        parent: SpaceTradersInteractive = None,
     ) -> None:
-        if token:
-            self.token = token
-        elif parent:
-            self.token = parent.token
-        else:
-            raise ValueError("No token provided")
         self._parent = parent
         self.logger = logging.getLogger("ship-logger")
         self.name: str = json_data.get("registration", {}).get("name", "")
@@ -130,115 +124,46 @@ class Ship(SpaceTradersClient):
     def from_json(cls, json_data: dict):
         return cls(json_data, token="")
 
-    def orbit(self):
-        "my/ships/:miningShipSymbol/orbit thakes the ship name or the ship object"
-        url = _url(f"my/ships/{self.name}/orbit")
-        if self.nav.status == "IN_ORBIT":
-            return LocalSpaceTradersRespose(None, 0, None, url=url)
-        resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
-        return resp
+    def ship_orbit(self, ship):
+        """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
+        pass
 
-    def change_course(self, dest_waypoint_symbol: str):
-        "my/ships/:shipSymbol/course"
-        url = _url(f"my/ships/{self.name}/navigate")
-        data = {"waypointSymbol": dest_waypoint_symbol}
-        resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
-        return resp
+    def ship_change_course(self, ship, dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/course"""
+        pass
 
-    def move(self, dest_waypoint_symbol: str):
-        "my/ships/:shipSymbol/navigate"
+    def ship_move(self, ship, dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/navigate"""
 
-        #  4204{'message': 'Navigate request failed. Ship CTRI-4 is currently located at the destination.', 'code': 4204, 'data': {'shipSymbol': 'CTRI-4', 'destinationSymbol': 'X1-MP2-50435D'}}
-        self.orbit()
-        url = _url(f"my/ships/{self.name}/navigate")
-        data = {"waypointSymbol": dest_waypoint_symbol}
-        resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
-        return resp
+        pass
 
-    def extract(self, survey: Survey = None) -> SpaceTradersResponse:
-        "/my/ships/{shipSymbol}/extract"
+    def ship_extract(self, ship, survey: Survey = None) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/extract"""
 
-        url = _url(f"my/ships/{self.name}/extract")
-        if not self.can_extract:
-            return LocalSpaceTradersRespose("Ship cannot extract", 0, 4227, url=url)
+        pass
 
-        if self.seconds_until_cooldown > 0:
-            return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4200, url=url)
-        if self.nav.status == "DOCKED":
-            self.orbit()
-        data = survey.to_json() if survey is not None else None
+    def ship_dock(self, ship):
+        """/my/ships/{shipSymbol}/dock"""
+        pass
 
-        resp = post_and_validate(url, data=data, headers=self._headers())
-        self.update(resp.data)
-        return resp
+    def ship_refuel(self, ship):
+        """/my/ships/{shipSymbol}/refuel"""
+        pass
 
-    def dock(self):
-        "/my/ships/{shipSymbol}/dock"
-        url = _url(f"my/ships/{self.name}/dock")
-
-        if self.nav.status == "DOCKED":
-            return LocalSpaceTradersRespose(None, 200, None, url=url)
-        resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
-        return resp
-
-    def refuel(self):
-        "/my/ships/{shipSymbol}/refuel"
-        if self.nav.status == "IN_ORBIT":
-            self.dock()
-        if self.nav.status != "DOCKED":
-            self.logger.error("Ship must be docked to refuel")
-
-        url = _url(f"my/ships/{self.name}/refuel")
-        resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
-        return resp
-
-    def sell(self, symbol: str, quantity: int):
+    def ship_sell(self, ship, symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
 
-        if self.nav.status != "DOCKED":
-            self.dock()
+        pass
 
-        url = _url(f"my/ships/{self.name}/sell")
-        data = {"symbol": symbol, "units": quantity}
-        resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
-        return resp
+    def ship_survey(self, ship) -> list[Survey] or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/survey"""
 
-    def survey(self) -> list[Survey] or SpaceTradersResponse:
-        "/my/ships/{shipSymbol}/survey"
-        # 400, 4223, 'Ship survey failed. Ship must be in orbit to perform this type of survey.'
-        if self.nav.status == "DOCKED":
-            self.orbit()
-        if not self.can_survey:
-            return LocalSpaceTradersRespose("Ship cannot survey", 0, 4240)
-        if self.seconds_until_cooldown > 0:
-            return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4000)
-        url = _url(f"my/ships/{self.name}/survey")
-        resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
+        pass
 
-        if resp:
-            return [Survey.from_json(d) for d in resp.data.get("surveys", [])]
-        return resp
+    def ship_transfer_cargo(self, ship, trade_symbol, units, target_ship_name):
+        """/my/ships/{shipSymbol}/transfer"""
 
-    def transfer_cargo(self, trade_symbol, units, target_ship_name):
-        "/my/ships/{shipSymbol}/transfer"
-
-        # 4217{'message': 'Failed to update ship cargo. Cannot add 6 unit(s) to ship cargo. Exceeds max limit of 60.', 'code': 4217, 'data': {'shipSymbol': 'CTRI-1', 'cargoCapacity': 60, 'cargoUnits': 60, 'unitsToAdd': 6}}
-        url = _url(f"my/ships/{self.name}/transfer")
-        data = {
-            "tradeSymbol": trade_symbol,
-            "units": units,
-            "shipSymbol": target_ship_name,
-        }
-        resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
-        return resp
+        pass
 
     def _check_cooldown(self):
         # /my/ships/{shipSymbol}/cooldown

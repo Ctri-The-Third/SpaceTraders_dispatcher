@@ -18,14 +18,14 @@ from .responses import RemoteSpaceTradersRespose, SpaceTradersResponse
 
 
 @dataclass
-class GlobalConfig:
+class ApiConfig:
     __instance = None
     base_url: str = "https://api.spacetraders.io"
     version: str = "v2"
 
     def __new__(cls, base_url=None, version=None):
         if cls.__instance is None:
-            cls.__instance = super(GlobalConfig, cls).__new__(cls)
+            cls.__instance = super(ApiConfig, cls).__new__(cls)
 
         return cls.__instance
 
@@ -141,7 +141,7 @@ def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersR
 
 def _url(endpoint) -> str:
     "wraps the `endpoint` in the base_url and version"
-    config = GlobalConfig()
+    config = ApiConfig()
     return f"{config.base_url}/{config.version}/{endpoint}"
 
 

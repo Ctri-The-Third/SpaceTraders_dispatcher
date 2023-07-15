@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .client import SpaceTradersClient
+from .client_interface import SpaceTradersInteractive
 from .utils import DATE_FORMAT, _url, post_and_validate
 from .models import SymbolClass
 from dataclasses import dataclass
@@ -20,7 +20,7 @@ class ContractDeliverGood(SymbolClass):
 # this should probably be its own thing
 
 
-class Contract(SpaceTradersClient):
+class Contract(SpaceTradersInteractive):
     id: str
     faction_symbol: str
     type: str
@@ -33,12 +33,12 @@ class Contract(SpaceTradersClient):
     expiration: datetime
     deadline_for_accept: datetime = None
     token: str = None
-    other_client: SpaceTradersClient = None
+    other_client: SpaceTradersInteractive = None
 
     def __init__(
         self,
         json_data: dict,
-        other_client: SpaceTradersClient = None,
+        other_client: SpaceTradersInteractive = None,
         token: str = None,
     ) -> None:
         if token:
@@ -74,7 +74,7 @@ class Contract(SpaceTradersClient):
         return cls(json_data)
 
     def deliver(
-        self, ship_symbol, trade_symbol, units, ship_to_update: SpaceTradersClient
+        self, ship_symbol, trade_symbol, units, ship_to_update: SpaceTradersInteractive
     ):
         # note - this doesn't update the ship's cargo.
         """/my/contracts/:id/deliver"""
