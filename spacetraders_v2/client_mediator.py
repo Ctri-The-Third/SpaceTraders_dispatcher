@@ -442,5 +442,43 @@ class SpaceTradersMediatorClient:
                 if trait.symbol == trait_symbol:
                     return waypoint
 
+    def ship_orbit(self, ship: "Ship"):
+        """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
+        return self.api_client.ship_orbit(ship)
+
+    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/course"""
+        return self.api_client.ship_change_course(ship, dest_waypoint_symbol)
+
+    def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/navigate"""
+        return self.api_client.ship_move(ship, dest_waypoint_symbol)
+
+    def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/extract"""
+        return self.api_client.ship_extract(ship, survey)
+
+    def ship_dock(self, ship: "Ship"):
+        """/my/ships/{shipSymbol}/dock"""
+        return self.api_client.ship_dock(ship)
+
+    def ship_refuel(self, ship: "Ship"):
+        """/my/ships/{shipSymbol}/refuel"""
+        return self.api_client.ship_refuel(ship)
+
+    def ship_sell(self, ship: "Ship", symbol: str, quantity: int):
+        """/my/ships/{shipSymbol}/sell"""
+        return self.api_client.ship_sell(ship, symbol, quantity)
+
+    def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/survey"""
+        return self.api_client.ship_survey(ship)
+
+    def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
+        """/my/ships/{shipSymbol}/transfer"""
+        return self.api_client.ship_transfer_cargo(
+            ship, trade_symbol, units, target_ship_name
+        )
+
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

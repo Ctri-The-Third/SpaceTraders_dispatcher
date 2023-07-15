@@ -1,5 +1,5 @@
 from typing import Protocol
-from .models import Waypoint
+from .models import Waypoint, Survey
 from .responses import SpaceTradersResponse
 
 
@@ -55,52 +55,43 @@ class SpaceTradersClient(Protocol):
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
         pass
 
+    def ship_orbit(self, ship: "Ship"):
+        """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
+        pass
 
-def ship_orbit(self, ship: "Ship"):
-    """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
-    pass
+    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/course"""
+        pass
 
+    def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/navigate"""
 
-def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
-    """my/ships/:shipSymbol/course"""
-    pass
+        pass
 
+    def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/extract"""
 
-def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
-    """my/ships/:shipSymbol/navigate"""
+        pass
 
-    pass
+    def ship_dock(self, ship: "Ship"):
+        """/my/ships/{shipSymbol}/dock"""
+        pass
 
+    def ship_refuel(self, ship: "Ship"):
+        """/my/ships/{shipSymbol}/refuel"""
+        pass
 
-def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
-    """/my/ships/{shipSymbol}/extract"""
+    def ship_sell(self, ship: "Ship", symbol: str, quantity: int):
+        """/my/ships/{shipSymbol}/sell"""
 
-    pass
+        pass
 
+    def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/survey"""
 
-def ship_dock(self, ship: "Ship"):
-    """/my/ships/{shipSymbol}/dock"""
-    pass
+        pass
 
+    def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
+        """/my/ships/{shipSymbol}/transfer"""
 
-def ship_refuel(self, ship: "Ship"):
-    """/my/ships/{shipSymbol}/refuel"""
-    pass
-
-
-def ship_sell(self, ship: "Ship", symbol: str, quantity: int):
-    """/my/ships/{shipSymbol}/sell"""
-
-    pass
-
-
-def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
-    """/my/ships/{shipSymbol}/survey"""
-
-    pass
-
-
-def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
-    """/my/ships/{shipSymbol}/transfer"""
-
-    pass
+        pass

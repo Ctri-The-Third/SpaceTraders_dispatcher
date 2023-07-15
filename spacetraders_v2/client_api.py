@@ -3,7 +3,7 @@ from .responses import SpaceTradersResponse
 from .utils import ApiConfig, _url, get_and_validate, post_and_validate
 from .local_response import LocalSpaceTradersRespose
 from .models import Waypoint, Survey
-from ship import Ship
+from .ship import Ship
 
 
 class SpaceTradersApiClient:

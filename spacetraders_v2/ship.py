@@ -59,6 +59,7 @@ class Ship(SpaceTradersInteractive):
         parent: SpaceTradersInteractive = None,
     ) -> None:
         self._parent = parent
+        self.client = client
         self.logger = logging.getLogger("ship-logger")
         self.name: str = json_data.get("registration", {}).get("name", "")
         self.role: str = json_data["registration"]["role"]
@@ -121,49 +122,69 @@ class Ship(SpaceTradersInteractive):
         return False
 
     @classmethod
-    def from_json(cls, json_data: dict):
-        return cls(json_data, token="")
+    def from_json(
+        cls,
+        json_data: dict,
+        client: SpaceTradersClient,
+        parent: SpaceTradersInteractive = None,
+    ):
+        return cls(json_data, client=client, parent=parent)
 
-    def ship_orbit(self, ship):
+    def orbit(self):
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
-        pass
+        if self.nav.status == "DOCKED":
+            return self.client.ship_orbit(self)
+        return LocalSpaceTradersRespose(None, 0, None, "")
 
-    def ship_change_course(self, ship, dest_waypoint_symbol: str):
+    def change_course(self, ship, dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        pass
+        upd = self.client.ship_change_course(self, dest_waypoint_symbol)
+        self.update(upd)
+        return upd
 
-    def ship_move(self, ship, dest_waypoint_symbol: str):
+    def move(self, dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
+        upd = self.client.ship_move(self, dest_waypoint_symbol)
+        self.update(upd)
+        return upd
 
-        pass
-
-    def ship_extract(self, ship, survey: Survey = None) -> SpaceTradersResponse:
+    def extract(self, ship, survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
+        upd = self.client.ship_extract(self, survey)
+        self.update(upd)
+        return upd
 
-        pass
-
-    def ship_dock(self, ship):
+    def dock(self):
         """/my/ships/{shipSymbol}/dock"""
-        pass
+        upd = self.client.ship_dock()
+        self.update(upd)
+        return upd
 
-    def ship_refuel(self, ship):
+    def refuel(self):
         """/my/ships/{shipSymbol}/refuel"""
-        pass
+        upd = self.client.ship_refuel()
+        self.update(upd)
+        return upd
 
-    def ship_sell(self, ship, symbol: str, quantity: int):
+    def sell(self, symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
+        upd = self.client.ship_sell(symbol, quantity)
+        self.update(upd)
+        self._parent.update(upd)
+        return upd
 
-        pass
-
-    def ship_survey(self, ship) -> list[Survey] or SpaceTradersResponse:
+    def survey(self) -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
+        upd = self.client.ship_survey(self)
+        self._parent.update(upd)
+        return upd
 
-        pass
-
-    def ship_transfer_cargo(self, ship, trade_symbol, units, target_ship_name):
+    def transfer_cargo(self, trade_symbol, units, target_ship_name):
         """/my/ships/{shipSymbol}/transfer"""
-
-        pass
+        upd = self.client.ship_transfer_cargo(trade_symbol, units, target_ship_name)
+        self.update(upd)
+        self._parent.update(upd)
+        return
 
     def _check_cooldown(self):
         # /my/ships/{shipSymbol}/cooldown
