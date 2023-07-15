@@ -3,7 +3,7 @@ import logging
 from sys import stdout
 from logging import FileHandler, StreamHandler
 import uuid
-from spacetraders_v2.client_mediator import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.contracts import Contract
 from spacetraders_v2.models import (
@@ -296,8 +296,8 @@ Credits: \t {me.credits}
 
 if __name__ == "__main__":
     # subprocess.call(["setup.bat"], shell=True)
-    register_and_store_user("HARB_D")
-    exit()
+    register_and_store_user("CTRI")
+    # menu()
     main()
     contracts = ST.view_my_contracts()
     if not contracts:

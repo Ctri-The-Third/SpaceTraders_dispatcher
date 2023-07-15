@@ -1,4 +1,4 @@
-from spacetraders_v2.client_mediator import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
 from spacetraders_v2.contracts import Contract
@@ -250,9 +250,8 @@ def master(st: SpaceTraders, contract: Contract):
         drone: ShipyardShip
         cost = drone.purchase_price
     while len(st.ships) < 30:
-        sleep(300)
         agent = st.view_my_self(True)
-        if agent.credits >= cost * 2 or len(st.ships) == 1:
+        if agent.credits >= cost * 2 or len(st.ships) == 2:
             new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
             if not new_ship:
                 logger.error("failed to purchase new ship")
@@ -264,6 +263,7 @@ def master(st: SpaceTraders, contract: Contract):
 
             ships_and_threads[new_ship.name] = thread
             thread.start()
+        sleep(300)
 
 
 if __name__ == "__main__":

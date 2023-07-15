@@ -8,6 +8,7 @@ from .contracts import Contract
 from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
+from .client_stub import SpaceTradersClientStub
 from threading import Lock
 import logging
 
@@ -32,8 +33,10 @@ class SpaceTradersMediatorClient:
         version=None,
     ) -> None:
         self.token = token
-
-        self.api_client = SpaceTradersApiClient(base_url, version)
+        self.db_client = SpaceTradersClientStub(self.token)
+        self.api_client = SpaceTradersApiClient(
+            token=token, base_url=base_url, version=version
+        )
         self.config = ApiConfig(
             base_url=base_url, version=version
         )  # set up the global config for other things to use.

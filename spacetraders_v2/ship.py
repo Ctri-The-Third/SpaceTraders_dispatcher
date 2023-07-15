@@ -4,6 +4,7 @@ from .models import CrewInfo, ShipFrame, FuelInfo, ShipModule, ShipMount
 from .models import RouteNode, ShipReactor, ShipEngine, RouteNode, ShipRoute
 from .models import ShipRequirements, Nav, Survey, Deposit
 from .client_interface import SpaceTradersInteractive, SpaceTradersClient
+from .client_stub import SpaceTradersClientStub
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 import logging
@@ -58,7 +59,9 @@ class Ship(SpaceTradersInteractive):
         client: SpaceTradersClient,
         parent: SpaceTradersInteractive = None,
     ) -> None:
-        self._parent = parent
+        self._parent = (
+            parent if parent is not None else SpaceTradersClientStub(client.token)
+        )
         self.client = client
         self.logger = logging.getLogger("ship-logger")
         self.name: str = json_data.get("registration", {}).get("name", "")
@@ -170,6 +173,7 @@ class Ship(SpaceTradersInteractive):
         """/my/ships/{shipSymbol}/sell"""
         upd = self.client.ship_sell(symbol, quantity)
         self.update(upd)
+
         self._parent.update(upd)
         return upd
 
@@ -205,24 +209,26 @@ class Ship(SpaceTradersInteractive):
     def update(self, ship_data: dict):
         if ship_data is None:
             return
-        if "nav" in ship_data:
-            self.nav = Nav.from_json(ship_data["nav"])
-        if "cargo" in ship_data:
-            self.cargo_capacity = ship_data["cargo"]["capacity"]
-            self.cargo_units_used = ship_data["cargo"]["units"]
-            self.cargo_inventory: list[ShipInventory] = [
-                ShipInventory.from_json(d) for d in ship_data["cargo"]["inventory"]
-            ]
-        if "cooldown" in ship_data:
-            self._cooldown = parse_timestamp(ship_data["cooldown"]["expiration"])
-            if self.seconds_until_cooldown > 6000:
-                self.logger.warning("Cooldown is over 100 minutes")
-        if "fuel" in ship_data:
-            self.fuel_capacity = ship_data["fuel"]["capacity"]
-            self.fuel_current = ship_data["fuel"]["current"]
-            self.fuel_consumed_history = ship_data["fuel"]["consumed"]
-        if self._parent is not None:
-            self._parent.update(ship_data)
+
+        if isinstance(ship_data, dict):
+            if "nav" in ship_data:
+                self.nav = Nav.from_json(ship_data["nav"])
+            if "cargo" in ship_data:
+                self.cargo_capacity = ship_data["cargo"]["capacity"]
+                self.cargo_units_used = ship_data["cargo"]["units"]
+                self.cargo_inventory: list[ShipInventory] = [
+                    ShipInventory.from_json(d) for d in ship_data["cargo"]["inventory"]
+                ]
+            if "cooldown" in ship_data:
+                self._cooldown = parse_timestamp(ship_data["cooldown"]["expiration"])
+                if self.seconds_until_cooldown > 6000:
+                    self.logger.warning("Cooldown is over 100 minutes")
+            if "fuel" in ship_data:
+                self.fuel_capacity = ship_data["fuel"]["capacity"]
+                self.fuel_current = ship_data["fuel"]["current"]
+                self.fuel_consumed_history = ship_data["fuel"]["consumed"]
+        # pass the updated ship to the client to be logged appropriately
+        self.client.update(self)
 
     @property
     def seconds_until_cooldown(self) -> timedelta:
