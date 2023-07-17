@@ -4,7 +4,7 @@ from .models import CrewInfo, ShipFrame, FuelInfo, ShipModule, ShipMount
 from .models import RouteNode, ShipReactor, ShipEngine, RouteNode, ShipRoute
 from .models import ShipRequirements, Nav, Survey, Deposit
 from .client_interface import SpaceTradersInteractive, SpaceTradersClient
-from .client_stub import SpaceTradersClientStub
+from .client_stub import SpaceTradersStubClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 import logging
@@ -60,7 +60,7 @@ class Ship(SpaceTradersInteractive):
         parent: SpaceTradersInteractive = None,
     ) -> None:
         self._parent = (
-            parent if parent is not None else SpaceTradersClientStub(client.token)
+            parent if parent is not None else SpaceTradersStubClient(client.token)
         )
         self.client = client
         self.logger = logging.getLogger("ship-logger")

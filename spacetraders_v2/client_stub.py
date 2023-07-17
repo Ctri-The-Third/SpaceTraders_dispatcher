@@ -3,11 +3,8 @@ from .models import Waypoint, Survey
 from .responses import SpaceTradersResponse
 
 
-class SpaceTradersClientStub:
+class SpaceTradersStubClient:
     token: str = None
-
-    def __init__(self, token) -> None:
-        self.token = token
 
     def _headers(self) -> dict:
         pass

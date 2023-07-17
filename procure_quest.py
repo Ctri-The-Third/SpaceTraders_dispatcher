@@ -235,7 +235,7 @@ def master(st: SpaceTraders, contract: Contract):
             sleep(10)
 
     # prepare buy loop
-    shipyard_wp = st.find_waypoint_by_trait(
+    shipyard_wp = st.find_waypoints_by_trait_one(
         list(ships.values())[0].nav.system_symbol, "SHIPYARD"
     )
     avail_ships = st.view_available_ships_details(shipyard_wp)

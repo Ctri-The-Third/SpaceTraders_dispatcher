@@ -73,7 +73,8 @@ def main():
         exit()
 
     try:
-        ST.token = user["agents"][0]["token"]
+        ST.db_client.token = ST.api_client.token = ST.token = user["agents"][0]["token"]
+
     except IndexError:
         register_and_store_user(uuid.uuid4().hex[:14])
         exit()
@@ -85,26 +86,8 @@ def main():
     ships: dict[str:Ship] = st.view_my_ships()
     ship: Ship = list(ships.values())[1]
 
-    waypoints = st.waypoints_view(ship.nav.system_symbol)
-    shipyards = [
-        waypoint
-        for waypoint in waypoints.values()
-        for trait in waypoint.traits
-        if trait.symbol == "SHIPYARD"
-    ]
-    ships_avail = st.view_available_ships_details(shipyards[0])
-    for ship in ships_avail.values():
-        ship: ShipyardShip
-        print(ship)
-        print(f"------ {ship.type} -----")
-        print(f"{ship.name}: {ship.description} ")
-        print(f"cost: {ship.purchase_price}")
-        print("-- modules")
-        for module in ship.modules:
-            print(f"* {module.name}: {module.description}")
-        print("-- mounts")
-        for mount in ship.mounts:
-            print(f"* {mount.name}: {mount.description}")
+    waypoints = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
+    pass
     # resp = st.ship_purchase(shipyards[0], "SHIP_MINING_DRONE")
     # new_ship = Ship(resp.data["ship"], st)
 
@@ -296,18 +279,6 @@ Credits: \t {me.credits}
 
 if __name__ == "__main__":
     # subprocess.call(["setup.bat"], shell=True)
-    register_and_store_user("CTRI")
+    register_and_store_user("O2O")
     # menu()
     main()
-    contracts = ST.view_my_contracts()
-    if not contracts:
-        print(contracts.error)
-        exit()
-
-    for contract in contracts.values():
-        contract: Contract
-        print(
-            f"{contract.id[0:4]} - accepted:{contract.accepted}, fulfilled:{contract.fulfilled}"
-        )
-    print(contracts)
-    # menu()

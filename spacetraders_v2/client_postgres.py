@@ -9,6 +9,8 @@ class SpaceTradersPostgresClient:
 
     def __init__(self, token, db_host, db_name, db_user, db_pass) -> None:
         self.token = token
+        if not db_host or not db_name or not db_user or not db_pass:
+            raise ValueError("Missing database connection information")
         self.connection = psycopg2.connect(
             host=db_host, database=db_name, user=db_user, password=db_pass
         )
@@ -54,6 +56,12 @@ class SpaceTradersPostgresClient:
             )
             waypoints[waypoint.symbol] = waypoint
         return waypoints
+
+    def find_waypoint_by_type(
+        self, system_wp, waypoint_type
+    ) -> Waypoint or SpaceTradersResponse or None:
+        db_wayps = self.waypoints_view(system_wp.symbol)
+        return [wayp for wayp in db_wayps.values() if wayp.type == waypoint_type][0]
 
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False

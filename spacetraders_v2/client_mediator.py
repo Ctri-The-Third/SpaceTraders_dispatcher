@@ -8,7 +8,8 @@ from .contracts import Contract
 from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
-from .client_stub import SpaceTradersClientStub
+from .client_stub import SpaceTradersStubClient
+from .client_postgres import SpaceTradersPostgresClient
 from threading import Lock
 import logging
 
@@ -31,9 +32,18 @@ class SpaceTradersMediatorClient:
         token=None,
         base_url=None,
         version=None,
+        db_host=None,
+        db_name=None,
+        db_user=None,
+        db_pass=None,
     ) -> None:
         self.token = token
-        self.db_client = SpaceTradersClientStub(self.token)
+        if db_host is None or db_user is None or db_name is None:
+            self.db_client = SpaceTradersStubClient()
+        else:
+            self.db_client = SpaceTradersPostgresClient(
+                token, db_host, db_name, db_user, db_pass
+            )
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )
@@ -44,6 +54,7 @@ class SpaceTradersMediatorClient:
         self.waypoints = {}
         self.contracts = {}
         self.system_waypoints = {}
+        self.systems = {}
         self.current_agent = None
         self.surveys: dict[str:Survey] = {}
         self._lock = Lock()
@@ -284,7 +295,7 @@ class SpaceTradersMediatorClient:
         self.ships[ship_id] = ship
         return ship
 
-    def view_available_ships(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+    def view_shipyard_ships(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -416,18 +427,45 @@ class SpaceTradersMediatorClient:
             Either a Waypoint object or a SpaceTradersResponse object on API failure.
             If no matching waypoint is found and no errors occur, None is returned.
         """
-        for waypoint in self.waypoints.values():
-            if waypoint.system_symbol == system_wp and waypoint.type == waypoint_type:
-                return waypoint
-        resp = self.waypoints_view(system_wp)
-        if not resp:
-            return resp
-        for waypoint in self.waypoints_view(system_wp).values():
+        if system_wp in self.system_waypoints:
+            unfiltered_wayps = self.system_waypoints[system_wp]
+            for symbol, waypoint in unfiltered_wayps.items():
+                waypoint: Waypoint
+                if (
+                    waypoint.system_symbol == system_wp
+                    and waypoint.type == waypoint_type
+                ):
+                    return waypoint
+        db_client_resp = self.db_client.find_waypoint_by_type(system_wp, waypoint_type)
+        if bool(db_client_resp):
+            return db_client_resp
+
+        for waypoint in self.api_client.waypoints_view(system_wp).values():
             if waypoint.type == waypoint_type:
                 return waypoint
 
-    def find_waypoint_by_trait(
-        self, system_wp: str, trait_symbol: str
+    def find_waypoints_by_trait(
+        self, system_symbol: str, trait_symbol: str
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        found_wayps = []
+        for waypoint in self.waypoints.values():
+            for trait in waypoint.traits:
+                if (
+                    waypoint.system_symbol == system_symbol
+                    and trait.symbol == trait_symbol
+                ):
+                    found_wayps.append(waypoint)
+
+        additionals = self.db_client.find_waypoints_by_trait(
+            system_symbol, trait_symbol
+        )
+        if bool(additionals and len(additionals) > 0):
+            found_wayps.extend(additionals)
+
+        pass
+
+    def find_waypoints_by_trait_one(
+        self, system_symbol: str, trait_symbol: str
     ) -> Waypoint or None:
         """find a waypoint by its trait. searches cached values first, then makes a request if no match is found.
         If there are multiple matching waypoints, only the first one is returned.
@@ -440,12 +478,15 @@ class SpaceTradersMediatorClient:
             Either a Waypoint object or None if no matching waypoint is found."""
         for waypoint in self.waypoints.values():
             for trait in waypoint.traits:
-                if waypoint.system_symbol == system_wp and trait.symbol == trait_symbol:
+                if (
+                    waypoint.system_symbol == system_symbol
+                    and trait.symbol == trait_symbol
+                ):
                     return waypoint
-        resp = self.waypoints_view(system_wp)
+        resp = self.waypoints_view(system_symbol)
         if not resp:
             return resp
-        for waypoint in self.waypoints_view(system_wp).values():
+        for waypoint in self.waypoints_view(system_symbol).values():
             waypoint: Waypoint
             for trait in waypoint.traits:
                 if trait.symbol == trait_symbol:
