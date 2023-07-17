@@ -6,10 +6,11 @@ from dataclasses import dataclass
 from logging import FileHandler, StreamHandler
 from sys import stdout
 from datetime import datetime
-
+import random
 import time
 
-ST_LOGGER = logging.getLogger("SpaceTradersAPI")
+ST_LOGGER = logging.getLogger("API-Client")
+ST_LOGGER.setLevel(logging.DEBUG)
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 SURVEYOR_SYMBOLS = ["MOUNT_SURVEYOR_I", "MOUNT_SURVEYOR_II", "MOUNT_SURVEYOR_III"]
@@ -63,7 +64,12 @@ def get_and_validate(
     for i in range(1, 5):
         try:
             response = requests.get(url, params=params, headers=headers, timeout=5)
-        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+        except (
+            requests.exceptions.ConnectionError,
+            TimeoutError,
+            TypeError,
+            TimeoutError,
+        ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
             return None
         except Exception as err:
@@ -72,7 +78,7 @@ def get_and_validate(
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
-            time.sleep(i * i)
+            time.sleep(i * (i + random.random()))
         else:
             return RemoteSpaceTradersRespose(response)
 
@@ -105,16 +111,17 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
             response = requests.post(
                 url, data=data, json=json, headers=headers, timeout=5
             )
-        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+        except (requests.exceptions.ConnectionError, TimeoutError, TypeError) as err:
             logging.error("ConnectionError: %s, %s", url, err)
             return None
+
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
             raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
-            time.sleep(i * i)
+            time.sleep(i * (i + random.random()))
         else:
             return RemoteSpaceTradersRespose(response)
 

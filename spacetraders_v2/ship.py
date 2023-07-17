@@ -142,52 +142,55 @@ class Ship(SpaceTradersInteractive):
     def change_course(self, ship, dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
         upd = self.client.ship_change_course(self, dest_waypoint_symbol)
-        self.update(upd)
         return upd
 
     def move(self, dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
+        if self.nav.waypoint_symbol == dest_waypoint_symbol:
+            return LocalSpaceTradersRespose(
+                f"Navigate request failed, Ship '{self.name}' is already at the destination'",
+                0,
+                None,
+                "ship.move()",
+            )
+        if self.nav.status == "DOCKED":
+            self.orbit()
+
         upd = self.client.ship_move(self, dest_waypoint_symbol)
-        self.update(upd)
         return upd
 
-    def extract(self, ship, survey: Survey = None) -> SpaceTradersResponse:
+    def extract(self, survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
+        if self.nav.status != "IN_ORBIT":
+            self.orbit()
         upd = self.client.ship_extract(self, survey)
-        self.update(upd)
         return upd
 
     def dock(self):
         """/my/ships/{shipSymbol}/dock"""
-        upd = self.client.ship_dock()
-        self.update(upd)
+        upd = self.client.ship_dock(self)
         return upd
 
     def refuel(self):
         """/my/ships/{shipSymbol}/refuel"""
-        upd = self.client.ship_refuel()
-        self.update(upd)
+        upd = self.client.ship_refuel(self)
         return upd
 
     def sell(self, symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
-        upd = self.client.ship_sell(symbol, quantity)
-        self.update(upd)
-
-        self._parent.update(upd)
+        if self.nav.status != "DOCKED":
+            self.client.ship_dock(self)
+        upd = self.client.ship_sell(self, symbol, quantity)
         return upd
 
     def survey(self) -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
         upd = self.client.ship_survey(self)
-        self._parent.update(upd)
         return upd
 
     def transfer_cargo(self, trade_symbol, units, target_ship_name):
         """/my/ships/{shipSymbol}/transfer"""
         upd = self.client.ship_transfer_cargo(trade_symbol, units, target_ship_name)
-        self.update(upd)
-        self._parent.update(upd)
         return
 
     def _check_cooldown(self):
@@ -228,7 +231,6 @@ class Ship(SpaceTradersInteractive):
                 self.fuel_current = ship_data["fuel"]["current"]
                 self.fuel_consumed_history = ship_data["fuel"]["consumed"]
         # pass the updated ship to the client to be logged appropriately
-        self.client.update(self)
 
     @property
     def seconds_until_cooldown(self) -> timedelta:

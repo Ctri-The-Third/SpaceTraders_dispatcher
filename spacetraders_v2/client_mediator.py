@@ -5,7 +5,7 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey
+from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
 from .client_stub import SpaceTradersClientStub
@@ -190,6 +190,9 @@ class SpaceTradersMediatorClient:
         """Parses the json data from a response to update the agent, add a new survey, or add/update a new contract.
 
         This method is present on all Classes that can cache responses from the API."""
+        if isinstance(json_data, SpaceTradersResponse):
+            if json_data.data is not None:
+                json_data = json_data.data
         if isinstance(json_data, dict):
             if "agent" in json_data:
                 self.current_agent.update(json_data)
@@ -200,6 +203,9 @@ class SpaceTradersMediatorClient:
                 self.contracts[json_data["contract"]["id"]] = Contract(
                     json_data["contract"], self
                 )
+            if "nav" in json_data:
+                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+
         if isinstance(json_data, list):
             for contract in json_data:
                 self.contracts[contract["id"]] = Contract(contract, self)
@@ -447,7 +453,14 @@ class SpaceTradersMediatorClient:
 
     def ship_orbit(self, ship: "Ship"):
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
-        return self.api_client.ship_orbit(ship)
+        if ship.nav.status == "IN_ORBIT":
+            return LocalSpaceTradersRespose(
+                None, 200, "Ship is already in orbit", "client_mediator.ship_orbit()"
+            )
+        resp = self.api_client.ship_orbit(ship)
+        if resp:
+            ship.update(resp.data)
+        return
 
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
@@ -455,33 +468,67 @@ class SpaceTradersMediatorClient:
 
     def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
-        return self.api_client.ship_move(ship, dest_waypoint_symbol)
+        if ship.nav.waypoint_symbol == dest_waypoint_symbol:
+            return LocalSpaceTradersRespose(
+                f"Navigate request failed. Ship '{ship.name}' is currently located at the destiatnion.",
+                400,
+                4204,
+                "client_mediator.ship_move()",
+            )
+        resp = self.api_client.ship_move(ship, dest_waypoint_symbol)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return resp
 
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
-        return self.api_client.ship_extract(ship, survey)
+
+        resp = self.api_client.ship_extract(ship, survey)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return resp
 
     def ship_dock(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/dock"""
-        return self.api_client.ship_dock(ship)
+        resp = self.api_client.ship_dock(ship)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return resp
 
     def ship_refuel(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/refuel"""
-        return self.api_client.ship_refuel(ship)
+        resp = self.api_client.ship_refuel(ship)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
 
     def ship_sell(self, ship: "Ship", symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
-        return self.api_client.ship_sell(ship, symbol, quantity)
+        resp = self.api_client.ship_sell(ship, symbol, quantity)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(resp)
+            self.update(resp.data)
 
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
-        return self.api_client.ship_survey(ship)
+        resp = self.api_client.ship_survey(ship)
+        if resp:
+            self.update(resp)
+            self.db_client.update(ship)
+        return resp
 
     def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
         """/my/ships/{shipSymbol}/transfer"""
-        return self.api_client.ship_transfer_cargo(
+        resp = self.api_client.ship_transfer_cargo(
             ship, trade_symbol, units, target_ship_name
         )
+        if resp:
+            ship.update(resp.data)
+        return resp
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

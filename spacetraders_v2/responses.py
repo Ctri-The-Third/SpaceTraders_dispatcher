@@ -1,5 +1,5 @@
 import requests
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 # We have just turn the Ship into a client (so it can do things like move, buy sell)
 # however now it also needs responses, which has caused a circular import.
@@ -11,6 +11,7 @@ from typing import Protocol
 # I've looked at a couple of libraries by peers. In one case, they don't bother with a custom Response class at all, they just .update() the ship based on the json.
 # as a design pattern, this avoids the circular import and lets the ship remain an interactive
 # as such, I'm keeping these classes for posterity, but going to switch to the update/ from_json pattern.
+@runtime_checkable
 class SpaceTradersResponse(Protocol):
     data: dict
     response_json: dict

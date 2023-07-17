@@ -31,12 +31,12 @@
             "justMyCode": true
         },
         {
-            "name": "Python: procure-quest (Harb_alpha)",
+            "name": "Python: procure-no-scale ",
             "type": "python",
             "request": "launch",
-            "program": "procure-quest.py",
+            "program": "procure-and-sell-no-scale.py",
             "args": [
-                "O2O"
+                "CTRI"
             ],
             "console": "integratedTerminal",
             "justMyCode": true

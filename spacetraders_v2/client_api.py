@@ -4,6 +4,9 @@ from .utils import ApiConfig, _url, get_and_validate, post_and_validate
 from .local_response import LocalSpaceTradersRespose
 from .models import Waypoint, Survey
 from .ship import Ship
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SpaceTradersApiClient:
@@ -59,7 +62,8 @@ class SpaceTradersApiClient:
         if ship.nav.status == "IN_ORBIT":
             return LocalSpaceTradersRespose(None, 0, None, url=url)
         resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_change_course(self, ship: Ship, dest_waypoint_symbol: str):
@@ -67,7 +71,8 @@ class SpaceTradersApiClient:
         url = _url(f"my/ships/{ship.name}/navigate")
         data = {"waypointSymbol": dest_waypoint_symbol}
         resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_move(self, ship: Ship, dest_waypoint_symbol: str):
@@ -78,7 +83,8 @@ class SpaceTradersApiClient:
         url = _url(f"my/ships/{ship.name}/navigate")
         data = {"waypointSymbol": dest_waypoint_symbol}
         resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_extract(self, ship: Ship, survey: Survey = None) -> SpaceTradersResponse:
@@ -95,7 +101,8 @@ class SpaceTradersApiClient:
         data = survey.to_json() if survey is not None else None
 
         resp = post_and_validate(url, data=data, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_dock(self, ship: Ship):
@@ -105,7 +112,8 @@ class SpaceTradersApiClient:
         if ship.nav.status == "DOCKED":
             return LocalSpaceTradersRespose(None, 200, None, url=url)
         resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_refuel(self, ship: Ship):
@@ -117,7 +125,8 @@ class SpaceTradersApiClient:
 
         url = _url(f"my/ships/{ship.name}/refuel")
         resp = post_and_validate(url, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_sell(self, ship: Ship, symbol: str, quantity: int):
@@ -129,7 +138,8 @@ class SpaceTradersApiClient:
         url = _url(f"my/ships/{ship.name}/sell")
         data = {"symbol": symbol, "units": quantity}
         resp = post_and_validate(url, data, headers=self._headers())
-        self.update(resp.data)
+        if resp:
+            self.update(resp.data)
         return resp
 
     def ship_survey(self, ship: Ship) -> list[Survey] or SpaceTradersResponse:
@@ -143,6 +153,7 @@ class SpaceTradersApiClient:
             return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4000)
         url = _url(f"my/ships/{ship.name}/survey")
         resp = post_and_validate(url, headers=self._headers())
+
         self.update(resp.data)
 
         if resp:

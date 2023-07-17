@@ -55,7 +55,7 @@ class SpaceTradersClient(Protocol):
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
         pass
 
-    def ship_orbit(self, ship: "Ship"):
+    def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
         pass
 
@@ -63,7 +63,9 @@ class SpaceTradersClient(Protocol):
         """my/ships/:shipSymbol/course"""
         pass
 
-    def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_move(
+        self, ship: "Ship", dest_waypoint_symbol: str
+    ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/navigate"""
 
         pass
@@ -73,15 +75,17 @@ class SpaceTradersClient(Protocol):
 
         pass
 
-    def ship_dock(self, ship: "Ship"):
+    def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
         pass
 
-    def ship_refuel(self, ship: "Ship"):
+    def ship_refuel(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/refuel"""
         pass
 
-    def ship_sell(self, ship: "Ship", symbol: str, quantity: int):
+    def ship_sell(
+        self, ship: "Ship", symbol: str, quantity: int
+    ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/sell"""
 
         pass
@@ -91,7 +95,9 @@ class SpaceTradersClient(Protocol):
 
         pass
 
-    def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
+    def ship_transfer_cargo(
+        self, ship: "Ship", trade_symbol, units, target_ship_name
+    ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/transfer"""
 
         pass
