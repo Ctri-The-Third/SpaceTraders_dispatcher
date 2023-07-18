@@ -1,15 +1,17 @@
+from spacetraders_v2.models import Waypoint
+from spacetraders_v2.responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .utils import ApiConfig, _url, get_and_validate, post_and_validate
 from .local_response import LocalSpaceTradersRespose
-from .models import Waypoint, Survey
+from .models import Waypoint, Survey, Market, MarketTradeGood
 from .ship import Ship
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class SpaceTradersApiClient:
+class SpaceTradersApiClient(SpaceTradersClient):
     "implements SpaceTradersClient Protocol. No in-memory caching, no database, just the API."
 
     def __init__(self, token=None, base_url=None, version=None) -> None:
@@ -173,3 +175,47 @@ class SpaceTradersApiClient:
         resp = post_and_validate(url, data, headers=self._headers())
         self.update(resp.data)
         return resp
+
+    # find_waypoint_by_coords, find_waypoint_by_type, find_waypoints_by_trait, find_waypoints_by_trait_one, system_market_view
+
+    def find_waypoints_by_trait(self, system_symbol: str, trait: str) -> list[Waypoint]:
+        return dummy_response(__class__.__name__, __name__)
+
+    def find_waypoint_by_type(self, system_wp, waypoint_type) -> Waypoint:
+        return dummy_response(__class__.__name__, __name__)
+
+    def find_waypoint_by_coords(self, system_symbol: str, x: int, y: int) -> Waypoint:
+        return dummy_response(__class__.__name__, __name__)
+
+    def find_waypoints_by_trait_one(self, system_symbol: str, trait: str) -> Waypoint:
+        return dummy_response(__class__.__name__, __name__)
+
+    def system_market_view(self, system_symbol: str) -> list[Market]:
+        return dummy_response(__class__.__name__, __name__)
+
+    def system_shipyard_ships(self, wp: Waypoint) -> list[Ship]:
+        """View the types of ships available at a shipyard.
+
+        Args:
+            `wp` (Waypoint): The waypoint to view the ships at.
+
+        Returns:
+            Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
+        """
+
+        url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/shipyard")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp and (resp.data is None or "ships" not in resp.data):
+            return LocalSpaceTradersRespose(
+                "No ship at this waypoint to get details.", 200, 0, url
+            )
+        if resp:
+            return [d for d in resp.data["ship_types"]]
+
+        return resp
+
+
+def dummy_response(class_name, method_name):
+    return LocalSpaceTradersRespose(
+        "Not implemented in this client", 0, 0, f"{class_name}.{method_name}"
+    )

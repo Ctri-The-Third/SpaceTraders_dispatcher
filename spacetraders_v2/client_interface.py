@@ -1,6 +1,7 @@
 from typing import Protocol, runtime_checkable
 from .models import Waypoint, Survey, Market
 from .responses import SpaceTradersResponse
+from abc import abstractmethod
 
 
 class SpaceTradersInteractive(Protocol):
@@ -20,12 +21,15 @@ class SpaceTradersInteractive(Protocol):
 class SpaceTradersClient(Protocol):
     token: str = None
 
+    @abstractmethod
     def __init__(self, token) -> None:
-        self.token = token
+        pass
 
+    @abstractmethod
     def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.token}"}
+        pass
 
+    @abstractmethod
     def update(self, update_obj):
         pass
 
@@ -42,6 +46,7 @@ class SpaceTradersClient(Protocol):
         """
         pass
 
+    @abstractmethod
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
     ) -> Waypoint or SpaceTradersResponse:
@@ -56,34 +61,41 @@ class SpaceTradersClient(Protocol):
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
         pass
 
+    @abstractmethod
     def find_waypoint_by_coords(
         self, system_symbol: str, x: int, y: int
     ) -> Waypoint or SpaceTradersResponse:
         pass
 
+    @abstractmethod
     def find_waypoints_by_trait(
         self, system_symbol: str, trait: str
     ) -> list[Waypoint] or SpaceTradersResponse:
         pass
 
+    @abstractmethod
     def find_waypoints_by_trait_one(
         self, system_symbol: str, trait: str
     ) -> Waypoint or SpaceTradersResponse:
         pass
 
+    @abstractmethod
     def find_waypoint_by_type(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
         pass
 
+    @abstractmethod
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
         pass
 
+    @abstractmethod
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
         pass
 
+    @abstractmethod
     def ship_move(
         self, ship: "Ship", dest_waypoint_symbol: str
     ) -> SpaceTradersResponse:
@@ -91,19 +103,23 @@ class SpaceTradersClient(Protocol):
 
         pass
 
+    @abstractmethod
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
 
         pass
 
+    @abstractmethod
     def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
         pass
 
+    @abstractmethod
     def ship_refuel(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/refuel"""
         pass
 
+    @abstractmethod
     def ship_sell(
         self, ship: "Ship", symbol: str, quantity: int
     ) -> SpaceTradersResponse:
@@ -111,11 +127,13 @@ class SpaceTradersClient(Protocol):
 
         pass
 
+    @abstractmethod
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
 
         pass
 
+    @abstractmethod
     def ship_transfer_cargo(
         self, ship: "Ship", trade_symbol, units, target_ship_name
     ) -> SpaceTradersResponse:
@@ -123,9 +141,18 @@ class SpaceTradersClient(Protocol):
 
         pass
 
+    @abstractmethod
     def system_market_view(
         self, system_symbol: str, waypoint_symbol: str
     ) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
+
+        pass
+
+    @abstractmethod
+    def system_shipyard_ships(
+        self, waypoint: Waypoint
+    ) -> list[dict] or SpaceTradersResponse:
+        """/game/locations/{symbol}/shipyard"""
 
         pass

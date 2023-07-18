@@ -5,10 +5,9 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Market
+from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
-from .client_stub import SpaceTradersStubClient
 from .client_postgres import SpaceTradersPostgresClient
 from threading import Lock
 import logging
@@ -38,12 +37,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_pass=None,
     ) -> None:
         self.token = token
-        if db_host is None or db_user is None or db_name is None:
-            self.db_client = SpaceTradersStubClient()
-        else:
-            self.db_client = SpaceTradersPostgresClient(
-                token, db_host, db_name, db_user, db_pass
-            )
+        self.db_client = SpaceTradersPostgresClient()
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )
@@ -54,7 +48,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.waypoints = {}
         self.contracts = {}
         self.system_waypoints = {}
-        self.systems = {}
         self.current_agent = None
         self.surveys: dict[str:Survey] = {}
         self._lock = Lock()
@@ -295,7 +288,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
-    def view_shipyard_ships(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+    def system_shipyard_ships(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -304,16 +297,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
         """
-
-        url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/shipyard")
-        resp = get_and_validate(url, headers=self._headers())
-        if resp and (resp.data is None or "ships" not in resp.data):
-            return LocalSpaceTradersRespose(
-                "No ship at this waypoint to get details.", 200, 0, url
-            )
-        if resp:
-            return [d for d in resp.data["ship_types"]]
-
+        resp = self.db_client.system_shipyard_ships(wp)
+        if not resp:
+            resp = self.api_client.system_shipyard_ships(wp)
+            if resp:
+                self.db_client.update(resp)
         return resp
 
     def view_available_ships_details(
@@ -427,45 +415,18 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             Either a Waypoint object or a SpaceTradersResponse object on API failure.
             If no matching waypoint is found and no errors occur, None is returned.
         """
-        if system_wp in self.system_waypoints:
-            unfiltered_wayps = self.system_waypoints[system_wp]
-            for symbol, waypoint in unfiltered_wayps.items():
-                waypoint: Waypoint
-                if (
-                    waypoint.system_symbol == system_wp
-                    and waypoint.type == waypoint_type
-                ):
-                    return waypoint
-        db_client_resp = self.db_client.find_waypoint_by_type(system_wp, waypoint_type)
-        if bool(db_client_resp):
-            return db_client_resp
-
-        for waypoint in self.api_client.waypoints_view(system_wp).values():
+        for waypoint in self.waypoints.values():
+            if waypoint.system_symbol == system_wp and waypoint.type == waypoint_type:
+                return waypoint
+        resp = self.waypoints_view(system_wp)
+        if not resp:
+            return resp
+        for waypoint in self.waypoints_view(system_wp).values():
             if waypoint.type == waypoint_type:
                 return waypoint
 
-    def find_waypoints_by_trait(
-        self, system_symbol: str, trait_symbol: str
-    ) -> list[Waypoint] or SpaceTradersResponse:
-        found_wayps = []
-        for waypoint in self.waypoints.values():
-            for trait in waypoint.traits:
-                if (
-                    waypoint.system_symbol == system_symbol
-                    and trait.symbol == trait_symbol
-                ):
-                    found_wayps.append(waypoint)
-
-        additionals = self.db_client.find_waypoints_by_trait(
-            system_symbol, trait_symbol
-        )
-        if bool(additionals and len(additionals) > 0):
-            found_wayps.extend(additionals)
-
-        pass
-
-    def find_waypoints_by_trait_one(
-        self, system_symbol: str, trait_symbol: str
+    def find_waypoint_by_trait(
+        self, system_wp: str, trait_symbol: str
     ) -> Waypoint or None:
         """find a waypoint by its trait. searches cached values first, then makes a request if no match is found.
         If there are multiple matching waypoints, only the first one is returned.
@@ -478,15 +439,12 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             Either a Waypoint object or None if no matching waypoint is found."""
         for waypoint in self.waypoints.values():
             for trait in waypoint.traits:
-                if (
-                    waypoint.system_symbol == system_symbol
-                    and trait.symbol == trait_symbol
-                ):
+                if waypoint.system_symbol == system_wp and trait.symbol == trait_symbol:
                     return waypoint
-        resp = self.waypoints_view(system_symbol)
+        resp = self.waypoints_view(system_wp)
         if not resp:
             return resp
-        for waypoint in self.waypoints_view(system_symbol).values():
+        for waypoint in self.waypoints_view(system_wp).values():
             waypoint: Waypoint
             for trait in waypoint.traits:
                 if trait.symbol == trait_symbol:
@@ -573,10 +531,3 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}
-
-    def system_market_view(
-        self, system_symbol: str, waypoint_symbol: str
-    ) -> Market or SpaceTradersResponse:
-        """/game/systems/{symbol}/marketplace"""
-
-        pass

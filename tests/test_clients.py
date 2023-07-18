@@ -2,7 +2,6 @@ from spacetraders_v2.client_api import SpaceTradersApiClient
 from spacetraders_v2.client_interface import SpaceTradersClient
 from spacetraders_v2.client_postgres import SpaceTradersPostgresClient
 from spacetraders_v2.client_mediator import SpaceTradersMediatorClient
-from spacetraders_v2.client_stub import SpaceTradersStubClient
 from spacetraders_v2.ship import Ship
 import pytest
 import os
@@ -192,4 +191,4 @@ def test_shipyard_info(st: SpaceTradersClient):
     wp.traits = [
         WaypointTrait("SHIPYARD", "Shipyard", "A place to buy and sell ships.")
     ]
-    types = st.view_shipyard_ships(wp)
+    types = st.system_shipyard_ships(wp)

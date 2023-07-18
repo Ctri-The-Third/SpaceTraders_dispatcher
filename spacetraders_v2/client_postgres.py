@@ -1,15 +1,16 @@
 from typing import Protocol
-from .models import Waypoint, WaypointTrait, Market
+from .models import Waypoint, WaypointTrait, Market, Survey
 from .responses import SpaceTradersResponse
+from .client_interface import SpaceTradersClient
 from .local_response import LocalSpaceTradersRespose
 import psycopg2
 
 
-class SpaceTradersPostgresClient:
+class SpaceTradersPostgresClient(SpaceTradersClient):
     token: str = None
 
-    def __init__(self, token, db_host, db_name, db_user, db_pass) -> None:
-        self.token = token
+    def __init__(self,, db_host, db_name, db_user, db_pass) -> None:
+        
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
         self.connection = psycopg2.connect(
@@ -17,13 +18,11 @@ class SpaceTradersPostgresClient:
         )
 
     def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.token}"}
+        return {}
 
     def update(self, update_obj):
         if isinstance(update_obj, Waypoint):
             self._upsert_waypoint(update_obj)
-        pass
-
         pass
 
     def waypoints_view(
@@ -57,12 +56,6 @@ class SpaceTradersPostgresClient:
             )
             waypoints[waypoint.symbol] = waypoint
         return waypoints
-
-    def find_waypoint_by_type(
-        self, system_wp, waypoint_type
-    ) -> Waypoint or SpaceTradersResponse:
-        db_wayps = self.waypoints_view(system_wp.symbol)
-        return [wayp for wayp in db_wayps.values() if wayp.type == waypoint_type][0]
 
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
@@ -101,6 +94,81 @@ class SpaceTradersPostgresClient:
                 "Could not find waypoint with that symbol in DB", 0, 0, sql
             )
         )
+
+    def find_waypoint_by_coords(
+        self, system_symbol: str, x: int, y: int
+    ) -> Waypoint or SpaceTradersResponse:
+        pass
+
+    def find_waypoints_by_trait(
+        self, system_symbol: str, trait: str
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        pass
+
+    def find_waypoints_by_trait_one(
+        self, system_symbol: str, trait: str
+    ) -> Waypoint or SpaceTradersResponse:
+        pass
+
+    def find_waypoint_by_type(
+        self, system_wp, waypoint_type
+    ) -> Waypoint or SpaceTradersResponse:
+        db_wayps = self.waypoints_view(system_wp.symbol)
+        return [wayp for wayp in db_wayps.values() if wayp.type == waypoint_type][0]
+
+    def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
+        """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
+        pass
+
+    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/course"""
+        pass
+
+    def ship_move(
+        self, ship: "Ship", dest_waypoint_symbol: str
+    ) -> SpaceTradersResponse:
+        """my/ships/:shipSymbol/navigate"""
+
+        pass
+
+    def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/extract"""
+
+        pass
+
+    def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/dock"""
+        pass
+
+    def ship_refuel(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/refuel"""
+        pass
+
+    def ship_sell(
+        self, ship: "Ship", symbol: str, quantity: int
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/sell"""
+
+        pass
+
+    def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/survey"""
+
+        pass
+
+    def ship_transfer_cargo(
+        self, ship: "Ship", trade_symbol, units, target_ship_name
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/transfer"""
+
+        pass
+
+    def system_market_view(
+        self, system_symbol: str, waypoint_symbol: str
+    ) -> Market or SpaceTradersResponse:
+        """/game/systems/{symbol}/marketplace"""
+
+        pass
 
     def _upsert_waypoint(self, waypoint: Waypoint):
         try:
@@ -143,10 +211,3 @@ class SpaceTradersPostgresClient:
         except Exception as err:
             print(err)
             self.connection.rollback()
-
-    def system_market_view(
-        self, system_symbol: str, waypoint_symbol: str
-    ) -> Market or SpaceTradersResponse:
-        """/game/systems/{symbol}/marketplace"""
-
-        pass
