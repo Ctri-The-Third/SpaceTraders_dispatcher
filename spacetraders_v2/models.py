@@ -350,3 +350,34 @@ class GameStatus:
                     len(self.announcements), announcement["title"], announcement["body"]
                 )
             )
+
+
+@dataclass
+class MarketTradeGood:
+    symbol: str
+    tradeVolume: int
+    supply: str
+    purchase: int
+    sell_price: int
+
+
+@dataclass
+class TradeGood:
+    symbol: str
+    name: str
+    description: str
+
+
+@dataclass
+class Market:
+    symbol: str
+    exports: list[TradeGood]
+    imports: list[TradeGood]
+    exchange: list[TradeGood]
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        exports = [TradeGood(**export) for export in json_data["exports"]]
+        imports = [TradeGood(**import_) for import_ in json_data["imports"]]
+        exchange = [TradeGood(*exchange.values()) for exchange in json_data["exchange"]]
+        return cls(json_data["symbol"], exports, imports, exchange)

@@ -137,14 +137,14 @@ def clients():
         SpaceTradersApiClient(token),
         SpaceTradersPostgresClient(
             token,
-            db_host=os.environ.get("ST_HOST_NAME", "192.168.0.135"),
+            db_host=os.environ.get("ST_HOST_NAME", "localhost"),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
         ),
         SpaceTradersMediatorClient(
             token=token,
-            db_host=os.environ.get("ST_HOST_NAME", "192.168.0.135"),
+            db_host=os.environ.get("ST_HOST_NAME", "localhost"),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
@@ -152,10 +152,12 @@ def clients():
     ]
 
 
-@pytest.mark.parametrize(
-    "st",
-    clients(),
-)
+@pytest.mark.parametrize("st", clients())
+def test_clients(st: SpaceTradersClient):
+    assert isinstance(st, SpaceTradersClient)
+
+
+@pytest.mark.parametrize("st", clients())
 def test_waypoints_view(st: SpaceTradersClient, STARTING_SYSTEM):
     waypoints = st.waypoints_view(STARTING_SYSTEM)
     assert waypoints

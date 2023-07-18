@@ -5,7 +5,7 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav
+from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Market
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
 from .client_stub import SpaceTradersStubClient
@@ -17,7 +17,7 @@ import logging
 from datetime import datetime
 
 
-class SpaceTradersMediatorClient:
+class SpaceTradersMediatorClient(SpaceTradersClient):
     """SpaceTraders API client, with in-memory caching, and DB lookup."""
 
     api_client: SpaceTradersClient
@@ -573,3 +573,10 @@ class SpaceTradersMediatorClient:
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}
+
+    def system_market_view(
+        self, system_symbol: str, waypoint_symbol: str
+    ) -> Market or SpaceTradersResponse:
+        """/game/systems/{symbol}/marketplace"""
+
+        pass

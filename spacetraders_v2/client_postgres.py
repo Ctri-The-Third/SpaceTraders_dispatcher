@@ -1,6 +1,7 @@
 from typing import Protocol
-from .models import Waypoint, WaypointTrait
+from .models import Waypoint, WaypointTrait, Market
 from .responses import SpaceTradersResponse
+from .local_response import LocalSpaceTradersRespose
 import psycopg2
 
 
@@ -59,7 +60,7 @@ class SpaceTradersPostgresClient:
 
     def find_waypoint_by_type(
         self, system_wp, waypoint_type
-    ) -> Waypoint or SpaceTradersResponse or None:
+    ) -> Waypoint or SpaceTradersResponse:
         db_wayps = self.waypoints_view(system_wp.symbol)
         return [wayp for wayp in db_wayps.values() if wayp.type == waypoint_type][0]
 
@@ -93,7 +94,13 @@ class SpaceTradersPostgresClient:
                 row[2], row[0], row[1], row[3], row[4], [], traits, {}, {}
             )
             waypoints.append(waypoint)
-        return waypoints[0] if len(waypoints) > 0 else None
+        return (
+            waypoints[0]
+            if len(waypoints) > 0
+            else LocalSpaceTradersRespose(
+                "Could not find waypoint with that symbol in DB", 0, 0, sql
+            )
+        )
 
     def _upsert_waypoint(self, waypoint: Waypoint):
         try:
@@ -136,3 +143,10 @@ class SpaceTradersPostgresClient:
         except Exception as err:
             print(err)
             self.connection.rollback()
+
+    def system_market_view(
+        self, system_symbol: str, waypoint_symbol: str
+    ) -> Market or SpaceTradersResponse:
+        """/game/systems/{symbol}/marketplace"""
+
+        pass

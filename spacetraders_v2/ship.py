@@ -59,9 +59,7 @@ class Ship(SpaceTradersInteractive):
         client: SpaceTradersClient,
         parent: SpaceTradersInteractive = None,
     ) -> None:
-        self._parent = (
-            parent if parent is not None else SpaceTradersStubClient(client.token)
-        )
+        self._parent = parent if parent is not None else SpaceTradersStubClient()
         self.client = client
         self.logger = logging.getLogger("ship-logger")
         self.name: str = json_data.get("registration", {}).get("name", "")

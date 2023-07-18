@@ -1,5 +1,5 @@
-from typing import Protocol
-from .models import Waypoint, Survey
+from typing import Protocol, runtime_checkable
+from .models import Waypoint, Survey, Market
 from .responses import SpaceTradersResponse
 
 
@@ -16,6 +16,7 @@ class SpaceTradersInteractive(Protocol):
         pass
 
 
+@runtime_checkable
 class SpaceTradersClient(Protocol):
     token: str = None
 
@@ -72,7 +73,7 @@ class SpaceTradersClient(Protocol):
 
     def find_waypoint_by_type(
         self, system_wp, waypoint_type
-    ) -> Waypoint or SpaceTradersResponse or None:
+    ) -> Waypoint or SpaceTradersResponse:
         pass
 
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
@@ -119,5 +120,12 @@ class SpaceTradersClient(Protocol):
         self, ship: "Ship", trade_symbol, units, target_ship_name
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/transfer"""
+
+        pass
+
+    def system_market_view(
+        self, system_symbol: str, waypoint_symbol: str
+    ) -> Market or SpaceTradersResponse:
+        """/game/systems/{symbol}/marketplace"""
 
         pass

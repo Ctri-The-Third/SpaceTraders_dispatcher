@@ -1,5 +1,5 @@
 from typing import Protocol
-from .models import Waypoint, Survey
+from .models import Waypoint, Survey, Market
 from .responses import SpaceTradersResponse
 
 
@@ -37,6 +37,26 @@ class SpaceTradersStubClient:
 
         Returns:
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
+        pass
+
+    def find_waypoint_by_coords(
+        self, system_symbol: str, x: int, y: int
+    ) -> Waypoint or SpaceTradersResponse:
+        pass
+
+    def find_waypoints_by_trait(
+        self, system_symbol: str, trait: str
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        pass
+
+    def find_waypoints_by_trait_one(
+        self, system_symbol: str, trait: str
+    ) -> Waypoint or SpaceTradersResponse:
+        pass
+
+    def find_waypoint_by_type(
+        self, system_wp, waypoint_type
+    ) -> Waypoint or SpaceTradersResponse or None:
         pass
 
     def ship_orbit(self, ship: "Ship"):
@@ -77,5 +97,12 @@ class SpaceTradersStubClient:
 
     def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
         """/my/ships/{shipSymbol}/transfer"""
+
+        pass
+
+    def system_market_view(
+        self, system_symbol: str, waypoint_symbol: str
+    ) -> Market or SpaceTradersResponse:
+        """/game/systems/{symbol}/marketplace"""
 
         pass
