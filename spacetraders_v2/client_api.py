@@ -114,6 +114,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         resp = post_and_validate(url, data=data, headers=self._headers())
         if resp:
             self.update(resp.data)
+            ship.update(resp.data)
         return resp
 
     def ship_dock(self, ship: Ship):
@@ -125,6 +126,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         resp = post_and_validate(url, headers=self._headers())
         if resp:
             self.update(resp.data)
+            ship.update(resp.data)
         return resp
 
     def ship_refuel(self, ship: Ship):
@@ -138,6 +140,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         resp = post_and_validate(url, headers=self._headers())
         if resp:
             self.update(resp.data)
+            ship.update(resp.data)
         return resp
 
     def ship_sell(self, ship: Ship, symbol: str, quantity: int):
@@ -151,6 +154,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
+            ship.update(resp.data)
         return resp
 
     def ship_survey(self, ship: Ship) -> list[Survey] or SpaceTradersResponse:
@@ -167,8 +171,6 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         self.update(resp.data)
 
-        if resp:
-            return [Survey.from_json(d) for d in resp.data.get("surveys", [])]
         return resp
 
     def ship_transfer_cargo(self, ship: Ship, trade_symbol, units, target_ship_name):
@@ -183,6 +185,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         }
         resp = post_and_validate(url, data, headers=self._headers())
         self.update(resp.data)
+
         return resp
 
     # find_waypoint_by_coords, find_waypoint_by_type, find_waypoints_by_trait, find_waypoints_by_trait_one, system_market_view

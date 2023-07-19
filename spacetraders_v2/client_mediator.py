@@ -203,7 +203,10 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 )
             if "nav" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
-
+            if "cooldown" in json_data:
+                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+        if isinstance(json_data, Survey):
+            self.surveys[json_data.signature] = json_data
         if isinstance(json_data, list):
             for contract in json_data:
                 self.contracts[contract["id"]] = Contract(contract, self)
@@ -573,8 +576,14 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/survey"""
         resp = self.api_client.ship_survey(ship)
         if resp:
-            self.update(resp)
-            self.db_client.update(ship)
+            surveys = [Survey.from_json(d) for d in resp.data.get("surveys", [])]
+            for survey in surveys:
+                self.db_client.update(survey)
+            self.update(resp.data)
+            ship.update(resp.data)
+
+        elif resp.data is not None:
+            self.update(resp.data)
         return resp
 
     def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):

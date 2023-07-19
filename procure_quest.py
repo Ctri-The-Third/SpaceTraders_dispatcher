@@ -117,7 +117,12 @@ def extractor_quest_loop(
                 logging.info(
                     f"Extracted {resp.data['extraction']['yield']['symbol']}({resp.data['extraction']['yield']['units']}), used surve? {best_survey is not None} "
                 )
-
+            else:
+                sleep(ship.seconds_until_cooldown)
+        else:
+            # extractor that can't extract? shut it down.
+            logging.error(f"Ship {ship.name} can't extract, shutting down.")
+            break
         for cargo in ship.cargo_inventory:
             if cargo.symbol == target_material:
                 for target_ship in viable_transports:
@@ -172,7 +177,8 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
 
         if ship.can_survey:
             # why is this firing a contract init?
-            if ship.survey():
+
+            if st.ship_survey(ship):
                 best_survey = st.find_survey_best(target_material)
                 if best_survey is not None:
                     hits = sum(
@@ -181,6 +187,9 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
                     logging.info(
                         "best survey to find %s is %s%%", target_material, hits
                     )
+
+            else:
+                sleep(70)
         else:
             sleep(70)
 
@@ -210,19 +219,20 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
 
 def master(st: SpaceTraders, contract: Contract):
     # start the drones
+    st.view_my_self()
     ships = st.view_my_ships()
-    ships_and_threads = {}
-
+    extractors_and_threads = {}
+    surveyors_and_threads = {}
     viable_transports = []
     for ship in ships.values():
-        if ship.role in ["COMMAND"]:
+        if ship.role in ["COMMAND", "FREIGHTER"]:
             thread = threading.Thread(
                 target=surveyor_quest_loop, args=(ship, st, contract), name=ship.name
             )
             viable_transports.append(ship)
-            ships_and_threads[ship.name] = thread
+            extractors_and_threads[ship.name] = thread
             thread.start()
-            sleep(10)
+            sleep(20)
 
     for ship in ships.values():
         if ship.role in ["EXCAVATOR"]:
@@ -231,9 +241,10 @@ def master(st: SpaceTraders, contract: Contract):
                 args=(ship, st, contract, viable_transports),
                 name=ship.name,
             )
-            ships_and_threads[ship.name] = thread
+            surveyors_and_threads[ship.name] = thread
             thread.start()
-            sleep(10)
+
+            sleep(5)
 
     # prepare buy loop
     shipyard_wp = st.find_waypoints_by_trait_one(
@@ -245,14 +256,24 @@ def master(st: SpaceTraders, contract: Contract):
             "failed to get available ships - will be unable to purchase new ships in this execution"
         )
 
-    cost = 999999999
+    drone_cost = hauler_cost = 999999999
     if avail_ships and "SHIP_MINING_DRONE" in avail_ships:
         drone = avail_ships["SHIP_MINING_DRONE"]
         drone: ShipyardShip
-        cost = drone.purchase_price
-    while len(st.ships) < 30:
+        drone_cost = drone.purchase_price
+    if avail_ships and "SHIP_LIGHT_HAULER" in avail_ships:
+        hauler = avail_ships["SHIP_LIGHT_HAULER"]
+        hauler: ShipyardShip
+        hauler_cost = hauler.purchase_price
+    target_extractors = 30
+    target_surveyors = 3
+    while (
+        len(extractors_and_threads) < target_extractors
+        or len(surveyors_and_threads) < target_surveyors
+    ):
         agent = st.view_my_self(True)
-        if agent.credits >= cost * 2 or len(st.ships) == 2:
+
+        if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
             new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
             if not new_ship:
                 logger.error("failed to purchase new ship")
@@ -262,7 +283,20 @@ def master(st: SpaceTraders, contract: Contract):
                 name=new_ship.name,
             )
 
-            ships_and_threads[new_ship.name] = thread
+            extractors_and_threads[new_ship.name] = thread
+
+        if len(extractors_and_threads) / 10 < len(surveyors_and_threads):
+            if agent.credits >= hauler_cost:
+                new_ship = st.ship_purchase(shipyard_wp, "SHIP_LIGHT_HAULER")
+                if not new_ship:
+                    logger.error("failed to purchase new ship")
+                thread = threading.Thread(
+                    target=surveyor_quest_loop,
+                    args=(new_ship, st, contract),
+                    name=new_ship.name,
+                )
+                viable_transports.append(new_ship.name)
+                surveyors_and_threads[new_ship.name] = thread
             thread.start()
         sleep(300)
 

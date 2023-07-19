@@ -215,6 +215,7 @@ class Survey:
     expiration: datetime
     size: str
     _json: dict
+    times_used: int = 0
 
     @classmethod
     def from_json(cls, json_data: dict):

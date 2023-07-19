@@ -32,6 +32,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return {}
 
     def update(self, update_obj):
+        "Accepts objects and stores them in the DB"
         if isinstance(update_obj, Waypoint):
             _upsert_waypoint(self.connection, update_obj)
         if isinstance(update_obj, Shipyard):

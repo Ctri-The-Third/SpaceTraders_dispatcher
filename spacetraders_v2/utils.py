@@ -8,6 +8,7 @@ from sys import stdout
 from datetime import datetime
 import random
 import time
+from .local_response import LocalSpaceTradersRespose
 
 ST_LOGGER = logging.getLogger("API-Client")
 ST_LOGGER.setLevel(logging.DEBUG)
@@ -124,6 +125,9 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
             time.sleep(i * (i + random.random()))
         else:
             return RemoteSpaceTradersRespose(response)
+    return LocalSpaceTradersRespose(
+        "Unable to do the rate limiting thing, command aborted", 0, 0, url
+    )
 
 
 def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
