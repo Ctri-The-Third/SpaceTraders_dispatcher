@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from attr import field
 import requests
 
 from .utils import DATE_FORMAT
@@ -312,6 +313,22 @@ class ShipyardShip:
     @classmethod
     def from_json(cls, json_data: dict):
         return cls(json_data)
+
+
+@dataclass
+class Shipyard:
+    waypoint: str
+    ship_types: list[str]
+    ships: dict[str, ShipyardShip] = None
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        types = [type_["type"] for type_ in json_data["shipTypes"]]
+        ships = {
+            ship["type"]: ShipyardShip(ship) for ship in json_data.get("ships", [])
+        }
+
+        return cls(json_data["symbol"], types, ships)
 
 
 class RateLimitDetails:

@@ -4,7 +4,7 @@ from .client_interface import SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .utils import ApiConfig, _url, get_and_validate, post_and_validate
 from .local_response import LocalSpaceTradersRespose
-from .models import Waypoint, Survey, Market, MarketTradeGood
+from .models import Waypoint, Survey, Market, MarketTradeGood, Shipyard
 from .ship import Ship
 import logging
 
@@ -193,7 +193,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def system_market_view(self, system_symbol: str) -> list[Market]:
         return dummy_response(__class__.__name__, __name__)
 
-    def system_shipyard_ships(self, wp: Waypoint) -> list[Ship]:
+    def system_shipyard(self, wp: Waypoint) -> Shipyard or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -210,7 +210,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
                 "No ship at this waypoint to get details.", 200, 0, url
             )
         if resp:
-            return [d for d in resp.data["ship_types"]]
+            return Shipyard.from_json(resp.data)
 
         return resp
 

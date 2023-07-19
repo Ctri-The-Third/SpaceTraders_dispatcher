@@ -167,8 +167,3 @@ def test_ship_route():
     assert ship_route.origin == origin
     assert ship_route.departure_time == departure
     assert ship_route.arrival == arrival
-
-
-# Execute the tests
-if __name__ == "__main__":
-    pytest.main()

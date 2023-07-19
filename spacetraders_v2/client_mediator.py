@@ -5,7 +5,7 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav
+from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav, Market
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
 from .client_postgres import SpaceTradersPostgresClient
@@ -37,7 +37,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_pass=None,
     ) -> None:
         self.token = token
-        self.db_client = SpaceTradersPostgresClient()
+        self.db_client = SpaceTradersPostgresClient(
+            db_host=db_host, db_name=db_name, db_user=db_user, db_pass=db_pass
+        )
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )
@@ -288,7 +290,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
-    def system_shipyard_ships(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+    def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -297,9 +299,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
         """
-        resp = self.db_client.system_shipyard_ships(wp)
+        resp = self.db_client.system_shipyard(wp)
         if not resp:
-            resp = self.api_client.system_shipyard_ships(wp)
+            resp = self.api_client.system_shipyard(wp)
             if resp:
                 self.db_client.update(resp)
         return resp
@@ -425,7 +427,29 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             if waypoint.type == waypoint_type:
                 return waypoint
 
-    def find_waypoint_by_trait(
+    def find_waypoints_by_trait(
+        self, system_symbol: str, trait: str
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        resp = [
+            wayp
+            for wayp in self.waypoints_view(system_symbol)
+            for trait in wayp.traits
+            if trait.symbol == trait
+        ]
+        if isinstance(resp, list) and len(resp) > 0:
+            return resp
+        resp = self.db_client.find_waypoints_by_trait(system_symbol, trait)
+        if resp:
+            return resp
+        wayps = self.api_client.find_waypoints_by_trait(system_symbol, trait)
+        if isinstance(wayps, list):
+            wayps: list
+            for wayp in wayps:
+                self.db_client.update(wayp)
+                self.update(wayp)
+        return wayps
+
+    def find_waypoints_by_trait_one(
         self, system_wp: str, trait_symbol: str
     ) -> Waypoint or None:
         """find a waypoint by its trait. searches cached values first, then makes a request if no match is found.
@@ -528,6 +552,13 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             ship.update(resp.data)
         return resp
+
+    def system_market_view(
+        self, system_symbol: str, waypoint_symbol: str
+    ) -> Market or SpaceTradersResponse:
+        """/game/systems/{symbol}/marketplace"""
+
+        pass
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

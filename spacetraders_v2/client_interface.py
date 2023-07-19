@@ -1,5 +1,5 @@
 from typing import Protocol, runtime_checkable
-from .models import Waypoint, Survey, Market
+from .models import Waypoint, Survey, Market, Shipyard
 from .responses import SpaceTradersResponse
 from abc import abstractmethod
 
@@ -150,9 +150,7 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def system_shipyard_ships(
-        self, waypoint: Waypoint
-    ) -> list[dict] or SpaceTradersResponse:
+    def system_shipyard(self, waypoint: Waypoint) -> Shipyard or SpaceTradersResponse:
         """/game/locations/{symbol}/shipyard"""
 
         pass

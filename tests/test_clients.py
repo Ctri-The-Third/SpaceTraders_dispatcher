@@ -3,6 +3,7 @@ from spacetraders_v2.client_interface import SpaceTradersClient
 from spacetraders_v2.client_postgres import SpaceTradersPostgresClient
 from spacetraders_v2.client_mediator import SpaceTradersMediatorClient
 from spacetraders_v2.ship import Ship
+from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard
 import pytest
 import os
 
@@ -10,8 +11,10 @@ from spacetraders_v2.models import Waypoint, WaypointTrait
 
 # TODO: replace this with a method that creates a new one.
 
+TESTING_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiTzJPIiwidmVyc2lvbiI6InYyIiwicmVzZXRfZGF0ZSI6IjIwMjMtMDctMTUiLCJpYXQiOjE2ODk2MzIzMjIsInN1YiI6ImFnZW50LXRva2VuIn0.LyQndn7-Cybq2kWFEh7MlW6mjGo70WoTXiLvVm1uyVY4u2uNYHcrQyHjdBUgTppXLR4_3HRs9xZZpCChMHnmzTooJawFWnilaqLy99o-UOK1U3SuMwUxOo4fV7yMUwf6xtF_jZxG4uuAEq11ipK3cNXOUYGVrdbb4NlIBW9bmCpygtpSSziKbrx4SXGIUEHafYYefNjwdaOazXsBT_dpUIfsHypt02yYheR_LocoC5KBmZekCdoP4yylK3fy5-tCfUOzyGyWciSBVM3Ut6o39sKipzlhbK_2PRTMVEY-8Ab1YRaeKBCPnVPLnz4ncMSiOjeVaims-9zuKKon75AGmw"
 HEADQUARTERS_WAYPOINT = "X1-MP2-12220Z"
-
+HEADQUARTERS_SYSTEM = "X1-JF24"
+SHIPYARD_WAYPOINT = "X1-JF24-73757X"
 SAMPLE_SHIP_JSON = {
     "data": {
         "symbol": "string",
@@ -126,23 +129,22 @@ def DB_INFO():
 
 @pytest.fixture
 def STARTING_SYSTEM():
-    return "X1-MP2"
+    return "X1-JF24"
 
 
 def clients():
-    token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiTzJPIiwidmVyc2lvbiI6InYyIiwicmVzZXRfZGF0ZSI6IjIwMjMtMDctMDgiLCJpYXQiOjE2ODkzMzg3MTQsInN1YiI6ImFnZW50LXRva2VuIn0.rjivh2lXRB3el7ghQOhfjUV1KLb9saqe8QnBgL8lLMWV1CWQpRerB6fx2oaYlt4tAxPJf81RSGtzMY5keGRwKmL-82HiP3WwM3JRtffbtXwneV3PjyDOVrz1bwMCAFQ4Ahln73AzHXRW_uiPcRIXvE4XlRn1N19dS_HIKQkbAr6kiQzvcDzJMhlgFMCKOaSAZ0_ht8-T_Ha-m6NtlqIrrlLgoAxDXyz3E1l5Yuw5_ZX_FP8WcJ3ndlV4FNlZbUvikUiEJ7n77wmG0QTLajbbe1hydYjTDBF1bKISRvdbxVAEslxvNW2NqwlaLaoyZaRjjooOx-gifTb288G6JYGqQw"
+    token = TESTING_TOKEN
     return [
         # return ""
         SpaceTradersApiClient(token),
-        SpaceTradersPostgresClient(
-            token,
+        SpaceTradersMediatorClient(
+            token=token,
             db_host=os.environ.get("ST_HOST_NAME", "localhost"),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
         ),
-        SpaceTradersMediatorClient(
-            token=token,
+        SpaceTradersPostgresClient(
             db_host=os.environ.get("ST_HOST_NAME", "localhost"),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
@@ -182,13 +184,14 @@ def test_waypoints_view_one(st: SpaceTradersClient, STARTING_SYSTEM):
     assert isinstance(waypoint, Waypoint)
 
 
-@pytest.mark.parametrize(
-    "st",
-    clients(),
-)
+@pytest.mark.parametrize("st", clients())
 def test_shipyard_info(st: SpaceTradersClient):
-    wp = Waypoint("", "TEST", "PLANET", 0, 0, [])
+    wp = Waypoint(
+        HEADQUARTERS_SYSTEM, SHIPYARD_WAYPOINT, "PLANET", 0, 0, [], [], {}, {}
+    )
     wp.traits = [
         WaypointTrait("SHIPYARD", "Shipyard", "A place to buy and sell ships.")
     ]
-    types = st.system_shipyard_ships(wp)
+    shipyard = st.system_shipyard(wp)
+    assert isinstance(shipyard, Shipyard)
+    assert len(shipyard.ship_types) > 0

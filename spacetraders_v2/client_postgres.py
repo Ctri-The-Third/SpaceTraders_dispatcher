@@ -1,7 +1,9 @@
 from typing import Protocol
-from .models import Waypoint, WaypointTrait, Market, Survey
+from .models import Waypoint, WaypointTrait, Market, Survey, Shipyard
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
+from .pg_upserts.upsert_waypoint import _upsert_waypoint
+from .pg_upserts.upsert_shipyard import _upsert_shipyard
 from .local_response import LocalSpaceTradersRespose
 import psycopg2
 
@@ -9,8 +11,7 @@ import psycopg2
 class SpaceTradersPostgresClient(SpaceTradersClient):
     token: str = None
 
-    def __init__(self,, db_host, db_name, db_user, db_pass) -> None:
-        
+    def __init__(self, db_host, db_name, db_user, db_pass) -> None:
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
         self.connection = psycopg2.connect(
@@ -22,7 +23,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def update(self, update_obj):
         if isinstance(update_obj, Waypoint):
-            self._upsert_waypoint(update_obj)
+            _upsert_waypoint(self.connection, update_obj)
+        if isinstance(update_obj, Shipyard):
+            _upsert_shipyard(self.connection, update_obj)
         pass
 
     def waypoints_view(
@@ -103,7 +106,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def find_waypoints_by_trait(
         self, system_symbol: str, trait: str
     ) -> list[Waypoint] or SpaceTradersResponse:
-        pass
+        return dummy_response(__class__.__name__, __name__)
 
     def find_waypoints_by_trait_one(
         self, system_symbol: str, trait: str
@@ -111,17 +114,30 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         pass
 
     def find_waypoint_by_type(
-        self, system_wp, waypoint_type
+        self, system_wp: str, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
-        db_wayps = self.waypoints_view(system_wp.symbol)
-        return [wayp for wayp in db_wayps.values() if wayp.type == waypoint_type][0]
+        db_wayps = self.waypoints_view(system_wp)
+        if not db_wayps:
+            return db_wayps
+        try:
+            return [wayp for wayp in db_wayps.values() if wayp.type == waypoint_type][0]
+        except IndexError:
+            pass
+        return LocalSpaceTradersRespose(
+            f"Couldn't find waypoint of type {waypoint_type} in system {system_wp}",
+            0,
+            0,
+            f"find_waypoint_by_type({system_wp}, {waypoint_type})",
+        )
 
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_move(
@@ -129,19 +145,23 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/navigate"""
 
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
 
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_refuel(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/refuel"""
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_sell(
@@ -153,61 +173,49 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
-
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def ship_transfer_cargo(
         self, ship: "Ship", trade_symbol, units, target_ship_name
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/transfer"""
-
+        return dummy_response(__class__.__name__, __name__)
         pass
 
     def system_market_view(
         self, system_symbol: str, waypoint_symbol: str
     ) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
+        return dummy_response(__class__.__name__, __name__)
 
-        pass
+    def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+        """View the types of ships available at a shipyard.
 
-    def _upsert_waypoint(self, waypoint: Waypoint):
+        Args:
+            `wp` (Waypoint): The waypoint to view the ships at.
+
+        Returns:
+            Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
+        """
+        sql = """SELECT * FROM shipyard_types where shipyard_symbol = %s"""
         try:
-            sql = """INSERT INTO waypoints (symbol, type, system_symbol, x, y)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (symbol) DO UPDATE
-                        SET type = %s,  system_symbol = %s, x = %s, y = %s"""
-            self.connection.cursor().execute(
-                sql,
-                (
-                    waypoint.symbol,
-                    waypoint.type,
-                    waypoint.system_symbol,
-                    waypoint.x,
-                    waypoint.y,
-                    waypoint.type,
-                    waypoint.system_symbol,
-                    waypoint.x,
-                    waypoint.y,
-                ),
+            self.connection.cursor().execute(sql, (wp.symbol,))
+            rows = self.connection.cursor().fetchall()
+            if len(rows) >= 1:
+                types = [row[1] for row in rows]
+                found_shipyard = Shipyard(wp.symbol, types, {})
+                return found_shipyard
+        except Exception as err:
+            return LocalSpaceTradersRespose(
+                error=f"Did not find shipyard at that waypoint, {err}",
+                status_code=0,
+                error_code=0,
+                url=f"{__class__.__name__}.system_shipyard({wp.symbol}",
             )
 
-            for trait in waypoint.traits:
-                sql = """INSERT INTO waypoint_traits (waypoint, symbol, name, description)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (waypoint, symbol) DO UPDATE
-                            SET name = %s, description = %s"""
-                self.connection.cursor().execute(
-                    sql,
-                    (
-                        waypoint.symbol,
-                        trait.symbol,
-                        trait.name,
-                        trait.description,
-                        trait.name,
-                        trait.description,
-                    ),
-                )
-            self.connection.commit()
-        except Exception as err:
-            print(err)
-            self.connection.rollback()
+
+def dummy_response(class_name, method_name):
+    return LocalSpaceTradersRespose(
+        "Not implemented in this client", 0, 0, f"{class_name}.{method_name}"
+    )

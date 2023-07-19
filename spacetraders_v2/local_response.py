@@ -14,3 +14,6 @@ class LocalSpaceTradersRespose:
 
     def json(self) -> dict:
         return self.response_json
+
+    def __bool__(self):
+        return self.error_code is None
