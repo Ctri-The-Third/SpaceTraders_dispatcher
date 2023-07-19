@@ -295,7 +295,7 @@ def master(st: SpaceTraders, contract: Contract):
                     args=(new_ship, st, contract),
                     name=new_ship.name,
                 )
-                viable_transports.append(new_ship.name)
+                viable_transports.append(new_ship)
                 surveyors_and_threads[new_ship.name] = thread
             thread.start()
         sleep(300)
