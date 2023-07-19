@@ -183,3 +183,9 @@ def sleep(seconds: int):
     if seconds > 0 and seconds < 6000:
         ST_LOGGER.info(f"Sleeping for {seconds} seconds")
         time.sleep(seconds)
+
+
+def waypoint_slicer(waypoint_symbol: str) -> str:
+    "returns the system symbol from a waypoint symbol"
+    pieces = waypoint_symbol.split("-")
+    return f"{pieces[0]}-{pieces[1]}"

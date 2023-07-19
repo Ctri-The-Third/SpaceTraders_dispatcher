@@ -6,6 +6,7 @@ from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
 from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav, Market
+from .models import Shipyard
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
 from .client_postgres import SpaceTradersPostgresClient
@@ -53,23 +54,14 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.current_agent = None
         self.surveys: dict[str:Survey] = {}
         self._lock = Lock()
-        status = self.game_status()
-
-        if not status:
-            raise ConnectionError(
-                f"Could not connect to SpaceTraders server: {status.error}"
-            )
-
-        self.announcements = status.announcements
-        self.next_reset = status.next_reset
-        if self.token:
-            self.current_agent = self.view_my_self()
+        self.logger = logging.getLogger(__name__)
 
     def game_status(self) -> GameStatus:
         """Get the status of the SpaceTraders game server.
 
         Args:
             None"""
+
         url = _url("")
         resp = get_and_validate(url)
 
@@ -290,7 +282,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
-    def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+    def system_shipyard(
+        self, wp: Waypoint, force_update=False
+    ) -> Shipyard or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -299,11 +293,27 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
         """
-        resp = self.db_client.system_shipyard(wp)
-        if not resp:
-            resp = self.api_client.system_shipyard(wp)
-            if resp:
-                self.db_client.update(resp)
+        if not force_update:
+            resp = self.db_client.system_shipyard(wp)
+            if bool(resp):
+                return resp
+
+        resp = self.api_client.system_shipyard(wp)
+        if resp:
+            self.db_client.update(resp)
+        return resp
+
+    def system_market(
+        self, wp: Waypoint, force_update=False
+    ) -> Market or SpaceTradersResponse:
+        if not force_update:
+            resp = self.db_client.system_market(wp)
+            if bool(resp):
+                return resp
+        resp = self.api_client.system_market(wp)
+        if bool(resp):
+            self.db_client.update(resp)
+            return resp
         return resp
 
     def view_available_ships_details(
@@ -430,11 +440,18 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def find_waypoints_by_trait(
         self, system_symbol: str, trait: str
     ) -> list[Waypoint] or SpaceTradersResponse:
+        resp = []
+        for wayp in self.waypoints_view(system_symbol).values():
+            wayp: Waypoint
+            for wp_trait in wayp.traits:
+                if wp_trait.symbol == trait:
+                    resp.append(wayp)
+
         resp = [
             wayp
-            for wayp in self.waypoints_view(system_symbol)
-            for trait in wayp.traits
-            if trait.symbol == trait
+            for wayp in self.waypoints_view(system_symbol).values()
+            for wp_trait in wayp.traits
+            if wp_trait.symbol == trait
         ]
         if isinstance(resp, list) and len(resp) > 0:
             return resp
@@ -504,6 +521,15 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return resp
 
+    def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/negotiate/contract"""
+        if ship.nav.status != "DOCKED":
+            self.ship_dock(ship)
+        resp = self.api_client.ship_negotiate(ship)
+        if bool(resp):
+            self.update(resp)
+        return resp
+
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
 
@@ -511,6 +537,13 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
+        if not resp:
+            self.logger.error(
+                "status_code = %s, error_code = %s,  error = %s",
+                resp.status_code,
+                resp.error_code,
+                resp.error,
+            )
         return resp
 
     def ship_dock(self, ship: "Ship"):
@@ -552,13 +585,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             ship.update(resp.data)
         return resp
-
-    def system_market_view(
-        self, system_symbol: str, waypoint_symbol: str
-    ) -> Market or SpaceTradersResponse:
-        """/game/systems/{symbol}/marketplace"""
-
-        pass
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

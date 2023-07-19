@@ -20,10 +20,10 @@
             "justMyCode": true
         },
         {
-            "name": "Python: procure-quest",
+            "name": "Python: procure_quest",
             "type": "python",
             "request": "launch",
-            "program": "procure-quest.py",
+            "program": "procure_quest.py",
             "args": [
                 "CTRI"
             ],
@@ -31,15 +31,26 @@
             "justMyCode": true
         },
         {
-            "name": "Python: procure-no-scale ",
+            "name": "Python: rtb&negotiate",
             "type": "python",
             "request": "launch",
-            "program": "procure-and-sell-no-scale.py",
+            "program": "RTB_and_negotiate.py",
             "args": [
                 "CTRI"
             ],
             "console": "integratedTerminal",
             "justMyCode": true
-        }
+        },
+        {
+            "name": "Python: explore-and-get-data ",
+            "type": "python",
+            "request": "launch",
+            "program": "get_market_data.py",
+            "args": [
+                "CTRI"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
     ]
 }

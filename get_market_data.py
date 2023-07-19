@@ -1,27 +1,50 @@
 from procure_quest import set_logging, sleep
 import sys, json
 from spacetraders_v2 import SpaceTraders
-from spacetraders_v2.models import Waypoint
+from spacetraders_v2.models import Waypoint, ShipyardShip, Market
+from spacetraders_v2.contracts import Contract
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def master():
+def get_best_buy_price(st: SpaceTraders, trade_symbol):
+    conn = st.db_client.connection
+
+
+def master(st: SpaceTraders):
     ship = st.view_my_ships_one("CTRI-1")
+    contracts = st.view_my_contracts()
+    for contract in contracts.values():
+        contract: Contract
+        if not contract.fulfilled and contract.accepted:
+            for deliverable in contract.deliverables:
+                print(
+                    f"{deliverable.symbol} {deliverable.units_required} / {deliverable.units_fulfilled} - reward = {contract.payment_completion}"
+                )
 
-    threads = {}
-
-    waypoints = st.find_waypoints_by_trait_one(ship.nav.system_symbol, "MARKETPLACE")
+    waypoints = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
+    waypoints.extend(st.find_waypoints_by_trait(ship.nav.system_symbol, "SHIPYARD"))
+    sleep(ship.nav.travel_time_remaining)
     for waypoint in waypoints:
         waypoint: Waypoint
         resp = st.ship_move(ship, waypoint.symbol)
         if not resp:
             logger.error(f"failed to move to {waypoint.symbol} because {resp.error}")
-            sleep(5)
+
+        sleep(ship.nav.travel_time_remaining + 1)
+        if waypoint.has_market:
+            logger.info("Found a market!")
+            market = st.system_market(waypoint, True)
+
             continue
-        sleep(ship.nav.travel_time_remaining)
-        st.ship
+        if waypoint.has_shipyard:
+            logger.info("Found a market!")
+            shipyard = st.system_shipyard(waypoint.symbol, True)
+            for ship_details in shipyard.ships:
+                ship_details: ShipyardShip
+
+            continue
 
 
 if __name__ == "__main__":

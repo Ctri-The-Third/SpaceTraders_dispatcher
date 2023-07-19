@@ -171,6 +171,7 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
             ship.force_update()
 
         if ship.can_survey:
+            # why is this firing a contract init?
             if ship.survey():
                 best_survey = st.find_survey_best(target_material)
                 if best_survey is not None:
@@ -278,7 +279,13 @@ if __name__ == "__main__":
     for user in users["agents"]:
         if user["username"] == tar_username:
             found_user = user
-    st = SpaceTraders(found_user["token"])
+    st = SpaceTraders(
+        found_user["token"],
+        db_host=users["db_host"],
+        db_name=users["db_name"],
+        db_user=users["db_user"],
+        db_pass=users["db_pass"],
+    )
     contracts = list(
         c
         for c in st.view_my_contracts().values()

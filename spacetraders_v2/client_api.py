@@ -4,7 +4,8 @@ from .client_interface import SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .utils import ApiConfig, _url, get_and_validate, post_and_validate
 from .local_response import LocalSpaceTradersRespose
-from .models import Waypoint, Survey, Market, MarketTradeGood, Shipyard
+from .models import Waypoint, Survey, Market, MarketTradeGoodListing, Shipyard
+from .contracts import Contract
 from .ship import Ship
 import logging
 
@@ -87,6 +88,14 @@ class SpaceTradersApiClient(SpaceTradersClient):
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
+        return resp
+
+    def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
+        "/my/ships/{shipSymbol}/negotiate/contract"
+        url = _url(f"my/ships/{ship.name}/negotiate/contract")
+        resp = post_and_validate(url, headers=self._headers())
+        if resp:
+            resp = Contract.from_json(resp.data)
         return resp
 
     def ship_extract(self, ship: Ship, survey: Survey = None) -> SpaceTradersResponse:
@@ -190,8 +199,13 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def find_waypoints_by_trait_one(self, system_symbol: str, trait: str) -> Waypoint:
         return dummy_response(__class__.__name__, __name__)
 
-    def system_market_view(self, system_symbol: str) -> list[Market]:
-        return dummy_response(__class__.__name__, __name__)
+    def system_market(self, wp: Waypoint) -> Market:
+        # /systems/{systemSymbol}/waypoints/{waypointSymbol}/market
+        url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/market")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            resp = Market.from_json(resp.data)
+        return resp
 
     def system_shipyard(self, wp: Waypoint) -> Shipyard or SpaceTradersResponse:
         """View the types of ships available at a shipyard.

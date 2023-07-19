@@ -288,6 +288,17 @@ class Waypoint(SymbolClass):
 
         return rawobj
 
+    @property
+    def has_shipyard(self) -> bool:
+        return "SHIPYARD" in [t.symbol for t in self.traits]
+
+    @property
+    def has_market(self) -> bool:
+        return "MARKETPLACE" in [t.symbol for t in self.traits]
+
+    def __str__(self):
+        return self.symbol
+
 
 class ShipyardShip:
     def __init__(self, json_data: dict) -> None:
@@ -370,16 +381,16 @@ class GameStatus:
 
 
 @dataclass
-class MarketTradeGood:
+class MarketTradeGoodListing:
     symbol: str
-    tradeVolume: int
+    trade_volume: int
     supply: str
     purchase: int
     sell_price: int
 
 
 @dataclass
-class TradeGood:
+class MarketTradeGood:
     symbol: str
     name: str
     description: str
@@ -388,13 +399,21 @@ class TradeGood:
 @dataclass
 class Market:
     symbol: str
-    exports: list[TradeGood]
-    imports: list[TradeGood]
-    exchange: list[TradeGood]
+    exports: list[MarketTradeGood]
+    imports: list[MarketTradeGood]
+    exchange: list[MarketTradeGood]
+    listings: list[MarketTradeGoodListing] = None
 
     @classmethod
     def from_json(cls, json_data: dict):
-        exports = [TradeGood(**export) for export in json_data["exports"]]
-        imports = [TradeGood(**import_) for import_ in json_data["imports"]]
-        exchange = [TradeGood(*exchange.values()) for exchange in json_data["exchange"]]
-        return cls(json_data["symbol"], exports, imports, exchange)
+        exports = [MarketTradeGood(**export) for export in json_data["exports"]]
+        imports = [MarketTradeGood(**import_) for import_ in json_data["imports"]]
+        exchange = [MarketTradeGood(**listing) for listing in json_data["exchange"]]
+        if "tradeGoods" in json_data:
+            listings = [
+                MarketTradeGoodListing(*listing.values())
+                for listing in json_data["tradeGoods"]
+            ]
+        else:
+            listings = []
+        return cls(json_data["symbol"], exports, imports, exchange, listings)

@@ -3,7 +3,7 @@ from spacetraders_v2.client_interface import SpaceTradersClient
 from spacetraders_v2.client_postgres import SpaceTradersPostgresClient
 from spacetraders_v2.client_mediator import SpaceTradersMediatorClient
 from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard
+from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard, Market
 import pytest
 import os
 
@@ -195,3 +195,16 @@ def test_shipyard_info(st: SpaceTradersClient):
     shipyard = st.system_shipyard(wp)
     assert isinstance(shipyard, Shipyard)
     assert len(shipyard.ship_types) > 0
+
+
+@pytest.mark.parametrize("st", clients())
+def test_market_info(st: SpaceTradersClient):
+    wp = Waypoint(
+        HEADQUARTERS_SYSTEM, SHIPYARD_WAYPOINT, "PLANET", 0, 0, [], [], {}, {}
+    )
+    wp.traits = [
+        WaypointTrait("SHIPYARD", "Shipyard", "A place to buy and sell ships.")
+    ]
+
+    market = st.system_market(wp)
+    assert isinstance(market, Market)

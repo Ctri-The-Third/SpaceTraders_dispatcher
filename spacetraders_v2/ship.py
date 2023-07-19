@@ -188,7 +188,9 @@ class Ship(SpaceTradersInteractive):
 
     def transfer_cargo(self, trade_symbol, units, target_ship_name):
         """/my/ships/{shipSymbol}/transfer"""
-        upd = self.client.ship_transfer_cargo(trade_symbol, units, target_ship_name)
+        upd = self.client.ship_transfer_cargo(
+            self, trade_symbol, units, target_ship_name
+        )
         return
 
     def _check_cooldown(self):

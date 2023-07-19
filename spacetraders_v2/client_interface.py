@@ -142,9 +142,7 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def system_market_view(
-        self, system_symbol: str, waypoint_symbol: str
-    ) -> Market or SpaceTradersResponse:
+    def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
 
         pass
@@ -153,4 +151,9 @@ class SpaceTradersClient(Protocol):
     def system_shipyard(self, waypoint: Waypoint) -> Shipyard or SpaceTradersResponse:
         """/game/locations/{symbol}/shipyard"""
 
+        pass
+
+    @abstractmethod
+    def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/negotiate/contract"""
         pass

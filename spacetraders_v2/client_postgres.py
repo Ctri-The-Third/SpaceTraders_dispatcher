@@ -1,9 +1,18 @@
 from typing import Protocol
-from .models import Waypoint, WaypointTrait, Market, Survey, Shipyard
+from .models import (
+    Waypoint,
+    WaypointTrait,
+    Market,
+    Survey,
+    Shipyard,
+    MarketTradeGood,
+    MarketTradeGoodListing,
+)
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
 from .pg_upserts.upsert_waypoint import _upsert_waypoint
 from .pg_upserts.upsert_shipyard import _upsert_shipyard
+from .pg_upserts.upsert_market import _upsert_market
 from .local_response import LocalSpaceTradersRespose
 import psycopg2
 
@@ -17,6 +26,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         self.connection = psycopg2.connect(
             host=db_host, database=db_name, user=db_user, password=db_pass
         )
+        self.connection.autocommit = True
 
     def _headers(self) -> dict:
         return {}
@@ -26,6 +36,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_waypoint(self.connection, update_obj)
         if isinstance(update_obj, Shipyard):
             _upsert_shipyard(self.connection, update_obj)
+        if isinstance(update_obj, Market):
+            _upsert_market(self.connection, update_obj)
         pass
 
     def waypoints_view(
@@ -148,6 +160,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, __name__)
         pass
 
+    def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, __name__)
+
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
 
@@ -183,11 +198,20 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, __name__)
         pass
 
-    def system_market_view(
-        self, system_symbol: str, waypoint_symbol: str
-    ) -> Market or SpaceTradersResponse:
+    def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
-        return dummy_response(__class__.__name__, __name__)
+        try:
+            sql = """SELECT mt.symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
+            cur = self.connection.cursor()
+            cur.execute(sql, (wp.symbol,))
+            rows = cur.fetchall()
+            imports = [MarketTradeGood(*row) for row in rows if row[2] == "buy"]
+            exports = [MarketTradeGood(*row) for row in rows if row[2] == "sell"]
+            return Market(wp.symbol, imports, exports, [])
+        except Exception as err:
+            return LocalSpaceTradersRespose(
+                "Could not find market data for that waypoint", 0, 0, sql
+            )
 
     def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
@@ -200,8 +224,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """
         sql = """SELECT * FROM shipyard_types where shipyard_symbol = %s"""
         try:
-            self.connection.cursor().execute(sql, (wp.symbol,))
-            rows = self.connection.cursor().fetchall()
+            cu = self.connection.cursor()
+            cu.execute(sql, (wp.symbol,))
+            rows = cu.fetchall()
             if len(rows) >= 1:
                 types = [row[1] for row in rows]
                 found_shipyard = Shipyard(wp.symbol, types, {})
