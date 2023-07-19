@@ -33,107 +33,200 @@ GRANT ALL ON SCHEMA public TO postgres;
 
 GRANT ALL ON SCHEMA public TO spacetraders;
 
+--
+-- PostgreSQL database dump
+--
 
--- Table: public.waypoints
+-- Dumped from database version 15.3
+-- Dumped by pg_dump version 15.3
 
--- DROP TABLE IF EXISTS public.waypoints;
+-- Started on 2023-07-20 00:30:28
 
-CREATE TABLE IF NOT EXISTS public.waypoints
-(
-    symbol text COLLATE pg_catalog."default" NOT NULL,
-    type text COLLATE pg_catalog."default" NOT NULL,
-    system_symbol text COLLATE pg_catalog."default" NOT NULL,
-    x smallint NOT NULL,
-    y smallint NOT NULL,
-    CONSTRAINT waypoint_pkey PRIMARY KEY (symbol)
-)
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
-TABLESPACE pg_default;
+SET default_tablespace = '';
 
-ALTER TABLE IF EXISTS public.waypoints
-    OWNER to spacetraders;
+SET default_table_access_method = heap;
 
-REVOKE ALL ON TABLE public.waypoints FROM spacetraders;
+--
+-- TOC entry 217 (class 1259 OID 16453)
+-- Name: market; Type: TABLE; Schema: public; Owner: spacetraders
+--
 
-GRANT ALL ON TABLE public.waypoints to spacetraders;
-
-GRANT DELETE, UPDATE, INSERT, SELECT ON TABLE public.waypoints TO spacetraders;
-
-
--- Table: public.waypoint_traits
-
--- DROP TABLE IF EXISTS public.waypoint_traits;
-
-CREATE TABLE IF NOT EXISTS public.waypoint_traits
-(
-    waypoint text COLLATE pg_catalog."default" NOT NULL,
-    symbol text COLLATE pg_catalog."default" NOT NULL,
-    name text COLLATE pg_catalog."default",
-    description text COLLATE pg_catalog."default",
-    CONSTRAINT waypoint_traits_pkey PRIMARY KEY (waypoint, symbol)
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.waypoint_traits
-    OWNER to spacetraders;
-
-REVOKE ALL ON TABLE public.waypoint_traits FROM spacetraders;
-
-GRANT ALL ON TABLE public.waypoint_traits to spacetraders;
-
-GRANT DELETE, UPDATE, INSERT, SELECT ON TABLE public.waypoint_traits TO spacetraders;
-
--- Table: public.market
-
--- DROP TABLE IF EXISTS public.market;
-
-CREATE TABLE IF NOT EXISTS public.market
-(
-    symbol text COLLATE pg_catalog."default" NOT NULL,
-    CONSTRAINT market_pkey PRIMARY KEY (symbol)
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.market
-    OWNER to spacetraders;
+CREATE TABLE public.market (
+    symbol text NOT NULL,
+    system_symbol text
+);
 
 
-    -- Table: public.market_tradegood
+ALTER TABLE public.market OWNER TO spacetraders;
 
--- DROP TABLE IF EXISTS public.market_tradegood;
+--
+-- TOC entry 218 (class 1259 OID 16460)
+-- Name: market_tradegood; Type: TABLE; Schema: public; Owner: spacetraders
+--
 
-CREATE TABLE IF NOT EXISTS public.market_tradegood
-(
-    market_waypoint text COLLATE pg_catalog."default" NOT NULL,
-    symbol text COLLATE pg_catalog."default" NOT NULL,
-    buy_or_sell text COLLATE pg_catalog."default",
-    name text COLLATE pg_catalog."default",
-    description text COLLATE pg_catalog."default",
-    CONSTRAINT market_tradegood_pkey PRIMARY KEY (market_waypoint, symbol)
-)
+CREATE TABLE public.market_tradegood (
+    market_waypoint text NOT NULL,
+    symbol text NOT NULL,
+    buy_or_sell text,
+    name text,
+    description text
+);
 
-TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.market_tradegood
-    OWNER to spacetraders;
+ALTER TABLE public.market_tradegood OWNER TO spacetraders;
 
--- Table: public.market_tradegood_detail
+--
+-- TOC entry 219 (class 1259 OID 16467)
+-- Name: market_tradegood_listing; Type: TABLE; Schema: public; Owner: spacetraders
+--
 
--- DROP TABLE IF EXISTS public.market_tradegood_detail;
-
-CREATE TABLE IF NOT EXISTS public.market_tradegood_detail
-(
-    market_symbol text COLLATE pg_catalog."default" NOT NULL,
-    symbol text COLLATE pg_catalog."default" NOT NULL,
-    supply text COLLATE pg_catalog."default",
+CREATE TABLE public.market_tradegood_listing (
+    market_symbol text NOT NULL,
+    symbol text NOT NULL,
+    supply text,
     purchase_price integer,
     sell_price integer,
-    CONSTRAINT tradegoods_pkey PRIMARY KEY (market_symbol, symbol)
-)
+    last_updated timestamp without time zone
+);
 
-TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.market_tradegood_detail
-    OWNER to spacetraders;
+ALTER TABLE public.market_tradegood_listing OWNER TO spacetraders;
+
+--
+-- TOC entry 220 (class 1259 OID 16474)
+-- Name: shipyard_types; Type: TABLE; Schema: public; Owner: spacetraders
+--
+
+CREATE TABLE public.shipyard_types (
+    shipyard_symbol text NOT NULL,
+    ship_type text NOT NULL
+);
+
+
+ALTER TABLE public.shipyard_types OWNER TO spacetraders;
+
+--
+-- TOC entry 214 (class 1259 OID 16436)
+-- Name: test; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.test (
+);
+
+
+ALTER TABLE public.test OWNER TO postgres;
+
+--
+-- TOC entry 216 (class 1259 OID 16446)
+-- Name: waypoint_traits; Type: TABLE; Schema: public; Owner: spacetraders
+--
+
+CREATE TABLE public.waypoint_traits (
+    waypoint text NOT NULL,
+    symbol text NOT NULL,
+    name text,
+    description text
+);
+
+
+ALTER TABLE public.waypoint_traits OWNER TO spacetraders;
+
+--
+-- TOC entry 215 (class 1259 OID 16439)
+-- Name: waypoints; Type: TABLE; Schema: public; Owner: spacetraders
+--
+
+CREATE TABLE public.waypoints (
+    symbol text NOT NULL,
+    type text NOT NULL,
+    system_symbol text NOT NULL,
+    x smallint NOT NULL,
+    y smallint NOT NULL
+);
+
+
+ALTER TABLE public.waypoints OWNER TO spacetraders;
+
+--
+-- TOC entry 3201 (class 2606 OID 16459)
+-- Name: market market_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.market
+    ADD CONSTRAINT market_pkey PRIMARY KEY (symbol);
+
+
+--
+-- TOC entry 3203 (class 2606 OID 16466)
+-- Name: market_tradegood market_tradegood_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.market_tradegood
+    ADD CONSTRAINT market_tradegood_pkey PRIMARY KEY (market_waypoint, symbol);
+
+
+--
+-- TOC entry 3207 (class 2606 OID 16480)
+-- Name: shipyard_types shipyard_types_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.shipyard_types
+    ADD CONSTRAINT shipyard_types_pkey PRIMARY KEY (shipyard_symbol, ship_type);
+
+
+--
+-- TOC entry 3205 (class 2606 OID 16473)
+-- Name: market_tradegood_listing tradegoods_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.market_tradegood_listing
+    ADD CONSTRAINT tradegoods_pkey PRIMARY KEY (market_symbol, symbol);
+
+
+--
+-- TOC entry 3197 (class 2606 OID 16445)
+-- Name: waypoints waypoint_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.waypoints
+    ADD CONSTRAINT waypoint_pkey PRIMARY KEY (symbol);
+
+
+--
+-- TOC entry 3199 (class 2606 OID 16452)
+-- Name: waypoint_traits waypoint_traits_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.waypoint_traits
+    ADD CONSTRAINT waypoint_traits_pkey PRIMARY KEY (waypoint, symbol);
+
+
+--
+-- TOC entry 3355 (class 0 OID 0)
+-- Dependencies: 5
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
+--
+
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO spacetraders;
+
+
+-- Completed on 2023-07-20 00:30:28
+
+--
+-- PostgreSQL database dump complete
+--
+
