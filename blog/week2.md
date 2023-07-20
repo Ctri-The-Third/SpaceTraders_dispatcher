@@ -38,4 +38,4 @@ We've updated the `procure_quest` script with auto-scaling for freighters as wel
 
 # Active concerns
 * Presently there is a concern that surveys are not being properly transmitted toand consumed by the API. 
-* 
+* I'm also aware that the cargo transferring doesn't seem to be reflected properly from just caching. There are circumstances when I've seen log entries reporting successful transfer to a ship I know is full, and circumstances where we receive errors from the API because the destination is full - something that the local checking would catch if the cached information is up to date. 
