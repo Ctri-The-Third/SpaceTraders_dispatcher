@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .client_interface import SpaceTradersInteractive
+from .client_interface import SpaceTradersClient
 from .utils import DATE_FORMAT, _url, post_and_validate
 from .models import SymbolClass
 from dataclasses import dataclass
@@ -20,7 +20,7 @@ class ContractDeliverGood(SymbolClass):
 # this should probably be its own thing
 
 
-class Contract(SpaceTradersInteractive):
+class Contract:
     id: str
     faction_symbol: str
     type: str
@@ -33,19 +33,19 @@ class Contract(SpaceTradersInteractive):
     expiration: datetime
     deadline_for_accept: datetime = None
     token: str = None
-    other_client: SpaceTradersInteractive = None
+    client: SpaceTradersClient = None
 
     def __init__(
         self,
         json_data: dict,
-        other_client: SpaceTradersInteractive = None,
+        client: SpaceTradersClient = None,
         token: str = None,
     ) -> None:
         if token:
             self.token = token
-        elif other_client:
-            self.token = other_client.token
-            self.other_client = other_client
+        elif client:
+            self.token = client.token
+            self.client = client
         else:
             raise ValueError("No token provided")
 
@@ -73,24 +73,14 @@ class Contract(SpaceTradersInteractive):
     def from_json(cls, json_data: dict):
         return cls(json_data)
 
-    def deliver(
-        self, ship_symbol, trade_symbol, units, ship_to_update: SpaceTradersInteractive
-    ):
+    def deliver(self, ship_symbol, trade_symbol, units, ship_to_update: "Ship"):
         # note - this doesn't update the ship's cargo.
         """/my/contracts/:id/deliver"""
-        url = _url(f"/my/contracts/{self.id}/deliver")
-        data = {"shipSymbol": ship_symbol, "tradeSymbol": trade_symbol, "units": units}
-        headers = self._headers()
-        resp = post_and_validate(url, data, headers=headers)
-        if not resp:
-            print(f"failed to deliver to contract {resp.status_code}, {resp.error}")
-            return resp
-        self.update(resp.data)
-        ship_to_update.update(resp.data)
-        return resp
+        return self.client.contracts_deliver(self, ship_to_update, trade_symbol, units)
 
     def fulfill(self):
         """/my/contracts/:contractId/fulfill'"""
+        raise NotImplementedError
         url = _url(f"/my/contracts/{self.id}/fulfill")
         headers = self._headers()
 
@@ -105,4 +95,4 @@ class Contract(SpaceTradersInteractive):
     def update(self, json_data: dict):
         if "contract" in json_data:
             self.__init__(json_data["contract"], token=self.token)
-        self.other_client.update(json_data)
+        self.client.update(json_data)

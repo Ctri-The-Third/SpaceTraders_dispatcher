@@ -157,3 +157,24 @@ class SpaceTradersClient(Protocol):
     def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/negotiate/contract"""
         pass
+
+    @abstractmethod
+    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/cooldown"""
+        pass
+
+    @abstractmethod
+    def ships_view(self) -> list["Ship"] or SpaceTradersResponse:
+        """/my/ships"""
+
+        pass
+
+    @abstractmethod
+    def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def contracts_deliver(
+        self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        pass

@@ -144,6 +144,7 @@ class Ship(SpaceTradersInteractive):
 
     def move(self, dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
+
         if self.nav.waypoint_symbol == dest_waypoint_symbol:
             return LocalSpaceTradersRespose(
                 f"Navigate request failed, Ship '{self.name}' is already at the destination'",
@@ -191,16 +192,21 @@ class Ship(SpaceTradersInteractive):
         upd = self.client.ship_transfer_cargo(
             self, trade_symbol, units, target_ship_name
         )
-        return
+        return upd
 
-    def _check_cooldown(self):
-        # /my/ships/{shipSymbol}/cooldown
-        url = _url(f"my/ships/{self.name}/cooldown")
-        resp = get_and_validate(url, headers=self._headers())
-        if resp and "expiration" in resp.data:
-            self.update({"cooldown": resp.data})
-        else:
-            self._cooldown = datetime.utcnow()
+    def receive_cargo(self, trade_symbol, units):
+        for inventory_item in self.cargo_inventory:
+            if inventory_item.symbol == trade_symbol:
+                inventory_item.units += units
+                return
+        self.cargo_inventory.append(
+            ShipInventory(
+                trade_symbol,
+                "this string came from receive cargo, shouldn't wind up in DB",
+                "this string came from receive cargo, shouldn't wind up in DB",
+                units,
+            )
+        )
 
     def force_update(self):
         # /my/ships/{shipSymbol}
@@ -235,7 +241,7 @@ class Ship(SpaceTradersInteractive):
     @property
     def seconds_until_cooldown(self) -> timedelta:
         if not self._cooldown:
-            self._check_cooldown()
+            self.client.ship_cooldown(self)
         time_to_wait = self._cooldown - datetime.utcnow()
         seconds = max(time_to_wait.seconds + (time_to_wait.days * 86400), 0)
         if seconds > 6000:

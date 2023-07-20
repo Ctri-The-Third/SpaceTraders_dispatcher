@@ -11,7 +11,7 @@ import time
 from .local_response import LocalSpaceTradersRespose
 
 ST_LOGGER = logging.getLogger("API-Client")
-ST_LOGGER.setLevel(logging.DEBUG)
+
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 SURVEYOR_SYMBOLS = ["MOUNT_SURVEYOR_I", "MOUNT_SURVEYOR_II", "MOUNT_SURVEYOR_III"]
@@ -176,6 +176,7 @@ def set_logging(filename: str = None):
         format=format,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    ST_LOGGER.setLevel(logging.INFO)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
@@ -185,7 +186,7 @@ def parse_timestamp(timestamp: str) -> datetime:
 
 def sleep(seconds: int):
     if seconds > 0 and seconds < 6000:
-        ST_LOGGER.info(f"Sleeping for {seconds} seconds")
+        # ST_LOGGER.info(f"Sleeping for {seconds} seconds")
         time.sleep(seconds)
 
 

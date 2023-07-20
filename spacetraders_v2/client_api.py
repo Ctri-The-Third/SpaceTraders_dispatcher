@@ -2,12 +2,19 @@ from spacetraders_v2.models import Waypoint
 from spacetraders_v2.responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
 from .responses import SpaceTradersResponse
-from .utils import ApiConfig, _url, get_and_validate, post_and_validate
+from .utils import (
+    ApiConfig,
+    _url,
+    get_and_validate,
+    post_and_validate,
+    get_and_validate_paginated,
+)
 from .local_response import LocalSpaceTradersRespose
 from .models import Waypoint, Survey, Market, MarketTradeGoodListing, Shipyard
 from .contracts import Contract
 from .ship import Ship
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -222,13 +229,47 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/shipyard")
         resp = get_and_validate(url, headers=self._headers())
-        if resp and (resp.data is None or "ships" not in resp.data):
-            return LocalSpaceTradersRespose(
-                "No ship at this waypoint to get details.", 200, 0, url
-            )
+
         if resp:
             return Shipyard.from_json(resp.data)
 
+        return resp
+
+    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/cooldown"""
+        # /my/ships/{shipSymbol}/cooldown
+        url = _url(f"my/ships/{ship.name}/cooldown")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp and "expiration" in resp.data:
+            ship.update({"cooldown": resp.data})
+        else:
+            ship._cooldown = datetime.utcnow()
+        pass
+        return resp
+
+    def ships_view(self) -> list["Ship"] or SpaceTradersResponse:
+        """/my/ships"""
+        url = _url("my/ships")
+        resp = get_and_validate_paginated(url, 20, 10, headers=self._headers())
+
+        return resp
+
+    def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
+        "/my/ships/{shipSymbol}"
+        url = _url(f"my/ships/{symbol}")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return Ship(resp.data, self)
+        return resp
+
+    def contracts_deliver(self, contract:Contract, ship:Ship, trade_symbol:str, units:int) -> SpaceTradersResponse:
+        url = _url(f"/my/contracts/{contract.id}/deliver")
+        data = {"shipSymbol": ship.name, "tradeSymbol": trade_symbol, "units": units}
+        headers = self._headers()
+        resp = post_and_validate(url, data, headers=headers)
+        if not resp:
+            print(f"failed to deliver to contract {resp.status_code}, {resp.error}")
+            return resp
         return resp
 
 

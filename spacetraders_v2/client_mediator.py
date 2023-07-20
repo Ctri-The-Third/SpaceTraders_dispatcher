@@ -98,9 +98,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.current_agent = Agent.from_json(resp.data)
         return self.current_agent
 
-    def view_my_ships(
-        self, force=False, limit=10
-    ) -> dict[str, Ship] or SpaceTradersResponse:
+    def ships_view(self, force=False) -> dict[str, Ship] or SpaceTradersResponse:
         """view the current ships the agent has, a dict that's accessible by ship symbol.
         uses cached values by default.
 
@@ -109,14 +107,40 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         """
         if not force and len(self.ships) > 0:
             return self.ships
-        url = _url("my/ships")
-        resp = get_and_validate_paginated(url, 20, 10, headers=self._headers())
 
-        new_ships = {ship["symbol"]: Ship(ship, self) for ship in resp.data}
+        if not force:
+            resp = self.db_client.ships_view()
+            if resp:
+                self.ships = self.ships | resp
+                return resp
 
+        resp = self.api_client.ships_view()
         if resp:
+            new_ships = {ship["symbol"]: Ship(ship, self) for ship in resp.data}
             self.ships = self.ships | new_ships
+            for ship in self.ships:
+                self.db_client.update(ship)
             return new_ships
+        return resp
+
+    def ships_view_one(self, symbol: str, force=False):
+        if not force and symbol in self.ships:
+            resp = self.ships.get(symbol, None)
+            if resp:
+                return self.ships[symbol]
+
+        if not force:
+            resp = self.db_client.ships_view_one(symbol)
+            if resp:
+                resp: Ship
+                self.ships[symbol] = resp
+                return resp
+
+        resp = self.api_client.ships_view_one(symbol)
+        if resp:
+            resp: Ship
+            self.ships[symbol] = resp
+            self.db_client.update(resp)
         return resp
 
     def ship_purchase(
@@ -522,6 +546,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
+            self.ships[ship.name] = ship
         return resp
 
     def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
@@ -535,7 +560,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
-
+        # 4228 / 400 - MAXIMUM CARGO, should not extract
+        #
         resp = self.api_client.ship_extract(ship, survey)
         if resp:
             ship.update(resp.data)
@@ -564,13 +590,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             ship.update(resp.data)
             self.db_client.update(ship)
 
-    def ship_sell(self, ship: "Ship", symbol: str, quantity: int):
+    def ship_sell(
+        self, ship: "Ship", symbol: str, quantity: int
+    ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/sell"""
         resp = self.api_client.ship_sell(ship, symbol, quantity)
         if resp:
             ship.update(resp.data)
             self.db_client.update(resp)
             self.update(resp.data)
+        return resp
 
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
@@ -594,6 +623,22 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             ship.update(resp.data)
         return resp
+
+    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/cooldown"""
+        resp = self.api_client.ship_cooldown(ship)
+        if resp:
+            ship.update(resp.data)
+        return resp
+
+    def contracts_deliver(
+        self, contract: Contract, ship: Ship, trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        resp = self.api_client.contracts_deliver(contract, ship, trade_symbol, units)
+        if resp:
+            self.update(resp.data)
+            contract.update(resp.data)
+            ship.update(resp.data)
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

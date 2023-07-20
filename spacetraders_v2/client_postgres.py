@@ -119,7 +119,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def find_waypoints_by_trait(
         self, system_symbol: str, trait: str
     ) -> list[Waypoint] or SpaceTradersResponse:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoints_by_trait")
 
     def find_waypoints_by_trait_one(
         self, system_symbol: str, trait: str
@@ -145,12 +145,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_orbit")
         pass
 
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_change_course")
         pass
 
     def ship_move(
@@ -158,26 +158,26 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/navigate"""
 
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_move")
         pass
 
     def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_negotiate")
 
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
 
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_extract")
         pass
 
     def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_dock")
         pass
 
     def ship_refuel(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/refuel"""
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_refuel")
         pass
 
     def ship_sell(
@@ -189,14 +189,14 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_survey")
         pass
 
     def ship_transfer_cargo(
         self, ship: "Ship", trade_symbol, units, target_ship_name
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/transfer"""
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "ship_transfer_cargo")
         pass
 
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
@@ -239,6 +239,26 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 error_code=0,
                 url=f"{__class__.__name__}.system_shipyard({wp.symbol}",
             )
+
+    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/cooldown"""
+        dummy_response(__class__.__name__, "ship_cooldown")
+
+    def ships_view(self) -> list["Ship"] or SpaceTradersResponse:
+        """/my/ships"""
+        dummy_response(__class__.__name__, "ships_view")
+        pass
+
+    def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}"""
+        dummy_response(__class__.__name__, "ships_view_one")
+        pass
+
+    def contracts_deliver(
+        self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        dummy_response(__class__.__name__, "contracts_deliver")
+        pass
 
 
 def dummy_response(class_name, method_name):
