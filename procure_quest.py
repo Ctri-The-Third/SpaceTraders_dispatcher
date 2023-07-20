@@ -26,7 +26,7 @@ def mine_until_full(ship: Ship, st: SpaceTraders, survey: Survey = None):
     while ship.cargo_units_used != ship.cargo_capacity:
         sleep(ship.seconds_until_cooldown + 1 + ship.nav.travel_time_remaining)
 
-        resp = ship.extract(survey)
+        resp = st.ship_extract(ship, survey)
 
         if not resp and resp.status_code != 409:
             # status code 409 means conflict, probably a cooldown, don't abort.
@@ -151,12 +151,12 @@ def extractor_quest_loop(
                 + ", ".join([d.symbol for d in ship.cargo_inventory])
                 + "]"
             )
-            ship.dock()
+            st.ship_dock(ship)
             # in the event that we try and transfer target but can't, we should keep it until the transport comes back
             sell_all_except(ship, st.current_agent, [target_material])
 
         if ship.can_extract and ship.cargo_capacity > ship.cargo_units_used:
-            resp = ship.extract(best_survey)
+            resp = st.ship_extract(ship, best_survey)
             if resp:
                 logging.info(
                     f"Extracted {resp.data['extraction']['yield']['symbol']}({resp.data['extraction']['yield']['units']}), used surve? {best_survey is not None} "

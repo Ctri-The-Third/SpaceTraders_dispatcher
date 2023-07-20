@@ -89,7 +89,8 @@ class SpaceTradersApiClient(SpaceTradersClient):
         "my/ships/:shipSymbol/navigate"
 
         #  4204{'message': 'Navigate request failed. Ship CTRI-4 is currently located at the destination.', 'code': 4204, 'data': {'shipSymbol': 'CTRI-4', 'destinationSymbol': 'X1-MP2-50435D'}}
-        ship.orbit()
+        if ship.nav.status == "DOCKED":
+            self.ship_orbit(ship)
         url = _url(f"my/ships/{ship.name}/navigate")
         data = {"waypointSymbol": dest_waypoint_symbol}
         resp = post_and_validate(url, data, headers=self._headers())
@@ -115,7 +116,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if ship.seconds_until_cooldown > 0:
             return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4200, url=url)
         if ship.nav.status == "DOCKED":
-            ship.orbit()
+            self.ship_orbit(ship)
         data = survey.to_json() if survey is not None else None
 
         resp = post_and_validate(url, data=data, headers=self._headers())
@@ -139,7 +140,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def ship_refuel(self, ship: Ship):
         "/my/ships/{shipSymbol}/refuel"
         if ship.nav.status == "IN_ORBIT":
-            ship.dock()
+            self.ship_dock(ship)
         if ship.nav.status != "DOCKED":
             ship.logger.error("Ship must be docked to refuel")
 
@@ -154,7 +155,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/sell"""
 
         if ship.nav.status != "DOCKED":
-            ship.dock()
+            self.ship_dock(ship)
 
         url = _url(f"my/ships/{ship.name}/sell")
         data = {"symbol": symbol, "units": quantity}
@@ -168,7 +169,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         "/my/ships/{shipSymbol}/survey"
         # 400, 4223, 'Ship survey failed. Ship must be in orbit to perform this type of survey.'
         if ship.nav.status == "DOCKED":
-            ship.orbit()
+            self.ship_orbit(ship)
         if not ship.can_survey:
             return LocalSpaceTradersRespose("Ship cannot survey", 0, 4240)
         if ship.seconds_until_cooldown > 0:

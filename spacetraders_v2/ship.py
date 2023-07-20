@@ -182,39 +182,27 @@ class Ship(SpaceTradersInteractive):
 
     def extract(self, survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
-        if self.nav.status != "IN_ORBIT":
-            self.orbit()
-        upd = self.client.ship_extract(self, survey)
-        return upd
+        raise NotImplementedError
 
     def dock(self):
         """/my/ships/{shipSymbol}/dock"""
-        upd = self.client.ship_dock(self)
-        return upd
+        raise NotImplementedError
 
     def refuel(self):
         """/my/ships/{shipSymbol}/refuel"""
-        upd = self.client.ship_refuel(self)
-        return upd
+        raise NotImplementedError
 
     def sell(self, symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
-        if self.nav.status != "DOCKED":
-            self.client.ship_dock(self)
-        upd = self.client.ship_sell(self, symbol, quantity)
-        return upd
+        raise NotImplementedError
 
     def survey(self) -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
-        upd = self.client.ship_survey(self)
-        return upd
+        raise NotImplementedError
 
     def transfer_cargo(self, trade_symbol, units, target_ship_name):
         """/my/ships/{shipSymbol}/transfer"""
-        upd = self.client.ship_transfer_cargo(
-            self, trade_symbol, units, target_ship_name
-        )
-        return upd
+        raise NotImplementedError
 
     def receive_cargo(self, trade_symbol, units):
         for inventory_item in self.cargo_inventory:
@@ -238,6 +226,7 @@ class Ship(SpaceTradersInteractive):
         return resp
 
     def update(self, ship_data: dict):
+        # expecting bits of JSON from response objects
         if ship_data is None:
             return
 
@@ -263,7 +252,7 @@ class Ship(SpaceTradersInteractive):
     @property
     def seconds_until_cooldown(self) -> timedelta:
         if not self._cooldown:
-            self.client.ship_cooldown(self)
+            return 0
         time_to_wait = self._cooldown - datetime.utcnow()
         seconds = max(time_to_wait.seconds + (time_to_wait.days * 86400), 0)
         if seconds > 6000:

@@ -32,7 +32,6 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT ALL ON SCHEMA public TO postgres;
 
 GRANT ALL ON SCHEMA public TO spacetraders;
-
 --
 -- PostgreSQL database dump
 --
@@ -40,7 +39,7 @@ GRANT ALL ON SCHEMA public TO spacetraders;
 -- Dumped from database version 15.3
 -- Dumped by pg_dump version 15.3
 
--- Started on 2023-07-20 00:30:28
+-- Started on 2023-07-20 20:29:51
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -104,6 +103,43 @@ CREATE TABLE public.market_tradegood_listing (
 ALTER TABLE public.market_tradegood_listing OWNER TO spacetraders;
 
 --
+-- TOC entry 221 (class 1259 OID 16481)
+-- Name: ship; Type: TABLE; Schema: public; Owner: spacetraders
+--
+
+CREATE TABLE public.ship (
+    ship_symbol text NOT NULL,
+    agent_name text,
+    faction_symbol text,
+    ship_role text,
+    cargo_capacity integer,
+    cargo_in_use integer
+);
+
+
+ALTER TABLE public.ship OWNER TO spacetraders;
+
+--
+-- TOC entry 222 (class 1259 OID 16488)
+-- Name: ship_nav; Type: TABLE; Schema: public; Owner: spacetraders
+--
+
+CREATE TABLE public.ship_nav (
+    ship_symbol text NOT NULL,
+    system_symbol text NOT NULL,
+    waypoint_symbol text NOT NULL,
+    departure_time timestamp without time zone NOT NULL,
+    arrival_time timestamp without time zone NOT NULL,
+    origin_waypoint text NOT NULL,
+    destination_waypoint text NOT NULL,
+    flight_status text NOT NULL,
+    flight_mode text NOT NULL
+);
+
+
+ALTER TABLE public.ship_nav OWNER TO spacetraders;
+
+--
 -- TOC entry 220 (class 1259 OID 16474)
 -- Name: shipyard_types; Type: TABLE; Schema: public; Owner: spacetraders
 --
@@ -159,7 +195,7 @@ CREATE TABLE public.waypoints (
 ALTER TABLE public.waypoints OWNER TO spacetraders;
 
 --
--- TOC entry 3201 (class 2606 OID 16459)
+-- TOC entry 3209 (class 2606 OID 16459)
 -- Name: market market_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -168,7 +204,7 @@ ALTER TABLE ONLY public.market
 
 
 --
--- TOC entry 3203 (class 2606 OID 16466)
+-- TOC entry 3211 (class 2606 OID 16466)
 -- Name: market_tradegood market_tradegood_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -177,7 +213,25 @@ ALTER TABLE ONLY public.market_tradegood
 
 
 --
--- TOC entry 3207 (class 2606 OID 16480)
+-- TOC entry 3219 (class 2606 OID 16494)
+-- Name: ship_nav ship_nav_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.ship_nav
+    ADD CONSTRAINT ship_nav_pkey PRIMARY KEY (ship_symbol);
+
+
+--
+-- TOC entry 3217 (class 2606 OID 16487)
+-- Name: ship ship_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.ship
+    ADD CONSTRAINT ship_pkey PRIMARY KEY (ship_symbol);
+
+
+--
+-- TOC entry 3215 (class 2606 OID 16480)
 -- Name: shipyard_types shipyard_types_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -186,7 +240,7 @@ ALTER TABLE ONLY public.shipyard_types
 
 
 --
--- TOC entry 3205 (class 2606 OID 16473)
+-- TOC entry 3213 (class 2606 OID 16473)
 -- Name: market_tradegood_listing tradegoods_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -195,7 +249,7 @@ ALTER TABLE ONLY public.market_tradegood_listing
 
 
 --
--- TOC entry 3197 (class 2606 OID 16445)
+-- TOC entry 3205 (class 2606 OID 16445)
 -- Name: waypoints waypoint_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -204,7 +258,7 @@ ALTER TABLE ONLY public.waypoints
 
 
 --
--- TOC entry 3199 (class 2606 OID 16452)
+-- TOC entry 3207 (class 2606 OID 16452)
 -- Name: waypoint_traits waypoint_traits_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -213,7 +267,7 @@ ALTER TABLE ONLY public.waypoint_traits
 
 
 --
--- TOC entry 3355 (class 0 OID 0)
+-- TOC entry 3367 (class 0 OID 0)
 -- Dependencies: 5
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
 --
@@ -224,7 +278,7 @@ GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO spacetraders;
 
 
--- Completed on 2023-07-20 00:30:28
+-- Completed on 2023-07-20 20:29:51
 
 --
 -- PostgreSQL database dump complete
