@@ -161,6 +161,7 @@ class ShipEngine(SymbolClass):
         )
 
 
+## this should/could be a waypoint.
 @dataclass
 class RouteNode:
     symbol: str
@@ -175,7 +176,7 @@ class RouteNode:
 
 
 @dataclass
-class Nav:
+class ShipNav:
     system_symbol: str
     waypoint_symbol: str
     destination: RouteNode

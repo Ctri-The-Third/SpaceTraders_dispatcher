@@ -1,5 +1,5 @@
 from typing import Protocol
-from .models import Nav, ShipFrame, ShipEngine, ShipReactor
+from .models import ShipNav, ShipFrame, ShipEngine, ShipReactor
 
 
 class Ship(Protocol):
@@ -7,7 +7,7 @@ class Ship(Protocol):
     role: str
     faction: str
 
-    nav: Nav
+    nav: ShipNav
     frame: ShipFrame
     reactor: ShipReactor
     engine: ShipEngine

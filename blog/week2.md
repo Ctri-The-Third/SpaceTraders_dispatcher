@@ -36,6 +36,15 @@ We succeeded in a creating a behaviour script that has a given ship check every 
 
 We've updated the `procure_quest` script with auto-scaling for freighters as well, as we found we had too many extractors for the command ship to handle.  The freighters will also be able to do surveying, which will increase the efficiency in the long run.
 
+# Seperation of data and behaviour
+My initial approach was very object oriented in that, for example with ships, ships had properties, and ships could _do things_, like move, dock, and so on.
+
+However, when shifting to the multi-client approach there became situations where these actions were either hard coded and seperate from the client (bad for interopability), or the ship had be instantiated with a client object. 
+This meant that when the DB sdk or the API sdk returned ships, they were instantiated with a DB sdk or an API SDK. A DB SDK couldn't perform actions against the API, and an API SDK had no means for updating the database.
+
+Thus, I made the decision to fully remove even the stubs of the behaviour in the objects and complete the seperation of data and behaviour. 
+
+
 # Active concerns
 * Presently there is a concern that surveys are not being properly transmitted toand consumed by the API. 
 * I'm also aware that the cargo transferring doesn't seem to be reflected properly from just caching. There are circumstances when I've seen log entries reporting successful transfer to a ship I know is full, and circumstances where we receive errors from the API because the destination is full - something that the local checking would catch if the cached information is up to date. 

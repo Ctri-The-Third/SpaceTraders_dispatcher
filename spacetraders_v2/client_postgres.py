@@ -13,19 +13,25 @@ from .client_interface import SpaceTradersClient
 from .pg_upserts.upsert_waypoint import _upsert_waypoint
 from .pg_upserts.upsert_shipyard import _upsert_shipyard
 from .pg_upserts.upsert_market import _upsert_market
+from .pg_upserts.upsert_ship import _upsert_ship
 from .local_response import LocalSpaceTradersRespose
+from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
 
 
 class SpaceTradersPostgresClient(SpaceTradersClient):
     token: str = None
+    current_agent_symbol: str = None
 
-    def __init__(self, db_host, db_name, db_user, db_pass) -> None:
+    def __init__(
+        self, db_host, db_name, db_user, db_pass, current_agent_symbol
+    ) -> None:
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
         self.connection = psycopg2.connect(
             host=db_host, database=db_name, user=db_user, password=db_pass
         )
+        self.current_agent_symbol = current_agent_symbol
         self.connection.autocommit = True
 
     def _headers(self) -> dict:
@@ -39,6 +45,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_shipyard(self.connection, update_obj)
         if isinstance(update_obj, Market):
             _upsert_market(self.connection, update_obj)
+        if isinstance(update_obj, Ship):
+            _upsert_ship(self.connection, update_obj)
         pass
 
     def waypoints_view(
@@ -79,7 +87,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """view a single waypoint in a system.
 
         Args:
-            `system_symbol` (str): The symbol of the system to search for the waypoint in.
+            `system_symbol` (str): The symbol of the system to search for the waypoint in. Has no impact in this client.
             `waypoint_symbol` (str): The symbol of the waypoint to search for.
             `force` (bool): Optional - Force a refresh of the waypoint. Defaults to False.
 
@@ -103,13 +111,14 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 row[2], row[0], row[1], row[3], row[4], [], traits, {}, {}
             )
             waypoints.append(waypoint)
-        return (
-            waypoints[0]
-            if len(waypoints) > 0
-            else LocalSpaceTradersRespose(
+
+        if len(waypoints) > 0:
+            waypoints[0]: Waypoint
+            return waypoints[0]
+        else:
+            return LocalSpaceTradersRespose(
                 "Could not find waypoint with that symbol in DB", 0, 0, sql
             )
-        )
 
     def find_waypoint_by_coords(
         self, system_symbol: str, x: int, y: int
@@ -244,9 +253,73 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/cooldown"""
         dummy_response(__class__.__name__, "ship_cooldown")
 
-    def ships_view(self) -> list["Ship"] or SpaceTradersResponse:
+    def ships_view(self) -> dict[str:"Ship"] or SpaceTradersResponse:
         """/my/ships"""
-        dummy_response(__class__.__name__, "ships_view")
+        sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
+                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
+                from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
+                where agent_name = %s
+                
+                """
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql, (self.current_agent_symbol,))
+            rows = cur.fetchall()
+            ships = {}
+            for row in rows:
+                ship = Ship()
+                ship.name = row[0]
+                ship.faction = row[2]
+                ship.role = row[3]
+                ship.cargo_capacity = row[4]
+                ship.cargo_units_used = row[5]
+                # , 6: n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
+
+                # SHIP NAV BEGINS
+                current_system = self.waypoints_view_one("", row[6])
+                if not current_system:
+                    current_system = None
+
+                origin = self.waypoints_view_one("", row[9])
+                if not origin:
+                    origin = None
+                destination = self.waypoints_view_one("", row[10])
+                if not destination:
+                    destination = None
+
+                ship.nav = ShipNav(
+                    current_system.system_symbol,
+                    current_system.symbol,
+                    RouteNode(
+                        destination.symbol,
+                        destination.type,
+                        destination.system_symbol,
+                        destination.x,
+                        destination.y,
+                    ),
+                    RouteNode(
+                        origin.symbol,
+                        origin.type,
+                        origin.system_symbol,
+                        origin.x,
+                        origin.y,
+                    ),
+                    row[7],
+                    row[8],
+                    row[11],
+                    row[12],
+                )
+                # SHIP NAV ENDS
+
+                ships[ship.name] = ship
+            return ships
+        except Exception as err:
+            LocalSpaceTradersRespose(
+                error=err,
+                status_code=0,
+                error_code=0,
+                url=f"{__class__.__name__}.ships_view",
+            )
         pass
 
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:

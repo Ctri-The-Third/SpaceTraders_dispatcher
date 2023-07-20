@@ -3,7 +3,7 @@ from spacetraders_v2.client_interface import SpaceTradersClient
 from spacetraders_v2.client_postgres import SpaceTradersPostgresClient
 from spacetraders_v2.client_mediator import SpaceTradersMediatorClient
 from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard, Market
+from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard, Market, Agent
 import pytest
 import os
 
@@ -143,12 +143,14 @@ def clients():
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
+            current_agent_symbol=Agent("", os.environ.get("ST_AGENT", "O2O"), ""),
         ),
         SpaceTradersPostgresClient(
             db_host=os.environ.get("ST_HOST_NAME", "localhost"),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
+            current_agent_symbol=os.environ.get("ST_AGENT", "O2O"),
         ),
     ]
 
@@ -208,3 +210,13 @@ def test_market_info(st: SpaceTradersClient):
 
     market = st.system_market(wp)
     assert isinstance(market, Market)
+
+
+@pytest.mark.parametrize("st", clients())
+def test_ships_view(st: SpaceTradersClient):
+    ships = st.ships_view()
+    assert isinstance(ships, dict)
+    assert len(ships) > 0
+    for key, ship in ships.items():
+        assert isinstance(key, str)
+        assert isinstance(ship, Ship)

@@ -247,10 +247,12 @@ class SpaceTradersApiClient(SpaceTradersClient):
         pass
         return resp
 
-    def ships_view(self) -> list["Ship"] or SpaceTradersResponse:
+    def ships_view(self) -> dict[str:"Ship"] or SpaceTradersResponse:
         """/my/ships"""
         url = _url("my/ships")
         resp = get_and_validate_paginated(url, 20, 10, headers=self._headers())
+        if resp:
+            resp = {ship["symbol"]: Ship.from_json(ship) for ship in resp.data}
 
         return resp
 
@@ -259,10 +261,12 @@ class SpaceTradersApiClient(SpaceTradersClient):
         url = _url(f"my/ships/{symbol}")
         resp = get_and_validate(url, headers=self._headers())
         if resp:
-            return Ship(resp.data, self)
+            return Ship.from_json(resp.data)
         return resp
 
-    def contracts_deliver(self, contract:Contract, ship:Ship, trade_symbol:str, units:int) -> SpaceTradersResponse:
+    def contracts_deliver(
+        self, contract: Contract, ship: Ship, trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
         url = _url(f"/my/contracts/{contract.id}/deliver")
         data = {"shipSymbol": ship.name, "tradeSymbol": trade_symbol, "units": units}
         headers = self._headers()

@@ -5,10 +5,11 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, Nav, Market
+from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, ShipNav, Market
 from .models import Shipyard
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
+from .client_stub import SpaceTradersStubClient
 from .client_postgres import SpaceTradersPostgresClient
 from threading import Lock
 import logging
@@ -36,11 +37,23 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_name=None,
         db_user=None,
         db_pass=None,
+        current_agent_symbol=None,
     ) -> None:
+        self.logger = logging.getLogger(__name__)
+
         self.token = token
-        self.db_client = SpaceTradersPostgresClient(
-            db_host=db_host, db_name=db_name, db_user=db_user, db_pass=db_pass
-        )
+        self.current_agent = current_agent_symbol
+        if db_host and db_name and db_user and db_pass:
+            self.db_client = SpaceTradersPostgresClient(
+                db_host=db_host,
+                db_name=db_name,
+                db_user=db_user,
+                db_pass=db_pass,
+                current_agent_symbol=current_agent_symbol,
+            )
+        else:
+            self.db_client = SpaceTradersStubClient()
+            self.logger.warning("Couldn't enable DB client, missing info.")
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )
@@ -52,9 +65,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.contracts = {}
         self.system_waypoints = {}
         self.current_agent = None
+        self.current_agent_symbol = current_agent_symbol
         self.surveys: dict[str:Survey] = {}
         self._lock = Lock()
-        self.logger = logging.getLogger(__name__)
 
     def game_status(self) -> GameStatus:
         """Get the status of the SpaceTraders game server.
@@ -96,6 +109,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = get_and_validate(url, headers=self._headers())
         if resp:
             self.current_agent = Agent.from_json(resp.data)
+            self.current_agent_symbol = self.current_agent.symbol
+
         return self.current_agent
 
     def ships_view(self, force=False) -> dict[str, Ship] or SpaceTradersResponse:
@@ -105,9 +120,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Args:
             `force` (bool): Optional - Force a refresh of the ships. Defaults to False.
         """
-        if not force and len(self.ships) > 0:
-            return self.ships
-
         if not force:
             resp = self.db_client.ships_view()
             if resp:
@@ -116,9 +128,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         resp = self.api_client.ships_view()
         if resp:
-            new_ships = {ship["symbol"]: Ship(ship, self) for ship in resp.data}
+            new_ships = resp
             self.ships = self.ships | new_ships
-            for ship in self.ships:
+            for ship in self.ships.values():
                 self.db_client.update(ship)
             return new_ships
         return resp
@@ -164,6 +176,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             return resp
         new_ship = Ship(resp.data["ship"], self)
         self.ships[new_ship.name] = new_ship
+        self.db_client.update(new_ship)
         return new_ship
 
     def view_my_contracts(
@@ -231,6 +244,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
         if isinstance(json_data, Survey):
             self.surveys[json_data.signature] = json_data
+            self.db_client.update(json_data)
         if isinstance(json_data, list):
             for contract in json_data:
                 self.contracts[contract["id"]] = Contract(contract, self)
@@ -527,6 +541,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = self.api_client.ship_orbit(ship)
         if resp:
             ship.update(resp.data)
+            self.db_client.update(ship)
         return
 
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
@@ -622,6 +637,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         )
         if resp:
             ship.update(resp.data)
+            self.db_client.update(ship)
         return resp
 
     def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
@@ -629,6 +645,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = self.api_client.ship_cooldown(ship)
         if resp:
             ship.update(resp.data)
+            self.db_client.update(ship)
         return resp
 
     def contracts_deliver(
@@ -639,6 +656,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.update(resp.data)
             contract.update(resp.data)
             ship.update(resp.data)
+            self.db_client.update(ship)
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 from .models import CrewInfo, ShipFrame, FuelInfo, ShipModule, ShipMount
 from .models import RouteNode, ShipReactor, ShipEngine, RouteNode, ShipRoute
-from .models import ShipRequirements, Nav, Survey, Deposit
+from .models import ShipRequirements, ShipNav, Survey, Deposit
 from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .client_stub import SpaceTradersStubClient
 from .responses import SpaceTradersResponse
@@ -53,55 +53,40 @@ class ShipInventory:
 
 
 class Ship(SpaceTradersInteractive):
-    def __init__(
-        self,
-        json_data: dict,
-        client: SpaceTradersClient,
-        parent: SpaceTradersInteractive = None,
-    ) -> None:
-        self._parent = parent if parent is not None else SpaceTradersStubClient()
-        self.client = client
-        self.logger = logging.getLogger("ship-logger")
-        self.name: str = json_data.get("registration", {}).get("name", "")
-        self.role: str = json_data["registration"]["role"]
-        self.faction: str = json_data["registration"]["factionSymbol"]
+    name: str
+    role: str
+    faction: str
+    nav: ShipNav
+    frame: ShipFrame
+    reactor: ShipReactor
+    engine: ShipEngine
+    crew_capacity: int
+    crew_current: int
+    crew_required: int
+    crew_rotation: str
+    crew_morale: int
+    crew_wages: int
+    cargo_capacity: int
+    cargo_units_used: int
+    cargo_inventory: list[ShipInventory]
+    # ---- FUEL INFO ----
 
-        self.nav = Nav.from_json(json_data["nav"])
+    fuel_capacity: int
+    fuel_current: int
+    fuel_consumed_history: dict
+    # needs expanded out into a class probably
 
-        self.frame = ShipFrame.from_json(json_data["frame"])
-        self.reactor = ShipReactor.from_json(json_data["reactor"])
-        self.engine = ShipEngine.from_json(json_data["engine"])
+    _cooldown = None
+    # ----  REACTOR INFO ----
 
-        # ------------------
-        # ---- CREW INFO ----
-        self.crew_capacity: int = json_data["crew"]["capacity"]
-        self.crew_current: int = json_data["crew"]["current"]
-        self.crew_required: int = json_data["crew"]["required"]
-        self.crew_rotation: str = json_data["crew"]["rotation"]
-        self.crew_morale: int = json_data["crew"]["morale"]
-        self.crew_wages: int = json_data["crew"]["wages"]
+    # todo: modules and mounts
+    modules: list[ShipModule]
+    mounts: list[ShipMount]
 
-        self.cargo_capacity: int = json_data["cargo"]["capacity"]
-        self.cargo_units_used: int = json_data["cargo"]["units"]
-        self.cargo_inventory: list[ShipInventory] = [
-            ShipInventory.from_json(d) for d in json_data["cargo"]["inventory"]
-        ]
-
-        # ---- FUEL INFO ----
-
-        self.fuel_capacity = json_data["fuel"]["capacity"]
-        self.fuel_current = json_data["fuel"]["current"]
-        self.fuel_consumed_history = json_data["fuel"]["consumed"]
-        # needs expanded out into a class probably
-
-        self._cooldown = None
-        # ----  REACTOR INFO ----
-
-        # todo: modules and mounts
-        self.modules: list[ShipModule] = [ShipModule(d) for d in json_data["modules"]]
-        self.mounts: list[ShipMount] = [ShipMount(d) for d in json_data["mounts"]]
-
+    def __init__(self) -> None:
         pass
+
+        self.logger = logging.getLogger("ship-logger")
 
     @property
     def can_survey(self) -> bool:
@@ -126,10 +111,47 @@ class Ship(SpaceTradersInteractive):
     def from_json(
         cls,
         json_data: dict,
-        client: SpaceTradersClient,
-        parent: SpaceTradersInteractive = None,
     ):
-        return cls(json_data, client=client, parent=parent)
+        ship = cls()
+        ship.name: str = json_data.get("registration", {}).get("name", "")
+        ship.role: str = json_data["registration"]["role"]
+        ship.faction: str = json_data["registration"]["factionSymbol"]
+
+        ship.nav = ShipNav.from_json(json_data["nav"])
+
+        ship.frame = ShipFrame.from_json(json_data["frame"])
+        ship.reactor = ShipReactor.from_json(json_data["reactor"])
+        ship.engine = ShipEngine.from_json(json_data["engine"])
+
+        # ------------------
+        # ---- CREW INFO ----
+        ship.crew_capacity: int = json_data["crew"]["capacity"]
+        ship.crew_current: int = json_data["crew"]["current"]
+        ship.crew_required: int = json_data["crew"]["required"]
+        ship.crew_rotation: str = json_data["crew"]["rotation"]
+        ship.crew_morale: int = json_data["crew"]["morale"]
+        ship.crew_wages: int = json_data["crew"]["wages"]
+
+        ship.cargo_capacity: int = json_data["cargo"]["capacity"]
+        ship.cargo_units_used: int = json_data["cargo"]["units"]
+        ship.cargo_inventory: list[ShipInventory] = [
+            ShipInventory.from_json(d) for d in json_data["cargo"]["inventory"]
+        ]
+
+        # ---- FUEL INFO ----
+
+        ship.fuel_capacity = json_data["fuel"]["capacity"]
+        ship.fuel_current = json_data["fuel"]["current"]
+        ship.fuel_consumed_history = json_data["fuel"]["consumed"]
+        # needs expanded out into a class probably
+
+        ship._cooldown = None
+        # ----  REACTOR INFO ----
+
+        # todo: modules and mounts
+        ship.modules: list[ShipModule] = [ShipModule(d) for d in json_data["modules"]]
+        ship.mounts: list[ShipMount] = [ShipMount(d) for d in json_data["mounts"]]
+        return ship
 
     def orbit(self):
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
@@ -221,7 +243,7 @@ class Ship(SpaceTradersInteractive):
 
         if isinstance(ship_data, dict):
             if "nav" in ship_data:
-                self.nav = Nav.from_json(ship_data["nav"])
+                self.nav = ShipNav.from_json(ship_data["nav"])
             if "cargo" in ship_data:
                 self.cargo_capacity = ship_data["cargo"]["capacity"]
                 self.cargo_units_used = ship_data["cargo"]["units"]

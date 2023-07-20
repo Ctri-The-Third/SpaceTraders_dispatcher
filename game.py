@@ -73,8 +73,14 @@ def main():
         exit()
 
     try:
-        ST.db_client.token = ST.api_client.token = ST.token = user["agents"][0]["token"]
-
+        st = SpaceTraders(
+            user["agents"][0]["token"],
+            db_host=user["db_host"],
+            db_name=user["db_name"],
+            db_user=user["db_user"],
+            db_pass=user["db_pass"],
+            current_agent_symbol=user["agents"][0]["username"],
+        )
     except IndexError:
         register_and_store_user(uuid.uuid4().hex[:14])
         exit()
@@ -83,16 +89,22 @@ def main():
     # registration = st.register(uuid.uuid4().hex[:14])
 
     # self = st.view_my_self()
-    ships: dict[str:Ship] = st.view_my_ships()
-    ship: Ship = list(ships.values())[1]
+    ships: dict[str:Ship] = st.ships_view(force=False)
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
 
-    waypoints = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-    pass
-    # resp = st.ship_purchase(shipyards[0], "SHIP_MINING_DRONE")
-    # new_ship = Ship(resp.data["ship"], st)
+    print("** ALL SHIPS **")
+    print("HAULERS: ")
+    for ship in haulers:
+        print(
+            f"{ship.name} - {ship.role} - {ship.nav.waypoint_symbol}, {ship.nav.status} - {ship.cargo_units_used}/{ship.cargo_capacity}"
+        )
 
-    # resp = ship.orbit()
-
+    print("EXTRACTORS: ")
+    for ship in extractors:
+        print(
+            f"{ship.name} - {ship.role} - {ship.nav.waypoint_symbol}, {ship.nav.status} - {ship.cargo_units_used}/{ship.cargo_capacity}"
+        )
     # ship = st.purchase_ship(shipyards[0], "SHIP_MINING_DRONE")
 
 
