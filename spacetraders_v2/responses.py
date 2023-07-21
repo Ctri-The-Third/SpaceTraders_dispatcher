@@ -40,7 +40,7 @@ class RemoteSpaceTradersRespose:
             logging.error(
                 "SPACE TRADERS REPSONSE DIDN'T HAVE VALID JSON URL: %s,  status code: %s, received content: %s",
                 response.url,
-                response.status_code
+                response.status_code,
                 response.content,
             )
 
