@@ -277,6 +277,16 @@ class SpaceTradersApiClient(SpaceTradersClient):
             return resp
         return resp
 
+    def contracts_fulfill(self, contract: Contract):
+        url = _url(f"/my/contracts/{contract.id}/fulfill")
+        headers = self._headers()
+        resp = post_and_validate(url, headers=headers)
+        if not resp:
+            print(f"failed to fulfill contract {resp.status_code}, {resp.error}")
+            return resp
+
+        return contract
+
 
 def dummy_response(class_name, method_name):
     return LocalSpaceTradersRespose(

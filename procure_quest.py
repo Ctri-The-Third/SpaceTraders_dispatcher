@@ -90,7 +90,7 @@ def validate_and_fulfill(contract: Contract):
     for deliverable in contract.deliverables:
         if deliverable.units_fulfilled < deliverable.units_required:
             return False
-    return contract.fulfill() is True
+    return contract.contract_fulfill() is True
 
 
 def extractor_quest_loop(
@@ -126,9 +126,9 @@ def extractor_quest_loop(
                         ship, cargo.symbol, min(cargo.units, space), target_ship.name
                     )
                     if resp:
-                        target_ship.receive_cargo(
-                            cargo.symbol, cargo.units
-                        )  # we could do this ourselves
+                        target_ship.receive_cargo(cargo.symbol, cargo.units)
+                        st.update(target_ship)
+                        # we could do this ourselves
                         logging.info(
                             "Transferring %s cargo to %s",
                             min(cargo.units, space),

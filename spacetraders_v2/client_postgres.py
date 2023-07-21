@@ -333,6 +333,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         dummy_response(__class__.__name__, "contracts_deliver")
         pass
 
+    def contracts_fulfill(self, contract: "Contract") -> SpaceTradersResponse:
+        dummy_response(__class__.__name__, "contracts_fulfill")
+        pass
+
 
 def dummy_response(class_name, method_name):
     return LocalSpaceTradersRespose(

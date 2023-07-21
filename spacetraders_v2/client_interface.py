@@ -178,3 +178,7 @@ class SpaceTradersClient(Protocol):
         self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int
     ) -> SpaceTradersResponse:
         pass
+
+    @abstractmethod
+    def contracts_fulfill(self, contract: "Contract") -> SpaceTradersResponse:
+        pass

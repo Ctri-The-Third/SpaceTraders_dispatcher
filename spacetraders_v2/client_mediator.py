@@ -197,11 +197,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if not resp:
             return resp
 
-        self.contracts = self.contracts | {
-            c["id"]: Contract(c, self) for c in resp.data
-        }
-        for contract in self.contracts.values():
-            contract.client = self
+        self.contracts = self.contracts | {c["id"]: Contract(c) for c in resp.data}
         return self.contracts
 
     def contract_accept(self, contract_id) -> Contract or SpaceTradersResponse:
@@ -217,7 +213,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         if not resp:
             return resp
-        new_contract = Contract(resp.data["contract"], self)
+        new_contract = Contract(resp.data["contract"])
         self.contracts[new_contract.id] = new_contract
         return new_contract
 
@@ -236,7 +232,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                     self.surveys[survey["signature"]] = Survey.from_json(survey)
             if "contract" in json_data:
                 self.contracts[json_data["contract"]["id"]] = Contract(
-                    json_data["contract"], self
+                    json_data["contract"]
                 )
             if "nav" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
@@ -247,8 +243,10 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(json_data)
         if isinstance(json_data, list):
             for contract in json_data:
-                self.contracts[contract["id"]] = Contract(contract, self)
-
+                self.contracts[contract["id"]] = Contract(contract)
+        if isinstance(json_data, Ship):
+            self.ships[json_data.name] = json_data
+            self.db_client.update(json_data)
         if isinstance(json_data, Waypoint):
             self.waypoints[json_data.symbol] = json_data
 
@@ -657,6 +655,14 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             contract.update(resp.data)
             ship.update(resp.data)
             self.db_client.update(ship)
+
+    def contracts_fulfill(self, contract: "Contract") -> SpaceTradersResponse:
+        """/my/contracts/{contractId}/fulfill"""
+        resp = self.api_client.contracts_fulfill(contract)
+        if resp:
+            self.update(resp)
+            self.db_client.update(contract)
+        return resp
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}

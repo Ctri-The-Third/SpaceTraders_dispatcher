@@ -7,14 +7,22 @@ from spacetraders_v2.utils import set_logging, sleep
 
 def master(st: SpaceTraders):
     contracts = st.view_my_contracts()
+    agent = st.view_my_self()
+    ships = st.ships_view()
+
+    ship = ships["CTRI-1"]
     for contract in contracts.values():
         if not contract.accepted:
             print("There is a pending contract! Accepted it for you.")
             st.contract_accept(contract.id)
             exit(0)
-    ships = st.view_my_ships()
-    agent = st.view_my_self()
-    ship = ships["CTRI-1"]
+        if contract.accepted and not contract.fulfilled:
+            st.ship_move(ship, agent.headquaters)
+            sleep(ship.nav.travel_time_remaining + 1)
+            resp = st.contracts_fulfill(contract)
+            if resp:
+                print("Contract fulfilled!")
+
     st.ship_move(ship, agent.headquaters)
     sleep(ship.nav.travel_time_remaining + 1)
     new_contract = st.ship_negotiate(ship)
