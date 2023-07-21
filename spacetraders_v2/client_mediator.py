@@ -6,7 +6,7 @@ from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
 from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, ShipNav, Market
-from .models import Shipyard
+from .models import Shipyard, System
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
 from .client_stub import SpaceTradersStubClient
@@ -320,6 +320,23 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         ship = Ship(resp.data, self)
         self.ships[ship_id] = ship
         return ship
+
+    def systems_list_all(
+        self, force=False
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        """/game/systems"""
+        if not force:
+            resp = self.db_client.systems_list_all()
+            if resp:
+                return resp
+
+        resp = self.api_client.systems_list_all()
+        if resp:
+            for syst in resp:
+                syst: System
+                print(f"{syst.symbol} {syst.x},{syst.y}")
+                self.db_client.update(syst)
+            return {d.symbol: d for d in resp}
 
     def system_shipyard(
         self, wp: Waypoint, force_update=False

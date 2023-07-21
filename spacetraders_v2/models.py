@@ -264,8 +264,8 @@ class Agent(SymbolClass):
 @dataclass
 class WaypointTrait(SymbolClass):
     symbol: str
-    name: str
-    description: str
+    name: str = ""
+    description: str = ""
 
 
 @dataclass
@@ -282,13 +282,31 @@ class Waypoint(SymbolClass):
 
     @classmethod
     def from_json(cls, json_data: dict):
-        rawobj = cls(*json_data.values())
+        # a waypoint can be a fully scanned thing, or a stub from scanning the system.
+        if "orbitals" not in json_data:
+            json_data["orbitals"] = []
+        if "traits" not in json_data:
+            json_data["traits"] = []
+        if "chart" not in json_data:
+            json_data["chart"] = {}
+        if "faction" not in json_data:
+            json_data["faction"] = {}
+        return_obj = cls(
+            json_data["systemSymbol"],
+            json_data["symbol"],
+            json_data["type"],
+            json_data["x"],
+            json_data["y"],
+            json_data["orbitals"],
+            json_data["traits"],
+            json_data["chart"],
+            json_data["faction"],
+        )
         new_traits = []
-        for old_trait in rawobj.traits:
+        for old_trait in return_obj.traits:
             new_traits.append(WaypointTrait(*old_trait.values()))
-        rawobj.traits = new_traits
-
-        return rawobj
+        return_obj.traits = new_traits
+        return return_obj
 
     @property
     def has_shipyard(self) -> bool:
@@ -300,6 +318,31 @@ class Waypoint(SymbolClass):
 
     def __str__(self):
         return self.symbol
+
+
+@dataclass
+class System(SymbolClass):
+    symbol: str
+    sector_symbol: str
+    system_type: str
+    x: int
+    y: int
+    waypoints: list[Waypoint]
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        wayps = []
+        for wp in json_data["waypoints"]:
+            wp["systemSymbol"] = json_data["symbol"]
+            wayps.append(Waypoint.from_json(wp))
+        return cls(
+            json_data["symbol"],
+            json_data["sectorSymbol"],
+            json_data["type"],
+            json_data["x"],
+            json_data["y"],
+            [Waypoint.from_json(wp) for wp in json_data["waypoints"]],
+        )
 
 
 class ShipyardShip:

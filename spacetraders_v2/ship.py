@@ -155,30 +155,15 @@ class Ship(SpaceTradersInteractive):
 
     def orbit(self):
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
-        if self.nav.status == "DOCKED":
-            return self.client.ship_orbit(self)
-        return LocalSpaceTradersRespose(None, 0, None, "")
+        raise NotImplementedError
 
     def change_course(self, ship, dest_waypoint_symbol: str):
-        """my/ships/:shipSymbol/course"""
-        upd = self.client.ship_change_course(self, dest_waypoint_symbol)
-        return upd
+        raise NotImplementedError
 
     def move(self, dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
 
-        if self.nav.waypoint_symbol == dest_waypoint_symbol:
-            return LocalSpaceTradersRespose(
-                f"Navigate request failed, Ship '{self.name}' is already at the destination'",
-                0,
-                None,
-                "ship.move()",
-            )
-        if self.nav.status == "DOCKED":
-            self.orbit()
-
-        upd = self.client.ship_move(self, dest_waypoint_symbol)
-        return upd
+        raise NotImplementedError
 
     def extract(self, survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""

@@ -1,5 +1,7 @@
 import requests
 from typing import Protocol, runtime_checkable
+from json import JSONDecodeError
+import logging
 
 # We have just turn the Ship into a client (so it can do things like move, buy sell)
 # however now it also needs responses, which has caused a circular import.
@@ -28,10 +30,20 @@ class RemoteSpaceTradersRespose:
 
     def __init__(self, response: requests.Response):
         self.data = {}
-        self.response_json = response.json() if response.content else {}
         self.error = None
         self.status_code = response.status_code
         self.error_code = None
+        try:
+            self.response_json = response.json() if response.content else {}
+        except JSONDecodeError:
+            self.response_json = {}
+            logging.error(
+                "SPACE TRADERS REPSONSE DIDN'T HAVE VALID JSON URL: %s,  status code: %s, received content: %s",
+                response.url,
+                response.status_code
+                response.content,
+            )
+
         if "error" in self.response_json:
             self.error_parse()
         else:

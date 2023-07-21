@@ -148,6 +148,12 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def systems_list_all(self) -> dict[str:"System"] or SpaceTradersResponse:
+        """/game/systems"""
+
+        pass
+
+    @abstractmethod
     def system_shipyard(self, waypoint: Waypoint) -> Shipyard or SpaceTradersResponse:
         """/game/locations/{symbol}/shipyard"""
 

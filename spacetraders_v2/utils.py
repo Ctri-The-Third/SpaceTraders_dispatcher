@@ -9,6 +9,7 @@ from datetime import datetime
 import random
 import time
 from .local_response import LocalSpaceTradersRespose
+from time import sleep
 
 ST_LOGGER = logging.getLogger("API-Client")
 
@@ -54,6 +55,8 @@ def get_and_validate_paginated(
             return response
         else:
             return response
+        if page_limit >= 10:
+            sleep(1)
     response.data = data
     return response
 
@@ -80,8 +83,11 @@ def get_and_validate(
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
             time.sleep(i * (i + random.random()))
-        else:
-            return RemoteSpaceTradersRespose(response)
+        if response.status_code >= 500 and response.status_code < 600:
+            logging.error(
+                "SpaceTraders Server error: %s, %s", url, response.status_code
+            )
+        return RemoteSpaceTradersRespose(response)
 
 
 async def get_and_validate_async(url, params=None, headers=None):

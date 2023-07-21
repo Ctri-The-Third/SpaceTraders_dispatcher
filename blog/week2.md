@@ -44,6 +44,10 @@ This meant that when the DB sdk or the API sdk returned ships, they were instant
 
 Thus, I made the decision to fully remove even the stubs of the behaviour in the objects and complete the seperation of data and behaviour. 
 
+# Testing! 
+Testing has to be testing behaviour scripts rather than individual endpoints, because we are constrainted by the game state - we can't arbitrarily test endpoints and confirm we're handling responses, unless our game state is in a place where we can do these things.
+Or we'd have to mock the API, which is a lot of work.
+testing scripts should have lots of asserts (sadly) and be fast-forward-able.
 
 # Active concerns
 * Presently there is a concern that surveys are not being properly transmitted toand consumed by the API. 

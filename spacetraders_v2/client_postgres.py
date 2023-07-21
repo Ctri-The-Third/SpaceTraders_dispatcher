@@ -7,6 +7,7 @@ from .models import (
     Shipyard,
     MarketTradeGood,
     MarketTradeGoodListing,
+    System,
 )
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
@@ -14,6 +15,7 @@ from .pg_upserts.upsert_waypoint import _upsert_waypoint
 from .pg_upserts.upsert_shipyard import _upsert_shipyard
 from .pg_upserts.upsert_market import _upsert_market
 from .pg_upserts.upsert_ship import _upsert_ship
+from .pg_upserts.upsert_system import _upsert_system
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
@@ -47,6 +49,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_market(self.connection, update_obj)
         if isinstance(update_obj, Ship):
             _upsert_ship(self.connection, update_obj)
+        if isinstance(update_obj, System):
+            _upsert_system(self.connection, update_obj)
         pass
 
     def waypoints_view(
@@ -222,6 +226,26 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             return LocalSpaceTradersRespose(
                 "Could not find market data for that waypoint", 0, 0, sql
             )
+
+    def systems_list_all(self) -> list["Waypoint"] or SpaceTradersResponse:
+        """/game/systems"""
+        sql = """SELECT * FROM waypoints"""
+        cur = self.connection.cursor()
+        wayps = {}
+        try:
+            cur.execute(sql)
+            rows = cur.fetchall()
+        except Exception as err:
+            return LocalSpaceTradersRespose(
+                f"Wasn't able to get waypoints {err}",
+                0,
+                0,
+                __name__ + ".systems_list_all",
+            )
+        for row in rows:
+            wayp = Waypoint(row[2], row[0], row[1], row[3], row[4], [], [], {}, {})
+            wayps[wayp.symbol] = wayp
+        return wayps
 
     def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.

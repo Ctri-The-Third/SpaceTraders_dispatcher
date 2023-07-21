@@ -10,7 +10,7 @@ from .utils import (
     get_and_validate_paginated,
 )
 from .local_response import LocalSpaceTradersRespose
-from .models import Waypoint, Survey, Market, MarketTradeGoodListing, Shipyard
+from .models import Waypoint, Survey, Market, MarketTradeGoodListing, Shipyard, System
 from .contracts import Contract
 from .ship import Ship
 import logging
@@ -209,6 +209,15 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
     def find_waypoints_by_trait_one(self, system_symbol: str, trait: str) -> Waypoint:
         return dummy_response(__class__.__name__, __name__)
+
+    def systems_list_all(self) -> list[System] or SpaceTradersResponse:
+        url = _url("systems")
+        resp = get_and_validate_paginated(
+            url, per_page=20, page_limit=999, headers=self._headers()
+        )
+        if resp:
+            resp = [System.from_json(d) for d in resp.data]
+        return resp
 
     def system_market(self, wp: Waypoint) -> Market:
         # /systems/{systemSymbol}/waypoints/{waypointSymbol}/market
