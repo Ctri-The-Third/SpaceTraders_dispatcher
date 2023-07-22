@@ -1,4 +1,5 @@
 import requests
+
 from typing import Protocol, runtime_checkable
 from json import JSONDecodeError
 import logging
@@ -30,11 +31,12 @@ class RemoteSpaceTradersRespose:
 
     def __init__(self, response: requests.Response):
         self.data = {}
+
         self.error = None
         self.status_code = response.status_code
         self.error_code = None
         try:
-            self.response_json = response.json() if response.content else {}
+            self.response_json = json.loads(response.content)
         except JSONDecodeError:
             self.response_json = {}
             logging.error(
