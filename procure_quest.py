@@ -165,6 +165,8 @@ def extractor_quest_loop(
                 sleep(ship.seconds_until_cooldown)
         else:
             # extractor that can't extract? shut it down.
+            st.ship_view_one(ship.name, True)
+
             logging.error(f"Ship {ship.name} can't extract, pausing for 5 minutes.")
             sleep(300)
 
