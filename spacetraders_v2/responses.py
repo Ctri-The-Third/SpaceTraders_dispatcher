@@ -1,5 +1,6 @@
 import requests
 from typing import Protocol
+import json 
 
 # We have just turn the Ship into a client (so it can do things like move, buy sell)
 # however now it also needs responses, which has caused a circular import.
@@ -27,7 +28,12 @@ class RemoteSpaceTradersRespose:
 
     def __init__(self, response: requests.Response):
         self.data = {}
-        self.response_json = response.json() if response.content else {}
+        try: 
+            self.response_json = response.json() if response.content else {}
+        except:
+            self.logger.error("json decode error %s %s %s", response.status_code, url, response.content)
+            self.response_json = {}
+            
         self.error = None
         self.status_code = response.status_code
         self.error_code = None
