@@ -1,4 +1,4 @@
-from procure_quest import set_logging, sleep
+from procure_questWK2 import set_logging, sleep
 import sys, json
 from spacetraders_v2 import SpaceTraders
 from spacetraders_v2.models import Waypoint, ShipyardShip, Market

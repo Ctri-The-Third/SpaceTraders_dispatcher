@@ -5,7 +5,7 @@ from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceT
 from spacetraders_v2.models import ShipyardShip
 from spacetraders_v2.ship import Ship
 
-from procure_quest import (
+from procure_questWK2 import (
     mine_until_full,
     wait_till_arrive,
     set_logging,
