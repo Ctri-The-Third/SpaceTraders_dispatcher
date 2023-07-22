@@ -1,30 +1,63 @@
 from .utils import get_and_validate, get_and_validate_paginated, post_and_validate, _url
-from .client import SpaceTradersClient
+from .utils import ApiConfig, _log_response
+from .client_interface import SpaceTradersInteractive, SpaceTradersClient
+
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey
+from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, ShipNav, Market
+from .models import Shipyard, System
 from .ship import Ship
-from .utils import GlobalConfig
+from .client_api import SpaceTradersApiClient
+from .client_stub import SpaceTradersStubClient
+from .client_postgres import SpaceTradersPostgresClient
 from threading import Lock
-
 import logging
 
 # Attempted relative import beyond top-level packagePylintE0402:relative-beyond-top-level
 from datetime import datetime
 
 
-class SpaceTraders(SpaceTradersClient):
-    """SpaceTraders API client."""
+class SpaceTradersMediatorClient(SpaceTradersClient):
+    """SpaceTraders API client, with in-memory caching, and DB lookup."""
 
+    api_client: SpaceTradersClient
+    db_client: SpaceTradersClient
     current_agent: Agent
     ships: dict[str, Ship]
     waypoints: dict[str, Waypoint]
     system_waypoints: dict[str : list[Waypoint]]
 
-    def __init__(self, token=None, base_url=None, version=None) -> None:
+    def __init__(
+        self,
+        token=None,
+        base_url=None,
+        version=None,
+        db_host=None,
+        db_name=None,
+        db_user=None,
+        db_pass=None,
+        current_agent_symbol=None,
+    ) -> None:
+        self.logger = logging.getLogger(__name__)
+
         self.token = token
-        self.config = GlobalConfig(
+        self.current_agent = current_agent_symbol
+        if db_host and db_name and db_user and db_pass:
+            self.db_client = SpaceTradersPostgresClient(
+                db_host=db_host,
+                db_name=db_name,
+                db_user=db_user,
+                db_pass=db_pass,
+                current_agent_symbol=current_agent_symbol,
+            )
+        else:
+            self.db_client = SpaceTradersStubClient()
+            self.logger.warning("Couldn't enable DB client, missing info.")
+        self.api_client = SpaceTradersApiClient(
+            token=token, base_url=base_url, version=version
+        )
+        self.config = ApiConfig(
             base_url=base_url, version=version
         )  # set up the global config for other things to use.
         self.ships = {}
@@ -32,25 +65,16 @@ class SpaceTraders(SpaceTradersClient):
         self.contracts = {}
         self.system_waypoints = {}
         self.current_agent = None
+        self.current_agent_symbol = current_agent_symbol
         self.surveys: dict[str:Survey] = {}
         self._lock = Lock()
-        status = self.game_status()
-
-        if not status:
-            raise ConnectionError(
-                f"Could not connect to SpaceTraders server: {status.error}"
-            )
-
-        self.announcements = status.announcements
-        self.next_reset = status.next_reset
-        if self.token:
-            self.current_agent = self.view_my_self()
 
     def game_status(self) -> GameStatus:
         """Get the status of the SpaceTraders game server.
 
         Args:
             None"""
+
         url = _url("")
         resp = get_and_validate(url)
 
@@ -85,27 +109,50 @@ class SpaceTraders(SpaceTradersClient):
         resp = get_and_validate(url, headers=self._headers())
         if resp:
             self.current_agent = Agent.from_json(resp.data)
+            self.current_agent_symbol = self.current_agent.symbol
+
         return self.current_agent
 
-    def view_my_ships(
-        self, force=False, limit=10
-    ) -> dict[str, Ship] or SpaceTradersResponse:
+    def ships_view(self, force=False) -> dict[str, Ship] or SpaceTradersResponse:
         """view the current ships the agent has, a dict that's accessible by ship symbol.
         uses cached values by default.
 
         Args:
             `force` (bool): Optional - Force a refresh of the ships. Defaults to False.
         """
-        if not force and len(self.ships) > 0:
-            return self.ships
-        url = _url("my/ships")
-        resp = get_and_validate_paginated(url, 20, 10, headers=self._headers())
+        if not force:
+            resp = self.db_client.ships_view()
+            if resp:
+                self.ships = self.ships | resp
+                return resp
 
-        new_ships = {ship["symbol"]: Ship(ship, self) for ship in resp.data}
-
+        resp = self.api_client.ships_view()
         if resp:
+            new_ships = resp
             self.ships = self.ships | new_ships
+            for ship in self.ships.values():
+                self.db_client.update(ship)
             return new_ships
+        return resp
+
+    def ships_view_one(self, symbol: str, force=False):
+        if not force and symbol in self.ships:
+            resp = self.ships.get(symbol, None)
+            if resp:
+                return self.ships[symbol]
+
+        if not force:
+            resp = self.db_client.ships_view_one(symbol)
+            if resp:
+                resp: Ship
+                self.ships[symbol] = resp
+                return resp
+
+        resp = self.api_client.ships_view_one(symbol)
+        if resp:
+            resp: Ship
+            self.ships[symbol] = resp
+            self.db_client.update(resp)
         return resp
 
     def ship_purchase(
@@ -129,6 +176,7 @@ class SpaceTraders(SpaceTradersClient):
             return resp
         new_ship = Ship(resp.data["ship"], self)
         self.ships[new_ship.name] = new_ship
+        self.db_client.update(new_ship)
         return new_ship
 
     def view_my_contracts(
@@ -149,11 +197,7 @@ class SpaceTraders(SpaceTradersClient):
         if not resp:
             return resp
 
-        self.contracts = self.contracts | {
-            c["id"]: Contract(c, self) for c in resp.data
-        }
-        for contract in self.contracts.values():
-            contract.client = self
+        self.contracts = self.contracts | {c["id"]: Contract(c) for c in resp.data}
         return self.contracts
 
     def contract_accept(self, contract_id) -> Contract or SpaceTradersResponse:
@@ -169,53 +213,66 @@ class SpaceTraders(SpaceTradersClient):
 
         if not resp:
             return resp
-        new_contract = Contract(resp.data["contract"], self)
+        new_contract = Contract(resp.data["contract"])
         self.contracts[new_contract.id] = new_contract
         return new_contract
 
     def update(self, json_data):
         """Parses the json data from a response to update the agent, add a new survey, or add/update a new contract.
 
-        This method is present on all Classes that can interact with the API."""
-
-        if "agent" in json_data:
-            self.current_agent.update(json_data)
-        if "surveys" in json_data:
-            for survey in json_data["surveys"]:
-                self.surveys[survey["signature"]] = Survey.from_json(survey)
-        if "contract" in json_data:
-            self.contracts[json_data["contract"]["id"]] = Contract(
-                json_data["contract"], self
-            )
+        This method is present on all Classes that can cache responses from the API."""
+        if isinstance(json_data, SpaceTradersResponse):
+            if json_data.data is not None:
+                json_data = json_data.data
+        if isinstance(json_data, dict):
+            if "agent" in json_data:
+                self.current_agent.update(json_data)
+            if "surveys" in json_data:
+                for survey in json_data["surveys"]:
+                    self.surveys[survey["signature"]] = Survey.from_json(survey)
+            if "contract" in json_data:
+                self.contracts[json_data["contract"]["id"]] = Contract(
+                    json_data["contract"]
+                )
+            if "nav" in json_data:
+                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+            if "cooldown" in json_data:
+                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+        if isinstance(json_data, Survey):
+            self.surveys[json_data.signature] = json_data
+            self.db_client.update(json_data)
+        if isinstance(json_data, list):
+            for contract in json_data:
+                self.contracts[contract["id"]] = Contract(contract)
+        if isinstance(json_data, Ship):
+            self.ships[json_data.name] = json_data
+            self.db_client.update(json_data)
+        if isinstance(json_data, Waypoint):
+            self.waypoints[json_data.symbol] = json_data
 
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
     ) -> Waypoint or SpaceTradersResponse:
-        """view a single waypoint in a system. Uses cached values by default.
-
-        Args:
-            `system_symbol` (str): The symbol of the system to search for the waypoint in.
-            `waypoint_symbol` (str): The symbol of the waypoint to search for.
-            `force` (bool): Optional - Force a refresh of the waypoint. Defaults to False.
-
-        Returns:
-            Either a Waypoint object or a SpaceTradersResponse object on failure."""
-
+        # check self
         if waypoint_symbol in self.waypoints and not force:
             return self.waypoints[waypoint_symbol]
 
-        url = _url(f"systems/{system_symbol}/waypoints/{waypoint_symbol}")
-        resp = get_and_validate(url, headers=self._headers())
-        wayp = Waypoint.from_json(resp.data)
-        if not resp:
-            print(resp.error)
-            return resp
-        self.waypoints[waypoint_symbol] = wayp
+        # check db
+        wayp = self.db_client.waypoints_view_one(system_symbol, waypoint_symbol)
+        if wayp:
+            self.update(wayp)
+            return wayp
+        # check api
+        wayp = self.api_client.waypoints_view_one(system_symbol, waypoint_symbol)
+        if wayp:
+            self.update(wayp)
+            self.db_client.update(wayp)
+            return wayp
         return wayp
 
     def waypoints_view(
         self, system_symbol: str
-    ) -> dict[str:list] or SpaceTradersResponse:
+    ) -> dict[str:Waypoint] or SpaceTradersResponse:
         """view all waypoints in a system. Uses cached values by default.
 
         Args:
@@ -224,16 +281,22 @@ class SpaceTraders(SpaceTradersClient):
         Returns:
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
+        # check cache
         if system_symbol in self.system_waypoints:
             return self.system_waypoints[system_symbol]
-        url = _url(f"systems/{system_symbol}/waypoints")
-        resp = get_and_validate(url, headers=self._headers())
-        if resp:
-            new_wayps = {d["symbol"]: Waypoint.from_json(d) for d in resp.data}
-            self.waypoints = self.waypoints | new_wayps
-            self.system_waypoints[system_symbol] = new_wayps
+
+        new_wayps = self.db_client.waypoints_view(system_symbol)
+        if new_wayps:
+            for new_wayp in new_wayps.values():
+                self.update(new_wayp)
             return new_wayps
-        return resp
+
+        new_wayps = self.api_client.waypoints_view(system_symbol)
+        if new_wayps:
+            for new_wayp in new_wayps.values():
+                self.db_client.update(new_wayp)
+                self.update(new_wayp)
+        return new_wayps
 
     def view_my_ships_one(
         self, ship_id: str, force=False
@@ -258,7 +321,26 @@ class SpaceTraders(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
-    def view_available_ships(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+    def systems_list_all(
+        self, force=False
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        """/game/systems"""
+        if not force:
+            resp = self.db_client.systems_list_all()
+            if resp:
+                return resp
+
+        resp = self.api_client.systems_list_all()
+        if resp:
+            for syst in resp:
+                syst: System
+                print(f"{syst.symbol} {syst.x},{syst.y}")
+                self.db_client.update(syst)
+            return {d.symbol: d for d in resp}
+
+    def system_shipyard(
+        self, wp: Waypoint, force_update=False
+    ) -> Shipyard or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -267,16 +349,27 @@ class SpaceTraders(SpaceTradersClient):
         Returns:
             Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
         """
+        if not force_update:
+            resp = self.db_client.system_shipyard(wp)
+            if bool(resp):
+                return resp
 
-        url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/shipyard")
-        resp = get_and_validate(url, headers=self._headers())
-        if resp and (resp.data is None or "ships" not in resp.data):
-            return LocalSpaceTradersRespose(
-                "No ship at this waypoint to get details.", 200, 0, url
-            )
+        resp = self.api_client.system_shipyard(wp)
         if resp:
-            return [d for d in resp.data["ship_types"]]
+            self.db_client.update(resp)
+        return resp
 
+    def system_market(
+        self, wp: Waypoint, force_update=False
+    ) -> Market or SpaceTradersResponse:
+        if not force_update:
+            resp = self.db_client.system_market(wp)
+            if bool(resp):
+                return resp
+        resp = self.api_client.system_market(wp)
+        if bool(resp):
+            self.db_client.update(resp)
+            return resp
         return resp
 
     def view_available_ships_details(
@@ -400,7 +493,36 @@ class SpaceTraders(SpaceTradersClient):
             if waypoint.type == waypoint_type:
                 return waypoint
 
-    def find_waypoint_by_trait(
+    def find_waypoints_by_trait(
+        self, system_symbol: str, trait: str
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        resp = []
+        for wayp in self.waypoints_view(system_symbol).values():
+            wayp: Waypoint
+            for wp_trait in wayp.traits:
+                if wp_trait.symbol == trait:
+                    resp.append(wayp)
+
+        resp = [
+            wayp
+            for wayp in self.waypoints_view(system_symbol).values()
+            for wp_trait in wayp.traits
+            if wp_trait.symbol == trait
+        ]
+        if isinstance(resp, list) and len(resp) > 0:
+            return resp
+        resp = self.db_client.find_waypoints_by_trait(system_symbol, trait)
+        if resp:
+            return resp
+        wayps = self.api_client.find_waypoints_by_trait(system_symbol, trait)
+        if isinstance(wayps, list):
+            wayps: list
+            for wayp in wayps:
+                self.db_client.update(wayp)
+                self.update(wayp)
+        return wayps
+
+    def find_waypoints_by_trait_one(
         self, system_wp: str, trait_symbol: str
     ) -> Waypoint or None:
         """find a waypoint by its trait. searches cached values first, then makes a request if no match is found.
@@ -424,3 +546,140 @@ class SpaceTraders(SpaceTradersClient):
             for trait in waypoint.traits:
                 if trait.symbol == trait_symbol:
                     return waypoint
+
+    def ship_orbit(self, ship: "Ship"):
+        """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
+        if ship.nav.status == "IN_ORBIT":
+            return LocalSpaceTradersRespose(
+                None, 200, "Ship is already in orbit", "client_mediator.ship_orbit()"
+            )
+        resp = self.api_client.ship_orbit(ship)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return
+
+    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/course"""
+        return self.api_client.ship_change_course(ship, dest_waypoint_symbol)
+
+    def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
+        """my/ships/:shipSymbol/navigate"""
+        if ship.nav.waypoint_symbol == dest_waypoint_symbol:
+            return LocalSpaceTradersRespose(
+                f"Navigate request failed. Ship '{ship.name}' is currently located at the destiatnion.",
+                400,
+                4204,
+                "client_mediator.ship_move()",
+            )
+        resp = self.api_client.ship_move(ship, dest_waypoint_symbol)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+            self.ships[ship.name] = ship
+        return resp
+
+    def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/negotiate/contract"""
+        if ship.nav.status != "DOCKED":
+            self.ship_dock(ship)
+        resp = self.api_client.ship_negotiate(ship)
+        if bool(resp):
+            self.update(resp)
+        return resp
+
+    def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/extract"""
+        # 4228 / 400 - MAXIMUM CARGO, should not extract
+        #
+        resp = self.api_client.ship_extract(ship, survey)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        if not resp:
+            self.logger.error(
+                "status_code = %s, error_code = %s,  error = %s",
+                resp.status_code,
+                resp.error_code,
+                resp.error,
+            )
+        return resp
+
+    def ship_dock(self, ship: "Ship"):
+        """/my/ships/{shipSymbol}/dock"""
+        resp = self.api_client.ship_dock(ship)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return resp
+
+    def ship_refuel(self, ship: "Ship"):
+        """/my/ships/{shipSymbol}/refuel"""
+        resp = self.api_client.ship_refuel(ship)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+
+    def ship_sell(
+        self, ship: "Ship", symbol: str, quantity: int
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/sell"""
+        resp = self.api_client.ship_sell(ship, symbol, quantity)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(resp)
+            self.update(resp.data)
+        return resp
+
+    def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/survey"""
+        resp = self.api_client.ship_survey(ship)
+        if resp:
+            surveys = [Survey.from_json(d) for d in resp.data.get("surveys", [])]
+            for survey in surveys:
+                self.db_client.update(survey)
+            self.update(resp.data)
+            ship.update(resp.data)
+
+        elif resp.data is not None:
+            self.update(resp.data)
+        return resp
+
+    def ship_transfer_cargo(self, ship: "Ship", trade_symbol, units, target_ship_name):
+        """/my/ships/{shipSymbol}/transfer"""
+        resp = self.api_client.ship_transfer_cargo(
+            ship, trade_symbol, units, target_ship_name
+        )
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return resp
+
+    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/cooldown"""
+        resp = self.api_client.ship_cooldown(ship)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+        return resp
+
+    def contracts_deliver(
+        self, contract: Contract, ship: Ship, trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        resp = self.api_client.contracts_deliver(contract, ship, trade_symbol, units)
+        if resp:
+            self.update(resp.data)
+            contract.update(resp.data)
+            ship.update(resp.data)
+            self.db_client.update(ship)
+
+    def contracts_fulfill(self, contract: "Contract") -> SpaceTradersResponse:
+        """/my/contracts/{contractId}/fulfill"""
+        resp = self.api_client.contracts_fulfill(contract)
+        if resp:
+            self.update(resp)
+            self.db_client.update(contract)
+        return resp
+
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.token}"}

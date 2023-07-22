@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from attr import field
 import requests
 
 from .utils import DATE_FORMAT
@@ -160,6 +161,7 @@ class ShipEngine(SymbolClass):
         )
 
 
+## this should/could be a waypoint.
 @dataclass
 class RouteNode:
     symbol: str
@@ -174,7 +176,7 @@ class RouteNode:
 
 
 @dataclass
-class Nav:
+class ShipNav:
     system_symbol: str
     waypoint_symbol: str
     destination: RouteNode
@@ -214,6 +216,7 @@ class Survey:
     expiration: datetime
     size: str
     _json: dict
+    times_used: int = 0
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -261,8 +264,8 @@ class Agent(SymbolClass):
 @dataclass
 class WaypointTrait(SymbolClass):
     symbol: str
-    name: str
-    description: str
+    name: str = ""
+    description: str = ""
 
 
 @dataclass
@@ -279,13 +282,67 @@ class Waypoint(SymbolClass):
 
     @classmethod
     def from_json(cls, json_data: dict):
-        rawobj = cls(*json_data.values())
+        # a waypoint can be a fully scanned thing, or a stub from scanning the system.
+        if "orbitals" not in json_data:
+            json_data["orbitals"] = []
+        if "traits" not in json_data:
+            json_data["traits"] = []
+        if "chart" not in json_data:
+            json_data["chart"] = {}
+        if "faction" not in json_data:
+            json_data["faction"] = {}
+        return_obj = cls(
+            json_data["systemSymbol"],
+            json_data["symbol"],
+            json_data["type"],
+            json_data["x"],
+            json_data["y"],
+            json_data["orbitals"],
+            json_data["traits"],
+            json_data["chart"],
+            json_data["faction"],
+        )
         new_traits = []
-        for old_trait in rawobj.traits:
+        for old_trait in return_obj.traits:
             new_traits.append(WaypointTrait(*old_trait.values()))
-        rawobj.traits = new_traits
+        return_obj.traits = new_traits
+        return return_obj
 
-        return rawobj
+    @property
+    def has_shipyard(self) -> bool:
+        return "SHIPYARD" in [t.symbol for t in self.traits]
+
+    @property
+    def has_market(self) -> bool:
+        return "MARKETPLACE" in [t.symbol for t in self.traits]
+
+    def __str__(self):
+        return self.symbol
+
+
+@dataclass
+class System(SymbolClass):
+    symbol: str
+    sector_symbol: str
+    system_type: str
+    x: int
+    y: int
+    waypoints: list[Waypoint]
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        wayps = []
+        for wp in json_data["waypoints"]:
+            wp["systemSymbol"] = json_data["symbol"]
+            wayps.append(Waypoint.from_json(wp))
+        return cls(
+            json_data["symbol"],
+            json_data["sectorSymbol"],
+            json_data["type"],
+            json_data["x"],
+            json_data["y"],
+            [Waypoint.from_json(wp) for wp in json_data["waypoints"]],
+        )
 
 
 class ShipyardShip:
@@ -312,6 +369,22 @@ class ShipyardShip:
     @classmethod
     def from_json(cls, json_data: dict):
         return cls(json_data)
+
+
+@dataclass
+class Shipyard:
+    waypoint: str
+    ship_types: list[str]
+    ships: dict[str, ShipyardShip] = None
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        types = [type_["type"] for type_ in json_data["shipTypes"]]
+        ships = {
+            ship["type"]: ShipyardShip(ship) for ship in json_data.get("ships", [])
+        }
+
+        return cls(json_data["symbol"], types, ships)
 
 
 class RateLimitDetails:
@@ -350,3 +423,42 @@ class GameStatus:
                     len(self.announcements), announcement["title"], announcement["body"]
                 )
             )
+
+
+@dataclass
+class MarketTradeGoodListing:
+    symbol: str
+    trade_volume: int
+    supply: str
+    purchase: int
+    sell_price: int
+
+
+@dataclass
+class MarketTradeGood:
+    symbol: str
+    name: str
+    description: str
+
+
+@dataclass
+class Market:
+    symbol: str
+    exports: list[MarketTradeGood]
+    imports: list[MarketTradeGood]
+    exchange: list[MarketTradeGood]
+    listings: list[MarketTradeGoodListing] = None
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        exports = [MarketTradeGood(**export) for export in json_data["exports"]]
+        imports = [MarketTradeGood(**import_) for import_ in json_data["imports"]]
+        exchange = [MarketTradeGood(**listing) for listing in json_data["exchange"]]
+        if "tradeGoods" in json_data:
+            listings = [
+                MarketTradeGoodListing(*listing.values())
+                for listing in json_data["tradeGoods"]
+            ]
+        else:
+            listings = []
+        return cls(json_data["symbol"], exports, imports, exchange, listings)

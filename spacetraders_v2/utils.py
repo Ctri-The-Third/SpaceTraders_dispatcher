@@ -6,10 +6,13 @@ from dataclasses import dataclass
 from logging import FileHandler, StreamHandler
 from sys import stdout
 from datetime import datetime
-
+import random
 import time
+from .local_response import LocalSpaceTradersRespose
+from time import sleep
 
-ST_LOGGER = logging.getLogger("SpaceTradersAPI")
+ST_LOGGER = logging.getLogger("API-Client")
+
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 SURVEYOR_SYMBOLS = ["MOUNT_SURVEYOR_I", "MOUNT_SURVEYOR_II", "MOUNT_SURVEYOR_III"]
@@ -18,14 +21,14 @@ from .responses import RemoteSpaceTradersRespose, SpaceTradersResponse
 
 
 @dataclass
-class GlobalConfig:
+class ApiConfig:
     __instance = None
     base_url: str = "https://api.spacetraders.io"
     version: str = "v2"
 
     def __new__(cls, base_url=None, version=None):
         if cls.__instance is None:
-            cls.__instance = super(GlobalConfig, cls).__new__(cls)
+            cls.__instance = super(ApiConfig, cls).__new__(cls)
 
         return cls.__instance
 
@@ -52,6 +55,8 @@ def get_and_validate_paginated(
             return response
         else:
             return response
+        if page_limit >= 10:
+            sleep(1)
     response.data = data
     return response
 
@@ -63,7 +68,12 @@ def get_and_validate(
     for i in range(1, 5):
         try:
             response = requests.get(url, params=params, headers=headers, timeout=5)
-        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+        except (
+            requests.exceptions.ConnectionError,
+            TimeoutError,
+            TypeError,
+            TimeoutError,
+        ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
             return None
         except Exception as err:
@@ -72,9 +82,12 @@ def get_and_validate(
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
-            time.sleep(i * i)
-        else:
-            return RemoteSpaceTradersRespose(response)
+            time.sleep(i * (i + random.random()))
+        if response.status_code >= 500 and response.status_code < 600:
+            logging.error(
+                "SpaceTraders Server error: %s, %s", url, response.status_code
+            )
+        return RemoteSpaceTradersRespose(response)
 
 
 async def get_and_validate_async(url, params=None, headers=None):
@@ -105,18 +118,22 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
             response = requests.post(
                 url, data=data, json=json, headers=headers, timeout=5
             )
-        except (requests.exceptions.ConnectionError, TimeoutError) as err:
+        except (requests.exceptions.ConnectionError, TimeoutError, TypeError) as err:
             logging.error("ConnectionError: %s, %s", url, err)
             return None
+
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
             raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
-            time.sleep(i * i)
+            time.sleep(i * (i + random.random()))
         else:
             return RemoteSpaceTradersRespose(response)
+    return LocalSpaceTradersRespose(
+        "Unable to do the rate limiting thing, command aborted", 0, 0, url
+    )
 
 
 def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
@@ -141,7 +158,7 @@ def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersR
 
 def _url(endpoint) -> str:
     "wraps the `endpoint` in the base_url and version"
-    config = GlobalConfig()
+    config = ApiConfig()
     return f"{config.base_url}/{config.version}/{endpoint}"
 
 
@@ -165,6 +182,7 @@ def set_logging(filename: str = None):
         format=format,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    ST_LOGGER.setLevel(logging.INFO)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
@@ -174,5 +192,11 @@ def parse_timestamp(timestamp: str) -> datetime:
 
 def sleep(seconds: int):
     if seconds > 0 and seconds < 6000:
-        ST_LOGGER.info(f"Sleeping for {seconds} seconds")
+        # ST_LOGGER.info(f"Sleeping for {seconds} seconds")
         time.sleep(seconds)
+
+
+def waypoint_slicer(waypoint_symbol: str) -> str:
+    "returns the system symbol from a waypoint symbol"
+    pieces = waypoint_symbol.split("-")
+    return f"{pieces[0]}-{pieces[1]}"

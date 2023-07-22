@@ -3,7 +3,7 @@ import logging
 from sys import stdout
 from logging import FileHandler, StreamHandler
 import uuid
-from spacetraders_v2.spacetraders import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.contracts import Contract
 from spacetraders_v2.models import (
@@ -73,7 +73,14 @@ def main():
         exit()
 
     try:
-        ST.token = user["agents"][0]["token"]
+        st = SpaceTraders(
+            user["agents"][0]["token"],
+            db_host=user["db_host"],
+            db_name=user["db_name"],
+            db_user=user["db_user"],
+            db_pass=user["db_pass"],
+            current_agent_symbol=user["agents"][0]["username"],
+        )
     except IndexError:
         register_and_store_user(uuid.uuid4().hex[:14])
         exit()
@@ -82,34 +89,22 @@ def main():
     # registration = st.register(uuid.uuid4().hex[:14])
 
     # self = st.view_my_self()
-    ships: dict[str:Ship] = st.view_my_ships()
-    ship: Ship = list(ships.values())[1]
+    ships: dict[str:Ship] = st.ships_view(force=False)
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
 
-    waypoints = st.waypoints_view(ship.nav.system_symbol)
-    shipyards = [
-        waypoint
-        for waypoint in waypoints.values()
-        for trait in waypoint.traits
-        if trait.symbol == "SHIPYARD"
-    ]
-    ships_avail = st.view_available_ships_details(shipyards[0])
-    for ship in ships_avail.values():
-        ship: ShipyardShip
-        print(ship)
-        print(f"------ {ship.type} -----")
-        print(f"{ship.name}: {ship.description} ")
-        print(f"cost: {ship.purchase_price}")
-        print("-- modules")
-        for module in ship.modules:
-            print(f"* {module.name}: {module.description}")
-        print("-- mounts")
-        for mount in ship.mounts:
-            print(f"* {mount.name}: {mount.description}")
-    # resp = st.ship_purchase(shipyards[0], "SHIP_MINING_DRONE")
-    # new_ship = Ship(resp.data["ship"], st)
+    print("** ALL SHIPS **")
+    print("HAULERS: ")
+    for ship in haulers:
+        print(
+            f"{ship.name} - {ship.role} - {ship.nav.waypoint_symbol}, {ship.nav.status} - {ship.cargo_units_used}/{ship.cargo_capacity}"
+        )
 
-    # resp = ship.orbit()
-
+    print("EXTRACTORS: ")
+    for ship in extractors:
+        print(
+            f"{ship.name} - {ship.role} - {ship.nav.waypoint_symbol}, {ship.nav.status} - {ship.cargo_units_used}/{ship.cargo_capacity}"
+        )
     # ship = st.purchase_ship(shipyards[0], "SHIP_MINING_DRONE")
 
 
@@ -296,18 +291,6 @@ Credits: \t {me.credits}
 
 if __name__ == "__main__":
     # subprocess.call(["setup.bat"], shell=True)
-    register_and_store_user("HARB_D")
-    exit()
-    main()
-    contracts = ST.view_my_contracts()
-    if not contracts:
-        print(contracts.error)
-        exit()
-
-    for contract in contracts.values():
-        contract: Contract
-        print(
-            f"{contract.id[0:4]} - accepted:{contract.accepted}, fulfilled:{contract.fulfilled}"
-        )
-    print(contracts)
+    register_and_store_user("O2O")
     # menu()
+    main()

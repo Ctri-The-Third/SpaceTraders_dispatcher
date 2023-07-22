@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .client import SpaceTradersClient
+from .client_interface import SpaceTradersClient
 from .utils import DATE_FORMAT, _url, post_and_validate
 from .models import SymbolClass
 from dataclasses import dataclass
@@ -20,7 +20,7 @@ class ContractDeliverGood(SymbolClass):
 # this should probably be its own thing
 
 
-class Contract(SpaceTradersClient):
+class Contract:
     id: str
     faction_symbol: str
     type: str
@@ -33,22 +33,12 @@ class Contract(SpaceTradersClient):
     expiration: datetime
     deadline_for_accept: datetime = None
     token: str = None
-    other_client: SpaceTradersClient = None
+    client: SpaceTradersClient = None
 
     def __init__(
         self,
         json_data: dict,
-        other_client: SpaceTradersClient = None,
-        token: str = None,
     ) -> None:
-        if token:
-            self.token = token
-        elif other_client:
-            self.token = other_client.token
-            self.other_client = other_client
-        else:
-            raise ValueError("No token provided")
-
         self.id = json_data["id"]
         self.faction_symbol = json_data["factionSymbol"]
         self.type = json_data["type"]
@@ -73,36 +63,5 @@ class Contract(SpaceTradersClient):
     def from_json(cls, json_data: dict):
         return cls(json_data)
 
-    def deliver(
-        self, ship_symbol, trade_symbol, units, ship_to_update: SpaceTradersClient
-    ):
-        # note - this doesn't update the ship's cargo.
-        """/my/contracts/:id/deliver"""
-        url = _url(f"/my/contracts/{self.id}/deliver")
-        data = {"shipSymbol": ship_symbol, "tradeSymbol": trade_symbol, "units": units}
-        headers = self._headers()
-        resp = post_and_validate(url, data, headers=headers)
-        if not resp:
-            print(f"failed to deliver to contract {resp.status_code}, {resp.error}")
-            return resp
-        self.update(resp.data)
-        ship_to_update.update(resp.data)
-        return resp
-
-    def fulfill(self):
-        """/my/contracts/:contractId/fulfill'"""
-        url = _url(f"/my/contracts/{self.id}/fulfill")
-        headers = self._headers()
-
-        resp = post_and_validate(url, headers=headers)
-        if not resp:
-            logging.warning(
-                f"failed to fulfill contract {resp.status_code}, {resp.error}"
-            )
-            return resp
-        self.update(resp.data)
-
     def update(self, json_data: dict):
-        if "contract" in json_data:
-            self.__init__(json_data["contract"], token=self.token)
-        self.other_client.update(json_data)
+        self.__init__(json_data)

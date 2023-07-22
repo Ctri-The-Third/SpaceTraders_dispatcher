@@ -1,4 +1,4 @@
-from spacetraders_v2.spacetraders import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
 from spacetraders_v2.contracts import Contract
@@ -7,6 +7,7 @@ import json
 from spacetraders_v2.utils import set_logging
 import logging
 import sys
+import math
 import threading
 
 logger = logging.getLogger("game-file")
@@ -25,7 +26,7 @@ def mine_until_full(ship: Ship, st: SpaceTraders, survey: Survey = None):
     while ship.cargo_units_used != ship.cargo_capacity:
         sleep(ship.seconds_until_cooldown + 1 + ship.nav.travel_time_remaining)
 
-        resp = ship.extract(survey)
+        resp = st.ship_extract(ship, survey)
 
         if not resp and resp.status_code != 409:
             # status code 409 means conflict, probably a cooldown, don't abort.
@@ -57,9 +58,7 @@ def sell_all_except(ship: Ship, seller: Agent, exceptions: list):
     for cargo in ship.cargo_inventory:
         if cargo.symbol in exceptions:
             continue
-        resp = ship.sell(cargo.symbol, cargo.units)
-        if resp:
-            seller.update(resp.data["agent"])
+        resp = st.ship_sell(ship, cargo.symbol, cargo.units)
     logging.info(
         "%s sold all cargo for %s credits, new total: %s",
         ship.name,
@@ -91,7 +90,7 @@ def validate_and_fulfill(contract: Contract):
     for deliverable in contract.deliverables:
         if deliverable.units_fulfilled < deliverable.units_required:
             return False
-    return contract.fulfill() is True
+    return contract.contract_fulfill() is True
 
 
 def extractor_quest_loop(
@@ -101,7 +100,7 @@ def extractor_quest_loop(
     mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
-    if ship.nav.waypoint_symbol != mining_site_wp:
+    if ship.nav.waypoint_symbol != mining_site_wp.symbol:
         ship.refuel()
         ship.move(mining_site_wp)
         if ship.can_survey:
@@ -111,34 +110,39 @@ def extractor_quest_loop(
         sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
         best_survey = st.find_survey_best(target_material)
 
-        if ship.can_extract:
-            resp = ship.extract(best_survey)
-            if resp:
-                logging.info(
-                    f"Extracted {resp.data['extraction']['yield']['symbol']}({resp.data['extraction']['yield']['units']}), used surve? {best_survey is not None} "
-                )
-
         for cargo in ship.cargo_inventory:
             if cargo.symbol == target_material:
                 for target_ship in viable_transports:
                     space = target_ship.cargo_capacity - target_ship.cargo_units_used
-                    if space == 0 or (
-                        ship.nav.waypoint_symbol != target_ship.nav.waypoint_symbol
+                    if (
+                        space == 0
+                        or (target_ship.nav.travel_time_remaining > 0)
+                        or (target_ship.nav.waypoint_symbol != ship.nav.waypoint_symbol)
                     ):
                         continue
-                    resp = ship.transfer_cargo(
-                        cargo.symbol,
-                        min(cargo.units, space),
-                        target_ship.name,
+                    if ship.nav.status != "IN_ORBIT":
+                        st.ship_orbit(ship)
+                    resp = st.ship_transfer_cargo(
+                        ship, cargo.symbol, min(cargo.units, space), target_ship.name
                     )
                     if resp:
-                        target_ship.force_update()
+                        target_ship.receive_cargo(cargo.symbol, cargo.units)
+                        st.update(target_ship)
+                        # we could do this ourselves
                         logging.info(
                             "Transferring %s cargo to %s",
                             min(cargo.units, space),
                             target_ship.name,
                         )
                         break
+                    else:
+                        logging.error(
+                            "Failed to transfer %s cargo to %s - %s",
+                            min(cargo.units, space),
+                            target_ship.name,
+                            resp.error,
+                        )
+
                 # transfer cargo to first available transport
 
         if ship.cargo_capacity == ship.cargo_units_used:
@@ -147,9 +151,24 @@ def extractor_quest_loop(
                 + ", ".join([d.symbol for d in ship.cargo_inventory])
                 + "]"
             )
-            ship.dock()
+            st.ship_dock(ship)
             # in the event that we try and transfer target but can't, we should keep it until the transport comes back
             sell_all_except(ship, st.current_agent, [target_material])
+
+        if ship.can_extract and ship.cargo_capacity > ship.cargo_units_used:
+            resp = st.ship_extract(ship, best_survey)
+            if resp:
+                logging.info(
+                    f"Extracted {resp.data['extraction']['yield']['symbol']}({resp.data['extraction']['yield']['units']}), used surve? {best_survey is not None} "
+                )
+            else:
+                sleep(ship.seconds_until_cooldown)
+        else:
+            # extractor that can't extract? shut it down.
+            st.ship_view_one(ship.name, True)
+
+            logging.error(f"Ship {ship.name} can't extract, pausing for 5 minutes.")
+            sleep(300)
 
 
 def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
@@ -157,42 +176,28 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
     target_material = contract.deliverables[0].symbol
     mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
 
-    if ship.cargo_capacity == ship.cargo_units_used - 1:
-        ship.move(target_site_wp)
+    if ship.cargo_units_used >= ship.cargo_capacity - 10:
+        st.ship_move(ship, target_site_wp)
     else:
-        ship.move(mining_site_wp)
+        st.ship_move(ship, mining_site_wp)
 
     counter = 0
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     while True:
-        counter += 1
         sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
-        if counter % 5 == 0:
-            ship.force_update()
 
-        if ship.can_survey:
-            if ship.survey():
-                best_survey = st.find_survey_best(target_material)
-                if best_survey is not None:
-                    hits = sum(
-                        1 for d in best_survey.deposits if d.symbol == target_material
-                    ) / len(best_survey.deposits)
-                    logging.info(
-                        "best survey to find %s is %s%%", target_material, hits
-                    )
-        else:
-            sleep(70)
-
+        ship = st.ships_view_one(ship.name, True)
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             logging.info("freighter full, returning to handin.")
-            ship.orbit()
-            ship.move(target_site_wp)
+            st.ship_orbit(ship)
+            st.ship_move(ship, target_site_wp)
             sleep(ship.nav.travel_time_remaining)
-            ship.dock()
-            ship.refuel()
+            st.ship_dock(ship)
+            st.ship_refuel(ship)
             for cargo in ship.cargo_inventory:
                 if cargo.symbol == target_material:
-                    contract.deliver(ship.name, target_material, cargo.units, ship)
+                    st.contracts_deliver(contract, ship, target_material, cargo.units)
+
                     break
             logging.info(
                 "contract delivered, %s of %s",
@@ -200,28 +205,52 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
                 contract.deliverables[0].units_required,
             )
             validate_and_fulfill(contract)
-            ship.orbit()
-            ship.move(mining_site_wp)
+            st.ship_orbit(ship)
+            st.ship_move(ship, mining_site_wp)
             sleep(ship.nav.travel_time_remaining)
             sell_all(ship, st.current_agent)
             sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+        if ship.can_survey:
+            if st.ship_survey(ship):
+                best_survey = st.find_survey_best(target_material)
+                if best_survey is not None:
+                    hits = sum(
+                        1 for d in best_survey.deposits if d.symbol == target_material
+                    ) / len(best_survey.deposits)
+                    logging.info(
+                        "best survey to find %s is %s%% - ship cargo %s/%s",
+                        target_material,
+                        hits,
+                        ship.cargo_units_used,
+                        ship.cargo_capacity,
+                    )
+
+            else:
+                sleep(70)
+        else:
+            sleep(30)
 
 
 def master(st: SpaceTraders, contract: Contract):
     # start the drones
-    ships = st.view_my_ships()
-    ships_and_threads = {}
-
+    st.view_my_self()
+    ships = st.ships_view()
+    extractors_and_threads = {}
+    surveyors_and_threads = {}
     viable_transports = []
+    target_extractors = 40
+    target_surveyors = math.floor(target_extractors / 10)
     for ship in ships.values():
-        if ship.role in ["COMMAND"]:
+        if ship.role in ["HAULER"]:
             thread = threading.Thread(
                 target=surveyor_quest_loop, args=(ship, st, contract), name=ship.name
             )
             viable_transports.append(ship)
-            ships_and_threads[ship.name] = thread
+            surveyors_and_threads[ship.name] = thread
             thread.start()
-            sleep(10)
+            if len(surveyors_and_threads) >= target_surveyors:
+                break
+            sleep(20)
 
     for ship in ships.values():
         if ship.role in ["EXCAVATOR"]:
@@ -230,12 +259,15 @@ def master(st: SpaceTraders, contract: Contract):
                 args=(ship, st, contract, viable_transports),
                 name=ship.name,
             )
-            ships_and_threads[ship.name] = thread
+            extractors_and_threads[ship.name] = thread
+
             thread.start()
-            sleep(10)
+            if len(extractors_and_threads) >= target_extractors:
+                break
+            sleep(5)
 
     # prepare buy loop
-    shipyard_wp = st.find_waypoint_by_trait(
+    shipyard_wp = st.find_waypoints_by_trait_one(
         list(ships.values())[0].nav.system_symbol, "SHIPYARD"
     )
     avail_ships = st.view_available_ships_details(shipyard_wp)
@@ -244,26 +276,50 @@ def master(st: SpaceTraders, contract: Contract):
             "failed to get available ships - will be unable to purchase new ships in this execution"
         )
 
-    cost = 999999999
+    drone_cost = hauler_cost = 999999999
     if avail_ships and "SHIP_MINING_DRONE" in avail_ships:
         drone = avail_ships["SHIP_MINING_DRONE"]
         drone: ShipyardShip
-        cost = drone.purchase_price
-    while len(st.ships) < 30:
-        sleep(300)
-        agent = st.view_my_self(True)
-        if agent.credits >= cost * 2 or len(st.ships) == 1:
-            new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
-            if not new_ship:
-                logger.error("failed to purchase new ship")
-            thread = threading.Thread(
-                target=extractor_quest_loop,
-                args=(new_ship, st, contract, viable_transports),
-                name=new_ship.name,
-            )
+        drone_cost = drone.purchase_price
+    if avail_ships and "SHIP_LIGHT_HAULER" in avail_ships:
+        hauler = avail_ships["SHIP_LIGHT_HAULER"]
+        hauler: ShipyardShip
+        hauler_cost = hauler.purchase_price
 
-            ships_and_threads[new_ship.name] = thread
-            thread.start()
+    agent = st.view_my_self(True)
+
+    while (
+        len(extractors_and_threads) < target_extractors
+        or len(surveyors_and_threads) < target_surveyors
+    ):
+        if len(extractors_and_threads) < target_extractors:
+            if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
+                new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
+                if not new_ship:
+                    logger.error("failed to purchase new ship")
+                thread = threading.Thread(
+                    target=extractor_quest_loop,
+                    args=(new_ship, st, contract, viable_transports),
+                    name=new_ship.name,
+                )
+
+                extractors_and_threads[new_ship.name] = thread
+                thread.start()
+
+        if len(extractors_and_threads) / 10 > len(surveyors_and_threads):
+            if agent.credits >= hauler_cost:
+                new_ship = st.ship_purchase(shipyard_wp, "SHIP_LIGHT_HAULER")
+                if not new_ship:
+                    logger.error("failed to purchase new ship")
+                thread = threading.Thread(
+                    target=surveyor_quest_loop,
+                    args=(new_ship, st, contract),
+                    name=new_ship.name,
+                )
+                viable_transports.append(new_ship)
+                surveyors_and_threads[new_ship.name] = thread
+                thread.start()
+        sleep(300)
 
 
 if __name__ == "__main__":
@@ -278,7 +334,13 @@ if __name__ == "__main__":
     for user in users["agents"]:
         if user["username"] == tar_username:
             found_user = user
-    st = SpaceTraders(found_user["token"])
+    st = SpaceTraders(
+        found_user["token"],
+        db_host=users["db_host"],
+        db_name=users["db_name"],
+        db_user=users["db_user"],
+        db_pass=users["db_pass"],
+    )
     contracts = list(
         c
         for c in st.view_my_contracts().values()
@@ -295,5 +357,6 @@ if __name__ == "__main__":
     print(
         f"contract remaining: {contract.deliverables[0].symbol}: {contract.deliverables[0].units_fulfilled} / {contract.deliverables[0].units_required}"
     )
+    status = st.game_status()
 
     master(st, contract)

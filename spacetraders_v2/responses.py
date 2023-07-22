@@ -1,6 +1,8 @@
 import requests
-from typing import Protocol
-import json 
+import json
+from typing import Protocol, runtime_checkable
+from json import JSONDecodeError
+import logging
 
 # We have just turn the Ship into a client (so it can do things like move, buy sell)
 # however now it also needs responses, which has caused a circular import.
@@ -12,6 +14,7 @@ import json
 # I've looked at a couple of libraries by peers. In one case, they don't bother with a custom Response class at all, they just .update() the ship based on the json.
 # as a design pattern, this avoids the circular import and lets the ship remain an interactive
 # as such, I'm keeping these classes for posterity, but going to switch to the update/ from_json pattern.
+@runtime_checkable
 class SpaceTradersResponse(Protocol):
     data: dict
     response_json: dict
@@ -28,15 +31,21 @@ class RemoteSpaceTradersRespose:
 
     def __init__(self, response: requests.Response):
         self.data = {}
-        try: 
-            self.response_json = response.json() if response.content else {}
-        except:
-            self.logger.error("json decode error %s %s %s", response.status_code, url, response.content)
-            self.response_json = {}
-            
+
         self.error = None
         self.status_code = response.status_code
         self.error_code = None
+        try:
+            self.response_json = json.loads(response.content)
+        except JSONDecodeError:
+            self.response_json = {}
+            logging.error(
+                "SPACE TRADERS REPSONSE DIDN'T HAVE VALID JSON URL: %s,  status code: %s, received content: %s",
+                response.url,
+                response.status_code,
+                response.content,
+            )
+
         if "error" in self.response_json:
             self.error_parse()
         else:

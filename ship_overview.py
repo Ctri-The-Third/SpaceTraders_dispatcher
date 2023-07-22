@@ -5,7 +5,7 @@ from textual.widget import Widget
 from textual.reactive import Reactive
 from textual.containers import ScrollableContainer, Container
 from textual.css.query import NoMatches
-from spacetraders_v2.spacetraders import SpaceTraders
+from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from spacetraders_v2.ship import Ship
 import json
 import sys
@@ -125,7 +125,7 @@ class ShipDetail(Static):
     def update(self, ship: Ship):
         self.ship = ship
 
-        ship._check_cooldown()
+        # ship._check_cooldown()
         pb = self.query_one(f"#{self.ship.name}_progressbar")
         pb: ProgressBar
         pb.update(total=ship.cargo_capacity, progress=ship.cargo_units_used)
