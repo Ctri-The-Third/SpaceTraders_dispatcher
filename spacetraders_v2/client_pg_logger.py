@@ -188,7 +188,7 @@ class SpaceTradersPostgresLoggerClient:
         self.log_event("ship_dock", ship.name, url, response)
         pass
 
-    def ship_refuel(self, ship: "ship", response=None) -> SpaceTradersResponse:
+    def ship_refuel(self, ship: "Ship", response=None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/refuel"""
         url = _url(f"my/ships/:ship_name/refuel")
         self.log_event("ship_refuel", ship.name, url, response)

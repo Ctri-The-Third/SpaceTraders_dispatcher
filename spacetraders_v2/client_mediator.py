@@ -577,7 +577,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 None, 200, "Ship is already in orbit", "client_mediator.ship_orbit()"
             )
         resp = self.api_client.ship_orbit(ship)
-        self.logging_client.ship_orbit(resp)
+        self.logging_client.ship_orbit(ship, resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -586,7 +586,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
         resp = self.api_client.ship_change_course(ship, dest_waypoint_symbol)
-        self.logging_client.ship_change_course(resp)
+        self.logging_client.ship_change_course(ship, resp)
         if resp:
             ship.update(resp)
 
@@ -638,7 +638,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_dock(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/dock"""
         resp = self.api_client.ship_dock(ship)
-        self.api_client.ship_dock(ship)
+        self.logging_client.ship_dock(ship, resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -647,7 +647,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_refuel(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/refuel"""
         resp = self.api_client.ship_refuel(ship)
-        self.logging_client.ship_refuel(resp)
+        self.logging_client.ship_refuel(ship, resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
