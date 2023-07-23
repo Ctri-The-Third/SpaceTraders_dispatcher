@@ -13,7 +13,7 @@ def get_best_buy_price(st: SpaceTraders, trade_symbol):
 
 
 def master(st: SpaceTraders):
-    ship = st.view_my_ships_one("CTRI-1")
+    ship = st.view_my_ships_one("CTRI-2")
     contracts = st.view_my_contracts()
     for contract in contracts.values():
         contract: Contract
@@ -65,6 +65,7 @@ if __name__ == "__main__":
         db_name=users["db_name"],
         db_user=users["db_user"],
         db_pass=users["db_pass"],
+        db_port=users["db_port"],
     )
 
     master(st)

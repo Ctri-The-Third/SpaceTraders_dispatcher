@@ -358,8 +358,14 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}"""
-        dummy_response(__class__.__name__, "ships_view_one")
-        pass
+        ships = self.ships_view()
+        ship = ships.get(
+            symbol,
+            LocalSpaceTradersRespose(
+                "Ship not found in DB", 0, 404, "client_postgres.ships_view_one"
+            ),
+        )
+        return ship
 
     def contracts_deliver(
         self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int

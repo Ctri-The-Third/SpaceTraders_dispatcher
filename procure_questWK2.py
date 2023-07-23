@@ -92,7 +92,7 @@ def validate_and_fulfill(contract: Contract):
     for deliverable in contract.deliverables:
         if deliverable.units_fulfilled < deliverable.units_required:
             return False
-    return contract.contract_fulfill() is True
+    return st.contracts_fulfill(contract) is True
 
 
 def extractor_quest_loop(

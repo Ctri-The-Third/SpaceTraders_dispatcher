@@ -28,6 +28,7 @@ if __name__ == "__main__":
         db_name=users["db_name"],
         db_user=users["db_user"],
         db_pass=users["db_pass"],
+        db_port=users["db_port"],
     )
     status = st.game_status()
 

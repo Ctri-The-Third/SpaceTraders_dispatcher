@@ -623,7 +623,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         #
         resp = self.api_client.ship_extract(ship, survey)
         self.logging_client.ship_extract(ship, survey, resp)
-        if resp:
+        if resp.data is not None:
             ship.update(resp.data)
             self.db_client.update(ship)
         if not resp:
@@ -708,7 +708,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.logging_client.contracts_deliver(contract, ship, trade_symbol, units, resp)
         if resp:
             self.update(resp.data)
-            contract.update(resp.data)
+            contract.update(resp.data.get("contract", {}))
             ship.update(resp.data)
             self.db_client.update(ship)
 
