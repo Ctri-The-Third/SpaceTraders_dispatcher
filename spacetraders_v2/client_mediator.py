@@ -190,7 +190,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = post_and_validate(url, data, headers=self._headers())
         if not resp:
             return resp
-        new_ship = Ship(resp.data["ship"], self)
+        new_ship = Ship.from_json(resp.data)
         self.ships[new_ship.name] = new_ship
         self.db_client.update(new_ship)
         return new_ship

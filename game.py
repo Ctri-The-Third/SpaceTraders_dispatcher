@@ -291,6 +291,6 @@ Credits: \t {me.credits}
 
 if __name__ == "__main__":
     # subprocess.call(["setup.bat"], shell=True)
-    register_and_store_user("O2O")
+    register_and_store_user("CTRI")
     # menu()
     main()
