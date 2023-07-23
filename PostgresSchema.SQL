@@ -32,7 +32,7 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT ALL ON SCHEMA public TO postgres;
 
 GRANT ALL ON SCHEMA public TO spacetraders;
---
+<<<<M--
 -- PostgreSQL database dump
 --
 
@@ -309,6 +309,12 @@ ALTER TABLE ONLY public.waypoint_traits
     ADD CONSTRAINT waypoint_traits_pkey PRIMARY KEY (waypoint, symbol);
 
 
+--
+-- TOC entry 3227 (class 2620 OID 16497)
+-- Name: ship update_a_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
+--
+
+CREATE TRIGGER update_a_last_updated AFTER UPDATE ON public.ship FOR EACH ROW EXECUTE FUNCTION public.update_last_updated();
 
 
 --
@@ -345,48 +351,3 @@ GRANT ALL ON TABLE public.systems TO spacetraders;
 --
 -- PostgreSQL database dump complete
 --
-
-
--- Table: public.logging
-
--- DROP TABLE public.logging;
-
-CREATE TABLE IF NOT EXISTS public.logging
-(
-    event_name text COLLATE pg_catalog."default" NOT NULL,
-    event_timestamp text COLLATE pg_catalog."default" NOT NULL,
-    ship_name text COLLATE pg_catalog."default" NOT NULL,
-    session_id text COLLATE pg_catalog."default",
-    endpoint_name text COLLATE pg_catalog."default",
-    credits_change integer,
-    status_code integer,
-    CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_name)
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE public.logging
-    OWNER to spacetraders;
-
-
--- View: public.session_stats
-
--- DROP VIEW public.session_stats;
-
-CREATE OR REPLACE VIEW public.session_stats
- AS
- SELECT DISTINCT lo.session_id,
-    count(*) OVER (PARTITION BY lo.session_id) AS events,
-    count(
-        CASE
-            WHEN lo.status_code > 400 THEN 1
-            ELSE NULL::integer
-        END) OVER (PARTITION BY lo.session_id) AS wasted_requests,
-    min(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp) AS start_t,
-    max(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) - min(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp) AS script_uptime,
-    last_value(lo.credits_change) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) - first_value(lo.credits_change) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) AS credit_changed
-   FROM logging lo;
-
-ALTER TABLE public.session_stats
-    OWNER TO spacetraders;
-
