@@ -1,5 +1,5 @@
-from spacetraders_v2.models import Waypoint
-from spacetraders_v2.responses import SpaceTradersResponse
+from .models import Waypoint
+from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .utils import (

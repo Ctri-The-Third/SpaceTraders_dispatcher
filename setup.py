@@ -1,18 +1,15 @@
-import setuptools
-from spacetraders_v2.__version__ import VERSION
+# depreciated, using python-build with a pyproject.toml instead
 
+import setuptools
+from setuptools import find_packages
 
 setuptools.setup(
-    name="spacetraders",
-    version=VERSION,
-    description="Python library for SpaceTraders API",
-    url="https://github.com/Ctri-The-Third/SpaceTraders",
-    author="C'tri",
-    author_email="python_packages@ctri.com",
-    license="Apache License 2.0",
-    packages=["spacetraders"],
-    package_dir={"spacetraders": "spacetraders_v2"},
+    version="0.2.0",
+    packages=find_packages(where="spacetraders_v2"),
+    package_dir={
+        "": "spacetraders_v2",
+        "pg_upserts": "spacetraders_v2\pg_upserts",
+    },
     classifiers=["Programming Language :: Python :: 3.10"],
-    install_requires=["requests==2.31.0"],
     python_requires=">=3.10",
 )

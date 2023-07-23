@@ -1,7 +1,6 @@
 import requests
 import logging
 import urllib.parse
-import aiohttp
 from dataclasses import dataclass
 from logging import FileHandler, StreamHandler
 from sys import stdout
@@ -88,18 +87,6 @@ def get_and_validate(
                 "SpaceTraders Server error: %s, %s", url, response.status_code
             )
         return RemoteSpaceTradersRespose(response)
-
-
-async def get_and_validate_async(url, params=None, headers=None):
-    "wraps the aiohttp.get function to make it easier to use"
-    attempts = 0
-    try:
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(url, params=params, headers=headers, timeout=5)
-
-    except aiohttp.ClientError as err:
-        logging.error("Async ClientError: %s, %s", url, err)
-        return None
 
 
 def rate_limit_check(response: requests.Response):

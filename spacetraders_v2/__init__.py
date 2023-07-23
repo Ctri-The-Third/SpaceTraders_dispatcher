@@ -1,3 +1,5 @@
 """Wrapper for the Space Traders API."""
+print("HELLO!")
+
 from .client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from .contracts import Contract
+import pg_upserts
