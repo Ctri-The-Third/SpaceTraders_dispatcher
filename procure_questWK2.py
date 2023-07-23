@@ -103,8 +103,8 @@ def extractor_quest_loop(
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     if ship.nav.waypoint_symbol != mining_site_wp.symbol:
-        ship.refuel()
-        ship.move(mining_site_wp)
+        st.ship_refuel(ship)
+        st.ship_move(ship, mining_site_wp)
         if ship.can_survey:
             survey_until_hit(ship, target_material)
 
