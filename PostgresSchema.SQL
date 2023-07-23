@@ -32,14 +32,14 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 GRANT ALL ON SCHEMA public TO postgres;
 
 GRANT ALL ON SCHEMA public TO spacetraders;
-
+--
 -- PostgreSQL database dump
 --
 
 -- Dumped from database version 15.3
 -- Dumped by pg_dump version 15.3
 
--- Started on 2023-07-21 17:57:52
+-- Started on 2023-07-23 16:24:52
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -53,7 +53,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 224 (class 1255 OID 16496)
+-- TOC entry 226 (class 1255 OID 16496)
 -- Name: update_last_updated(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -72,6 +72,26 @@ ALTER FUNCTION public.update_last_updated() OWNER TO postgres;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- TOC entry 224 (class 1259 OID 16526)
+-- Name: logging; Type: TABLE; Schema: public; Owner: spacetraders
+--
+
+CREATE TABLE public.logging (
+    event_name text NOT NULL,
+    event_timestamp timestamp without time zone NOT NULL,
+    ship_name text NOT NULL,
+    session_id text,
+    endpoint_name text,
+    new_credits integer,
+    status_code integer,
+    error_code integer,
+    event_params json
+);
+
+
+ALTER TABLE public.logging OWNER TO spacetraders;
 
 --
 -- TOC entry 217 (class 1259 OID 16453)
@@ -118,6 +138,27 @@ CREATE TABLE public.market_tradegood_listing (
 
 
 ALTER TABLE public.market_tradegood_listing OWNER TO spacetraders;
+
+--
+-- TOC entry 225 (class 1259 OID 16534)
+-- Name: session_stats; Type: VIEW; Schema: public; Owner: spacetraders
+--
+
+CREATE VIEW public.session_stats AS
+ SELECT DISTINCT lo.session_id,
+    count(*) OVER (PARTITION BY lo.session_id) AS events,
+    count(
+        CASE
+            WHEN (lo.status_code > 400) THEN 1
+            ELSE NULL::integer
+        END) OVER (PARTITION BY lo.session_id) AS wasted_requests,
+    min(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp) AS start_t,
+    (max(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) - min(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp)) AS script_uptime,
+    (last_value(lo.new_credits) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) - first_value(lo.new_credits) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC)) AS credit_changed
+   FROM public.logging lo;
+
+
+ALTER TABLE public.session_stats OWNER TO spacetraders;
 
 --
 -- TOC entry 221 (class 1259 OID 16481)
@@ -229,7 +270,16 @@ CREATE TABLE public.waypoints (
 ALTER TABLE public.waypoints OWNER TO spacetraders;
 
 --
--- TOC entry 3214 (class 2606 OID 16459)
+-- TOC entry 3236 (class 2606 OID 16532)
+-- Name: logging logging_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+--
+
+ALTER TABLE ONLY public.logging
+    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_name);
+
+
+--
+-- TOC entry 3222 (class 2606 OID 16459)
 -- Name: market market_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -238,7 +288,7 @@ ALTER TABLE ONLY public.market
 
 
 --
--- TOC entry 3216 (class 2606 OID 16466)
+-- TOC entry 3224 (class 2606 OID 16466)
 -- Name: market_tradegood market_tradegood_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -247,7 +297,7 @@ ALTER TABLE ONLY public.market_tradegood
 
 
 --
--- TOC entry 3224 (class 2606 OID 16494)
+-- TOC entry 3232 (class 2606 OID 16494)
 -- Name: ship_nav ship_nav_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -256,7 +306,7 @@ ALTER TABLE ONLY public.ship_nav
 
 
 --
--- TOC entry 3222 (class 2606 OID 16487)
+-- TOC entry 3230 (class 2606 OID 16487)
 -- Name: ship ship_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -265,7 +315,7 @@ ALTER TABLE ONLY public.ship
 
 
 --
--- TOC entry 3220 (class 2606 OID 16480)
+-- TOC entry 3228 (class 2606 OID 16480)
 -- Name: shipyard_types shipyard_types_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -274,7 +324,7 @@ ALTER TABLE ONLY public.shipyard_types
 
 
 --
--- TOC entry 3226 (class 2606 OID 16506)
+-- TOC entry 3234 (class 2606 OID 16506)
 -- Name: systems systems_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -283,7 +333,7 @@ ALTER TABLE ONLY public.systems
 
 
 --
--- TOC entry 3218 (class 2606 OID 16473)
+-- TOC entry 3226 (class 2606 OID 16473)
 -- Name: market_tradegood_listing tradegoods_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -292,7 +342,7 @@ ALTER TABLE ONLY public.market_tradegood_listing
 
 
 --
--- TOC entry 3210 (class 2606 OID 16445)
+-- TOC entry 3218 (class 2606 OID 16445)
 -- Name: waypoints waypoint_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -301,7 +351,7 @@ ALTER TABLE ONLY public.waypoints
 
 
 --
--- TOC entry 3212 (class 2606 OID 16452)
+-- TOC entry 3220 (class 2606 OID 16452)
 -- Name: waypoint_traits waypoint_traits_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
@@ -310,7 +360,7 @@ ALTER TABLE ONLY public.waypoint_traits
 
 
 --
--- TOC entry 3227 (class 2620 OID 16497)
+-- TOC entry 3237 (class 2620 OID 16497)
 -- Name: ship update_a_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
 --
 
@@ -318,7 +368,7 @@ CREATE TRIGGER update_a_last_updated AFTER UPDATE ON public.ship FOR EACH ROW EX
 
 
 --
--- TOC entry 3228 (class 2620 OID 16498)
+-- TOC entry 3238 (class 2620 OID 16498)
 -- Name: ship update_ship_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
 --
 
@@ -326,7 +376,7 @@ CREATE TRIGGER update_ship_last_updated AFTER UPDATE ON public.ship FOR EACH ROW
 
 
 --
--- TOC entry 3376 (class 0 OID 0)
+-- TOC entry 3387 (class 0 OID 0)
 -- Dependencies: 5
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
 --
@@ -338,7 +388,7 @@ GRANT ALL ON SCHEMA public TO spacetraders;
 
 
 --
--- TOC entry 3377 (class 0 OID 0)
+-- TOC entry 3388 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: TABLE systems; Type: ACL; Schema: public; Owner: postgres
 --
@@ -346,8 +396,9 @@ GRANT ALL ON SCHEMA public TO spacetraders;
 GRANT ALL ON TABLE public.systems TO spacetraders;
 
 
--- Completed on 2023-07-21 17:57:53
+-- Completed on 2023-07-23 16:24:52
 
 --
 -- PostgreSQL database dump complete
 --
+
