@@ -59,6 +59,8 @@ def sell_all_except(ship: Ship, seller: Agent, exceptions: list):
         if cargo.symbol in exceptions:
             continue
         resp = st.ship_sell(ship, cargo.symbol, cargo.units)
+        if not resp:
+            logging.error("FAILED TO SELL CARGO %s", resp.error)
     logging.info(
         "%s sold all cargo for %s credits, new total: %s",
         ship.name,
@@ -165,8 +167,10 @@ def extractor_quest_loop(
                 sleep(ship.seconds_until_cooldown)
         else:
             # extractor that can't extract? shut it down.
-            ship = st.ships_view_one(ship.name, True)
 
+            resp = st.ships_view_one(ship.name, True)
+            if resp and isinstance(resp, Ship):
+                ship = resp
             logging.error(f"Ship {ship.name} can't extract, pausing for 5 minutes.")
             sleep(300)
 
@@ -186,7 +190,9 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
     while True:
         sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
 
-        ship = st.ships_view_one(ship.name, True)
+        resp = st.ships_view_one(ship.name, True)
+        if resp and isinstance(resp, Ship):
+            ship = resp
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             logging.info("freighter full, returning to handin.")
             st.ship_orbit(ship)
@@ -342,6 +348,8 @@ if __name__ == "__main__":
         db_pass=users["db_pass"],
         db_port=users["db_port"],
     )
+    agent = st.view_my_self(True)
+    st.logging_client.log_beginning("procure-quest (Week2)", agent.credits)
     contracts = list(
         c
         for c in st.view_my_contracts().values()

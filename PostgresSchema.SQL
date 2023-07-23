@@ -367,3 +367,26 @@ TABLESPACE pg_default;
 
 ALTER TABLE public.logging
     OWNER to spacetraders;
+
+
+-- View: public.session_stats
+
+-- DROP VIEW public.session_stats;
+
+CREATE OR REPLACE VIEW public.session_stats
+ AS
+ SELECT DISTINCT lo.session_id,
+    count(*) OVER (PARTITION BY lo.session_id) AS events,
+    count(
+        CASE
+            WHEN lo.status_code > 400 THEN 1
+            ELSE NULL::integer
+        END) OVER (PARTITION BY lo.session_id) AS wasted_requests,
+    min(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp) AS start_t,
+    max(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) - min(lo.event_timestamp) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp) AS script_uptime,
+    last_value(lo.credits_change) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) - first_value(lo.credits_change) OVER (PARTITION BY lo.session_id ORDER BY lo.event_timestamp DESC) AS credit_changed
+   FROM logging lo;
+
+ALTER TABLE public.session_stats
+    OWNER TO spacetraders;
+

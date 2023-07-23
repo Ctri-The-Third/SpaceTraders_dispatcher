@@ -77,7 +77,6 @@ def get_and_validate(
             return None
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
@@ -111,7 +110,6 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
 
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
@@ -134,7 +132,6 @@ def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersR
             return None
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
