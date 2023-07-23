@@ -37,6 +37,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_name=None,
         db_user=None,
         db_pass=None,
+        db_port=None,
         current_agent_symbol=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_name=db_name,
                 db_user=db_user,
                 db_pass=db_pass,
+                db_port=db_port,
                 current_agent_symbol=current_agent_symbol,
             )
         else:

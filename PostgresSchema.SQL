@@ -346,3 +346,24 @@ GRANT ALL ON TABLE public.systems TO spacetraders;
 -- PostgreSQL database dump complete
 --
 
+
+-- Table: public.logging
+
+-- DROP TABLE public.logging;
+
+CREATE TABLE IF NOT EXISTS public.logging
+(
+    event_name text COLLATE pg_catalog."default" NOT NULL,
+    event_timestamp text COLLATE pg_catalog."default" NOT NULL,
+    ship_name text COLLATE pg_catalog."default" NOT NULL,
+    session_id text COLLATE pg_catalog."default",
+    endpoint_name text COLLATE pg_catalog."default",
+    credits_change integer,
+    status_code integer,
+    CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_name)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE public.logging
+    OWNER to spacetraders;

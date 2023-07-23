@@ -26,12 +26,22 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     current_agent_symbol: str = None
 
     def __init__(
-        self, db_host, db_name, db_user, db_pass, current_agent_symbol
+        self,
+        db_host,
+        db_name,
+        db_user,
+        db_pass,
+        current_agent_symbol,
+        db_port=None,
     ) -> None:
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
         self.connection = psycopg2.connect(
-            host=db_host, database=db_name, user=db_user, password=db_pass
+            host=db_host,
+            port=db_port,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
         )
         self.current_agent_symbol = current_agent_symbol
         self.connection.autocommit = True

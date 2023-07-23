@@ -12,7 +12,7 @@ from spacetraders_v2.models import Waypoint, WaypointTrait
 # TODO: replace this with a method that creates a new one.
 
 TESTING_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiTzJPIiwidmVyc2lvbiI6InYyIiwicmVzZXRfZGF0ZSI6IjIwMjMtMDctMTUiLCJpYXQiOjE2ODk2MzIzMjIsInN1YiI6ImFnZW50LXRva2VuIn0.LyQndn7-Cybq2kWFEh7MlW6mjGo70WoTXiLvVm1uyVY4u2uNYHcrQyHjdBUgTppXLR4_3HRs9xZZpCChMHnmzTooJawFWnilaqLy99o-UOK1U3SuMwUxOo4fV7yMUwf6xtF_jZxG4uuAEq11ipK3cNXOUYGVrdbb4NlIBW9bmCpygtpSSziKbrx4SXGIUEHafYYefNjwdaOazXsBT_dpUIfsHypt02yYheR_LocoC5KBmZekCdoP4yylK3fy5-tCfUOzyGyWciSBVM3Ut6o39sKipzlhbK_2PRTMVEY-8Ab1YRaeKBCPnVPLnz4ncMSiOjeVaims-9zuKKon75AGmw"
-HEADQUARTERS_WAYPOINT = "X1-MP2-12220Z"
+HEADQUARTERS_WAYPOINT = "X1-JF24-06790Z"
 HEADQUARTERS_SYSTEM = "X1-JF24"
 SHIPYARD_WAYPOINT = "X1-JF24-73757X"
 SAMPLE_SHIP_JSON = {
@@ -140,6 +140,7 @@ def clients():
         SpaceTradersMediatorClient(
             token=token,
             db_host=os.environ.get("ST_HOST_NAME", "localhost"),
+            db_port=os.environ.get("ST_DB_PORT", 5432),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
@@ -147,6 +148,7 @@ def clients():
         ),
         SpaceTradersPostgresClient(
             db_host=os.environ.get("ST_HOST_NAME", "localhost"),
+            db_port=os.environ.get("ST_DB_PORT", 5432),
             db_name=os.environ.get("ST_DB_NAME", "spacetraders"),
             db_user=os.environ.get("ST_DB_USER", "spacetraders"),
             db_pass=os.environ.get("ST_DB_PASSWORD", "spacetraders"),
@@ -180,8 +182,8 @@ def test_waypoints_view_one(st: SpaceTradersClient, STARTING_SYSTEM):
     waypoint = st.waypoints_view_one(STARTING_SYSTEM, HEADQUARTERS_WAYPOINT)
     assert waypoint.symbol == HEADQUARTERS_WAYPOINT
     assert waypoint.type == "PLANET"
-    assert waypoint.x == 7
-    assert waypoint.y == 25
+    assert waypoint.x == 8
+    assert waypoint.y == -22
     assert len(waypoint.traits) == 5
     assert isinstance(waypoint, Waypoint)
 
@@ -220,3 +222,7 @@ def test_ships_view(st: SpaceTradersClient):
     for key, ship in ships.items():
         assert isinstance(key, str)
         assert isinstance(ship, Ship)
+
+
+if __name__ == "__MAIN__":
+    connections = clients()

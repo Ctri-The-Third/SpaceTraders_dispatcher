@@ -23,7 +23,7 @@
             "name": "Python: procure_quest",
             "type": "python",
             "request": "launch",
-            "program": "procure_quest.py",
+            "program": "procure_questWK2.py",
             "args": [
                 "CTRI"
             ],

@@ -165,7 +165,7 @@ def extractor_quest_loop(
                 sleep(ship.seconds_until_cooldown)
         else:
             # extractor that can't extract? shut it down.
-            st.ship_view_one(ship.name, True)
+            ship = st.ships_view_one(ship.name, True)
 
             logging.error(f"Ship {ship.name} can't extract, pausing for 5 minutes.")
             sleep(300)
@@ -340,6 +340,7 @@ if __name__ == "__main__":
         db_name=users["db_name"],
         db_user=users["db_user"],
         db_pass=users["db_pass"],
+        db_port=users["db_port"],
     )
     contracts = list(
         c
