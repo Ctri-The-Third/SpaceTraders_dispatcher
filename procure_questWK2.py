@@ -247,7 +247,7 @@ def master(st: SpaceTraders, contract: Contract):
     target_extractors = 40
     target_surveyors = math.floor(target_extractors / 10)
     for ship in ships.values():
-        if ship.role in ["HAULER"]:
+        if ship.role in ["HAULER", "COMMAND"]:
             thread = threading.Thread(
                 target=surveyor_quest_loop, args=(ship, st, contract), name=ship.name
             )

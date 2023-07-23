@@ -95,7 +95,7 @@ class SpaceTradersPostgresLoggerClient:
         return
 
     def waypoints_view(
-        self, system_symbol: str
+        self, system_symbol: str, response=None
     ) -> dict[str:list] or SpaceTradersResponse:
         """view all waypoints in a system. Uses cached values by default.
 
@@ -106,7 +106,7 @@ class SpaceTradersPostgresLoggerClient:
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
         endpoint = f"systems/{system_symbol}/waypoints/"
-        self.log_event("waypoints_view", "GLOBAL", endpoint)
+        self.log_event("waypoints_view", "GLOBAL", endpoint, response)
 
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
