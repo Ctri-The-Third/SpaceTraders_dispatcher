@@ -105,13 +105,13 @@ class SpaceTradersClient:
     def ship_orbit(self, ship, response=None) -> SpaceTradersResponse:
         
         
-        url = _url(f"my/ships/{ship.name}/orbit")
+        url = _url(f"my/ships/:ship_name/orbit")
         self._log("ship_orbit", ship.name, url, response)
         pass    
 
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str, response=None):
         """my/ships/:shipSymbol/course"""
-        url = _url(f"my/ships/{ship.name}/navigate")
+        url = _url(f"my/ships/:ship_name/navigate")
         self._log("ship_change_course", ship.name, url, response)
         pass
 
@@ -119,25 +119,27 @@ class SpaceTradersClient:
         self, ship: "Ship", dest_waypoint_symbol: str, response=None
     ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/navigate"""
-        url = _url(f"my/ships/{ship.name}/navigate")
+        url = _url(f"my/ships/:ship_name/navigate")
         self._log("ship_move", ship.name, url, response)
 
         pass
 
     def ship_extract(self, ship: "Ship", survey: Survey = None, response = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
-        url=_url(f"my/ships/{ship.name}/extract")
+        url=_url(f"my/ships/:ship_name/extract")
         self._log("ship_extract", ship.name, url, response)
         pass
 
     def ship_dock(self, ship: "Ship", response=None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
-        url=_url(f"my/ships/{ship.name}/dock")
+        url=_url(f"my/ships/:ship_name/dock")
         self._log("ship_dock", ship.name, url, response)
         pass
 
     def ship_refuel(self, ship: "ship", response=None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/refuel"""
+        url=_url(f"my/ships/:ship_name/refuel")
+        self._log("ship_refuel", ship.name, url, response)
         pass
 
     def ship_sell(
@@ -145,57 +147,80 @@ class SpaceTradersClient:
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/sell"""
 
+        url=_url(f"my/ships/:ship_name/sell")
+        self._log("ship_sell", ship.name, url, response)
+        
         pass
 
     def ship_survey(self, ship: "ship", response=None) -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
-
+        url=_url(f"my/ships/:ship_name/survey")
+        self._log("ship_survey", ship.name, url, response)
         pass
 
     def ship_transfer_cargo(
         self, ship: "Ship", trade_symbol, units, target_ship_name, response=None
     ) -> SpaceTradersResponse:
+        url=_url(f"my/ships/:ship_name/transfer")
+        self._log("ship_transfer_cargo", ship.name, url, response)
+
         """/my/ships/{shipSymbol}/transfer"""
 
         pass
 
     def system_market(self, wp: Waypoint, response=None) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
-
+        url=_url(f"game/systems/{wp.system}/marketplace")
+        self._log("system_market", "GLOBAL", url, response)
         pass
 
     def systems_list_all(self, response=None) -> dict[str:"System"] or SpaceTradersResponse:
         """/game/systems"""
-
+        url=_url(f"game/systems")
+        self._log("systems_list_all", "GLOBAL", url, response)
         pass
 
     def system_shipyard(self, waypoint: Waypoint, response=None) -> Shipyard or SpaceTradersResponse:
         """/game/locations/{symbol}/shipyard"""
+        url=_url(f"game/locations/{waypoint.symbol}/shipyard")
+        self._log("system_shipyard", "GLOBAL", url, response)
 
         pass
 
     def ship_negotiate(self, ship: "ship", response=None) -> "Contract" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/negotiate/contract"""
+        url=_url(f"my/ships/:ship_name/negotiate/contract")
+        self._log("ship_negotiate", ship.name, url, response)
         pass
 
     def ship_cooldown(self, ship: "ship", response=None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/cooldown"""
+        url=_url(f"my/ships/:ship_name/cooldown")
+        self._log("ship_cooldown", ship.name, url, response)
         pass
 
     def ships_view(self, response=None) -> list["Ship"] or SpaceTradersResponse:
         """/my/ships"""
+        url=_url(f"my/ships")
+        self._log("ships_view", "GLOBAL", url, response)
 
         pass
 
-    def ships_view_one(self, symbol: str, response=None) -> "Ship" or SpaceTradersResponse:
+    def ships_view_one(self, ship_symbol: str, response=None) -> "Ship" or SpaceTradersResponse:
+        url=_url(f"my/ships/:ship_name")
+        self._log("ships_view_one", ship_symbol, url, response)
         pass
 
     def contracts_deliver(
         self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int, response=None
     ) -> SpaceTradersResponse:
+        url=_url(f"my/ships/:ship_name/deliver")
+        self._log("contracts_deliver", ship.name, url, response)
         pass
 
     def contracts_fulfill(self, contract: "Contract", response=None) -> SpaceTradersResponse:
+        url = _url(f"my/contracts/:contract_id/fulfill")
+        self._log("contracts_fulfill", "GLOBAL", url, response)
         pass
 
 def _url( endpoint: str) -> str:

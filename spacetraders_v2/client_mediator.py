@@ -11,6 +11,7 @@ from .ship import Ship
 from .client_api import SpaceTradersApiClient
 from .client_stub import SpaceTradersStubClient
 from .client_postgres import SpaceTradersPostgresClient
+from .client_pg_logger import SpaceTradersPostgresLoggerClient
 from threading import Lock
 import logging
 
@@ -53,9 +54,20 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_port=db_port,
                 current_agent_symbol=current_agent_symbol,
             )
+            self.logging_client = SpaceTradersPostgresLoggerClient(
+                db_host=db_host,
+                db_port=db_port,
+                db_name=db_name,
+                db_user=db_user,
+                db_pass=db_pass,
+                token=token,
+            )
         else:
             self.db_client = SpaceTradersStubClient()
-            self.logger.warning("Couldn't enable DB client, missing info.")
+            self.logging_client = SpaceTradersStubClient()
+            self.logger.warning(
+                "Couldn't enable DB client, missing info, no logs will be taken"
+            )
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )
@@ -129,6 +141,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 return resp
 
         resp = self.api_client.ships_view()
+        self.logging_client.ships_view(resp)
         if resp:
             new_ships = resp
             self.ships = self.ships | new_ships
@@ -151,6 +164,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 return resp
 
         resp = self.api_client.ships_view_one(symbol)
+        self.logging_client.ships_view_one(resp)
         if resp:
             resp: Ship
             self.ships[symbol] = resp
@@ -266,6 +280,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             return wayp
         # check api
         wayp = self.api_client.waypoints_view_one(system_symbol, waypoint_symbol)
+        self.logging_client.waypoints_view_one(wayp)
         if wayp:
             self.update(wayp)
             self.db_client.update(wayp)
@@ -273,7 +288,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         return wayp
 
     def waypoints_view(
-        self, system_symbol: str
+        self, system_symbol: str, force=False
     ) -> dict[str:Waypoint] or SpaceTradersResponse:
         """view all waypoints in a system. Uses cached values by default.
 
@@ -284,16 +299,18 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
         # check cache
-        if system_symbol in self.system_waypoints:
+        if not force and system_symbol in self.system_waypoints:
             return self.system_waypoints[system_symbol]
 
-        new_wayps = self.db_client.waypoints_view(system_symbol)
-        if new_wayps:
-            for new_wayp in new_wayps.values():
-                self.update(new_wayp)
-            return new_wayps
+        if not force:
+            new_wayps = self.db_client.waypoints_view(system_symbol)
+            if new_wayps:
+                for new_wayp in new_wayps.values():
+                    self.update(new_wayp)
+                return new_wayps
 
         new_wayps = self.api_client.waypoints_view(system_symbol)
+        self.logging_client.waypoints_view(new_wayps)
         if new_wayps:
             for new_wayp in new_wayps.values():
                 self.db_client.update(new_wayp)
@@ -333,6 +350,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 return resp
 
         resp = self.api_client.systems_list_all()
+        self.logging_client.systems_list_all(resp)
         if resp:
             for syst in resp:
                 syst: System
@@ -357,6 +375,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 return resp
 
         resp = self.api_client.system_shipyard(wp)
+        self.logging_client.system_shipyard(resp)
         if resp:
             self.db_client.update(resp)
         return resp
@@ -369,6 +388,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             if bool(resp):
                 return resp
         resp = self.api_client.system_market(wp)
+        self.logging_client.system_market(resp)
         if bool(resp):
             self.db_client.update(resp)
             return resp
@@ -517,6 +537,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             return resp
         wayps = self.api_client.find_waypoints_by_trait(system_symbol, trait)
+        self.logging_client.find_waypoints_by_trait(wayps)
         if isinstance(wayps, list):
             wayps: list
             for wayp in wayps:
@@ -556,6 +577,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 None, 200, "Ship is already in orbit", "client_mediator.ship_orbit()"
             )
         resp = self.api_client.ship_orbit(ship)
+        self.logging_client.ship_orbit(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -563,7 +585,10 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
     def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        return self.api_client.ship_change_course(ship, dest_waypoint_symbol)
+        resp = self.api_client.ship_change_course(ship, dest_waypoint_symbol)
+        self.logging_client.ship_change_course(resp)
+        if resp:
+            ship.update(resp)
 
     def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
@@ -575,6 +600,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 "client_mediator.ship_move()",
             )
         resp = self.api_client.ship_move(ship, dest_waypoint_symbol)
+        self.logging_client.ship_move(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -586,6 +612,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if ship.nav.status != "DOCKED":
             self.ship_dock(ship)
         resp = self.api_client.ship_negotiate(ship)
+        self.logging_client.ship_negotiate(resp)
         if bool(resp):
             self.update(resp)
         return resp
@@ -595,6 +622,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         # 4228 / 400 - MAXIMUM CARGO, should not extract
         #
         resp = self.api_client.ship_extract(ship, survey)
+        self.logging_client.ship_extract(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -610,6 +638,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_dock(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/dock"""
         resp = self.api_client.ship_dock(ship)
+        self.api_client.ship_dock(ship)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -618,6 +647,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_refuel(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/refuel"""
         resp = self.api_client.ship_refuel(ship)
+        self.logging_client.ship_refuel(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -627,6 +657,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/sell"""
         resp = self.api_client.ship_sell(ship, symbol, quantity)
+        self.logging_client.ship_sell(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(resp)
@@ -636,6 +667,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
         resp = self.api_client.ship_survey(ship)
+        self.logging_client.ship_survey(resp)
         if resp:
             surveys = [Survey.from_json(d) for d in resp.data.get("surveys", [])]
             for survey in surveys:
@@ -652,6 +684,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = self.api_client.ship_transfer_cargo(
             ship, trade_symbol, units, target_ship_name
         )
+        self.logging_client.ship_transfer_cargo(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -660,6 +693,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/cooldown"""
         resp = self.api_client.ship_cooldown(ship)
+        self.logging_client.ship_cooldown(resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -669,6 +703,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self, contract: Contract, ship: Ship, trade_symbol: str, units: int
     ) -> SpaceTradersResponse:
         resp = self.api_client.contracts_deliver(contract, ship, trade_symbol, units)
+        self.logging_client.contracts_deliver(resp)
         if resp:
             self.update(resp.data)
             contract.update(resp.data)
@@ -678,6 +713,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
     def contracts_fulfill(self, contract: "Contract") -> SpaceTradersResponse:
         """/my/contracts/{contractId}/fulfill"""
         resp = self.api_client.contracts_fulfill(contract)
+        self.logging_client.contracts_fulfill(resp)
         if resp:
             self.update(resp)
             self.db_client.update(contract)
