@@ -36,8 +36,8 @@ class SpaceTradersPostgresLoggerClient:
             sql,
             (
                 "SCRIPT_START",
-                "GLOBAL",
                 self.current_agent_name,
+                "GLOBAL",
                 self.session_id,
                 None,
                 starting_credits,
