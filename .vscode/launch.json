@@ -34,7 +34,7 @@
             "name": "Python: rtb&negotiate",
             "type": "python",
             "request": "launch",
-            "program": "RTB_and_negotiate.py",
+            "program": "RTB_and_negotiateWK2.py",
             "args": [
                 "CTRI"
             ],

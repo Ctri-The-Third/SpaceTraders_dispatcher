@@ -617,7 +617,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if ship.nav.status != "DOCKED":
             self.ship_dock(ship)
         resp = self.api_client.ship_negotiate(ship)
-        self.logging_client.ship_negotiate(resp)
+        self.logging_client.ship_negotiate(ship, resp)
         if bool(resp):
             self.update(resp)
         return resp

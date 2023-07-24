@@ -103,7 +103,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         url = _url(f"my/ships/{ship.name}/negotiate/contract")
         resp = post_and_validate(url, headers=self._headers())
         if resp:
-            resp = Contract.from_json(resp.data)
+            resp = Contract.from_json(resp.data.get("contract"))
         return resp
 
     def ship_extract(self, ship: Ship, survey: Survey = None) -> SpaceTradersResponse:

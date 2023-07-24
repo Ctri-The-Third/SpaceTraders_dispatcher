@@ -257,6 +257,7 @@ class SpaceTradersPostgresLoggerClient:
     ) -> "Contract" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/negotiate/contract"""
         url = _url(f"my/ships/:ship_name/negotiate/contract")
+
         self.log_event("ship_negotiate", ship.name, url, response)
         pass
 
