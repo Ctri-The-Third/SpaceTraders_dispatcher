@@ -216,6 +216,12 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
             sleep(ship.nav.travel_time_remaining)
             sell_all(ship, st.current_agent)
             sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+        else:
+            if ship.nav.status != "IN_ORBIT":
+                st.ship_orbit(ship)
+            if ship.nav.waypoint_symbol != mining_site_wp.symbol:
+                st.ship_move(ship, mining_site_wp)
+                sleep(ship.nav.travel_time_remaining)
         if ship.can_survey:
             if st.ship_survey(ship):
                 best_survey = st.find_survey_best(target_material)
