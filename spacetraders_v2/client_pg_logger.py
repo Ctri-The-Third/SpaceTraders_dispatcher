@@ -1,5 +1,5 @@
 from typing import Protocol, runtime_checkable
-from .models import Waypoint, Survey, Market, Shipyard
+from .models import Waypoint, Survey, Market, Shipyard, Agent
 from .ship import Ship
 
 from .responses import SpaceTradersResponse
@@ -97,6 +97,8 @@ class SpaceTradersPostgresLoggerClient:
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
+        if isinstance(update_obj, Agent):
+            self.current_agent_name = update_obj.name
         return
 
     def waypoints_view(

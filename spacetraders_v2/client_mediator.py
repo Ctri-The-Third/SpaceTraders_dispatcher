@@ -124,7 +124,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             self.current_agent = Agent.from_json(resp.data)
             self.current_agent_symbol = self.current_agent.symbol
-
+            self.logging_client.update(self.current_agent)
         return self.current_agent
 
     def ships_view(self, force=False) -> dict[str, Ship] or SpaceTradersResponse:
