@@ -54,6 +54,8 @@ def sell_all(ship: Ship, seller: Agent):
 
 
 def sell_all_except(ship: Ship, seller: Agent, exceptions: list):
+    if ship.nav.status != "DOCKED":
+        st.ship_dock(ship)
     starting_balance = seller.credits
     for cargo in ship.cargo_inventory:
         if cargo.symbol in exceptions:
@@ -67,6 +69,7 @@ def sell_all_except(ship: Ship, seller: Agent, exceptions: list):
         (seller.credits - starting_balance),
         seller.credits,
     )
+    st.ship_orbit(ship)
 
 
 def survey_until_hit(ship: Ship, material: str) -> Survey:
@@ -220,6 +223,9 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
             if ship.nav.status != "IN_ORBIT":
                 st.ship_orbit(ship)
             if ship.nav.waypoint_symbol != mining_site_wp.symbol:
+                logging.info(
+                    "freighter in survey mode but not at mining site? moving to mining site."
+                )
                 st.ship_move(ship, mining_site_wp)
                 sleep(ship.nav.travel_time_remaining)
         if ship.can_survey:

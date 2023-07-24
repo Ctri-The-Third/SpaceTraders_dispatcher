@@ -190,9 +190,14 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = post_and_validate(url, data, headers=self._headers())
         if not resp:
             return resp
-        new_ship = Ship.from_json(resp.data)
+        new_ship = Ship.from_json(resp.data.get("ship"))
+        if self.current_agent is not None:
+            self.current_agent.update(resp.data.get("agent"))
+        else:
+            self.current_agent = Agent.from_json(resp.data.get("agent"))
         self.ships[new_ship.name] = new_ship
         self.db_client.update(new_ship)
+        self.db_client.update(self.current_agent)
         return new_ship
 
     def view_my_contracts(

@@ -10,8 +10,8 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
     try:
         owner_name = ship.name.split("-")[0] if not owner else owner.symbol
         owner_faction = "" if not owner else owner.starting_faction
-        sql = """INSERT into ship (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity, cargo_in_use)
-        values (%s, %s, %s, %s, %s, %s)
+        sql = """INSERT into ship (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity, cargo_in_use, last_updated)
+        values (%s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (ship_symbol) DO UPDATE
         SET agent_name = %s,
             faction_symbol = %s,

@@ -11,7 +11,9 @@ import json
 class SpaceTradersPostgresLoggerClient:
     token: str = None
 
-    def __init__(self, token, db_host, db_port, db_name, db_user, db_pass) -> None:
+    def __init__(
+        self, token, db_host, db_port, db_name, db_user, db_pass, current_agent_name=""
+    ) -> None:
         self.token = token
         self.connection = psycopg2.connect(
             host=db_host,
@@ -22,18 +24,20 @@ class SpaceTradersPostgresLoggerClient:
         )
         self.session_id = str(uuid.uuid4())
         self.connection.autocommit = True
+        self.current_agent_name = ""
 
     pass
 
     def log_beginning(self, behaviour_name: str, starting_credits=None):
-        sql = """INSERT INTO public.logging( event_name, event_timestamp, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
-        values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s);"""
+        sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
+        values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor = self.connection.cursor()
         cursor.execute(
             sql,
             (
                 "SCRIPT_START",
                 "GLOBAL",
+                self.current_agent_name,
                 self.session_id,
                 None,
                 starting_credits,
@@ -72,14 +76,15 @@ class SpaceTradersPostgresLoggerClient:
         if isinstance(ship_name, Ship):
             ship_name = ship_name.name
         sql = """INSERT INTO public.logging(
-	event_name, event_timestamp, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
-	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s);"""
+	event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
+	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
 
         cursor = self.connection.cursor()
         cursor.execute(
             sql,
             (
                 event_name,
+                self.current_agent_name,
                 ship_name,
                 self.session_id,
                 endpoint_name,

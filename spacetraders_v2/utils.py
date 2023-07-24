@@ -74,7 +74,10 @@ def get_and_validate(
             TimeoutError,
         ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
-            return None
+            return LocalSpaceTradersRespose(
+                "Could not connect!! network issue?", 404, 0, url
+            )
+
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
         _log_response(response)
@@ -106,7 +109,9 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
             )
         except (requests.exceptions.ConnectionError, TimeoutError, TypeError) as err:
             logging.error("ConnectionError: %s, %s", url, err)
-            return None
+            return LocalSpaceTradersRespose(
+                "Could not connect!! network issue?", 404, 0, url
+            )
 
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
@@ -166,7 +171,7 @@ def set_logging(filename: str = None):
         format=format,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    ST_LOGGER.setLevel(logging.INFO)
+    ST_LOGGER.setLevel(logging.DEBUG)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
