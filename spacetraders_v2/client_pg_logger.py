@@ -98,7 +98,7 @@ class SpaceTradersPostgresLoggerClient:
 
     def update(self, update_obj: SpaceTradersResponse):
         if isinstance(update_obj, Agent):
-            self.current_agent_name = update_obj.name
+            self.current_agent_name = update_obj.symbol
         return
 
     def waypoints_view(
