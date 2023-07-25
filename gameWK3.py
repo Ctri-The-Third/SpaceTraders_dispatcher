@@ -2,7 +2,10 @@
 # It will get unlocked ships from the DB, check their behaviour ID and if it matches a known behaviour, lock the ship and execute the behaviour.
 import json
 import logging
+import psycopg2
 from spacetraders_v2 import SpaceTraders
+
+from behaviours.extract_and_sell import ExtractAndSell
 
 
 def register_and_store_user(username) -> str:
@@ -62,3 +65,30 @@ if __name__ == "__main__":
         "shipyard_wayp": st.find_waypoints_by_trait_one(hq_sys, "SHIPYARD").symbol,
     }
     print(json.dumps(fallback_blob, indent=2))
+
+    # get unlocked ships
+    connection = psycopg2.connect(
+        host=user["db_host"],
+        port=user["db_port"],
+        database=user["db_name"],
+        user=user["db_user"],
+        password=user["db_pass"],
+    )
+    connection.autocommit = True
+    behaviours = {
+        "EXTRACT_AND_SELL": ExtractAndSell,
+    }
+    ships_and_threads = {}
+    # need to assign default behaviours here.
+
+    # get unlocked ships with behaviours
+    unlocked_ships = [{"name": "ship_id", "behaviour_id": "EXTRACT_AND_SELL"}]
+    for ship_and_behaviour in unlocked_ships.values():
+        # do we have a
+        behaviour_type = behaviours.get(ship.behaviour_id, None)
+        behaviour_type: type
+        if not behaviour_type:
+            continue
+        #we know this is behaviour, so pass it the values and execute it in its own thread.
+        behaviour_type()
+        ships_and_threads[ship_symbol] = threading.Thread(
