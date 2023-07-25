@@ -6,120 +6,20 @@ from spacetraders_v2.ship import Ship
 from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard, Market, Agent
 import pytest
 import os
-
+import json
 from spacetraders_v2.models import Waypoint, WaypointTrait
 
 # TODO: replace this with a method that creates a new one.
 
-TESTING_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiTzJPIiwidmVyc2lvbiI6InYyIiwicmVzZXRfZGF0ZSI6IjIwMjMtMDctMTUiLCJpYXQiOjE2ODk2MzIzMjIsInN1YiI6ImFnZW50LXRva2VuIn0.LyQndn7-Cybq2kWFEh7MlW6mjGo70WoTXiLvVm1uyVY4u2uNYHcrQyHjdBUgTppXLR4_3HRs9xZZpCChMHnmzTooJawFWnilaqLy99o-UOK1U3SuMwUxOo4fV7yMUwf6xtF_jZxG4uuAEq11ipK3cNXOUYGVrdbb4NlIBW9bmCpygtpSSziKbrx4SXGIUEHafYYefNjwdaOazXsBT_dpUIfsHypt02yYheR_LocoC5KBmZekCdoP4yylK3fy5-tCfUOzyGyWciSBVM3Ut6o39sKipzlhbK_2PRTMVEY-8Ab1YRaeKBCPnVPLnz4ncMSiOjeVaims-9zuKKon75AGmw"
-HEADQUARTERS_WAYPOINT = "X1-JF24-06790Z"
-HEADQUARTERS_SYSTEM = "X1-JF24"
-SHIPYARD_WAYPOINT = "X1-JF24-73757X"
-SAMPLE_SHIP_JSON = {
-    "data": {
-        "symbol": "string",
-        "registration": {
-            "name": "string",
-            "factionSymbol": "string",
-            "role": "FABRICATOR",
-        },
-        "nav": {
-            "systemSymbol": "string",
-            "waypointSymbol": "string",
-            "route": {
-                "destination": {
-                    "symbol": "string",
-                    "type": "PLANET",
-                    "systemSymbol": "string",
-                    "x": 0,
-                    "y": 0,
-                },
-                "departure": {
-                    "symbol": "string",
-                    "type": "PLANET",
-                    "systemSymbol": "string",
-                    "x": 0,
-                    "y": 0,
-                },
-                "departureTime": "2019-08-24T14:15:22Z",
-                "arrival": "2019-08-24T14:15:22Z",
-            },
-            "status": "IN_TRANSIT",
-            "flightMode": "CRUISE",
-        },
-        "crew": {
-            "current": 0,
-            "required": 0,
-            "capacity": 0,
-            "rotation": "STRICT",
-            "morale": 0,
-            "wages": 0,
-        },
-        "frame": {
-            "symbol": "FRAME_PROBE",
-            "name": "string",
-            "description": "string",
-            "condition": 0,
-            "moduleSlots": 0,
-            "mountingPoints": 0,
-            "fuelCapacity": 0,
-            "requirements": {"power": 0, "crew": 0, "slots": 0},
-        },
-        "reactor": {
-            "symbol": "REACTOR_SOLAR_I",
-            "name": "string",
-            "description": "string",
-            "condition": 0,
-            "powerOutput": 1,
-            "requirements": {"power": 0, "crew": 0, "slots": 0},
-        },
-        "engine": {
-            "symbol": "ENGINE_IMPULSE_DRIVE_I",
-            "name": "string",
-            "description": "string",
-            "condition": 0,
-            "speed": 1,
-            "requirements": {"power": 0, "crew": 0, "slots": 0},
-        },
-        "modules": [
-            {
-                "symbol": "MODULE_MINERAL_PROCESSOR_I",
-                "capacity": 0,
-                "range": 0,
-                "name": "string",
-                "description": "string",
-                "requirements": {"power": 0, "crew": 0, "slots": 0},
-            }
-        ],
-        "mounts": [
-            {
-                "symbol": "MOUNT_GAS_SIPHON_I",
-                "name": "string",
-                "description": "string",
-                "strength": 0,
-                "deposits": ["QUARTZ_SAND"],
-                "requirements": {"power": 0, "crew": 0, "slots": 0},
-            }
-        ],
-        "cargo": {
-            "capacity": 0,
-            "units": 0,
-            "inventory": [
-                {
-                    "symbol": "string",
-                    "name": "string",
-                    "description": "string",
-                    "units": 1,
-                }
-            ],
-        },
-        "fuel": {
-            "current": 0,
-            "capacity": 0,
-            "consumed": {"amount": 0, "timestamp": "2019-08-24T14:15:22Z"},
-        },
-    }
+fallback_blob = {
+    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiTzJPIiwidmVyc2lvbiI6InYyIiwicmVzZXRfZGF0ZSI6IjIwMjMtMDctMjMiLCJpYXQiOjE2OTAzMDAyNTYsInN1YiI6ImFnZW50LXRva2VuIn0.CqoMTWIZlV-HpGxL1KKuUpKocICVfSQ-5mbF0a4hMN-WEM5tD-de1TTiuaZURvDPUkzdXNgpejFDuaukQbj6Lbjqm-TlijM2qk_YlC87iZwe5KgXDTwsI_oCaG8oe4dPl8dzo2l3J9kpT0wjBv2t2BJnCAn6-QzDQy4p4DYJmPwDv-XsiDwBEWiQsG7ogjdPQyKY92c46KQvF5O8WiB24eycBZkXBVNLJXTYPmeGKFEdzkUt9zmemCp9ABaWk_jF0o_VK-tQvnHBAlOXpq08-a0GYC4a16oVAOwujm7N6IzkpUQELv8gIMAWyLg8NPjUsh4pkdv2uJM7hVh-EO1oeg",
+    "hq_sys": "X1-B13",
+    "hq_wayp": "X1-B13-48027C",
+    "market_wayp": "X1-B13-28060B",
+    "shipyard_wayp": "X1-B13-48027C",
 }
+env_blob = os.environ.get("TEST_BLOB", None)
+TEST_BLOB = json.loads(env_blob) if env_blob else fallback_blob
 
 
 @pytest.fixture
@@ -127,13 +27,8 @@ def DB_INFO():
     return ()
 
 
-@pytest.fixture
-def STARTING_SYSTEM():
-    return "X1-JF24"
-
-
 def clients():
-    token = TESTING_TOKEN
+    token = TEST_BLOB["token"]
     return [
         # return ""
         SpaceTradersApiClient(token),
@@ -163,8 +58,8 @@ def test_clients(st: SpaceTradersClient):
 
 
 @pytest.mark.parametrize("st", clients())
-def test_waypoints_view(st: SpaceTradersClient, STARTING_SYSTEM):
-    waypoints = st.waypoints_view(STARTING_SYSTEM)
+def test_waypoints_view(st: SpaceTradersClient):
+    waypoints = st.waypoints_view(TEST_BLOB["hq_sys"])
     assert waypoints
 
     assert isinstance(waypoints, dict)
@@ -178,20 +73,17 @@ def test_waypoints_view(st: SpaceTradersClient, STARTING_SYSTEM):
     "st",
     clients(),
 )
-def test_waypoints_view_one(st: SpaceTradersClient, STARTING_SYSTEM):
-    waypoint = st.waypoints_view_one(STARTING_SYSTEM, HEADQUARTERS_WAYPOINT)
-    assert waypoint.symbol == HEADQUARTERS_WAYPOINT
-    assert waypoint.type == "PLANET"
-    assert waypoint.x == 8
-    assert waypoint.y == -22
-    assert len(waypoint.traits) == 5
+def test_waypoints_view_one(st: SpaceTradersClient):
+    waypoint = st.waypoints_view_one(TEST_BLOB["hq_sys"], TEST_BLOB["hq_wayp"])
+    assert waypoint.symbol == TEST_BLOB["hq_wayp"]
+    assert len(waypoint.traits) > 0
     assert isinstance(waypoint, Waypoint)
 
 
 @pytest.mark.parametrize("st", clients())
 def test_shipyard_info(st: SpaceTradersClient):
     wp = Waypoint(
-        HEADQUARTERS_SYSTEM, SHIPYARD_WAYPOINT, "PLANET", 0, 0, [], [], {}, {}
+        TEST_BLOB["hq_sys"], TEST_BLOB["shipyard_wayp"], "PLANET", 0, 0, [], [], {}, {}
     )
     wp.traits = [
         WaypointTrait("SHIPYARD", "Shipyard", "A place to buy and sell ships.")
@@ -204,10 +96,10 @@ def test_shipyard_info(st: SpaceTradersClient):
 @pytest.mark.parametrize("st", clients())
 def test_market_info(st: SpaceTradersClient):
     wp = Waypoint(
-        HEADQUARTERS_SYSTEM, SHIPYARD_WAYPOINT, "PLANET", 0, 0, [], [], {}, {}
+        TEST_BLOB["hq_sys"], TEST_BLOB["market_wayp"], "PLANET", 0, 0, [], [], {}, {}
     )
     wp.traits = [
-        WaypointTrait("SHIPYARD", "Shipyard", "A place to buy and sell ships.")
+        WaypointTrait("MARKETPLACE", "Marketplace", "A place to buy and sell goods.")
     ]
 
     market = st.system_market(wp)

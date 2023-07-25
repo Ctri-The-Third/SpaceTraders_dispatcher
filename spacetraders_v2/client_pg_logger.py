@@ -28,20 +28,36 @@ class SpaceTradersPostgresLoggerClient:
 
     pass
 
-    def log_beginning(self, behaviour_name: str, starting_credits=None):
+    def log_beginning(
+        self, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
+    ):
+        self.log_custom_event(
+            "BEGIN_BEHAVIOUR_SCRIPT", behaviour_name, ship_name, starting_credits
+        )
+
+    def log_ending(
+        self, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
+    ):
+        self.log_custom_event(
+            "END_BEHAVIOUR_SCRIPT", behaviour_name, ship_name, starting_credits
+        )
+
+    def log_custom_event(
+        self, event_name, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
+    ):
         sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
         values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor = self.connection.cursor()
         cursor.execute(
             sql,
             (
-                "SCRIPT_START",
+                event_name,
                 self.current_agent_name,
-                "GLOBAL",
+                ship_name,
                 self.session_id,
                 None,
                 starting_credits,
-                200,
+                0,
                 0,
                 json.dumps({"script_name": behaviour_name}),
             ),

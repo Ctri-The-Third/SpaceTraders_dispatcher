@@ -185,6 +185,10 @@ def sleep(seconds: int):
         time.sleep(seconds)
 
 
+def sleep_until_ready(ship: "Ship"):
+    sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+
+
 def waypoint_slicer(waypoint_symbol: str) -> str:
     "returns the system symbol from a waypoint symbol"
     pieces = waypoint_symbol.split("-")

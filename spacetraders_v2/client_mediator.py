@@ -117,6 +117,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Args:
             `force` (bool): Optional - Force a refresh of the agent. Defaults to False.
         """
+
+        # db handling of this should include MD5 hashing of the token for identification.
         if self.current_agent and not force:
             return self.current_agent
         url = _url("my/agent")

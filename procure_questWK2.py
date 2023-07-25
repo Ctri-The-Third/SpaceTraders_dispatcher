@@ -9,6 +9,7 @@ import logging
 import sys
 import math
 import threading
+import sleep
 
 logger = logging.getLogger("game-file")
 
