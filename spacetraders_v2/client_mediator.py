@@ -343,7 +343,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = get_and_validate(url, headers=self._headers())
         if not resp:
             return resp
-        ship = Ship(resp.data)
+        ship = Ship.from_json(resp.data)
         self.ships[ship_id] = ship
         return ship
 
@@ -395,7 +395,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             if bool(resp):
                 return resp
         resp = self.api_client.system_market(wp)
-        self.logging_client.system_market(resp)
+        self.logging_client.system_market(wp)
         if bool(resp):
             self.db_client.update(resp)
             return resp
@@ -571,7 +571,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = self.waypoints_view(system_wp)
         if not resp:
             return resp
-        for waypoint in self.waypoints_view(system_wp).values():
+        for waypoint in resp.values():
             waypoint: Waypoint
             for trait in waypoint.traits:
                 if trait.symbol == trait_symbol:

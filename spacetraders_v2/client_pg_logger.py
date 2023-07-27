@@ -249,7 +249,7 @@ class SpaceTradersPostgresLoggerClient:
         self, wp: Waypoint, response=None
     ) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
-        url = _url(f"game/systems/{wp.system}/marketplace")
+        url = _url(f"game/systems/{wp.system_symbol}/marketplace")
         self.log_event("system_market", "GLOBAL", url, response)
         pass
 

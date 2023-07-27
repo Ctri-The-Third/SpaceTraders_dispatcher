@@ -9,7 +9,7 @@ import logging
 import sys
 import math
 import threading
-import sleep
+from spacetraders_v2.utils import sleep
 
 logger = logging.getLogger("game-file")
 
