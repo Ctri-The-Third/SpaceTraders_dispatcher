@@ -180,6 +180,12 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str
+    ) -> tuple["Ship", "Agent"] or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def contracts_deliver(
         self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int
     ) -> SpaceTradersResponse:

@@ -287,6 +287,11 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/cooldown"""
         dummy_response(__class__.__name__, "ship_cooldown")
 
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str
+    ) -> tuple["Ship", "Agent"] or SpaceTradersResponse:
+        dummy_response(__class__.__name__, "ships_purchase")
+
     def ships_view(self) -> dict[str:"Ship"] or SpaceTradersResponse:
         """/my/ships"""
         sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use

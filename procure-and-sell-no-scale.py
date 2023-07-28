@@ -63,7 +63,7 @@ def master(st: SpaceTraders):
         break  # no scaling
         agent = st.view_my_self(True)
         if agent.credits >= cost * 2 or len(st.ships) == 2:
-            new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
+            new_ship = st.ships_purchase(shipyard_wp, "SHIP_MINING_DRONE")
             if not new_ship:
                 logger.error("failed to purchase new ship")
             thread = threading.Thread(

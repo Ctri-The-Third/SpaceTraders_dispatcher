@@ -24,3 +24,27 @@ the way to change a ship's behaviour is to update the assigned behaviour in the 
 If the current conductor can't handle that behaviour but another one can, then once the lock expires that conductor will pick it up and start it.
 QUESTION - how do we specify which haulers are valid targets for ships performing an EXTRACT_AND_TRANSFER behaviour?
 ANSWER - that information should be determined at the start of a behaviour's execution. That way if the valid ships change, it'll get picked up next execution
+
+
+## Motivation.
+
+Minecraft, and Factorio are two games I really enjoy, and both of them have similar "failure state" for my engagement. In minecraft, I die and my inventory items are trapped in a space that's impractical to retrieve. Since there's a real time effort involved in a lot of the items that will be lost, the sense of "oh that's going to take AGES to rebuild from" is immediate and overpowering. 
+
+The same is true in Factorio, though there one has a different option.
+If you've built your factory well enough, at the point in which you overreach and lose progress, the factory will be replacing those items for you, with no additional effort required, just time. In those circumstances, the emotional impact is less.
+
+I've noticed it happens in programming, and in other fabrication projects I've been involved in. When I had to rewire a small electronics box to scale it up, my enthusiasm died pretty quickly as soon as I passed the easy-wins in the scaling up process. Same is true when refactoring, once the project is in a broken state due to a major refactor, the risk of crashing as soon as I encounter a stumbling block is extremely high.
+
+### Mitigation
+
+I want this project to last longer - the fact we're on week 3 is already a testament to good management of my own emotions and enthusiasm.  
+Despite that, enthusiasm and progress have decreased as the project has gotten bigger. I've been working on it like a pyramid - the base has gotten very wide and there are lots of layers that need expanded before work on the top is possible.
+
+This has decreased the need to refactor over time - the client interfaces make maintenance take longer but everything is neater and I've not tied  this project into a knot that would be overwhelming to face and deal with - my technical debt is relatively low. There are still things that need doing (plenty functions in the mediator are still unabstracted API calls) - but the project is in a good and healthy state, I can continue.
+
+At the moment I'm feeling less enthused but not actively turned off from the project. It feels a little too big to be working on the conductor and dispatcher at the moment, so I'm going to narrow focus. Testing the dispatcher and conductor is challenging with two agents - so I'm going to take my main agent in its Week 2 working state and deploy that into a secondary IP address, and leave it to run itself. 
+
+Then I will focus the dispatcher on working on the test agent, making sure each piece of behaviour works.
+I'm tempted to build new behaviours in pytest - doing a complete repeatable e2e test of behaviours without relying on static values would be a better way of testing the mediator client - whilst testing the individual clients is better handled by unit tests.
+
+Building it this way also has the advantage of having a satisfying series of green check-marks appear. I wonder if there's a way to force pytest tests to run in series not parallel so the results of one feed into the next - probably is.
