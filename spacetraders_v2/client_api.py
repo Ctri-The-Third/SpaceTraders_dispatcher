@@ -10,7 +10,15 @@ from .utils import (
     get_and_validate_paginated,
 )
 from .local_response import LocalSpaceTradersRespose
-from .models import Waypoint, Survey, Market, MarketTradeGoodListing, Shipyard, System
+from .models import (
+    Waypoint,
+    Survey,
+    Market,
+    MarketTradeGoodListing,
+    Shipyard,
+    System,
+    Agent,
+)
 from .contracts import Contract
 from .ship import Ship
 import logging
@@ -25,6 +33,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def __init__(self, token=None, base_url=None, version=None) -> None:
         self.token = token
         self.config = ApiConfig(base_url, version)
+        self.current_agent = None
         pass
 
     def waypoints_view_one(
@@ -273,6 +282,18 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if resp:
             return Ship.from_json(resp.data)
         return resp
+
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str
+    ) -> tuple[Ship, Agent] or SpaceTradersResponse:
+        url = _url("my/ships")
+        data = {"shipType": ship_type, "waypointSymbol": shipyard_waypoint}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if not resp:
+            return resp
+        new_ship = Ship.from_json(resp.data.get("ship"))
+        new_self = Agent.from_json(resp.data.get("agent"))
+        return (new_ship, new_self)
 
     def contracts_deliver(
         self, contract: Contract, ship: Ship, trade_symbol: str, units: int

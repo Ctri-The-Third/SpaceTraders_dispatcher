@@ -9,7 +9,7 @@ import logging
 import sys
 import math
 import threading
-import sleep
+from spacetraders_v2.utils import sleep
 
 logger = logging.getLogger("game-file")
 
@@ -313,7 +313,7 @@ def master(st: SpaceTraders, contract: Contract):
     ):
         if len(extractors_and_threads) < target_extractors:
             if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
-                new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
+                new_ship = st.ships_purchase(shipyard_wp, "SHIP_MINING_DRONE")
                 if not new_ship:
                     logger.error("failed to purchase new ship")
                 thread = threading.Thread(
@@ -327,7 +327,7 @@ def master(st: SpaceTraders, contract: Contract):
 
         if len(extractors_and_threads) / 10 > len(surveyors_and_threads):
             if agent.credits >= hauler_cost:
-                new_ship = st.ship_purchase(shipyard_wp, "SHIP_LIGHT_HAULER")
+                new_ship = st.ships_purchase(shipyard_wp, "SHIP_LIGHT_HAULER")
                 if not new_ship:
                     logger.error("failed to purchase new ship")
                 thread = threading.Thread(

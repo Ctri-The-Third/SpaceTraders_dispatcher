@@ -1,0 +1,2 @@
+ssh -p MASTER_PORT -i /home/user/.ssh/private_key_without_passcode -o ExitOnForwardFailure=yes  user@master_host 'sudo fuser -k TUNNEL_PORT/tcp'
+ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=5 -o ServerAliveCountMax=6 -R TUNNELPORT:locahost:MYPORT -p MASTER_PORT -i /home/user/.ssh/private_key_without_passcode user@master_host

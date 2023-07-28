@@ -13,7 +13,7 @@ def get_best_buy_price(st: SpaceTraders, trade_symbol):
 
 
 def master(st: SpaceTraders):
-    ship = st.view_my_ships_one("CTRI-2")
+    ship = st.view_my_ships_one("CTRI-1")
     contracts = st.view_my_contracts()
     for contract in contracts.values():
         contract: Contract
@@ -29,10 +29,14 @@ def master(st: SpaceTraders):
     for waypoint in waypoints:
         waypoint: Waypoint
         resp = st.ship_move(ship, waypoint.symbol)
+
+        sleep(ship.nav.travel_time_remaining + 1)
+        st.ship_dock(ship)
+        st.ship_refuel(ship)
+        st.ship_orbit(ship)
         if not resp:
             logger.error(f"failed to move to {waypoint.symbol} because {resp.error}")
 
-        sleep(ship.nav.travel_time_remaining + 1)
         if waypoint.has_market:
             logger.info("Found a market!")
             market = st.system_market(waypoint, True)
