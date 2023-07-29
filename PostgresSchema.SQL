@@ -225,19 +225,12 @@ CREATE TABLE public.systems (
 );
 
 
-ALTER TABLE public.systems OWNER TO postgres;
+ALTER TABLE public.systems OWNER TO spacetraders;
 
 --
 -- TOC entry 214 (class 1259 OID 16436)
 -- Name: test; Type: TABLE; Schema: public; Owner: postgres
 --
-
-CREATE TABLE public.test (
-);
-
-
-ALTER TABLE public.test OWNER TO postgres;
-
 --
 -- TOC entry 216 (class 1259 OID 16446)
 -- Name: waypoint_traits; Type: TABLE; Schema: public; Owner: spacetraders
@@ -265,6 +258,24 @@ CREATE TABLE public.waypoints (
     x smallint NOT NULL,
     y smallint NOT NULL
 );
+
+-- Table: public.ship_behaviours
+
+-- DROP TABLE IF EXISTS public.ship_behaviours;
+
+CREATE TABLE IF NOT EXISTS public.ship_behaviours
+(
+    ship_name text COLLATE pg_catalog."default" NOT NULL,
+    behaviour_id text COLLATE pg_catalog."default",
+    locked_by text COLLATE pg_catalog."default",
+    locked_until timestamp without time zone,
+    CONSTRAINT ship_behaviours_pkey PRIMARY KEY (ship_name)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.ship_behaviours
+    OWNER to spacetraders;
 
 
 ALTER TABLE public.waypoints OWNER TO spacetraders;
