@@ -313,7 +313,7 @@ def master(st: SpaceTraders, contract: Contract):
     ):
         if len(extractors_and_threads) < target_extractors:
             if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
-                new_ship = st.ships_purchase(shipyard_wp, "SHIP_MINING_DRONE")
+                new_ship = st.ships_purchase("SHIP_MINING_DRONE", shipyard_wp.symbol)
                 if not new_ship:
                     logger.error("failed to purchase new ship")
                 thread = threading.Thread(

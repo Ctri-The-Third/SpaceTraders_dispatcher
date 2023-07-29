@@ -15,6 +15,8 @@ class ExtractAndSell(Behaviour):
         config_file_name="user.json",
     ) -> None:
         self.logger = logging.getLogger("bhvr_extract_and_sell")
+        self.logger.info("initialising...")
+
         self.behaviour_params = behaviour_params
         saved_data = json.load(open(config_file_name, "r+"))
         for agent in saved_data["agents"]:
@@ -38,11 +40,11 @@ class ExtractAndSell(Behaviour):
         )
         self.ship = self.st.ships_view_one(ship_name, force=False)
         self.agent = self.st.view_my_self()
-        set_logging()
 
     def run(self):
-        # all threads should have this.
-
+        # all  threads should have this.
+        self.logger.info("Beginning...")
+        starting_credts = self.agent.credits
         ship = self.ship
         st = self.st
         agent = self.agent
@@ -74,3 +76,14 @@ class ExtractAndSell(Behaviour):
         self.sell_all_cargo()
         self.refuel_if_low()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
+        self.logger.info(
+            "Completed. Credits: %s, change = %s",
+            agent.credits,
+            agent.credits - starting_credts,
+        )
+
+
+if __name__ == "__main__":
+    set_logging()
+    bhvr = ExtractAndSell("test", "test", {"extract_waypoint": "test"})
+    bhvr.run()
