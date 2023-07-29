@@ -150,11 +150,11 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
 
     if not ship_details:
         return False
-    for ship_symbol, detail in ship_details.items():
+    for _, detail in ship_details.items():
         detail: ShipyardShip
         if detail.type == ship_symbol:
             if agent.credits > detail.purchase_price:
-                resp = client.ships_purchase(shipyard_wps[0], ship_symbol)
+                resp = client.ships_purchase(ship_symbol, shipyard_wps[0].symbol)
                 if resp:
                     return resp[0]
 

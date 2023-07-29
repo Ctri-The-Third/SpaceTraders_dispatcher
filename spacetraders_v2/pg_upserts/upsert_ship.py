@@ -2,13 +2,18 @@ from ..ship import Ship
 from ..models import Agent
 import psycopg2
 import logging
+import regex as re
 
 # from psycopg2 import connection
 
 
 def _upsert_ship(connection, ship: Ship, owner: Agent = None):
     try:
-        owner_name = ship.name.split("-")[0] if not owner else owner.symbol
+        try:
+            match = re.findall(r"(.*)-[0-9A-F]+", ship.name)
+            owner_name = match[0]
+        except:
+            return
         owner_faction = "" if not owner else owner.starting_faction
         sql = """INSERT into ship (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity, cargo_in_use, last_updated)
         values (%s, %s, %s, %s, %s, %s, NOW())

@@ -81,6 +81,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.logging (
     event_name text NOT NULL,
     event_timestamp timestamp without time zone NOT NULL,
+    agent_name, text NOT NULL,
     ship_name text NOT NULL,
     session_id text,
     endpoint_name text,

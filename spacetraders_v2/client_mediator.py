@@ -171,7 +171,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         return resp
 
     def ships_purchase(
-        self, waypoint: str or Waypoint, ship_type: str or ShipyardShip
+        self, ship_type: str or ShipyardShip, waypoint: str or Waypoint
     ) -> tuple[Ship, Agent] or SpaceTradersResponse:
         """purchase a ship from a given shipyard waypoint.
 
@@ -181,7 +181,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
             Returns:
                 Either a Ship object or a SpaceTradersResponse object on failure."""
-        resp = self.api_client.ships_purchase(waypoint, ship_type)
+        resp = self.api_client.ships_purchase(ship_type, waypoint)
         if resp:
             self.update(resp[0])
             self.update(resp[1])
@@ -536,7 +536,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             return resp
         wayps = self.api_client.find_waypoints_by_trait(system_symbol, trait)
-        self.logging_client.find_waypoints_by_trait(wayps)
+        self.logging_client.find_waypoints_by_trait(system_symbol, trait, wayps)
         if isinstance(wayps, list):
             wayps: list
             for wayp in wayps:

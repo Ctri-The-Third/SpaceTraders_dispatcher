@@ -161,13 +161,13 @@ def _log_response(response: requests.Response) -> None:
     ST_LOGGER.debug("%s %s %s", response.status_code, url_stub, error_text)
 
 
-def set_logging(filename: str = None):
+def set_logging(filename: str = None, level=logging.INFO):
     format = "%(asctime)s:%(levelname)s:%(threadName)s:%(name)s  %(message)s"
 
     log_file = filename if filename else "ShipTrader.log"
     logging.basicConfig(
         handlers=[FileHandler(log_file), StreamHandler(stdout)],
-        level=logging.INFO,
+        level=level,
         format=format,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
