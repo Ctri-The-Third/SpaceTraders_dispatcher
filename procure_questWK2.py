@@ -313,17 +313,19 @@ def master(st: SpaceTraders, contract: Contract):
     ):
         if len(extractors_and_threads) < target_extractors:
             if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
-                new_ship = st.ships_purchase("SHIP_MINING_DRONE", shipyard_wp.symbol)
-                if not new_ship:
+                resp = st.ships_purchase("SHIP_MINING_DRONE", shipyard_wp.symbol)
+                if not resp:
                     logger.error("failed to purchase new ship")
-                thread = threading.Thread(
-                    target=extractor_quest_loop,
-                    args=(new_ship, st, contract, viable_transports),
-                    name=new_ship.name,
-                )
+                else:
+                    new_ship = resp[0]
+                    thread = threading.Thread(
+                        target=extractor_quest_loop,
+                        args=(new_ship, st, contract, viable_transports),
+                        name=new_ship.name,
+                    )
 
-                extractors_and_threads[new_ship.name] = thread
-                thread.start()
+                    extractors_and_threads[new_ship.name] = thread
+                    thread.start()
 
         if len(extractors_and_threads) / 10 > len(surveyors_and_threads):
             if agent.credits >= hauler_cost:
