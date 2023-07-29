@@ -48,3 +48,12 @@ Then I will focus the dispatcher on working on the test agent, making sure each 
 I'm tempted to build new behaviours in pytest - doing a complete repeatable e2e test of behaviours without relying on static values would be a better way of testing the mediator client - whilst testing the individual clients is better handled by unit tests.
 
 Building it this way also has the advantage of having a satisfying series of green check-marks appear. I wonder if there's a way to force pytest tests to run in series not parallel so the results of one feed into the next - probably is.
+
+
+# End of week 3 
+
+My conductor script is doing okay, and my dispatcher too. I've got a raspberry pi setup outside of my house so I can run a production script continually whilst tinkering with my dev scripts without running into issues.  
+I'm not feeling super enthused, and think I need more visual feedback - the ships cargo bay status, credits over time, and the physical location of ships would be excellent things to be able to watch in satisfaction.
+
+I have access to all that info inside the DB, so I might spend some time organising the data so that it can visualised.
+- a webpage that shows a list of ships (and their cargo capacity), and if possible an image of the starter system.
