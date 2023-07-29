@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from attr import field
 import requests
 
 from .utils import DATE_FORMAT

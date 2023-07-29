@@ -5,7 +5,7 @@ from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceT
 from spacetraders_v2.models import ShipyardShip
 from spacetraders_v2.ship import Ship
 
-from procure_quest import (
+from procure_questWK2 import (
     mine_until_full,
     wait_till_arrive,
     set_logging,
@@ -63,7 +63,7 @@ def master(st: SpaceTraders):
         break  # no scaling
         agent = st.view_my_self(True)
         if agent.credits >= cost * 2 or len(st.ships) == 2:
-            new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
+            new_ship = st.ships_purchase(shipyard_wp, "SHIP_MINING_DRONE")
             if not new_ship:
                 logger.error("failed to purchase new ship")
             thread = threading.Thread(

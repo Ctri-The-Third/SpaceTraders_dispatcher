@@ -12,6 +12,9 @@ class SpaceTradersStubClient:
     def update(self, update_obj):
         pass
 
+    def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        pass
+
     def waypoints_view(
         self, system_symbol: str
     ) -> dict[str:list] or SpaceTradersResponse:

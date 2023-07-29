@@ -26,12 +26,22 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     current_agent_symbol: str = None
 
     def __init__(
-        self, db_host, db_name, db_user, db_pass, current_agent_symbol
+        self,
+        db_host,
+        db_name,
+        db_user,
+        db_pass,
+        current_agent_symbol,
+        db_port=None,
     ) -> None:
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
         self.connection = psycopg2.connect(
-            host=db_host, database=db_name, user=db_user, password=db_pass
+            host=db_host,
+            port=db_port,
+            database=db_name,
+            user=db_user,
+            password=db_pass,
         )
         self.current_agent_symbol = current_agent_symbol
         self.connection.autocommit = True
@@ -52,6 +62,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         if isinstance(update_obj, System):
             _upsert_system(self.connection, update_obj)
         pass
+
+    def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "register")
 
     def waypoints_view(
         self, system_symbol: str
@@ -277,6 +290,11 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/cooldown"""
         dummy_response(__class__.__name__, "ship_cooldown")
 
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str
+    ) -> tuple["Ship", "Agent"] or SpaceTradersResponse:
+        dummy_response(__class__.__name__, "ships_purchase")
+
     def ships_view(self) -> dict[str:"Ship"] or SpaceTradersResponse:
         """/my/ships"""
         sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
@@ -348,8 +366,14 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}"""
-        dummy_response(__class__.__name__, "ships_view_one")
-        pass
+        ships = self.ships_view()
+        ship = ships.get(
+            symbol,
+            LocalSpaceTradersRespose(
+                "Ship not found in DB", 0, 404, "client_postgres.ships_view_one"
+            ),
+        )
+        return ship
 
     def contracts_deliver(
         self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int

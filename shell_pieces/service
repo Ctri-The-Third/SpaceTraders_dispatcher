@@ -1,0 +1,16 @@
+[Unit]
+Description=
+After=network.target
+
+[Service]
+Type=simple
+ExecStart= /bin/bash /installdirectory/startfile
+RestartSec=15
+Restart=always
+KillMode=mixed 
+
+[Install]
+WantedBy=multi-user.target
+
+
+

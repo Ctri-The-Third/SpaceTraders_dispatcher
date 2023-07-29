@@ -17,6 +17,10 @@ def master(st: SpaceTraders):
             st.contract_accept(contract.id)
             exit(0)
         if contract.accepted and not contract.fulfilled:
+            for deliverable in contract.deliverables:
+                print(
+                    f"Delivering {deliverable.symbol} to {deliverable.destination_symbol}: {deliverable.units_fulfilled}/{deliverable.units_required} units"
+                )
             st.ship_move(ship, agent.headquaters)
             sleep(ship.nav.travel_time_remaining + 1)
             resp = st.contracts_fulfill(contract)
@@ -48,6 +52,7 @@ if __name__ == "__main__":
         db_name=users["db_name"],
         db_user=users["db_user"],
         db_pass=users["db_pass"],
+        db_port=users["db_port"],
     )
 
     master(st)

@@ -26,13 +26,14 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def _headers(self) -> dict:
-        pass
-
-    @abstractmethod
     def update(self, update_obj):
         pass
 
+    @abstractmethod
+    def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def waypoints_view(
         self, system_symbol: str
     ) -> dict[str:list] or SpaceTradersResponse:
@@ -177,6 +178,12 @@ class SpaceTradersClient(Protocol):
 
     @abstractmethod
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str
+    ) -> tuple["Ship", "Agent"] or SpaceTradersResponse:
         pass
 
     @abstractmethod

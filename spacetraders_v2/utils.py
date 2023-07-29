@@ -1,7 +1,6 @@
 import requests
 import logging
 import urllib.parse
-import aiohttp
 from dataclasses import dataclass
 from logging import FileHandler, StreamHandler
 from sys import stdout
@@ -75,10 +74,12 @@ def get_and_validate(
             TimeoutError,
         ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
-            return None
+            return LocalSpaceTradersRespose(
+                "Could not connect!! network issue?", 404, 0, url
+            )
+
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
@@ -88,18 +89,6 @@ def get_and_validate(
                 "SpaceTraders Server error: %s, %s", url, response.status_code
             )
         return RemoteSpaceTradersRespose(response)
-
-
-async def get_and_validate_async(url, params=None, headers=None):
-    "wraps the aiohttp.get function to make it easier to use"
-    attempts = 0
-    try:
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(url, params=params, headers=headers, timeout=5)
-
-    except aiohttp.ClientError as err:
-        logging.error("Async ClientError: %s, %s", url, err)
-        return None
 
 
 def rate_limit_check(response: requests.Response):
@@ -120,11 +109,12 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
             )
         except (requests.exceptions.ConnectionError, TimeoutError, TypeError) as err:
             logging.error("ConnectionError: %s, %s", url, err)
-            return None
+            return LocalSpaceTradersRespose(
+                "Could not connect!! network issue?", 404, 0, url
+            )
 
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
@@ -147,7 +137,6 @@ def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersR
             return None
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            raise Exception from err
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
@@ -182,7 +171,7 @@ def set_logging(filename: str = None):
         format=format,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    ST_LOGGER.setLevel(logging.INFO)
+    ST_LOGGER.setLevel(logging.DEBUG)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
@@ -194,6 +183,10 @@ def sleep(seconds: int):
     if seconds > 0 and seconds < 6000:
         # ST_LOGGER.info(f"Sleeping for {seconds} seconds")
         time.sleep(seconds)
+
+
+def sleep_until_ready(ship: "Ship"):
+    sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
 
 
 def waypoint_slicer(waypoint_symbol: str) -> str:

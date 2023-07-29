@@ -12,21 +12,18 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python: game.py",
+            "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "game.py",
+            "program": "conductorWK3.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Python: procure_quest",
+            "name": "dispatcher",
             "type": "python",
             "request": "launch",
-            "program": "procure_quest.py",
-            "args": [
-                "CTRI"
-            ],
+            "program": "dispatcherWK3.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -34,7 +31,7 @@
             "name": "Python: rtb&negotiate",
             "type": "python",
             "request": "launch",
-            "program": "RTB_and_negotiate.py",
+            "program": "RTB_and_negotiateWK2.py",
             "args": [
                 "CTRI"
             ],

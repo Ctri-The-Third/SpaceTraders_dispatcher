@@ -9,6 +9,7 @@ import logging
 import sys
 import math
 import threading
+from spacetraders_v2.utils import sleep
 
 logger = logging.getLogger("game-file")
 
@@ -54,17 +55,22 @@ def sell_all(ship: Ship, seller: Agent):
 
 
 def sell_all_except(ship: Ship, seller: Agent, exceptions: list):
+    if ship.nav.status != "DOCKED":
+        st.ship_dock(ship)
     starting_balance = seller.credits
     for cargo in ship.cargo_inventory:
         if cargo.symbol in exceptions:
             continue
         resp = st.ship_sell(ship, cargo.symbol, cargo.units)
+        if not resp:
+            logging.error("FAILED TO SELL CARGO %s", resp.error)
     logging.info(
         "%s sold all cargo for %s credits, new total: %s",
         ship.name,
         (seller.credits - starting_balance),
         seller.credits,
     )
+    st.ship_orbit(ship)
 
 
 def survey_until_hit(ship: Ship, material: str) -> Survey:
@@ -90,7 +96,7 @@ def validate_and_fulfill(contract: Contract):
     for deliverable in contract.deliverables:
         if deliverable.units_fulfilled < deliverable.units_required:
             return False
-    return contract.contract_fulfill() is True
+    return st.contracts_fulfill(contract) is True
 
 
 def extractor_quest_loop(
@@ -101,8 +107,8 @@ def extractor_quest_loop(
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     if ship.nav.waypoint_symbol != mining_site_wp.symbol:
-        ship.refuel()
-        ship.move(mining_site_wp)
+        st.ship_refuel(ship)
+        st.ship_move(ship, mining_site_wp)
         if ship.can_survey:
             survey_until_hit(ship, target_material)
 
@@ -165,8 +171,10 @@ def extractor_quest_loop(
                 sleep(ship.seconds_until_cooldown)
         else:
             # extractor that can't extract? shut it down.
-            st.ship_view_one(ship.name, True)
 
+            resp = st.ships_view_one(ship.name, True)
+            if resp and isinstance(resp, Ship):
+                ship = resp
             logging.error(f"Ship {ship.name} can't extract, pausing for 5 minutes.")
             sleep(300)
 
@@ -186,7 +194,9 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
     while True:
         sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
 
-        ship = st.ships_view_one(ship.name, True)
+        resp = st.ships_view_one(ship.name, True)
+        if resp and isinstance(resp, Ship):
+            ship = resp
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             logging.info("freighter full, returning to handin.")
             st.ship_orbit(ship)
@@ -210,6 +220,15 @@ def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
             sleep(ship.nav.travel_time_remaining)
             sell_all(ship, st.current_agent)
             sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+        else:
+            if ship.nav.status != "IN_ORBIT":
+                st.ship_orbit(ship)
+            if ship.nav.waypoint_symbol != mining_site_wp.symbol:
+                logging.info(
+                    "freighter in survey mode but not at mining site? moving to mining site."
+                )
+                st.ship_move(ship, mining_site_wp)
+                sleep(ship.nav.travel_time_remaining)
         if ship.can_survey:
             if st.ship_survey(ship):
                 best_survey = st.find_survey_best(target_material)
@@ -241,7 +260,7 @@ def master(st: SpaceTraders, contract: Contract):
     target_extractors = 40
     target_surveyors = math.floor(target_extractors / 10)
     for ship in ships.values():
-        if ship.role in ["HAULER"]:
+        if ship.role in ["HAULER", "COMMAND"]:
             thread = threading.Thread(
                 target=surveyor_quest_loop, args=(ship, st, contract), name=ship.name
             )
@@ -294,7 +313,7 @@ def master(st: SpaceTraders, contract: Contract):
     ):
         if len(extractors_and_threads) < target_extractors:
             if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
-                new_ship = st.ship_purchase(shipyard_wp, "SHIP_MINING_DRONE")
+                new_ship = st.ships_purchase(shipyard_wp, "SHIP_MINING_DRONE")
                 if not new_ship:
                     logger.error("failed to purchase new ship")
                 thread = threading.Thread(
@@ -308,7 +327,7 @@ def master(st: SpaceTraders, contract: Contract):
 
         if len(extractors_and_threads) / 10 > len(surveyors_and_threads):
             if agent.credits >= hauler_cost:
-                new_ship = st.ship_purchase(shipyard_wp, "SHIP_LIGHT_HAULER")
+                new_ship = st.ships_purchase(shipyard_wp, "SHIP_LIGHT_HAULER")
                 if not new_ship:
                     logger.error("failed to purchase new ship")
                 thread = threading.Thread(
@@ -340,7 +359,10 @@ if __name__ == "__main__":
         db_name=users["db_name"],
         db_user=users["db_user"],
         db_pass=users["db_pass"],
+        db_port=users["db_port"],
     )
+    agent = st.view_my_self(True)
+    st.logging_client.log_beginning("procure-quest (Week2)", agent.credits)
     contracts = list(
         c
         for c in st.view_my_contracts().values()

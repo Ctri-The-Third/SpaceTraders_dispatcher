@@ -1,4 +1,4 @@
-from procure_quest import set_logging, sleep
+from procure_questWK2 import set_logging, sleep
 import sys, json
 from spacetraders_v2 import SpaceTraders
 from spacetraders_v2.models import Waypoint, ShipyardShip, Market
@@ -29,10 +29,14 @@ def master(st: SpaceTraders):
     for waypoint in waypoints:
         waypoint: Waypoint
         resp = st.ship_move(ship, waypoint.symbol)
+
+        sleep(ship.nav.travel_time_remaining + 1)
+        st.ship_dock(ship)
+        st.ship_refuel(ship)
+        st.ship_orbit(ship)
         if not resp:
             logger.error(f"failed to move to {waypoint.symbol} because {resp.error}")
 
-        sleep(ship.nav.travel_time_remaining + 1)
         if waypoint.has_market:
             logger.info("Found a market!")
             market = st.system_market(waypoint, True)
@@ -65,6 +69,7 @@ if __name__ == "__main__":
         db_name=users["db_name"],
         db_user=users["db_user"],
         db_pass=users["db_pass"],
+        db_port=users["db_port"],
     )
 
     master(st)

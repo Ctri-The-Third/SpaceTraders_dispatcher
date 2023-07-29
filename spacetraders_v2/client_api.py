@@ -1,5 +1,5 @@
-from spacetraders_v2.models import Waypoint
-from spacetraders_v2.responses import SpaceTradersResponse
+from .models import Waypoint
+from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .utils import (
@@ -10,7 +10,15 @@ from .utils import (
     get_and_validate_paginated,
 )
 from .local_response import LocalSpaceTradersRespose
-from .models import Waypoint, Survey, Market, MarketTradeGoodListing, Shipyard, System
+from .models import (
+    Waypoint,
+    Survey,
+    Market,
+    MarketTradeGoodListing,
+    Shipyard,
+    System,
+    Agent,
+)
 from .contracts import Contract
 from .ship import Ship
 import logging
@@ -25,6 +33,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def __init__(self, token=None, base_url=None, version=None) -> None:
         self.token = token
         self.config = ApiConfig(base_url, version)
+        self.current_agent = None
         pass
 
     def waypoints_view_one(
@@ -66,6 +75,16 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def update(self, response_json: dict):
         pass
 
+    def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        url = _url("register")
+        data = {"symbol": callsign, "faction": faction}
+        if email is not None:
+            data["email"] = email
+        resp = post_and_validate(url, data)
+        if resp:
+            self.token = resp.data.get("token")
+        return resp
+
     def ship_orbit(self, ship: Ship):
         "my/ships/:miningShipSymbol/orbit thakes the ship name or the ship object"
         url = _url(f"my/ships/{ship.name}/orbit")
@@ -103,7 +122,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         url = _url(f"my/ships/{ship.name}/negotiate/contract")
         resp = post_and_validate(url, headers=self._headers())
         if resp:
-            resp = Contract.from_json(resp.data)
+            resp = Contract.from_json(resp.data.get("contract"))
         return resp
 
     def ship_extract(self, ship: Ship, survey: Survey = None) -> SpaceTradersResponse:
@@ -273,6 +292,18 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if resp:
             return Ship.from_json(resp.data)
         return resp
+
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str
+    ) -> tuple[Ship, Agent] or SpaceTradersResponse:
+        url = _url("my/ships")
+        data = {"shipType": ship_type, "waypointSymbol": shipyard_waypoint}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if not resp:
+            return resp
+        new_ship = Ship.from_json(resp.data.get("ship"))
+        new_self = Agent.from_json(resp.data.get("agent"))
+        return (new_ship, new_self)
 
     def contracts_deliver(
         self, contract: Contract, ship: Ship, trade_symbol: str, units: int
