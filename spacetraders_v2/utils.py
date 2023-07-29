@@ -115,6 +115,7 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
 
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
+            return LocalSpaceTradersRespose(f"Could not connect!! {err}", 404, 0, url)
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)

@@ -236,9 +236,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if isinstance(json_data, dict):
             if "agent" in json_data:
                 if self.current_agent is not None:
-                    self.current_agent.update(json_data["agent"])
+                    self.current_agent.update(json_data)
                 else:
-                    self.current_agent = Agent.from_json(json_data["agent"])
+                    self.current_agent = Agent.from_json(json_data)
             if "surveys" in json_data:
                 for survey in json_data["surveys"]:
                     self.surveys[survey["signature"]] = Survey.from_json(survey)
