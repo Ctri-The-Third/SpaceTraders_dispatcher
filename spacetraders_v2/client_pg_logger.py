@@ -1,6 +1,7 @@
 from typing import Protocol, runtime_checkable
 from .models import Waypoint, Survey, Market, Shipyard, Agent
 from .ship import Ship
+from .client_interface import SpaceTradersClient
 
 from .responses import SpaceTradersResponse
 import psycopg2
@@ -8,7 +9,7 @@ import uuid
 import json
 
 
-class SpaceTradersPostgresLoggerClient:
+class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     token: str = None
 
     def __init__(
@@ -116,6 +117,12 @@ class SpaceTradersPostgresLoggerClient:
         if isinstance(update_obj, Agent):
             self.current_agent_name = update_obj.symbol
         return
+
+    def register(
+        self, callsign, faction="COSMIC", email=None, response=None
+    ) -> SpaceTradersResponse:
+        endpoint = "register"
+        self.log_event("register", "GLOBAL", endpoint, response)
 
     def waypoints_view(
         self, system_symbol: str, response=None
@@ -298,6 +305,13 @@ class SpaceTradersPostgresLoggerClient:
         url = _url(f"my/ships/:ship_name")
         self.log_event("ships_view_one", ship_symbol, url, response)
         pass
+
+    def ships_purchase(
+        self, ship_type: str, shipyard_waypoint: str, response=None
+    ) -> tuple["Ship", "Agent"] or SpaceTradersResponse:
+        pass
+        url = _url("my/ships")
+        self.log_event("ships_purchase", "GLOBAL", url, response)
 
     def contracts_deliver(
         self,

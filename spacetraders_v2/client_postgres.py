@@ -63,6 +63,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_system(self.connection, update_obj)
         pass
 
+    def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "register")
+
     def waypoints_view(
         self, system_symbol: str
     ) -> dict[str:Waypoint] or SpaceTradersResponse:

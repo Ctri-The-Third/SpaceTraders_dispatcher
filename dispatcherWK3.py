@@ -16,6 +16,8 @@ BHVR_EXTRACT_AND_TRANSFER = "EXTRACT_AND_TRANSFER"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 
+logger = logging.getLogger("dispatcher")
+
 
 def register_and_store_user(username) -> str:
     "returns the token"
@@ -32,7 +34,7 @@ def register_and_store_user(username) -> str:
     resp = st.register(username, faction=user["faction"], email=user["email"])
     if not resp:
         # Log an error message with detailed information about the failed claim attempt
-        logging.error(
+        logger.error(
             "Could not claim username %s, %d %s \n error code: %s",
             username,
             resp.status_code,
@@ -61,10 +63,10 @@ where agent_name = %s
 and (locked_until <= now() or locked_until is null or locked_by = %s)
 order by last_updated asc """
     try:
-        cur.execute(sql, (current_agent_symbol, current_agent_symbol))
+        cur.execute(sql, (current_agent_symbol, lock_id))
         rows = cur.fetchall()
     except Exception as err:
-        logging.error("could not get unlocked ships becase %s", err)
+        logger.error("could not get unlocked ships becase %s", err)
         return []
 
     return [{"name": row[0], "behaviour_id": row[1]} for row in rows]
@@ -81,7 +83,7 @@ ON CONFLICT (ship_name) DO UPDATE SET
         cur.execute(sql, (ship_name, lock_id, lock_id))
         return True
     except Exception as err:
-        logging.error("could not lock ship %s because %s", ship_name, err)
+        logger.error("could not lock ship %s because %s", ship_name, err)
         return False
 
 
@@ -93,8 +95,19 @@ def unlock_ship(connect, ship_name, lock_id):
         cur.execute(sql, (ship_name, lock_id))
         return True
     except Exception as err:
-        logging.error("could not unlock ship %s because %s", ship_name, err)
+        logger.error("could not unlock ship %s because %s", ship_name, err)
         return False
+
+
+def execute(sql, args: list):
+    for int in range(0, 5):
+        try:
+            cur = connection.cursor()
+            cur.execute(sql, args)
+            return True
+        except Exception as err:
+            logger.error("could not execute %s because %s", sql, err)
+            time.sleep(1)
 
 
 if __name__ == "__main__":
@@ -109,7 +122,7 @@ if __name__ == "__main__":
         db_name=user["db_name"],
         db_user=user["db_user"],
         db_pass=user["db_pass"],
-        current_agent_symbol=user["agents"][1]["username"],
+        current_agent_symbol=user["agents"][0]["username"],
     )
     agent = st.view_my_self()
     ships = st.ships_view()
@@ -142,6 +155,7 @@ if __name__ == "__main__":
     while True:
         # every 15 seconds update the list of unlocked ships with a DB query.
         unlocked_ships = get_unlocked_ships(connection, agent.symbol)
+        logging.debug(" found %d unlocked ships", len(unlocked_ships))
         # every second, check if we have idle ships whose behaviours we can execute.
         for i in range(15):
             for ship_and_behaviour in unlocked_ships:
@@ -159,9 +173,8 @@ if __name__ == "__main__":
                 bhvr = None
                 behaviour_params: dict = ({},)
 
-                match ship_and_behaviour["behaviour_id"]:
-                    case BHVR_EXTRACT_AND_SELL:
-                        bhvr = ExtractAndSell(agent.symbol, ship_and_behaviour["name"])
+                if ship_and_behaviour["behaviour_id"] == BHVR_EXTRACT_AND_SELL:
+                    bhvr = ExtractAndSell(agent.symbol, ship_and_behaviour["name"])
 
                 if not bhvr:
                     continue
@@ -170,8 +183,10 @@ if __name__ == "__main__":
                     continue
                 # we know this is behaviour, so lock it and start it.
                 ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
-                    target=bhvr.run
+                    target=bhvr.run,
+                    name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
                 )
+
                 ships_and_threads[ship_and_behaviour["name"]].start()
                 time.sleep(10)  # stagger ships
                 pass

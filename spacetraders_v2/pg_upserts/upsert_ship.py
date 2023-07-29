@@ -75,23 +75,4 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
 
         connection.commit()
     except Exception as err:
-        out_str = sql % (
-            ship.name,
-            ship.nav.system_symbol,
-            ship.nav.waypoint_symbol,
-            ship.nav.departure_time,
-            ship.nav.arrival_time,
-            ship.nav.origin.symbol,
-            ship.nav.destination.symbol,
-            ship.nav.status,
-            ship.nav.flight_mode,
-            ship.nav.system_symbol,
-            ship.nav.waypoint_symbol,
-            ship.nav.departure_time,
-            ship.nav.arrival_time,
-            ship.nav.origin.symbol,
-            ship.nav.destination.symbol,
-            ship.nav.status,
-            ship.nav.flight_mode,
-        )
         logging.error(err)

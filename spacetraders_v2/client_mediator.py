@@ -102,13 +102,10 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             `faction` (str): The faction the agent will be a part of. Defaults to "COSMIC"
             `email` (str): The email of the agent. Optional. Used for managing tokens in the SpaceTraders UI.
         """
-        url = _url("register")
-        data = {"symbol": callsign, "faction": faction}
-        if email is not None:
-            data["email"] = email
-        resp = post_and_validate(url, data)
+        resp = self.api_client.register(callsign, faction, email)
         if resp:
-            self.token = resp.data.get("token")
+            self.token = resp.data["token"]
+            self.update(resp.data)
         return resp
 
     def view_my_self(self, force=False) -> Agent or None:
@@ -238,7 +235,10 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 json_data = json_data.data
         if isinstance(json_data, dict):
             if "agent" in json_data:
-                self.current_agent.update(json_data)
+                if self.current_agent is not None:
+                    self.current_agent.update(json_data["agent"])
+                else:
+                    self.current_agent = Agent.from_json(json_data["agent"])
             if "surveys" in json_data:
                 for survey in json_data["surveys"]:
                     self.surveys[survey["signature"]] = Survey.from_json(survey)

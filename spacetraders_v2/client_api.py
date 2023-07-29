@@ -75,6 +75,16 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def update(self, response_json: dict):
         pass
 
+    def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        url = _url("register")
+        data = {"symbol": callsign, "faction": faction}
+        if email is not None:
+            data["email"] = email
+        resp = post_and_validate(url, data)
+        if resp:
+            self.token = resp.data.get("token")
+        return resp
+
     def ship_orbit(self, ship: Ship):
         "my/ships/:miningShipSymbol/orbit thakes the ship name or the ship object"
         url = _url(f"my/ships/{ship.name}/orbit")

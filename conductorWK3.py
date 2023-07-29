@@ -9,6 +9,7 @@ import psycopg2
 from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from spacetraders_v2.ship import Ship
 from spacetraders_v2.models import ShipyardShip
+from spacetraders_v2.utils import set_logging
 import logging
 import time
 from dispatcherWK3 import (
@@ -18,6 +19,9 @@ from dispatcherWK3 import (
     BHVR_EXPLORE_CURRENT_SYSTEM,
     BHVR_EXTRACT_AND_TRANSFER,
 )
+
+logger = logging.getLogger("conductor")
+cached_ship_details = {}
 
 
 def master():
@@ -37,11 +41,12 @@ def master():
     sleep_time = 1
     while True:
         for agent, client in agents_and_clients.items():
+            logger.info(f"Agent {agent} is at stage {stages_per_agent[agent]}")
             current_stage = stages_per_agent[agent]
             stages_per_agent[agent] = stage_functions[current_stage](client)
         time.sleep(sleep_time)
 
-        sleep_time = 1
+        sleep_time = 60
 
     pass
 
@@ -137,7 +142,12 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
     if len(shipyard_wps) == 0:
         return False
     agent = client.view_my_self()
-    ship_details = client.view_available_ships_details(shipyard_wps[0])
+    if shipyard_wps[0].symbol in cached_ship_details:
+        ship_details = cached_ship_details[shipyard_wps[0].symbol]
+    else:
+        ship_details = client.view_available_ships_details(shipyard_wps[0])
+        cached_ship_details[shipyard_wps[0].symbol] = ship_details
+
     if not ship_details:
         return False
     for ship_symbol, detail in ship_details.items():
@@ -158,6 +168,10 @@ def get_agents():
     for agent in user.get("agents"):
         agents_and_tokens[agent["username"]] = agent["token"]
     for row in rows:
+        token = agents_and_tokens.get(row[0], None)
+        if not token:
+            continue
+            # skip users for which we don't have tokens
         st = SpaceTraders(
             token=agents_and_tokens.get(row[0], None),
             db_host=user["db_host"],
@@ -172,7 +186,9 @@ def get_agents():
 
 
 if __name__ == "__main__":
+    set_logging()
     user = json.load(open("user.json"))
+    logger.info("Starting up conductor, preparing to connect to database")
     connection = psycopg2.connect(
         host=user["db_host"],
         port=user["db_port"],
@@ -185,6 +201,7 @@ if __name__ == "__main__":
         keepalives_interval=2,
         keepalives_count=2,
     )
+    logger.info("Connected to database")
     connection.autocommit = True
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
