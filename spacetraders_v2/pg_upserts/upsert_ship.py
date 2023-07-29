@@ -2,7 +2,7 @@ from ..ship import Ship
 from ..models import Agent
 import psycopg2
 import logging
-import regex as re
+import re
 
 # from psycopg2 import connection
 
