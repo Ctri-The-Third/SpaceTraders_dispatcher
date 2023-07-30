@@ -14,32 +14,9 @@ class ExtractAndSell(Behaviour):
         behaviour_params: dict = {},
         config_file_name="user.json",
     ) -> None:
+        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
         self.logger = logging.getLogger("bhvr_extract_and_sell")
         self.logger.info("initialising...")
-
-        self.behaviour_params = behaviour_params
-        saved_data = json.load(open(config_file_name, "r+"))
-        for agent in saved_data["agents"]:
-            if agent["username"] == agent_name:
-                token = agent["token"]
-        if not token:
-            # register the user
-            pass
-        db_host = saved_data.get("db_host", None)
-        db_port = saved_data.get("db_port", None)
-        db_name = saved_data.get("db_name", None)
-        db_user = saved_data.get("db_user", None)
-        db_pass = saved_data.get("db_pass", None)
-        self.st = SpaceTraders(
-            token,
-            db_host=db_host,
-            db_port=db_port,
-            db_name=db_name,
-            db_user=db_user,
-            db_pass=db_pass,
-        )
-        self.ship = self.st.ships_view_one(ship_name, force=False)
-        self.agent = self.st.view_my_self()
 
     def run(self):
         # all  threads should have this.

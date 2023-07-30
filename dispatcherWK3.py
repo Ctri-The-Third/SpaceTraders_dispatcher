@@ -3,15 +3,14 @@
 import json
 import logging
 import psycopg2
-import os
-import uuid
+import sys, threading, os, uuid, time
+
 from spacetraders_v2 import SpaceTraders
 from spacetraders_v2.models import Waypoint
-import sys
 from spacetraders_v2.utils import set_logging
-import threading
 from behaviours.extract_and_sell import ExtractAndSell
-import time
+from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest
+from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
@@ -142,6 +141,16 @@ class dispatcher(SpaceTraders):
 
                     if ship_and_behaviour["behaviour_id"] == BHVR_EXTRACT_AND_SELL:
                         bhvr = ExtractAndSell(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+                    elif (
+                        ship_and_behaviour["behaviour_id"] == BHVR_EXTRACT_AND_TRANSFER
+                    ):
+                        bhvr = ExtractAndTransferHeighest(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+                    elif ship_and_behaviour["behaviour_id"] == BHVR_RECEIVE_AND_FULFILL:
+                        bhvr = ReceiveAndFulfillOrSell(
                             self.agent.symbol, ship_and_behaviour["name"]
                         )
 

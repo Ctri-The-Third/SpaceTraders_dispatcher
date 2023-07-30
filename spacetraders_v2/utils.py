@@ -84,6 +84,7 @@ def get_and_validate(
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
             time.sleep(i * (i + random.random()))
+            continue
         if response.status_code >= 500 and response.status_code < 600:
             logging.error(
                 "SpaceTraders Server error: %s, %s", url, response.status_code
