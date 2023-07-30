@@ -22,6 +22,11 @@ class ReceiveAndFulfillOrSell(Behaviour):
     def run(self):
         ship = self.ship
         st = self.st
+        agent = st.view_my_self()
+        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+
+        if ship.nav.status != "IN_ORBIT":
+            st.ship_orbit(ship)
         if ship.can_survey:
             st.ship_survey(ship)
             # this needs to go in the DB still
@@ -50,22 +55,33 @@ class ReceiveAndFulfillOrSell(Behaviour):
             # lets sell at the current location
 
             self.sell_all_cargo(cargo_to_skip)
-            st.ship_orbit(ship)
-            self.ship_intrasolar(fulfill_waypoint)
 
-            # for deliverables, check if we have them in inventory, and delivery.
-            st.ship_dock(ship)
-            for contract in contracts:
-                for item in contract.deliverables:
-                    if item.units_fulfilled < item.units_required:
-                        for cargo_item in ship.cargo_inventory:
-                            if item.symbol == cargo_item.symbol:
-                                st.contracts_deliver(
-                                    contract, ship, cargo_item.symbol, cargo_item.units
-                                )
+            rtb = False
+            for cargo_item in ship.cargo_inventory:
+                if cargo_item.symbol in cargo_to_skip:
+                    rtb = True
+
             st.ship_orbit(ship)
-            self.ship_intrasolar(start_waypoint)
+            if rtb:
+                self.ship_intrasolar(fulfill_waypoint)
+
+                # for deliverables, check if we have them in inventory, and delivery.
+                st.ship_dock(ship)
+                for contract in contracts:
+                    for item in contract.deliverables:
+                        if item.units_fulfilled < item.units_required:
+                            for cargo_item in ship.cargo_inventory:
+                                if item.symbol == cargo_item.symbol:
+                                    st.contracts_deliver(
+                                        contract,
+                                        ship,
+                                        cargo_item.symbol,
+                                        cargo_item.units,
+                                    )
+                st.ship_orbit(ship)
+                self.ship_intrasolar(start_waypoint)
 
         self.sleep_until_ready()
+        st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.

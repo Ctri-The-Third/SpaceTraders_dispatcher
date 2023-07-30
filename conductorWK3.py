@@ -17,7 +17,7 @@ from dispatcherWK3 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXPLORE_CURRENT_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER,
+    BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES,
 )
 
 logger = logging.getLogger("conductor")
@@ -109,7 +109,7 @@ def stage_2(client: SpaceTraders):
     for ship in commanders:
         set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     for ship in excavators:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     return 2
 
 
@@ -124,14 +124,14 @@ def stage_3(client: SpaceTraders):
         return 4
 
     for excavator in excavators:
-        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER)
+        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
 
     if len(hounds) <= 30:
         ship = maybe_buy_ship(client, excavators[0].nav.system_symbol, "SHIP_ORE_HOUND")
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER)
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(
             client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
