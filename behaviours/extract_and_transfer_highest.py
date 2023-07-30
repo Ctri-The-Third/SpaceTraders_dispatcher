@@ -3,7 +3,7 @@ from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
 import time
 
-BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER"
+BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_HIGHEST"
 
 
 class ExtractAndTransferHeighest(Behaviour):
@@ -16,7 +16,9 @@ class ExtractAndTransferHeighest(Behaviour):
     ) -> None:
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
-        self.logger.info("initialising...")
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship_name, self.st.view_my_self().credits
+        )
 
     def run(self):
         ship = self.ship
@@ -25,8 +27,6 @@ class ExtractAndTransferHeighest(Behaviour):
         if not ship.can_extract:
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
             return
-
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         try:
             target_wp_sym = self.behaviour_params.get(

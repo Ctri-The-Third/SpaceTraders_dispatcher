@@ -12,12 +12,14 @@ from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell
+from behaviours.extract_and_transfer_all import ExtractAndTransferAll
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
-BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER"
+BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER_HIGHEST"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
+BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
 
 logger = logging.getLogger("dispatcher")
 
@@ -153,9 +155,17 @@ class dispatcher(SpaceTraders):
                         )
                     elif ship_and_behaviour["behaviour_id"] == BHVR_RECEIVE_AND_FULFILL:
                         bhvr = ReceiveAndFulfillOrSell(
+                            self.agent.symbol,
+                            ship_and_behaviour["name"],
+                            {"receive_wp": "X1-ZN71-00455Z"},
+                        )
+                    elif (
+                        ship_and_behaviour["behaviour_id"]
+                        == BHVR_EXTRACT_AND_TRANSFER_ALL
+                    ):
+                        bhvr = ExtractAndTransferAll(
                             self.agent.symbol, ship_and_behaviour["name"]
                         )
-
                     if not bhvr:
                         continue
 

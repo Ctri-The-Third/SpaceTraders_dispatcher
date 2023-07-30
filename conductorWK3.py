@@ -18,6 +18,7 @@ from dispatcherWK3 import (
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXPLORE_CURRENT_SYSTEM,
     BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES,
+    BHVR_EXTRACT_AND_TRANSFER_ALL,
 )
 
 logger = logging.getLogger("conductor")
@@ -93,23 +94,25 @@ def stage_1(client: SpaceTraders):
 
 
 def stage_2(client: SpaceTraders):
+    # we're at 5 extractors and one freighter and it's not bottlenecked on the freighter yet.
+    # recommend switching to getting more ore hounds after 2 drones.
     ships = client.ships_view()
 
-    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
-    if len(haulers) >= 1:
+    hounds = [ship for ship in ships.values() if ship.role == "HAULER"]
+    if len(hounds) >= 1:
         return 3
     else:
         maybe_ship = maybe_buy_ship(
-            client, list(ships.values())[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
+            client, list(ships.values())[0].nav.system_symbol, "SHIP_ORE_HOUND"
         )
         if maybe_ship:
-            set_behaviour(maybe_ship.name, BHVR_RECEIVE_AND_FULFILL)
+            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_TRANSFER_ALL)
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     for ship in commanders:
         set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     for ship in excavators:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_ALL)
     return 2
 
 

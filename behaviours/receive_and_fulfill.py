@@ -25,6 +25,13 @@ class ReceiveAndFulfillOrSell(Behaviour):
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
+        if ship.fuel_current < 200:
+            st.ship_dock(ship)
+            st.ship_refuel(ship)
+            st.ship_orbit(ship)
+        if "receive_wp" in self.behaviour_params:
+            start_waypoint = self.behaviour_params["receive_wp"]
+            self.ship_intrasolar(start_waypoint)
         if ship.nav.status != "IN_ORBIT":
             st.ship_orbit(ship)
         if ship.can_survey:
@@ -33,7 +40,9 @@ class ReceiveAndFulfillOrSell(Behaviour):
 
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             # lets go get the contract information
-            start_waypoint = ship.nav.waypoint_symbol
+            start_waypoint = (
+                ship.nav.waypoint_symbol if start_waypoint is None else start_waypoint
+            )
             found_contracts = st.view_my_contracts()
             contracts = []
             for id, contract in found_contracts.items():
