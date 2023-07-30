@@ -60,16 +60,19 @@ def stage_0(client: SpaceTraders):
 
 def stage_1(client: SpaceTraders):
     # activity location is the commander's location.
+    # currently the conductor isn't getting updated information from the agent.
+    # It's therefore important that we do a DB sync here.
     ships = client.ships_view()
-    agent = client.view_my_self()
+
+    extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    if len(extractors) >= 5:
+        return 2
+
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     for ship in commanders:
         ship: Ship
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
 
-    extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    if len(extractors) >= 5:
-        return 2
     else:
         for ship in extractors:
             set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
@@ -97,10 +100,10 @@ def stage_2(client: SpaceTraders):
         return 3
     else:
         maybe_ship = maybe_buy_ship(
-            client, ships.values()[0].nav.system_symbol, "SHIP_FREIGHTER"
+            client, list(ships.values())[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
         )
         if maybe_ship:
-            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_TRANSFER)
+            set_behaviour(maybe_ship.name, BHVR_RECEIVE_AND_FULFILL)
     return 2
     pass
 
@@ -109,20 +112,32 @@ def stage_3(client: SpaceTraders):
     ships = client.ships_view()
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    hounds = [ship for ship in ships.values() if ship.frame == "SHIP_ORE_HOUND"]
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+
+    if len(hounds) >= 30 and len(haulers) >= 3:
+        return 4
+
     for excavator in excavators:
         set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER)
-
-    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
 
-    if len(ships) <= 50:
-        pass
-
+    if len(hounds) <= 30:
+        ship = maybe_buy_ship(client, excavators[0].nav.system_symbol, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER)
+    if len(haulers) <= len(hounds) / 10:
+        ship = maybe_buy_ship(
+            client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
+        )
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     return 3
 
 
 def stage_4():
+    # switch off mining drones.
     pass
 
 
@@ -141,7 +156,7 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
     shipyard_wps = client.find_waypoints_by_trait(system_symbol, "SHIPYARD")
     if len(shipyard_wps) == 0:
         return False
-    agent = client.view_my_self()
+    agent = client.view_my_self(True)
     if shipyard_wps[0].symbol in cached_ship_details:
         ship_details = cached_ship_details[shipyard_wps[0].symbol]
     else:

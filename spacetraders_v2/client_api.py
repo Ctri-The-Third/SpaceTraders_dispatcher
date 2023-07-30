@@ -134,9 +134,8 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         if ship.seconds_until_cooldown > 0:
             return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4200, url=url)
-        if ship.nav.status == "DOCKED":
-            self.ship_orbit(ship)
-        data = survey.to_json() if survey is not None else None
+
+        data = {"survey": survey.to_json()} if survey is not None else None
 
         resp = post_and_validate(url, data=data, headers=self._headers())
         if resp:

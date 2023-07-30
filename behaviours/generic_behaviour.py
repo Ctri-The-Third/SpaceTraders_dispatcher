@@ -33,6 +33,8 @@ class Behaviour:
         # need to validate that the ship's current WP is a valid location
         ship = self.ship
         st = self.st
+        if ship.nav.status == "DOCKED":
+            st.ship_orbit(ship)
         while ship.cargo_units_used < ship.cargo_capacity:
             resp = st.ship_extract(ship)
             if not resp:

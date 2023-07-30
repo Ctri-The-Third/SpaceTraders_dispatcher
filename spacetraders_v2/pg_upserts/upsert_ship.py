@@ -22,7 +22,8 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
             faction_symbol = %s,
             ship_role = %s,
             cargo_capacity = %s,
-            cargo_in_use = %s;"""
+            cargo_in_use = %s, 
+            last_updated = NOW();"""
         cur = connection.cursor()
 
         cur.execute(
