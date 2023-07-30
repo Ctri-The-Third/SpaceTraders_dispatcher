@@ -1,9 +1,9 @@
 import pytest
 import os
 from behaviours.generic_behaviour import Behaviour
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import Waypoint
-from spacetraders_v2 import SpaceTraders
+from straders_sdk.ship import Ship
+from straders_sdk.models import Waypoint
+from straders_sdk import SpaceTraders
 import uuid
 
 CLIENT_DETAILS_S = os.environ.get("ST_CLIENT_DETAILS", None)

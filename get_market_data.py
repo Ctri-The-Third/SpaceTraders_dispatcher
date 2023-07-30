@@ -1,8 +1,8 @@
 from procure_questWK2 import set_logging, sleep
 import sys, json
-from spacetraders_v2 import SpaceTraders
-from spacetraders_v2.models import Waypoint, ShipyardShip, Market
-from spacetraders_v2.contracts import Contract
+from straders_sdk import SpaceTraders
+from straders_sdk.models import Waypoint, ShipyardShip, Market
+from straders_sdk.contracts import Contract
 import logging
 
 logger = logging.getLogger(__name__)

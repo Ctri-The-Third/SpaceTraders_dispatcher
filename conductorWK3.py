@@ -6,10 +6,10 @@
 # we can assume that each agent is based at a different IP Address, and orchestrate accordingly.
 import json
 import psycopg2
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import ShipyardShip
-from spacetraders_v2.utils import set_logging
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.ship import Ship
+from straders_sdk.models import ShipyardShip
+from straders_sdk.utils import set_logging
 import logging
 import time
 from dispatcherWK3 import (

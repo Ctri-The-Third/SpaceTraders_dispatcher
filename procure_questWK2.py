@@ -1,15 +1,15 @@
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
-from spacetraders_v2.contracts import Contract
-from spacetraders_v2.utils import sleep
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.ship import Ship
+from straders_sdk.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
+from straders_sdk.contracts import Contract
+from straders_sdk.utils import sleep
 import json
-from spacetraders_v2.utils import set_logging
+from straders_sdk.utils import set_logging
 import logging
 import sys
 import math
 import threading
-from spacetraders_v2.utils import sleep
+from straders_sdk.utils import sleep
 
 logger = logging.getLogger("game-file")
 

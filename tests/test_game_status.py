@@ -1,6 +1,6 @@
 import pytest
 
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 
 
 def test_game_status():

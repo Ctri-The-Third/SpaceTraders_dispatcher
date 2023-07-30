@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
-from spacetraders_v2.utils import DATE_FORMAT
-from spacetraders_v2.models import (
+from straders_sdk.utils import DATE_FORMAT
+from straders_sdk.models import (
     Announement,
     CrewInfo,
     FuelInfo,

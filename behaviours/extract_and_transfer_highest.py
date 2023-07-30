@@ -1,6 +1,6 @@
 import logging
 from behaviours.generic_behaviour import Behaviour
-from spacetraders_v2.ship import ShipInventory, Ship
+from straders_sdk.ship import ShipInventory, Ship
 import time
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER"

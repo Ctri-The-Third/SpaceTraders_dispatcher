@@ -1,9 +1,9 @@
 import json
 import sys
 import threading
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.models import ShipyardShip
-from spacetraders_v2.ship import Ship
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.models import ShipyardShip
+from straders_sdk.ship import Ship
 
 from procure_questWK2 import (
     mine_until_full,

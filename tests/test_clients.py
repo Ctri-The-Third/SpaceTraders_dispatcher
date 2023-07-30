@@ -1,13 +1,13 @@
-from spacetraders_v2.client_api import SpaceTradersApiClient
-from spacetraders_v2.client_interface import SpaceTradersClient
-from spacetraders_v2.client_postgres import SpaceTradersPostgresClient
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import Waypoint, WaypointTrait, Shipyard, Market, Agent
+from straders_sdk.client_api import SpaceTradersApiClient
+from straders_sdk.client_interface import SpaceTradersClient
+from straders_sdk.client_postgres import SpaceTradersPostgresClient
+from straders_sdk.client_mediator import SpaceTradersMediatorClient
+from straders_sdk.ship import Ship
+from straders_sdk.models import Waypoint, WaypointTrait, Shipyard, Market, Agent
 import pytest
 import os
 import json
-from spacetraders_v2.models import Waypoint, WaypointTrait
+from straders_sdk.models import Waypoint, WaypointTrait
 
 # TODO: replace this with a method that creates a new one.
 

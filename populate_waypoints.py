@@ -1,5 +1,5 @@
-from spacetraders_v2.utils import set_logging
-from spacetraders_v2 import SpaceTraders
+from straders_sdk.utils import set_logging
+from straders_sdk import SpaceTraders
 import sys
 import json
 
