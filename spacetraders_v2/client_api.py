@@ -137,7 +137,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         data = {"survey": survey.to_json()} if survey is not None else None
 
-        resp = post_and_validate(url, data=data, headers=self._headers())
+        resp = post_and_validate(url, json=data, headers=self._headers())
         if resp:
             self.update(resp.data)
             ship.update(resp.data)

@@ -20,6 +20,17 @@
             "justMyCode": true
         },
         {
+            "name": "procure-quest",
+            "type": "python",
+            "request": "launch",
+            "program": "procure_questWK2.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "CTRI-B"
+            ]
+        },
+        {
             "name": "dispatcher",
             "type": "python",
             "request": "launch",

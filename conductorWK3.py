@@ -104,8 +104,13 @@ def stage_2(client: SpaceTraders):
         )
         if maybe_ship:
             set_behaviour(maybe_ship.name, BHVR_RECEIVE_AND_FULFILL)
+    commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
+    excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    for ship in commanders:
+        set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+    for ship in excavators:
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER)
     return 2
-    pass
 
 
 def stage_3(client: SpaceTraders):
