@@ -62,6 +62,7 @@ class Behaviour:
         st = self.st
         if cargo_to_target is None:
             cargo_to_target = []
+        survey = None
         if len(cargo_to_target) > 0:
             survey = st.find_survey_best_deposit(
                 self.ship.nav.waypoint_symbol, cargo_to_target[0]
