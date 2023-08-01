@@ -1,5 +1,5 @@
 from typing import Protocol, runtime_checkable
-from .models import Waypoint, Survey, Market, Shipyard
+from .models import Waypoint, Survey, Market, Shipyard, JumpGate
 from .responses import SpaceTradersResponse
 from abc import abstractmethod
 
@@ -152,6 +152,11 @@ class SpaceTradersClient(Protocol):
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
 
+        pass
+
+    @abstractmethod
+    def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
+        """/systems/{systemSymbol}/waypoints/{waypointSymbol}/jump-gate"""
         pass
 
     @abstractmethod

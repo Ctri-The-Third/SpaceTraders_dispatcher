@@ -5,7 +5,16 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, ShipNav, Market
+from .models import (
+    Waypoint,
+    ShipyardShip,
+    GameStatus,
+    Agent,
+    Survey,
+    ShipNav,
+    Market,
+    JumpGate,
+)
 from .models import Shipyard, System
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
@@ -391,6 +400,29 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if bool(resp):
             self.db_client.update(resp)
             return resp
+        return resp
+
+    def system_jumpgate(
+        self, wp: Waypoint, force_update=False
+    ) -> JumpGate or SpaceTradersResponse:
+        """View the jumpgates at a waypoint. Note, requires a vessel to be at the waypoint to provide details.
+
+        Args:
+            `wp` (Waypoint): The waypoint to view the jumpgates at.
+
+        Returns:
+            Either a list of JumpGate objects or a SpaceTradersResponse object on failure.
+        """
+
+        if not force_update:
+            resp = self.db_client.system_jumpgate(wp)
+            if bool(resp):
+                return resp
+        resp = self.api_client.system_jumpgate(wp)
+        self.logging_client.system_jumpgate(wp, resp)
+        if resp:
+            # TODO upsert
+            self.db_client.update(resp)
         return resp
 
     def view_available_ships_details(

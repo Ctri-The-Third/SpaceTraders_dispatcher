@@ -17,6 +17,7 @@ from .models import (
     MarketTradeGoodListing,
     Shipyard,
     System,
+    JumpGate,
     Agent,
 )
 from .contracts import Contract
@@ -266,6 +267,14 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if resp:
             return Shipyard.from_json(resp.data)
 
+        return resp
+
+    def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
+        """/systems/{systemSymbol}/waypoints/{waypointSymbol}/jump-gate"""
+        url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/jump-gate")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return JumpGate.from_json(resp.data)
         return resp
 
     def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:

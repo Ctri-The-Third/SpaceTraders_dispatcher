@@ -163,7 +163,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         pass
 
     def find_waypoints_by_trait(
-        self, system_symbol: str, trait: str
+        self, system_symbol: str, trait: str, resp=None
     ) -> list[Waypoint] or SpaceTradersResponse:
         # don't log anything, not an API call
 
@@ -281,6 +281,14 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         url = _url(f"game/locations/{waypoint.symbol}/shipyard")
         self.log_event("system_shipyard", "GLOBAL", url, response)
 
+        pass
+
+    def system_jumpgate(
+        self, wp: Waypoint, force_update=False
+    ) -> "JumpGate" or SpaceTradersResponse:
+        """/game/systems/{symbol}/jumpgate"""
+        url = _url(f"game/systems/{wp.system_symbol}/jumpgate")
+        self.log_event("system_jumpgate", "GLOBAL", url, None)
         pass
 
     def ship_negotiate(

@@ -13,7 +13,7 @@ Specifcs:
 * Dispatcher should launch with args to specify which agent it's executing for. ✅
 * Find out why the EXTRACT_AND_SELL script isn't registering that the ship is undocked ✅ (the extract command was doing an undock at too low a level)
 * Callibrate conductor stage 3 to get ore hounds and freighters. ☑️
-* Have some way of excluding agents from the conductor - for ease of testing. (might be better to have a test DB - time to think about docker containers?)
+* Have some way of excluding agents from the conductor - for ease of testing. (might be better to have a test DB - time to think about docker containers?) ✅ - (This is easy, just remove the conductor's access to the token for the user in question)
 * Credits over time, per agent.
 * Ship display, per agent. 
 * Get the package compiling and installing. ✅
@@ -23,9 +23,9 @@ Specifcs:
 * Node B should become the VPN node (CTRI-B)
 * Node U remains the work node (CTRI-U)
 
-# extract and sell = 208.5530054644808743, 138.4804063860667634 when counting wasted behaviours
-# combined behaviour = 4.5, including wasted behaviours. GARBAGE. sob.
-# Let's create EXTRACT_AND_TRANSFER_OR_SELL instead, with parameters being used to define what gets transferred, and what gets sold.
+# extract and sell_all (2) = 208.5530054644808743, 138.4804063860667634 when counting wasted behaviours
+# combined behaviour (3) = 4.5, including wasted behaviours. GARBAGE. sob.
+# Let's create EXTRACT_AND_TRANSFER_OR_SELL (4) instead, with parameters being used to define what gets transferred, and what gets sold.
 
 ## Extract and Sell or Transfer
 

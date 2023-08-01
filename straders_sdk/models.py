@@ -316,8 +316,42 @@ class Waypoint(SymbolClass):
     def has_market(self) -> bool:
         return "MARKETPLACE" in [t.symbol for t in self.traits]
 
+    def has_jump_gate(self) -> bool:
+        return "JUMP_GATE" in [t.symbol for t in self.traits]
+
     def __str__(self):
         return self.symbol
+
+
+class JumpGate:
+    def __init__(
+        self, jump_range: int, faction_symbol: str, connected_waypoints: list["System"]
+    ) -> None:
+        self.jump_range = jump_range
+        self.faction_symbol = faction_symbol
+        self.connected_waypoints = connected_waypoints
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        """ "jumpRange": 0,
+          "factionSymbol": "string",
+          "connectedSystems": [
+            {
+              "symbol": "string",
+              "sectorSymbol": "string",
+              "type": "NEUTRON_STAR",
+              "factionSymbol": "string",
+              "x": 0,
+              "y": 0,
+              "distance": 0
+            }
+          ]
+        }"""
+        return cls(
+            json_data["jumpRange"],
+            json_data["factionSymbol"],
+            [System.from_json(wp) for wp in json_data["connectedSystems"]],
+        )
 
 
 @dataclass
@@ -332,7 +366,7 @@ class System(SymbolClass):
     @classmethod
     def from_json(cls, json_data: dict):
         wayps = []
-        for wp in json_data["waypoints"]:
+        for wp in json_data.get("waypoints", []):
             wp["systemSymbol"] = json_data["symbol"]
             wayps.append(Waypoint.from_json(wp))
         return cls(
@@ -341,7 +375,7 @@ class System(SymbolClass):
             json_data["type"],
             json_data["x"],
             json_data["y"],
-            [Waypoint.from_json(wp) for wp in json_data["waypoints"]],
+            wayps,
         )
 
 

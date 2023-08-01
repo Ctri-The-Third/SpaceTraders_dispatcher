@@ -103,9 +103,13 @@ class SpaceTradersStubClient:
 
         pass
 
-    def system_market_view(
+    def system_market(
         self, system_symbol: str, waypoint_symbol: str
     ) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
 
+        pass
+
+    def system_jumpgate(self, wp: Waypoint) -> "JumpGate" or SpaceTradersResponse:
+        """/systems/{systemSymbol}/waypoints/{waypointSymbol}/jump-gate"""
         pass

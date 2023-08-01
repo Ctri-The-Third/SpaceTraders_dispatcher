@@ -9,6 +9,7 @@ from .models import (
     MarketTradeGood,
     MarketTradeGoodListing,
     System,
+    JumpGate,
 )
 from datetime import datetime
 from .responses import SpaceTradersResponse
@@ -54,6 +55,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def update(self, update_obj):
         "Accepts objects and stores them in the DB"
+        if isinstance(update_obj, JumpGate):
+            pass
         if isinstance(update_obj, Survey):
             _upsert_survey(self.connection, update_obj)
         if isinstance(update_obj, Waypoint):
@@ -287,6 +290,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             cur = self.connection.cursor()
             cur.execute(sql, (wp.symbol,))
             rows = cur.fetchall()
+            if not rows:
+                return LocalSpaceTradersRespose(
+                    f"Could not find market data for that waypoint", 0, 0, sql
+                )
             imports = [MarketTradeGood(*row) for row in rows if row[2] == "buy"]
             exports = [MarketTradeGood(*row) for row in rows if row[2] == "sell"]
             return Market(wp.symbol, imports, exports, [])
@@ -294,6 +301,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             return LocalSpaceTradersRespose(
                 "Could not find market data for that waypoint", 0, 0, sql
             )
+
+    def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "system_jumpgate")
 
     def systems_list_all(self) -> list["Waypoint"] or SpaceTradersResponse:
         """/game/systems"""
