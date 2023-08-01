@@ -57,8 +57,11 @@ class Behaviour:
             self.ship.nav.waypoint_symbol = target_wp_symbol
             return resp
 
-    def extract_till_full(self):
+    def extract_till_full(self, cargo_to_transfer: list):
         # need to validate that the ship's current WP is a valid location
+
+        if len(cargo_to_transfer) > 0:
+            survey = st.find_survey(self.ship.nav.waypoint_symbol, cargo_to_transfer[0])
         ship = self.ship
         st = self.st
         if ship.nav.status == "DOCKED":

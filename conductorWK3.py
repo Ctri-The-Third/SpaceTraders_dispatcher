@@ -106,13 +106,13 @@ def stage_2(client: SpaceTraders):
             client, list(ships.values())[0].nav.system_symbol, "SHIP_ORE_HOUND"
         )
         if maybe_ship:
-            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_TRANSFER_ALL)
+            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     for ship in commanders:
         set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     for ship in excavators:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_ALL)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     return 2
 
 
@@ -127,14 +127,14 @@ def stage_3(client: SpaceTraders):
         return 4
 
     for excavator in excavators:
-        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+        set_behaviour(excavator.name, BHVR_EXTRACT_AND_SELL)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
 
     if len(hounds) <= 30:
         ship = maybe_buy_ship(client, excavators[0].nav.system_symbol, "SHIP_ORE_HOUND")
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(
             client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"

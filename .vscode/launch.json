@@ -42,6 +42,17 @@
             ]
         },
         {
+            "name": "dispatcher -test",
+            "type": "python",
+            "request": "launch",
+            "program": "dispatcherWK3.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "CTRI-TEST-ALDV"
+            ]
+        },
+        {
             "name": "Python: rtb&negotiate",
             "type": "python",
             "request": "launch",

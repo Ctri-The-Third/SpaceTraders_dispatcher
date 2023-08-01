@@ -273,7 +273,33 @@ CREATE TABLE IF NOT EXISTS public.ship_behaviours
     CONSTRAINT ship_behaviours_pkey PRIMARY KEY (ship_name)
 )
 
-TABLESPACE pg_default;
+-- Table: public.survey
+
+-- DROP TABLE IF EXISTS public.survey;
+
+CREATE TABLE IF NOT EXISTS public.survey
+(
+    signature text COLLATE pg_catalog."default" NOT NULL,
+    waypoint text COLLATE pg_catalog."default",
+    expiration timestamp without time zone,
+    size text COLLATE pg_catalog."default",
+    CONSTRAINT survey_pkey PRIMARY KEY (signature)
+)
+
+
+ALTER TABLE IF EXISTS public.survey
+    OWNER to spacetraders;
+CREATE TABLE IF NOT EXISTS public.survey_deposit
+(
+    signature text COLLATE pg_catalog."default" NOT NULL,
+    symbol text COLLATE pg_catalog."default" NOT NULL,
+    count integer,
+    CONSTRAINT survey_deposit_pkey PRIMARY KEY (signature, symbol)
+)
+
+
+ALTER TABLE IF EXISTS public.survey_deposit
+    OWNER to spacetraders;
 
 ALTER TABLE IF EXISTS public.ship_behaviours
     OWNER to spacetraders;

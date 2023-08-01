@@ -16,6 +16,7 @@ from .pg_upserts.upsert_shipyard import _upsert_shipyard
 from .pg_upserts.upsert_market import _upsert_market
 from .pg_upserts.upsert_ship import _upsert_ship
 from .pg_upserts.upsert_system import _upsert_system
+from .pg_upserts.upsert_survey import _upsert_survey
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
@@ -51,6 +52,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def update(self, update_obj):
         "Accepts objects and stores them in the DB"
+        if isinstance(update_obj, Survey):
+            _upsert_survey(self.connection, update_obj)
         if isinstance(update_obj, Waypoint):
             _upsert_waypoint(self.connection, update_obj)
         if isinstance(update_obj, Shipyard):

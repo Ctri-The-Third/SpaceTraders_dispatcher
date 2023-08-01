@@ -72,6 +72,7 @@ def get_and_validate(
             TimeoutError,
             TypeError,
             TimeoutError,
+            requests.ReadTimeout,
         ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
             return LocalSpaceTradersRespose(
