@@ -10,13 +10,15 @@ from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
-from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest
-from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell
-from behaviours.extract_and_transfer_all import ExtractAndTransferAll
+from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
+from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
+from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
+from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
-BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER_HIGHEST"
+BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
+BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
@@ -62,20 +64,20 @@ class dispatcher(SpaceTraders):
     on s.ship_symbol = sb.ship_name
 
     where agent_name = %s
-    and (locked_until <= now() or locked_until is null or locked_by = %s)
+    and (locked_until <= (now() at time zone 'utc') or locked_until is null or locked_by = %s)
     order by last_updated asc """
         rows = self.query(sql, (current_agent_symbol, self.lock_id))
 
         return [{"name": row[0], "behaviour_id": row[1]} for row in rows]
 
-    def lock_ship(self, ship_name, lock_id):
+    def lock_ship(self, ship_name, lock_id, duration=60):
         sql = """INSERT INTO ship_behaviours (ship_name, locked_by, locked_until)
-    VALUES (%s, %s, now() + interval '60 minutes')
+    VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
     ON CONFLICT (ship_name) DO UPDATE SET
         locked_by = %s,
-        locked_until = now() + interval '15 minutes';"""
+        locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
 
-        return self.query(sql, (ship_name, lock_id, lock_id))
+        return self.query(sql, (ship_name, lock_id, duration, lock_id, duration))
 
     def unlock_ship(self, connect, ship_name, lock_id):
         sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
@@ -148,24 +150,25 @@ class dispatcher(SpaceTraders):
                         )
                     elif (
                         ship_and_behaviour["behaviour_id"]
-                        == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES
+                        == BHVR_EXTRACT_AND_TRANSFER_HIGHEST
                     ):
-                        bhvr = ExtractAndTransferHeighest(
+                        bhvr = ExtractAndTransferHeighest_1(
                             self.agent.symbol, ship_and_behaviour["name"]
                         )
                     elif ship_and_behaviour["behaviour_id"] == BHVR_RECEIVE_AND_FULFILL:
-                        bhvr = ReceiveAndFulfillOrSell(
+                        bhvr = ReceiveAndFulfillOrSell_3(
                             self.agent.symbol,
                             ship_and_behaviour["name"],
                             {"receive_wp": "X1-ZN71-00455Z"},
                         )
                     elif (
                         ship_and_behaviour["behaviour_id"]
-                        == BHVR_EXTRACT_AND_TRANSFER_ALL
+                        == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES
                     ):
-                        bhvr = ExtractAndTransferAll(
+                        bhvr = ExtractAndTransferOrSell_4(
                             self.agent.symbol, ship_and_behaviour["name"]
                         )
+
                     if not bhvr:
                         continue
 

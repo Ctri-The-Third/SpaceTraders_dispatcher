@@ -8,7 +8,7 @@ import logging
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
 
 
-class ReceiveAndFulfillOrSell(Behaviour):
+class ReceiveAndFulfillOrSell_3(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -36,7 +36,6 @@ class ReceiveAndFulfillOrSell(Behaviour):
             st.ship_orbit(ship)
         if ship.can_survey:
             st.ship_survey(ship)
-            # this needs to go in the DB still
 
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             # lets go get the contract information

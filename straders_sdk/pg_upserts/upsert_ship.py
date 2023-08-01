@@ -3,6 +3,7 @@ from ..models import Agent
 import psycopg2
 import logging
 import re
+import datetime
 
 # from psycopg2 import connection
 
@@ -23,7 +24,7 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
             ship_role = %s,
             cargo_capacity = %s,
             cargo_in_use = %s, 
-            last_updated = NOW();"""
+            last_updated = (NOW() at time zone 'utc') ;"""
         cur = connection.cursor()
 
         cur.execute(
@@ -43,6 +44,7 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
             ),
         )
 
+        # we need to add offsets to the ship times to get them to UTC.
         sql = """INSERT into ship_nav
         (Ship_symbol, system_symbol, waypoint_symbol, departure_time, arrival_time, origin_waypoint, destination_waypoint, flight_status, flight_mode)
         values (%s, %s, %s, %s, %s, %s, %s, %s, %s)

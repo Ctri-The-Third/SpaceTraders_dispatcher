@@ -6,7 +6,7 @@ import time
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_ALL"
 
 
-class ExtractAndTransferAll(Behaviour):
+class ExtractAndTransferAll_2(Behaviour):
     def __init__(
         self,
         agent_name,

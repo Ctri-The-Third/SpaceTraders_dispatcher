@@ -217,16 +217,21 @@ class SpaceTradersApiClient(SpaceTradersClient):
     # find_waypoint_by_coords, find_waypoint_by_type, find_waypoints_by_trait, find_waypoints_by_trait_one, system_market_view
 
     def find_waypoints_by_trait(self, system_symbol: str, trait: str) -> list[Waypoint]:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoints_by_trait")
 
     def find_waypoint_by_type(self, system_wp, waypoint_type) -> Waypoint:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoint_by_type")
 
     def find_waypoint_by_coords(self, system_symbol: str, x: int, y: int) -> Waypoint:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoint_by_coords")
 
     def find_waypoints_by_trait_one(self, system_symbol: str, trait: str) -> Waypoint:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoints_by_trait_one")
+
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "find_survey_best_deposit")
 
     def systems_list_all(self) -> list[System] or SpaceTradersResponse:
         url = _url("systems")

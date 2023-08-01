@@ -57,19 +57,24 @@ class Behaviour:
             self.ship.nav.waypoint_symbol = target_wp_symbol
             return resp
 
-    def extract_till_full(self, cargo_to_transfer: list):
-        # need to validate that the ship's current WP is a valid location
-
-        if len(cargo_to_transfer) > 0:
-            survey = st.find_survey(self.ship.nav.waypoint_symbol, cargo_to_transfer[0])
+    def extract_till_full(self, cargo_to_target: list = None):
+        # need to validate that the ship'  s current WP is a valid location
+        st = self.st
+        if cargo_to_target is None:
+            cargo_to_target = []
+        if len(cargo_to_target) > 0:
+            survey = st.find_survey_best_deposit(
+                self.ship.nav.waypoint_symbol, cargo_to_target[0]
+            )
         ship = self.ship
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         while ship.cargo_units_used < ship.cargo_capacity:
-            resp = st.ship_extract(ship)
+            resp = st.ship_extract(ship, survey)
             if not resp:
                 sleep(30)
+                return
                 # ship is probably stuck in this state forever
             else:
                 sleep_until_ready(self.ship)

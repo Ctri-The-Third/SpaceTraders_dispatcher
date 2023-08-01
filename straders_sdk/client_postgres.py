@@ -4,11 +4,13 @@ from .models import (
     WaypointTrait,
     Market,
     Survey,
+    Deposit,
     Shipyard,
     MarketTradeGood,
     MarketTradeGoodListing,
     System,
 )
+from datetime import datetime
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
 from .pg_upserts.upsert_waypoint import _upsert_waypoint
@@ -171,6 +173,56 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             0,
             f"find_waypoint_by_type({system_wp}, {waypoint_type})",
         )
+
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
+        sql = """select s.signature, waypoint, expiration, size 
+                from survey s join survey_deposit sd on sd.signature = s.signature  
+                where expiration >= (now() at time zone 'utc')
+                and symbol = %s and waypoint = %s
+                order by count desc, expiration asc"""
+
+        deposits_sql = (
+            """select symbol, count from survey_deposit where signature = %s """
+        )
+        resp = try_execute_select(
+            self.connection, sql, (deposit_symbol, waypoint_symbol)
+        )
+        if not resp:
+            return resp
+        surveys = []
+        for survey_row in resp:
+            deposits_resp = try_execute_select(
+                self.connection, deposits_sql, (survey_row[0],)
+            )
+            if not deposits_resp:
+                return deposits_resp
+            deposits = []
+            deposits_json = []
+            for deposit_row in deposits_resp:
+                deposit = Deposit(deposit_row[0])
+                for i in range(deposit_row[1]):
+                    deposits.append(deposit)
+                    deposits_json.append({"symbol": deposit.symbol})
+            json = {
+                "signature": survey_row[0],
+                "symbol": survey_row[1],
+                "deposits": deposits_json,
+                "expiration": survey_row[2].isoformat(),
+                "size": survey_row[3],
+            }
+            surveys.append(
+                Survey(
+                    survey_row[0],
+                    survey_row[1],
+                    deposits,
+                    survey_row[2],
+                    survey_row[3],
+                    json,
+                )
+            )
+        return surveys[0]
 
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
@@ -393,3 +445,15 @@ def dummy_response(class_name, method_name):
     return LocalSpaceTradersRespose(
         "Not implemented in this client", 0, 0, f"{class_name}.{method_name}"
     )
+
+
+def try_execute_select(connection, sql, params) -> list:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        return rows
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
+        )

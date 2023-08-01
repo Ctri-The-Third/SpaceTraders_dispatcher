@@ -48,7 +48,7 @@ class ExtractAndSell(Behaviour):
             return
 
         self.ship_intrasolar(target_wp_sym)
-        self.extract_till_full()
+        self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()
         self.refuel_if_low()

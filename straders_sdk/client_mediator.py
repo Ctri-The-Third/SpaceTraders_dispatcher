@@ -416,40 +416,20 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         return resp
 
-    def find_surveys(
-        self, waypoint_symbol: str = None, material_symbol: str = None
-    ) -> list[Survey]:
+    def find_surveys(self, waypoint_symbol: str = None) -> list[Survey]:
         """filter cached surveys by system, and material
 
         Args:
             `waypoint_symbol` (str): Optional - The symbol of the waypoint to filter by.
-            `material_symbol` (str): Optional - The symbol of the material we're looking for.
 
         Returns:
             A list of Survey objects that match the filter. If no filter is provided, all surveys are returned.
         """
-        matching_surveys = []
-        surveys_to_remove = []
-        for survey in self.surveys.values():
-            survey: Survey
-            if survey.expiration < datetime.utcnow():
-                surveys_to_remove.append(survey.signature)
-                continue
-            if waypoint_symbol and survey.symbol != waypoint_symbol:
-                continue
-            if material_symbol:
-                for deposit in survey.deposits:
-                    if deposit.symbol == material_symbol:
-                        matching_surveys.append(survey)
-        for sig in surveys_to_remove:
-            self.surveys.pop(sig)
-        return matching_surveys
+        pass
 
-    def find_survey_best(
-        self,
-        material_symbol,
-        waypoint_symbol=None,
-    ) -> Survey or None:
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
         """find the survey with the best chance of giving a specific material.
 
         Args:
@@ -459,21 +439,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             A Survey object that has the best chance of giving the material. If no matching survey is found, None is returned.
         """
-        surveys = self.find_surveys(waypoint_symbol, material_symbol)
-        best_survey = None
-        best_chance = 0
-        for survey in surveys:
-            deposits = len(survey.deposits)
-            chance = sum(
-                1 for deposit in survey.deposits if deposit.symbol == material_symbol
-            )
 
-            chance = chance / deposits
-            if chance > best_chance:
-                best_chance = chance
-                best_survey = survey
-        logging.debug("best survey: (%s%%)", best_chance)
-        return best_survey
+        surveys = self.db_client.find_survey_best_deposit(
+            waypoint_symbol, deposit_symbol
+        )
+        return surveys
 
     def find_waypoint_by_coords(self, system: str, x: int, y: int) -> Waypoint or None:
         """find a waypoint by its coordinates. Only searches cached values.

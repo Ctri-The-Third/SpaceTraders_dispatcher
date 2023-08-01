@@ -282,6 +282,7 @@ class Waypoint(SymbolClass):
     @classmethod
     def from_json(cls, json_data: dict):
         # a waypoint can be a fully scanned thing, or a stub from scanning the system.
+        # future C'tri - there are actually two different kinds of waypoint, SystemWaypoint and Waypoint.
         if "orbitals" not in json_data:
             json_data["orbitals"] = []
         if "traits" not in json_data:

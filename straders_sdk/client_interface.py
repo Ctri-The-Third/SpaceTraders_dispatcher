@@ -87,6 +87,12 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
         pass

@@ -6,7 +6,7 @@ import time
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_HIGHEST"
 
 
-class ExtractAndTransferHeighest(Behaviour):
+class ExtractAndTransferHeighest_1(Behaviour):
     def __init__(
         self,
         agent_name,

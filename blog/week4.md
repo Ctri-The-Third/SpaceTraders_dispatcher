@@ -30,9 +30,10 @@ Specifcs:
 ## Extract and Sell or Transfer
 
 Needs the following things
-* Surveys in DB (this is a big one for efficiency)
-  * DB is in local time, ST is in UTC. Need to convert received timestamps to DB Time. 
-  * This behaviour needs to automatically correct for BST/GMT
+* Surveys in DB (this is a big one for efficiency) ✅
+  * DB is in local time, ST is in UTC. Need to convert received timestamps to DB Time.  ✅
+  * This behaviour needs to automatically correct for BST/GMT ✅
+* Surveys from DB ( currently this is getting a good survey, but not the best survey) ☑️
 * Be able to find ships in DB from multiple agents
 * Conductor adds behaviour_params for completing CTRI's quests.
 * dispatcher needs to get behaviour_params from the database. 

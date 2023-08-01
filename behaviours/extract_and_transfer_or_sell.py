@@ -6,7 +6,7 @@ import time
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL"
 
 
-class ExtractAndTransferAll(Behaviour):
+class ExtractAndTransferOrSell_4(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -22,12 +22,19 @@ class ExtractAndTransferAll(Behaviour):
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
+
+        #
+        #  -- log beginning
+        #
         if not ship.can_extract:
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
             return
 
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
+        #
+        # -- navigate to target waypoint - if not set, go for nearest asteroid field
+        #
         try:
             target_wp_sym = self.behaviour_params.get(
                 "extract_waypoint",
@@ -40,17 +47,31 @@ class ExtractAndTransferAll(Behaviour):
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
             st.waypoints_view(ship.nav.system_symbol, True)
             return
+
+        self.ship_intrasolar(target_wp_sym)
+        #
+        #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.
+        #
+
         cargo_to_transfer = self.behaviour_params.get("cargo_to_transfer", [])
+        if cargo_to_transfer == []:
+            contracts = st.view_my_contracts()
+            for contract_id, contract in contracts.items():
+                if (not contract.accepted) or contract.fulfilled:
+                    continue
+                for deliverable in contract.deliverables:
+                    if deliverable.units_fulfilled < deliverable.units_required:
+                        cargo_to_transfer.append(deliverable.symbol)
+
+        self.extract_till_full(cargo_to_transfer)
+
+        #
+        # find a hauler from any of the matching agents.
+        #
+
         valid_agents = self.behaviour_params.get(
             "valid_agents", [agent.symbol]
         )  # which agents do we transfer quest cargo to?
-        self.ship_intrasolar(target_wp_sym)
-
-        # find a hauler - currently restricted to my ships.
-        # TODO: create methods for finding ships from other agents
-        # TODO: Parameterise which agents we can transfer haulers to
-
-        self.extract_till_full(cargo_to_transfer)
 
         hauler = self.find_hauler(ship.nav.waypoint_symbol, valid_agents)
         if hauler:
@@ -66,10 +87,18 @@ class ExtractAndTransferAll(Behaviour):
                             hauler.name,
                             resp.error,
                         )
+
+        #
+        # sell all remaining cargo now we're full.
+        #
         self.sell_all_cargo(cargo_to_transfer)
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
             time.sleep(300)
+
+        #
+        # end of script.
+        #
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
     def find_hauler(self, waypoint_symbol, valid_agents: list):
