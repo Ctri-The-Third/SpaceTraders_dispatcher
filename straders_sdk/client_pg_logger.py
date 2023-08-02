@@ -266,13 +266,19 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("system_market", "GLOBAL", url, response)
         pass
 
-    def systems_list_all(
+    def systems_view_all(
         self, response=None
     ) -> dict[str:"System"] or SpaceTradersResponse:
-        """/game/systems"""
+        """/systems"""
         url = _url(f"game/systems")
         self.log_event("systems_list_all", "GLOBAL", url, response)
         pass
+
+    def systems_view_one(
+        self, system_symbol: str, response
+    ) -> "System" or SpaceTradersResponse:
+        url = _url(f"/systems/{system_symbol}")
+        self.log_event("systems_view_one", "GLOBAL", url, response)
 
     def system_shipyard(
         self, waypoint: Waypoint, response=None

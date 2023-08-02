@@ -5,7 +5,7 @@ import json
 
 
 def master(st: SpaceTraders):
-    wayps = st.systems_list_all(force=True)
+    wayps = st.systems_view_all(force=True)
 
     pass
 

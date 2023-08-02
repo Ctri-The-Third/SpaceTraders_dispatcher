@@ -111,6 +111,12 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def ship_jump(self, ship, dest_symbol_string) -> SpaceTradersResponse:
+        """my/ships/:shipSymbol/jump"""
+
+        pass
+
+    @abstractmethod
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
 
@@ -160,8 +166,14 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def systems_list_all(self) -> dict[str:"System"] or SpaceTradersResponse:
+    def systems_view_all(self) -> dict[str:"System"] or SpaceTradersResponse:
         """/game/systems"""
+
+        pass
+
+    @abstractmethod
+    def systems_view_one(self, symbol: str) -> "System" or SpaceTradersResponse:
+        """/game/systems/{symbol}"""
 
         pass
 

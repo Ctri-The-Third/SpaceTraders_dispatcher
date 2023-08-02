@@ -1,6 +1,6 @@
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
-from straders_sdk.models import Waypoint
+from straders_sdk.models import Waypoint, System
 import math
 
 BEHAVIOUR_NAME = "Explore local & jump network"
@@ -31,6 +31,7 @@ class Week4(Behaviour):
         # do the waypoints have traits? yes
         # are there any shipyards/ markets/ jump gates?
         # do I have details on them? - no - add to list
+        # Have I got the connceted systems?
         # yes - skip
         # pick my nearest neighbour.
         # A* to it via jump gates.
@@ -45,9 +46,80 @@ class Week4(Behaviour):
             else:
                 for system in jg.connected_waypoints:
                     print(system)
+                gate_wp = st.waypoints_view_one("X1-QR77", "X1-QR77-39247B")
 
         else:
-            print("system doesn't have a jump gate!")
+            print("no jump gate found")
+            return
+
+        unexplored_systems = self.find_unexplored_jumpgate_systems()
+        start = self.st.systems_view_one(ship.nav.system_symbol)
+        order_to_visit = nearest_neighbour_systems(
+            unexplored_systems, ship.nav.system_symbol
+        )
+        for system in order_to_visit:
+            system: System
+            self.st.ship_jump(ship, system.symbol)
+            self.scan_local_system()
+            self.
+            # jump to system
+            # explore system
+            # return to gate
+
+    def recursive_find_unexplored_systems(
+        self, system_symbol: str, collected_system_symbols: list[str] = list()
+    ) -> list[str]:
+        # does the system have a warp gate? should be yes.
+        # takes a good half hour. Might have limitations based on charting and not work straight away?
+        resp = gate_wp = self.st.find_waypoint_by_type(system_symbol, "JUMP_GATE")
+        if not resp:
+            return collected_system_symbols
+
+        gate = self.st.system_jumpgate(gate_wp)
+        if not resp:
+            return collected_system_symbols
+
+        if system_symbol in collected_system_symbols:
+            print(
+                f"({len(collected_system_symbols)}){system_symbol} - Whoops, already got this system! "
+            )
+            return collected_system_symbols
+        else:
+            print(
+                f"({len(collected_system_symbols)}){system_symbol} - adding and checking direct connects"
+            )
+            collected_system_symbols.append(system_symbol)
+            for system in gate.connected_waypoints:
+                self.recursive_find_unexplored_systems(
+                    system.symbol, collected_system_symbols
+                )
+
+    def find_unexplored_jumpgate_systems(
+        self,
+    ) -> list[str]:
+        sql = """with mapped_systems as (
+with mapped_systems as (
+select s.symbol,  true as mapped 
+from waypoints w 
+join systems s on w.system_symbol=s.symbol 
+join waypoint_traits wt on w.symbol = wt.waypoint
+group by 1
+having count(*) > 0
+	)
+select system_symbol, coalesce (mapped, false) as mapped, s.x, s.y
+from jump_gates jg 
+join waypoints w on jg.waypoint_symbol = w.symbol
+left join mapped_systems ms on ms.symbol = w.symbol
+left join systems s on system_symbol = s.symbol
+where coalesce(mapped, false) = false
+"""
+        resp = self.st.db_client.connection.cursor().execute(sql)
+        if not resp:
+            return []
+        unexplored_systems = []
+        all_systems = self.st.systems_view_all()
+        for row in resp:
+            unexplored_systems.append(all_systems.get(row[0]))
 
     def scan_local_system(self):
         st = self.st
@@ -76,7 +148,7 @@ class Week4(Behaviour):
                     for ship in shipyard.ships:
                         print("ship")
             if waypoint.type == "JUMP_GATE":
-                print("jump gate found!")
+                jump_gate = st.system_jumpgate(waypoint)
 
 
 def nearest_neighbour(waypoints: list[Waypoint], start: Waypoint):
@@ -97,9 +169,21 @@ def nearest_neighbour(waypoints: list[Waypoint], start: Waypoint):
     return path
 
 
+def nearest_neighbour_systems(systems: list[System], start: System):
+    path = []
+    unplotted = systems
+    current = start
+    while unplotted:
+        next_system = min(unplotted, key=lambda sys: calculate_distance(current, sys))
+        path.append(next_system.symbol)
+        unplotted.remove(next_system)
+        current = next_system
+    return path
+
+
 def calculate_distance(src: Waypoint, dest: Waypoint):
     return math.sqrt((src.x - dest.x) ** 2 + (src.y - dest.y) ** 2)
 
 
 if __name__ == "__main__":
-    Week4("CTRI", "CTRI-1").run()
+    Week4("CTRI-TEST-ALDV", "CTRI-TEST-ALDV-1").run()

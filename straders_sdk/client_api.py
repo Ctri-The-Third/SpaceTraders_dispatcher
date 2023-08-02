@@ -234,13 +234,20 @@ class SpaceTradersApiClient(SpaceTradersClient):
     ) -> Survey or SpaceTradersResponse:
         return dummy_response(__class__.__name__, "find_survey_best_deposit")
 
-    def systems_list_all(self) -> list[System] or SpaceTradersResponse:
+    def systems_view_all(self) -> list[System] or SpaceTradersResponse:
         url = _url("systems")
         resp = get_and_validate_paginated(
             url, per_page=20, page_limit=999, headers=self._headers()
         )
         if resp:
             resp = [System.from_json(d) for d in resp.data]
+        return resp
+
+    def systems_view_one(self, system_symbol: str) -> System or SpaceTradersResponse:
+        url = _url(f"systems/{system_symbol}")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return System.from_json(resp.data)
         return resp
 
     def system_market(self, wp: Waypoint) -> Market:
@@ -274,7 +281,9 @@ class SpaceTradersApiClient(SpaceTradersClient):
         url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/jump-gate")
         resp = get_and_validate(url, headers=self._headers())
         if resp:
-            return JumpGate.from_json(resp.data)
+            gate = JumpGate.from_json(resp.data)
+            gate.waypoint_symbol = wp.symbol
+            return gate
         return resp
 
     def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:

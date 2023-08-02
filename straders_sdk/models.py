@@ -325,32 +325,24 @@ class Waypoint(SymbolClass):
 
 class JumpGate:
     def __init__(
-        self, jump_range: int, faction_symbol: str, connected_waypoints: list["System"]
+        self,
+        waypoint_symbol: str,
+        jump_range: int,
+        connected_waypoints: list["JumpGateConnection"],
+        faction_symbol: str = "",
     ) -> None:
+        self.waypoint_symbol = waypoint_symbol
         self.jump_range = jump_range
         self.faction_symbol = faction_symbol
         self.connected_waypoints = connected_waypoints
 
     @classmethod
     def from_json(cls, json_data: dict):
-        """ "jumpRange": 0,
-          "factionSymbol": "string",
-          "connectedSystems": [
-            {
-              "symbol": "string",
-              "sectorSymbol": "string",
-              "type": "NEUTRON_STAR",
-              "factionSymbol": "string",
-              "x": 0,
-              "y": 0,
-              "distance": 0
-            }
-          ]
-        }"""
         return cls(
+            "",
             json_data["jumpRange"],
-            json_data["factionSymbol"],
-            [System.from_json(wp) for wp in json_data["connectedSystems"]],
+            [JumpGateConnection.from_json(wp) for wp in json_data["connectedSystems"]],
+            json_data.get("factionSymbol", ""),
         )
 
 
@@ -376,6 +368,30 @@ class System(SymbolClass):
             json_data["x"],
             json_data["y"],
             wayps,
+        )
+
+
+@dataclass
+class JumpGateConnection(SymbolClass):
+    symbol: str
+    sector_symbol: str
+    type: str
+
+    x: int
+    y: int
+    distance: int
+    faction_symbol: str = ""
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(
+            json_data["symbol"],
+            json_data["sectorSymbol"],
+            json_data["type"],
+            json_data["x"],
+            json_data["y"],
+            json_data["distance"],
+            json_data.get("factionSymbol", ""),
         )
 
 

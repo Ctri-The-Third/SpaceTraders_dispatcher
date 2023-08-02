@@ -21,6 +21,7 @@ from .pg_pieces.upsert_ship import _upsert_ship
 from .pg_pieces.upsert_system import _upsert_system
 from .pg_pieces.upsert_survey import _upsert_survey
 from .pg_pieces.select_ship import _select_ships
+from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
@@ -57,7 +58,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def update(self, update_obj):
         "Accepts objects and stores them in the DB"
         if isinstance(update_obj, JumpGate):
-            pass
+            _upsert_jump_gate(self.connection, update_obj)
         if isinstance(update_obj, Survey):
             _upsert_survey(self.connection, update_obj)
         if isinstance(update_obj, Waypoint):
@@ -304,13 +305,13 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             )
 
     def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
-        return dummy_response(__class__.__name__, "system_jumpgate")
+        return select_jump_gate_one(self.connection, wp)
 
-    def systems_list_all(self) -> list["Waypoint"] or SpaceTradersResponse:
+    def systems_view_all(self) -> list["Waypoint"] or SpaceTradersResponse:
         """/game/systems"""
-        sql = """SELECT * FROM waypoints"""
+        sql = """SELECT symbol, sector_symbol, type, x, y FROM systems"""
         cur = self.connection.cursor()
-        wayps = {}
+        cysts = {}
         try:
             cur.execute(sql)
             rows = cur.fetchall()
@@ -322,9 +323,26 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 __name__ + ".systems_list_all",
             )
         for row in rows:
-            wayp = Waypoint(row[2], row[0], row[1], row[3], row[4], [], [], {}, {})
-            wayps[wayp.symbol] = wayp
-        return wayps
+            syst = System(row[0], row[1], row[2], row[3], row[4], [])
+            cysts[syst.symbol] = syst
+        return cysts
+
+    def systems_view_one(self, symbol: str) -> Waypoint or SpaceTradersResponse:
+        sql = """SELECT symbol, sector_symbol, type, x, y FROM systems where symbol = %s limit 1"""
+        cur = self.connection.cursor()
+        try:
+            cur.execute(sql, (symbol,))
+            rows = cur.fetchall()
+        except Exception as err:
+            return LocalSpaceTradersRespose(
+                f"Wasn't able to get waypoint {err}",
+                0,
+                0,
+                __name__ + ".systems_list_all",
+            )
+        for row in rows:
+            syst = System(row[0], row[1], row[2], row[3], row[4], [])
+            return syst
 
     def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.

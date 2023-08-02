@@ -348,23 +348,45 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
-    def systems_list_all(
+    def systems_view_all(
         self, force=False
     ) -> dict[str:"System"] or SpaceTradersResponse:
         """/game/systems"""
         if not force:
-            resp = self.db_client.systems_list_all()
+            resp = self.db_client.systems_view_all()
             if resp:
                 return resp
 
-        resp = self.api_client.systems_list_all()
-        self.logging_client.systems_list_all(resp)
+        resp = self.api_client.systems_view_all()
+        self.logging_client.systems_view_all(resp)
         if resp:
             for syst in resp:
                 syst: System
                 print(f"{syst.symbol} {syst.x},{syst.y}")
                 self.db_client.update(syst)
             return {d.symbol: d for d in resp}
+
+    def systems_view_one(
+        self, system_symbol: str, force=False
+    ) -> System or SpaceTradersResponse:
+        """View a single system. Uses cached values by default.
+
+        Args:
+            `system_symbol` (str): The symbol of the system to view.
+
+        Returns:
+            Either a System object or a SpaceTradersResponse object on failure.
+        """
+        if not force:
+            resp = self.db_client.systems_view_one(system_symbol)
+            if resp:
+                return resp
+
+        resp = self.api_client.systems_view_one(system_symbol)
+        self.logging_client.systems_view_one(system_symbol, resp)
+        if resp:
+            self.db_client.update(resp)
+        return resp
 
     def system_shipyard(
         self, wp: Waypoint, force_update=False
@@ -419,6 +441,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             if bool(resp):
                 return resp
         resp = self.api_client.system_jumpgate(wp)
+
         self.logging_client.system_jumpgate(wp, resp)
         if resp:
             # TODO upsert
