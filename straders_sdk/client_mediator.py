@@ -549,12 +549,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 if wp_trait.symbol == trait:
                     resp.append(wayp)
 
-        resp = [
-            wayp
-            for wayp in self.waypoints_view(system_symbol).values()
-            for wp_trait in wayp.traits
-            if wp_trait.symbol == trait
-        ]
         if isinstance(resp, list) and len(resp) > 0:
             return resp
         resp = self.db_client.find_waypoints_by_trait(system_symbol, trait)

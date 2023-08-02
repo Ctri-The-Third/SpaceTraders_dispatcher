@@ -5,6 +5,12 @@
 from behaviours.generic_behaviour import Behaviour
 import logging
 
+from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
+st = SpaceTraders(token)
+ships = st.ships_view()
+    for ship in ships:     
+        print (f"{ship.name} is at {ship.nav.waypoint_symbol}")
+    )
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
 
 

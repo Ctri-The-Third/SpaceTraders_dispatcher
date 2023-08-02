@@ -4,7 +4,7 @@ import setuptools
 from setuptools import find_packages
 
 setuptools.setup(
-    version="0.2.0",
+    version="0.4.0",
     packages=find_packages(where="straders_sdk"),
     package_dir={
         "": "straders_sdk",

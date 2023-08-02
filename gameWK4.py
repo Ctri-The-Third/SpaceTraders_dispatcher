@@ -2,6 +2,7 @@ from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint, System
 import math
+import logging
 
 BEHAVIOUR_NAME = "Explore local & jump network"
 
@@ -54,15 +55,24 @@ class Week4(Behaviour):
 
         unexplored_systems = self.find_unexplored_jumpgate_systems()
         start = self.st.systems_view_one(ship.nav.system_symbol)
-        order_to_visit = nearest_neighbour_systems(
-            unexplored_systems, ship.nav.system_symbol
-        )
-        for system in order_to_visit:
-            system: System
-            self.st.ship_jump(ship, system.symbol)
-            starting_wp = ship.nav.waypoint_symbol
-            self.scan_local_system()
-            self.ship_intrasolar(starting_wp)
+        order_to_visit = nearest_neighbour_systems(unexplored_systems, start)
+        while order_to_visit:
+            system = order_to_visit.pop(0)
+            self.logger.info(
+                f"About to explore {system}, remaining: {len(order_to_visit)}"
+            )
+
+            self.sleep_until_ready()
+            jump_resp = self.st.ship_jump(ship, system)
+
+            if ship.nav.system_symbol == system:
+                starting_wp = ship.nav.waypoint_symbol
+                self.scan_local_system()
+                self.ship_intrasolar(starting_wp)
+            else:
+                self.logger.error(
+                    f"Failed to jump to {system} because {jump_resp.error}"
+                )
             # jump to system
             # explore system
             # return to gate
@@ -98,7 +108,7 @@ class Week4(Behaviour):
     def find_unexplored_jumpgate_systems(
         self,
     ) -> list[str]:
-        sql = """with mapped_systems as (
+        sql = """
 with mapped_systems as (
 select s.symbol,  true as mapped 
 from waypoints w 
@@ -114,25 +124,38 @@ left join mapped_systems ms on ms.symbol = w.symbol
 left join systems s on system_symbol = s.symbol
 where coalesce(mapped, false) = false;
 """
-        sql = "select 1"
-        resp = self.st.db_client.connection.cursor().execute(sql)
+        try:
+            cursor = self.st.db_client.connection.cursor()
+            cursor.execute(sql, ())
+            # fetch all rows
+            resp = cursor.fetchall()
+        except Exception as err:
+            print(err)
+            return []
         if not resp:
             return []
         unexplored_systems = []
         all_systems = self.st.systems_view_all()
-        for row in resp.fetch_all():
+        for row in resp:
             unexplored_systems.append(all_systems.get(row[0]))
+        return unexplored_systems
 
     def scan_local_system(self):
         st = self.st
         ship = self.ship
         current_system_sym = self.ship.nav.system_symbol
-        wayps = st.find_waypoints_by_trait(current_system_sym, "MARKETPLACE")
-        wayps = wayps.extend(st.find_waypoints_by_trait(current_system_sym, "SHIPYARD"))
-        wayps = wayps.extend(st.find_waypoint_by_type(current_system_sym, "JUMP_GATE"))
+        # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
+        # Solution
+        st.waypoints_view(current_system_sym, True)
+        target_wayps = st.find_waypoint_by_type(current_system_sym, "MARKETPLACE")
+
+        target_wayps.extend(st.find_waypoints_by_trait(current_system_sym, "SHIPYARD"))
+        target_wayps = target_wayps.extend(
+            st.find_waypoint_by_type(current_system_sym, "JUMP_GATE")
+        )
 
         start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
-        path = nearest_neighbour(wayps, start)
+        path = nearest_neighbour(target_wayps, start)
 
         for wayp_sym in path:
             self.ship_intrasolar(wayp_sym)

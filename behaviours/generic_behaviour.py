@@ -3,6 +3,7 @@ from straders_sdk import SpaceTraders
 from time import sleep
 from straders_sdk.ship import Ship
 from straders_sdk.utils import set_logging
+import logging
 
 
 class Behaviour:
@@ -17,6 +18,7 @@ class Behaviour:
         config_file_name="user.json",
     ) -> None:
         set_logging()
+        self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params
         saved_data = json.load(open(config_file_name, "r+"))
         for agent in saved_data["agents"]:
