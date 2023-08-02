@@ -82,7 +82,7 @@ CREATE TABLE public.logging (
     event_name text NOT NULL,
     event_timestamp timestamp without time zone NOT NULL,
     agent_name, text NOT NULL,
-    ship_name text NOT NULL,
+    ship_symbol text NOT NULL,
     session_id text,
     endpoint_name text,
     new_credits integer,
@@ -266,11 +266,11 @@ CREATE TABLE public.waypoints (
 
 CREATE TABLE IF NOT EXISTS public.ship_behaviours
 (
-    ship_name text COLLATE pg_catalog."default" NOT NULL,
+    ship_symbol text COLLATE pg_catalog."default" NOT NULL,
     behaviour_id text COLLATE pg_catalog."default",
     locked_by text COLLATE pg_catalog."default",
     locked_until timestamp without time zone,
-    CONSTRAINT ship_behaviours_pkey PRIMARY KEY (ship_name)
+    CONSTRAINT ship_behaviours_pkey PRIMARY KEY (ship_symbol)
 )
 
 -- Table: public.survey
@@ -313,7 +313,7 @@ ALTER TABLE public.waypoints OWNER TO spacetraders;
 --
 
 ALTER TABLE ONLY public.logging
-    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_name);
+    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_symbol);
 
 
 --

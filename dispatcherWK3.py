@@ -61,7 +61,7 @@ class dispatcher(SpaceTraders):
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until 
     from ship s 
     left join ship_behaviours sb 
-    on s.ship_symbol = sb.ship_name
+    on s.ship_symbol = sb.ship_symbol
 
     where agent_name = %s
     and (locked_until <= (now() at time zone 'utc') or locked_until is null or locked_by = %s)
@@ -70,19 +70,19 @@ class dispatcher(SpaceTraders):
 
         return [{"name": row[0], "behaviour_id": row[1]} for row in rows]
 
-    def lock_ship(self, ship_name, lock_id, duration=60):
-        sql = """INSERT INTO ship_behaviours (ship_name, locked_by, locked_until)
+    def lock_ship(self, ship_symbol, lock_id, duration=60):
+        sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
     VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
-    ON CONFLICT (ship_name) DO UPDATE SET
+    ON CONFLICT (ship_symbol) DO UPDATE SET
         locked_by = %s,
         locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
 
-        return self.query(sql, (ship_name, lock_id, duration, lock_id, duration))
+        return self.query(sql, (ship_symbol, lock_id, duration, lock_id, duration))
 
-    def unlock_ship(self, connect, ship_name, lock_id):
+    def unlock_ship(self, connect, ship_symbol, lock_id):
         sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
-                WHERE ship_name = %s and locked_by = %s"""
-        self.query(sql, (ship_name, lock_id))
+                WHERE ship_symbol = %s and locked_by = %s"""
+        self.query(sql, (ship_symbol, lock_id))
 
     @property
     def connection(self):

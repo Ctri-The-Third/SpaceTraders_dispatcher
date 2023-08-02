@@ -98,7 +98,7 @@ def stage_2(client: SpaceTraders):
     # recommend switching to getting more ore hounds after 2 drones.
     ships = client.ships_view()
 
-    hounds = [ship for ship in ships.values() if ship.role == "HAULER"]
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "HAULER"]
     if len(hounds) >= 1:
         return 3
     else:
@@ -149,12 +149,12 @@ def stage_4():
     pass
 
 
-def set_behaviour(ship_name, behaviour_id):
-    sql = """insert into ship_behaviours (ship_name, behaviour_id)
-    values (%s, %s) on conflict (ship_name) do update set behaviour_id = %s"""
+def set_behaviour(ship_symbol, behaviour_id):
+    sql = """insert into ship_behaviours (ship_symbol, behaviour_id)
+    values (%s, %s) on conflict (ship_symbol) do update set behaviour_id = %s"""
     cursor = connection.cursor()
     try:
-        cursor.execute(sql, (ship_name, behaviour_id, behaviour_id))
+        cursor.execute(sql, (ship_symbol, behaviour_id, behaviour_id))
     except Exception as e:
         logging.error(e)
         return False
