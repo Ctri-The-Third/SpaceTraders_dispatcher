@@ -2,7 +2,7 @@ import psycopg2
 
 
 from ..models import System
-from ..pg_upserts.upsert_waypoint import _upsert_waypoint
+from ..pg_pieces.upsert_waypoint import _upsert_waypoint
 
 
 def _upsert_system(connection, system: System):

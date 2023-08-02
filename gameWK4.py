@@ -20,6 +20,8 @@ class Week4(Behaviour):
         ship = self.ship
         st = self.st
         # check all markets in the system
+        ships = st.ships_view(True)
+        other_ships = st.ships_view()
         unexplored_systems = [ship.nav.system_symbol]
         explored_systems = []
 

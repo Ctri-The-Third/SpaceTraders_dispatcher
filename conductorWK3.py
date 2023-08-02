@@ -66,7 +66,7 @@ def stage_1(client: SpaceTraders):
     ships = client.ships_view()
 
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    if len(extractors) >= 5:
+    if len(extractors) >= 2:
         return 2
 
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
@@ -98,7 +98,7 @@ def stage_2(client: SpaceTraders):
     # recommend switching to getting more ore hounds after 2 drones.
     ships = client.ships_view()
 
-    hounds = [ship for ship in ships.values() if ship.frame.symbol == "HAULER"]
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     if len(hounds) >= 1:
         return 3
     else:
@@ -110,7 +110,7 @@ def stage_2(client: SpaceTraders):
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     for ship in commanders:
-        set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     for ship in excavators:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     return 2
@@ -120,27 +120,27 @@ def stage_3(client: SpaceTraders):
     ships = client.ships_view()
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    hounds = [ship for ship in ships.values() if ship.frame == "SHIP_ORE_HOUND"]
-    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
+    haulers = [ship for ship in ships.values() if ship.role in ["HAULER", "COMMANDER"]]
 
     if len(hounds) >= 30 and len(haulers) >= 3:
         return 4
 
     for excavator in excavators:
-        set_behaviour(excavator.name, BHVR_EXTRACT_AND_SELL)
+        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
 
     if len(hounds) <= 30:
         ship = maybe_buy_ship(client, excavators[0].nav.system_symbol, "SHIP_ORE_HOUND")
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(
             client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
         )
         if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     return 3
 
 

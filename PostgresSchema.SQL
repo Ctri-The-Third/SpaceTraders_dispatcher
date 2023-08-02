@@ -315,13 +315,13 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.ship_frame_links
     OWNER to spacetraders;
 
-    -- Table: public.ship_frames
+    -- Table: public.ship_frame-- Table: public.ship_frames
 
 -- DROP TABLE IF EXISTS public.ship_frames;
 
 CREATE TABLE IF NOT EXISTS public.ship_frames
 (
-    frame_symbol text COLLATE pg_catalog."default",
+    frame_symbol text COLLATE pg_catalog."default" NOT NULL,
     name text COLLATE pg_catalog."default",
     description text COLLATE pg_catalog."default",
     module_slots integer,
@@ -329,7 +329,8 @@ CREATE TABLE IF NOT EXISTS public.ship_frames
     fuel_capacity integer,
     required_power integer,
     required_crew integer,
-    required_slots integer
+    required_slots integer,
+    CONSTRAINT ship_frames_pkey PRIMARY KEY (frame_symbol)
 )
 
 TABLESPACE pg_default;

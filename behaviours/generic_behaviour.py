@@ -22,6 +22,7 @@ class Behaviour:
         for agent in saved_data["agents"]:
             if agent["username"] == agent_name:
                 token = agent["token"]
+                break
         if not token:
             # register the user
             pass
@@ -37,8 +38,9 @@ class Behaviour:
             db_name=db_name,
             db_user=db_user,
             db_pass=db_pass,
+            current_agent_symbol=agent_name,
         )
-        self.ship = self.st.ships_view_one(ship_name, force=False)
+        self.ship = self.st.ships_view_one(ship_name, force=True)
         self.agent = self.st.view_my_self()
 
     def run(self):

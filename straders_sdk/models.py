@@ -32,8 +32,8 @@ class FuelInfo:
 @dataclass
 class ShipRequirements:
     crew: int = 0
-    modules: int = 0
-    slots: int = 0
+    module_slots: int = 0
+    power: int = 0
 
     @classmethod
     def from_json(cls, json_data: dict):

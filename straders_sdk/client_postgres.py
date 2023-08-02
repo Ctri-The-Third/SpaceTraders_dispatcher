@@ -14,12 +14,13 @@ from .models import (
 from datetime import datetime
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
-from .pg_upserts.upsert_waypoint import _upsert_waypoint
-from .pg_upserts.upsert_shipyard import _upsert_shipyard
-from .pg_upserts.upsert_market import _upsert_market
-from .pg_upserts.upsert_ship import _upsert_ship
-from .pg_upserts.upsert_system import _upsert_system
-from .pg_upserts.upsert_survey import _upsert_survey
+from .pg_pieces.upsert_waypoint import _upsert_waypoint
+from .pg_pieces.upsert_shipyard import _upsert_shipyard
+from .pg_pieces.upsert_market import _upsert_market
+from .pg_pieces.upsert_ship import _upsert_ship
+from .pg_pieces.upsert_system import _upsert_system
+from .pg_pieces.upsert_survey import _upsert_survey
+from .pg_pieces.select_ship import _select_ships
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
@@ -362,72 +363,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ships_view(self) -> dict[str:"Ship"] or SpaceTradersResponse:
         """/my/ships"""
-        sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
-                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
-                from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
-                where agent_name = %s
-                
-                """
-        try:
-            cur = self.connection.cursor()
-            cur.execute(sql, (self.current_agent_symbol,))
-            rows = cur.fetchall()
-            ships = {}
-            for row in rows:
-                ship = Ship()
-                ship.name = row[0]
-                ship.faction = row[2]
-                ship.role = row[3]
-                ship.cargo_capacity = row[4]
-                ship.cargo_units_used = row[5]
-                # , 6: n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
 
-                # SHIP NAV BEGINS
-                current_system = self.waypoints_view_one("", row[6])
-                if not current_system:
-                    current_system = None
+        # PROBLEM - the client doesn't really know who the current agent is - so we can't filter by agent.
+        # but the DB is home to many ships. Therefore, this client needs to become aware of the agent name on init.
+        # WAIT WE ALREADY DO THAT. well done past C'tri
 
-                origin = self.waypoints_view_one("", row[9])
-                if not origin:
-                    origin = None
-                destination = self.waypoints_view_one("", row[10])
-                if not destination:
-                    destination = None
-
-                ship.nav = ShipNav(
-                    current_system.system_symbol,
-                    current_system.symbol,
-                    RouteNode(
-                        destination.symbol,
-                        destination.type,
-                        destination.system_symbol,
-                        destination.x,
-                        destination.y,
-                    ),
-                    RouteNode(
-                        origin.symbol,
-                        origin.type,
-                        origin.system_symbol,
-                        origin.x,
-                        origin.y,
-                    ),
-                    row[7],
-                    row[8],
-                    row[11],
-                    row[12],
-                )
-                # SHIP NAV ENDS
-
-                ships[ship.name] = ship
-            return ships
-        except Exception as err:
-            LocalSpaceTradersRespose(
-                error=err,
-                status_code=0,
-                error_code=0,
-                url=f"{__class__.__name__}.ships_view",
-            )
-        pass
+        return _select_ships(self.connection, self.current_agent_symbol, self)
 
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}"""
