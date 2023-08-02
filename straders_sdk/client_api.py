@@ -118,6 +118,15 @@ class SpaceTradersApiClient(SpaceTradersClient):
             self.update(resp.data)
         return resp
 
+    def ship_jump(self, ship: Ship, dest_system_symbol: str):
+        "my/ships/:shipSymbol/jump"
+        url = _url(f"my/ships/{ship.name}/jump")
+        data = {"systemSymbol": dest_system_symbol}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if resp:
+            self.update(resp.data)
+        return resp
+
     def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
         "/my/ships/{shipSymbol}/negotiate/contract"
         url = _url(f"my/ships/{ship.name}/negotiate/contract")

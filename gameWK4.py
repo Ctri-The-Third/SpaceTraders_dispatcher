@@ -60,8 +60,9 @@ class Week4(Behaviour):
         for system in order_to_visit:
             system: System
             self.st.ship_jump(ship, system.symbol)
+            starting_wp = ship.nav.waypoint_symbol
             self.scan_local_system()
-            self.
+            self.ship_intrasolar(starting_wp)
             # jump to system
             # explore system
             # return to gate
@@ -111,14 +112,15 @@ from jump_gates jg
 join waypoints w on jg.waypoint_symbol = w.symbol
 left join mapped_systems ms on ms.symbol = w.symbol
 left join systems s on system_symbol = s.symbol
-where coalesce(mapped, false) = false
+where coalesce(mapped, false) = false;
 """
+        sql = "select 1"
         resp = self.st.db_client.connection.cursor().execute(sql)
         if not resp:
             return []
         unexplored_systems = []
         all_systems = self.st.systems_view_all()
-        for row in resp:
+        for row in resp.fetch_all():
             unexplored_systems.append(all_systems.get(row[0]))
 
     def scan_local_system(self):

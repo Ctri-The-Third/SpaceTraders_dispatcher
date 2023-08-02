@@ -210,6 +210,15 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         pass
 
+    def ship_jump(
+        self, ship: "Ship", dest_waypoint_symbol: str, response=None
+    ) -> SpaceTradersResponse:
+        """my/ships/:shipSymbol/jump"""
+        url = _url(f"my/ships/:ship_name/jump")
+        self.log_event("ship_jump", ship.name, url, response)
+
+        pass
+
     def ship_extract(
         self, ship: "Ship", survey: Survey = None, response=None
     ) -> SpaceTradersResponse:

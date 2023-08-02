@@ -631,6 +631,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.ships[ship.name] = ship
         return resp
 
+    def ship_jump(self, ship: "Ship", dest_system_symbol: str):
+        """my/ships/:shipSymbol/jump"""
+        resp = self.api_client.ship_jump(ship, dest_system_symbol)
+        self.logging_client.ship_jump(ship, dest_system_symbol, resp)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+            self.ships[ship.name] = ship
+        return resp
+
     def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/negotiate/contract"""
         if ship.nav.status != "DOCKED":
