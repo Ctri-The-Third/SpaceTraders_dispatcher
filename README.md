@@ -19,12 +19,11 @@ Eventually will be used to build an interactive gameplay UI built on top of the 
 ## Overview
 A series of helper classes for interacting with the API.
 
-`client_api` - directly interacts with the API  
-`client_postgres` - updates info in / fetches info from a configured postgres database instead of bothering the API  
-`client_pg_logger` - a client that just puts in logs to the postgres database whenever its methods are called (useful for tracking API usage & behaviours efficacy  
--`client_stub` - a stub client that just does nothing.   
-
--✨`client_mediator`✨ - a client that can connect all of the above, checking the DB before bothering the API, feeding API responses into the DB, and logging API calls to the DB.
+* `client_api` - directly interacts with the API  
+* `client_postgres` - updates info in / fetches info from a configured postgres database instead of bothering the API  
+* `client_pg_logger` - a client that just puts in logs to the postgres database whenever its methods are called (useful for tracking API usage & behaviours efficacy  
+* `client_stub` - a stub client that just does nothing.   
+* ✨`client_mediator`✨ - a client that can connect all of the above, checking the DB before bothering the API, feeding API responses into the DB, and logging API calls to the DB.
 
 All the clients implement the same abstract interface, so can be used interchangably (most useful when going from the basic API class to the mediator class / vice versa.)
 
