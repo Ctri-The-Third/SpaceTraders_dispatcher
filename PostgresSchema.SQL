@@ -298,6 +298,46 @@ CREATE TABLE IF NOT EXISTS public.survey_deposit
 )
 
 
+-- Table: public.ship_frame_links
+
+-- DROP TABLE IF EXISTS public.ship_frame_links;
+
+CREATE TABLE IF NOT EXISTS public.ship_frame_links
+(
+    ship_symbol text COLLATE pg_catalog."default" NOT NULL,
+    frame_symbol text COLLATE pg_catalog."default" NOT NULL,
+    condition integer,
+    CONSTRAINT ship_frame_links_pkey PRIMARY KEY (ship_symbol, frame_symbol)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.ship_frame_links
+    OWNER to spacetraders;
+
+    -- Table: public.ship_frames
+
+-- DROP TABLE IF EXISTS public.ship_frames;
+
+CREATE TABLE IF NOT EXISTS public.ship_frames
+(
+    frame_symbol text COLLATE pg_catalog."default",
+    name text COLLATE pg_catalog."default",
+    description text COLLATE pg_catalog."default",
+    module_slots integer,
+    mount_points integer,
+    fuel_capacity integer,
+    required_power integer,
+    required_crew integer,
+    required_slots integer
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.ship_frames
+    OWNER to spacetraders;
+
+
 ALTER TABLE IF EXISTS public.survey_deposit
     OWNER to spacetraders;
 
