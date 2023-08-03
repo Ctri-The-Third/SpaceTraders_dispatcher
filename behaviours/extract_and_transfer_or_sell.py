@@ -1,3 +1,6 @@
+import sys
+
+sys.path.append(".")
 import logging
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
@@ -117,3 +120,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
                     continue
                 return hauler
         return None
+
+
+if __name__ == "__main__":
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI"
+    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-5"
+    bhvr = ExtractAndTransferOrSell_4(agent, ship)
+    bhvr.run()

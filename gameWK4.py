@@ -145,7 +145,7 @@ where coalesce(mapped, false) = false;
         ship = self.ship
         current_system_sym = self.ship.nav.system_symbol
         # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
-        # Solution
+        # QUESTION
         st.waypoints_view(current_system_sym, True)
         target_wayps = st.find_waypoint_by_type(current_system_sym, "MARKETPLACE")
 

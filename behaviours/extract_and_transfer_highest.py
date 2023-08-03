@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append(".")
+
 import logging
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship

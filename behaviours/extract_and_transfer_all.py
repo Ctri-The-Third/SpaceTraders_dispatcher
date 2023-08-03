@@ -1,5 +1,5 @@
 import logging
-from behaviours.generic_behaviour import Behaviour
+from .generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
 import time
 

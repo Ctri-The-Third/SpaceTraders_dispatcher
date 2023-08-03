@@ -2,15 +2,15 @@
 # therefore, we have to get the current ship each time it boots up.
 # survey, and if less than 10 cargo items remaining, sell all except contract deliverables
 # if full (less than 10 space remaining), RTB and fulfill.
+
+import sys
+
+sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
 import logging
 
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
-st = SpaceTraders(token)
-ships = st.ships_view()
-    for ship in ships:     
-        print (f"{ship.name} is at {ship.nav.waypoint_symbol}")
-    )
+
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
 
 
@@ -31,13 +31,15 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-        if ship.fuel_current < 200:
+        if ship.fuel_current < min(ship.fuel_capacity, 200):
             st.ship_dock(ship)
             st.ship_refuel(ship)
             st.ship_orbit(ship)
         if "receive_wp" in self.behaviour_params:
             start_waypoint = self.behaviour_params["receive_wp"]
             self.ship_intrasolar(start_waypoint)
+        else:
+            start_waypoint = None
         if ship.nav.status != "IN_ORBIT":
             st.ship_orbit(ship)
         if ship.can_survey:
@@ -99,3 +101,10 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
+
+
+if __name__ == "__main__":
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI"
+    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-1"
+    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params={})
+    bhvr.run()

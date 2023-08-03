@@ -3,7 +3,7 @@ from straders_sdk import SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.utils import set_logging
 import logging
-from behaviours.generic_behaviour import Behaviour
+from .generic_behaviour import Behaviour
 
 
 class ExtractAndSell(Behaviour):
