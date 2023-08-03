@@ -79,12 +79,15 @@ class ExtractAndTransferOrSell_4(Behaviour):
         hauler = self.find_hauler(ship.nav.waypoint_symbol, valid_agents)
         if hauler:
             hauler: Ship
+            hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
+
             for cargo in ship.cargo_inventory:
                 if cargo.symbol in cargo_to_transfer:
                     resp = st.ship_transfer_cargo(
-                        ship, cargo.symbol, cargo.units, hauler.name
+                        ship, cargo.symbol, min(cargo.units, hauler_space), hauler.name
                     )
                     if not resp:
+                        st.ships_view_one(hauler.name, True)
                         self.logger.warning(
                             "Failed to transfer cargo to hauler %s %s",
                             hauler.name,
