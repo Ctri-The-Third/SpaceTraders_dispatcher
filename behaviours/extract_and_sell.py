@@ -1,9 +1,13 @@
+import sys
+
+sys.path.append(".")
+
 import json
 from straders_sdk import SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.utils import set_logging
 import logging
-from .generic_behaviour import Behaviour
+from behaviours.generic_behaviour import Behaviour
 
 
 class ExtractAndSell(Behaviour):
@@ -33,7 +37,7 @@ class ExtractAndSell(Behaviour):
         try:
             target_wp_sym = self.behaviour_params.get(
                 "extract_waypoint",
-                st.find_waypoint_by_type(
+                st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,
             )
@@ -61,6 +65,8 @@ class ExtractAndSell(Behaviour):
 
 
 if __name__ == "__main__":
+    agent = sys.argv[1] if len(sys.argv) >= 3 else "CTRI"
+    ship = sys.argv[2] if len(sys.argv) >= 3 else "CTRI-3"
     set_logging()
-    bhvr = ExtractAndSell("test", "test", {"extract_waypoint": "test"})
+    bhvr = ExtractAndSell(agent, ship)
     bhvr.run()
