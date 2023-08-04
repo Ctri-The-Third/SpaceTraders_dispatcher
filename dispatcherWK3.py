@@ -14,6 +14,10 @@ from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
+from behaviours.explore_jump_gates import (
+    ExploreJumpGates,
+    BEHAVIOUR_NAME as BHVR_EXPLORE_JUMP_GATES,
+)
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
@@ -166,6 +170,10 @@ class dispatcher(SpaceTraders):
                         == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES
                     ):
                         bhvr = ExtractAndTransferOrSell_4(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+                    elif ship_and_behaviour["behaviour_id"] == BHVR_EXPLORE_JUMP_GATES:
+                        bhvr = ExploreJumpGates(
                             self.agent.symbol, ship_and_behaviour["name"]
                         )
 

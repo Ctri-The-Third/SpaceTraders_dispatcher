@@ -121,7 +121,8 @@ def stage_3(client: SpaceTraders):
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
-    haulers = [ship for ship in ships.values() if ship.role in ["HAULER", "COMMAND"]]
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
 
     if len(hounds) >= 30 and len(haulers) >= 3:
         return 4
@@ -130,7 +131,9 @@ def stage_3(client: SpaceTraders):
         set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
-
+    if len(haulers) == 0:
+        for commander in commanders:
+            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL)
     if len(hounds) <= 30:
         ship = maybe_buy_ship(client, excavators[0].nav.system_symbol, "SHIP_ORE_HOUND")
         if ship:
@@ -144,7 +147,24 @@ def stage_3(client: SpaceTraders):
     return 3
 
 
-def stage_4():
+def stage_4(client: SpaceTraders):
+    ships = client.ships_view()
+
+    drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
+    hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    for drone in drones:
+        set_behaviour(drone.name, "DISABLED")
+
+    if len(hounds) <= 60:
+        ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+    if len(haulers) <= len(hounds) / 10:
+        ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+
     # switch off mining drones.
     pass
 
