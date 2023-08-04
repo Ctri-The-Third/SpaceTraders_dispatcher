@@ -81,7 +81,9 @@ def extractor_quest_loop(
     ship: Ship,
     st: SpaceTraders,
 ):
-    mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_site_wp = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     ship.orbit()

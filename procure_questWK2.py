@@ -103,7 +103,9 @@ def extractor_quest_loop(
     ship: Ship, st: SpaceTraders, contract: Contract, viable_transports: list[Ship]
 ):
     target_material = contract.deliverables[0].symbol
-    mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_site_wp = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     if ship.nav.waypoint_symbol != mining_site_wp.symbol:
@@ -182,7 +184,9 @@ def extractor_quest_loop(
 def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
     target_site_wp = contract.deliverables[0].destination_symbol
     target_material = contract.deliverables[0].symbol
-    mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_site_wp = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
 
     if ship.cargo_units_used >= ship.cargo_capacity - 10:
         st.ship_move(ship, target_site_wp)

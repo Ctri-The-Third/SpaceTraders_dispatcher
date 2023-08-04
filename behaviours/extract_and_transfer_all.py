@@ -31,7 +31,7 @@ class ExtractAndTransferAll_2(Behaviour):
         try:
             target_wp_sym = self.behaviour_params.get(
                 "extract_waypoint",
-                st.find_waypoint_by_type(
+                st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,
             )

@@ -69,7 +69,9 @@ def test_ship_extract_till_full():
     bhv.st = st
     bhv.ship = ship
 
-    mining_waypoint = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_waypoint = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
     bhv.ship_intrasolar(mining_waypoint)
 
     resp = st.ships_view_one(st.current_agent.symbol + "-1", True)
