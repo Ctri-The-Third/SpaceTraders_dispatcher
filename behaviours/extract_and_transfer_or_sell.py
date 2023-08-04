@@ -127,6 +127,6 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
 if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI"
-    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-5"
+    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-6"
     bhvr = ExtractAndTransferOrSell_4(agent, ship)
     bhvr.run()

@@ -218,6 +218,9 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("ship_jump", ship.name, url, response)
 
         pass
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        pass
 
     def ship_extract(
         self, ship: "Ship", survey: Survey = None, response=None

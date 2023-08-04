@@ -93,6 +93,11 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        pass
+
+    @abstractmethod
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
         pass

@@ -229,6 +229,13 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             )
         return surveys[0]
 
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        sql = """update survey where signature = %s
+        set expiration = (now() at time zone utc)"""
+        resp = try_execute_no_results(self.connection, sql, (survey_signature,))
+        return resp
+
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
         return dummy_response(__class__.__name__, "ship_orbit")
@@ -432,4 +439,18 @@ def try_execute_select(connection, sql, params) -> list:
     except Exception as err:
         return LocalSpaceTradersRespose(
             error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
+        )
+
+
+def try_execute_no_results(connection, sql, params) -> LocalSpaceTradersRespose:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        connection.commit()
+        return LocalSpaceTradersRespose(
+            error=None, status_code=0, error_code=0, url=f"{__name__}.try_execute"
+        )
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute"
         )

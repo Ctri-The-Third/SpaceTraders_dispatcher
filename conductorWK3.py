@@ -121,7 +121,7 @@ def stage_3(client: SpaceTraders):
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
-    haulers = [ship for ship in ships.values() if ship.role in ["HAULER", "COMMANDER"]]
+    haulers = [ship for ship in ships.values() if ship.role in ["HAULER", "COMMAND"]]
 
     if len(hounds) >= 30 and len(haulers) >= 3:
         return 4

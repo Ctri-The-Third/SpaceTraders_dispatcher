@@ -655,6 +655,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             ship.update(resp.data)
             self.db_client.update(ship)
         if not resp:
+            if resp.error_code in [4224, 4221, 4220]:
+                self.surveys_remove_one(survey.signature)
             self.logger.error(
                 "status_code = %s, error_code = %s,  error = %s",
                 resp.status_code,
@@ -662,6 +664,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 resp.error,
             )
         return resp
+
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        self.db_client.surveys_remove_one(survey_signature)
+        pass
 
     def ship_dock(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/dock"""
