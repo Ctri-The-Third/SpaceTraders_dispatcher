@@ -35,6 +35,24 @@ class SpaceTradersApiClient(SpaceTradersClient):
         self.token = token
         self.config = ApiConfig(base_url, version)
         self.current_agent = None
+        self.current_agent_symbol = None
+        pass
+
+    def agents_view_one(self, agent_symbol: str) -> "Agent" or SpaceTradersResponse:
+        url = f"/agents/{agent_symbol}"
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return Agent.from_json(resp.data)
+        return resp
+
+    def view_my_self(self) -> "Agent" or SpaceTradersResponse:
+        url = _url("my/agent")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            self.current_agent = Agent.from_json(resp.data)
+            self.current_agent_symbol = self.current_agent.symbol
+            return self.current_agent
+        return resp
         pass
 
     def waypoints_view_one(
@@ -96,10 +114,10 @@ class SpaceTradersApiClient(SpaceTradersClient):
             self.update(resp.data)
         return resp
 
-    def ship_change_course(self, ship: Ship, dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: Ship, flight_mode: str):
         "my/ships/:shipSymbol/course"
         url = _url(f"my/ships/{ship.name}/navigate")
-        data = {"waypointSymbol": dest_waypoint_symbol}
+        data = {"flightMode": flight_mode}
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
@@ -229,7 +247,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
     def find_waypoints_by_trait(self, system_symbol: str, trait: str) -> list[Waypoint]:
         return dummy_response(__class__.__name__, "find_waypoints_by_trait")
 
-    def find_waypoint_by_type(self, system_wp, waypoint_type) -> Waypoint:
+    def find_waypoints_by_type_one(self, system_wp, waypoint_type) -> Waypoint:
         return dummy_response(__class__.__name__, "find_waypoint_by_type")
 
     def find_waypoint_by_coords(self, system_symbol: str, x: int, y: int) -> Waypoint:

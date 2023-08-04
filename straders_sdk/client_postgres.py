@@ -9,6 +9,7 @@ from .models import (
     MarketTradeGood,
     MarketTradeGoodListing,
     System,
+    Agent,
     JumpGate,
 )
 from datetime import datetime
@@ -22,6 +23,7 @@ from .pg_pieces.upsert_system import _upsert_system
 from .pg_pieces.upsert_survey import _upsert_survey
 from .pg_pieces.select_ship import _select_ships
 from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
+from .pg_pieces.upsert_agent import _upsert_agent, select_agent_one
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
@@ -71,10 +73,18 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_ship(self.connection, update_obj)
         if isinstance(update_obj, System):
             _upsert_system(self.connection, update_obj)
+        if isinstance(update_obj, Agent):
+            _upsert_agent(self.connection, update_obj)
         pass
 
     def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
         return dummy_response(__class__.__name__, "register")
+
+    def agents_view_one(self, agent_symbol: str) -> Agent or SpaceTradersResponse:
+        return select_agent_one(self.connection, agent_symbol)
+
+    def view_my_self(self) -> Agent or SpaceTradersResponse:
+        return select_agent_one(self.connection, self.current_agent_symbol)
 
     def waypoints_view(
         self, system_symbol: str
@@ -162,7 +172,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     ) -> Waypoint or SpaceTradersResponse:
         pass
 
-    def find_waypoint_by_type(
+    def find_waypoints_by_type_one(
         self, system_wp: str, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
         db_wayps = self.waypoints_view(system_wp)
@@ -241,9 +251,9 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, "ship_orbit")
         pass
 
-    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        return dummy_response(__class__.__name__, "ship_change_course")
+        return dummy_response(__class__.__name__, "ship_patch_nav")
         pass
 
     def ship_move(

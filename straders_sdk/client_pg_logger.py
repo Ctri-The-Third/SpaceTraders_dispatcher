@@ -114,15 +114,24 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
-        if isinstance(update_obj, Agent):
-            self.current_agent_name = update_obj.symbol
         return
 
     def register(
         self, callsign, faction="COSMIC", email=None, response=None
     ) -> SpaceTradersResponse:
         endpoint = "register"
+
         self.log_event("register", "GLOBAL", endpoint, response)
+
+    def agents_view_one(
+        self, agent_symbol: str, response=None
+    ) -> "Agent" or SpaceTradersResponse:
+        endpoint = f"/agents/{agent_symbol}"
+        self.log_event("agents_view_one", "GLOBAL", endpoint, response)
+
+    def view_my_self(self, response=None) -> "Agent" or SpaceTradersResponse:
+        url = _url("my/agent")
+        self.log_event("view_my_self", "GLOBAL", url, response)
 
     def waypoints_view(
         self, system_symbol: str, response=None
@@ -176,7 +185,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         pass
 
-    def find_waypoint_by_type(
+    def find_waypoints_by_type_one(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
         # don't log anything, not an API call
@@ -193,9 +202,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("ship_orbit", ship.name, url, response)
         pass
 
-    def ship_change_course(
-        self, ship: "Ship", dest_waypoint_symbol: str, response=None
-    ):
+    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str, response=None):
         """my/ships/:shipSymbol/course"""
         url = _url(f"my/ships/:ship_name/navigate")
         self.log_event("ship_change_course", ship.name, url, response)
@@ -218,6 +225,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("ship_jump", ship.name, url, response)
 
         pass
+
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
         pass

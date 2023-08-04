@@ -117,7 +117,21 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.update(resp.data)
         return resp
 
-    def view_my_self(self, force=False) -> Agent or None:
+    def agents_view_one(
+        self, symbol: str, force=False
+    ) -> Agent or SpaceTradersResponse:
+        if not force:
+            resp = self.db_client.agents_view_one(symbol)
+            if resp:
+                return resp
+
+        resp = self.api_client.agents_view_one(symbol)
+        if resp:
+            self.logging_client.agents_view_one(resp)
+            self.update(resp)
+        return resp
+
+    def view_my_self(self, force=False) -> Agent or SpaceTradersResponse:
         """view the current agent, uses cached value unless forced.
 
         Args:
@@ -127,13 +141,21 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         # db handling of this should include MD5 hashing of the token for identification.
         if self.current_agent and not force:
             return self.current_agent
-        url = _url("my/agent")
-        resp = get_and_validate(url, headers=self._headers())
+
+        if not force:
+            resp = self.db_client.view_my_self()
+            if resp:
+                self.current_agent = resp
+                self.current_agent_symbol = resp.symbol
+                return resp
+
+        resp = self.api_client.view_my_self()
+        self.logging_client.view_my_self(resp)
         if resp:
-            self.current_agent = Agent.from_json(resp.data)
-            self.current_agent_symbol = self.current_agent.symbol
-            self.logging_client.update(self.current_agent)
-        return self.current_agent
+            self.current_agent = resp
+            self.current_agent_symbol = resp.symbol
+            self.update(resp)
+        return resp
 
     def ships_view(self, force=False) -> dict[str, Ship] or SpaceTradersResponse:
         """view the current ships the agent has, a dict that's accessible by ship symbol.
@@ -444,7 +466,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         self.logging_client.system_jumpgate(wp, resp)
         if resp:
-            # TODO upsert
             self.db_client.update(resp)
         return resp
 
@@ -516,7 +537,29 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 return waypoint
         return None
 
-    def find_waypoint_by_type(
+    def find_waypoints_by_type(
+        self, system_wp, waypoint_type
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        """find a waypoint by its type. searches cached values first, then makes a request if no match is found.
+
+        Args:
+            `system_wp` (str): The symbol of the system to search in.
+            `waypoint_type` (str): The type of waypoint to search for.
+
+        returns:
+            Either a Waypoint object or a SpaceTradersResponse object on API failure.
+            If no matching waypoint is found and no errors occur, None is returned."""
+
+        waypoints = self.waypoints_view(system_wp, waypoint_type)
+        if not waypoints:
+            return waypoints
+        return [
+            waypoint
+            for waypoint in waypoints.values()
+            if waypoint.type == waypoint_type
+        ]
+
+    def find_waypoints_by_type_one(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse or None:
         """find a waypoint by its type. searches cached values first, then makes a request if no match is found.
@@ -601,12 +644,15 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return
 
-    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        resp = self.api_client.ship_change_course(ship, dest_waypoint_symbol)
-        self.logging_client.ship_change_course(ship, resp)
+        resp = self.api_client.ship_patch_nav(ship, dest_waypoint_symbol)
+        self.logging_client.ship_patch_nav(ship, resp)
         if resp:
             ship.update(resp)
+            self.update(ship)
+
+        return resp
 
     def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""

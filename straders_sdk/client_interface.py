@@ -34,6 +34,14 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def agents_view_one(self, agent_symbol: str) -> "Agent" or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def view_my_self(self) -> "Agent" or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def waypoints_view(
         self, system_symbol: str
     ) -> dict[str:list] or SpaceTradersResponse:
@@ -81,7 +89,7 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def find_waypoint_by_type(
+    def find_waypoints_by_type_one(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
         pass
@@ -103,7 +111,7 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str):
         """my/ships/:shipSymbol/course"""
         pass
 
@@ -156,8 +164,6 @@ class SpaceTradersClient(Protocol):
         self, ship: "Ship", trade_symbol, units, target_ship_name
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/transfer"""
-
-        pass
 
     @abstractmethod
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
