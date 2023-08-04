@@ -244,16 +244,32 @@ class ShipRoute:
 
 @dataclass
 class Agent(SymbolClass):
-    account_id: str
-    symbol: str
-    headquaters: str
-    credits: int = 0
-    starting_faction: str = "NOT YET SET"
-    ship_count: int = 0
+    def __init__(
+        self,
+        symbol: str,
+        headquarters: str,
+        credits: int,
+        starting_faction: str,
+        ship_count: int = None,
+        account_id: str = None,
+    ):
+        self.symbol = symbol
+        self.headquarters = headquarters
+        self.credits = credits
+        self.starting_faction = starting_faction
+        self.ship_count = ship_count
+        self.account_id = account_id
 
     @classmethod
     def from_json(cls, json_data: dict):
-        return cls(*json_data.values())
+        return cls(
+            json_data["symbol"],
+            json_data["headquarters"],
+            json_data["credits"],
+            json_data["startingFaction"],
+            json_data.get("shipCount", None),
+            json_data.get("accountId", None),
+        )
 
     def update(self, json_data: dict):
         if "agent" in json_data:
