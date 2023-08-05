@@ -1,10 +1,13 @@
+import sys
+
+sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint, System
 import math
 import logging
 
-BEHAVIOUR_NAME = "Explore jump network"
+BEHAVIOUR_NAME = "EXPLORE_JUMP_NETWORK"
 
 
 class ExploreJumpGates(Behaviour):
@@ -25,6 +28,9 @@ class ExploreJumpGates(Behaviour):
         other_ships = st.ships_view()
         unexplored_systems = [ship.nav.system_symbol]
         explored_systems = []
+        agent = self.agent
+
+        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         # PING A JUMP GATE - get its systems
         # check if I've explored the system

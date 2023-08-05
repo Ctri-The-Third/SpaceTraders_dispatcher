@@ -604,7 +604,13 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             for wayp in wayps:
                 self.db_client.update(wayp)
                 self.update(wayp)
-        return wayps
+            return wayps
+        return LocalSpaceTradersRespose(
+            "Could not find any waypoints with that trait.",
+            0,
+            0,
+            f"{__name__}.find_waypoints_by_trait",
+        )
 
     def find_waypoints_by_trait_one(
         self, system_wp: str, trait_symbol: str

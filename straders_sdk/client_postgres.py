@@ -23,7 +23,7 @@ from .pg_pieces.upsert_system import _upsert_system
 from .pg_pieces.upsert_survey import _upsert_survey
 from .pg_pieces.select_ship import _select_ships
 from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
-from .pg_pieces.upsert_agent import _upsert_agent, select_agent_one
+from .pg_pieces.agents import _upsert_agent, select_agent_one
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
