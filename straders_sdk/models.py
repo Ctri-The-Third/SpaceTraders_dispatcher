@@ -273,7 +273,12 @@ class Agent:
 
     def update(self, json_data: dict):
         if "agent" in json_data:
-            self.__init__(*json_data["agent"].values())
+            self.symbol = json_data["agent"]["symbol"]
+            self.headquarters = json_data["agent"]["headquarters"]
+            self.credits = json_data["agent"]["credits"]
+            self.starting_faction = json_data["agent"]["startingFaction"]
+            self.ship_count = json_data["agent"].get("shipCount", self.ship_count)
+            self.account_id = json_data["agent"].get("accountId", self.account_id)
 
 
 @dataclass
