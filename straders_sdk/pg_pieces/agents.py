@@ -37,4 +37,5 @@ def select_agent_one(connect, agent_symbol: str) -> Agent or "SpaceTradersRespon
         return LocalSpaceTradersRespose(
             "Agent not found", 0, 0, f"{__name__}.select_agent_one"
         )
+    print(resp[1])
     return Agent(resp[0], resp[1], resp[2], resp[3], resp[4], None)

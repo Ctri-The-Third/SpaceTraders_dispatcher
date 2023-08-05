@@ -5,7 +5,7 @@ import logging
 import psycopg2
 import sys, threading, os, uuid, time
 
-
+from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging
@@ -261,7 +261,9 @@ if __name__ == "__main__":
 
     ships = dips.ships_view(True)
     hq_sys = list(dips.ships_view().values())[1].nav.system_symbol
-    hq = dips.waypoints_view_one(hq_sys, dips.current_agent.headquaters)
+    hq_sym = dips.current_agent.headquarters
+
+    hq = dips.waypoints_view_one(hq_sys, hq_sym)
     hq: Waypoint
     if len(hq.traits) == 0:
         dips.waypoints_view(hq_sys, True)

@@ -243,7 +243,7 @@ class ShipRoute:
 
 
 @dataclass
-class Agent(SymbolClass):
+class Agent:
     def __init__(
         self,
         symbol: str,
