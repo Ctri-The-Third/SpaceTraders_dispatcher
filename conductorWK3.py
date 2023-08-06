@@ -8,7 +8,8 @@ import json
 import psycopg2
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
-from straders_sdk.models import ShipyardShip
+
+from straders_sdk.models import ShipyardShip, Waypoint
 from straders_sdk.utils import set_logging
 import logging
 import time
@@ -55,6 +56,16 @@ def master():
 def stage_0(client: SpaceTraders):
     client.ships_view(True)
     # populate the ships from the API
+    found_shipyard = False
+    wayps = client.waypoints_view(client.view_my_self().headquarters)
+    if wayps:
+        for wayp in wayps:
+            for trait in wayp.traits:
+                if trait.symbol == "SHIPYARD":
+                    return 1  # we can scale!
+    commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
+    for commander in commanders:
+        set_behaviour(commander.name, BHVR_EXPLORE_CURRENT_SYSTEM)
     return 1  # not implemented yet, skip to stage 1
     pass
 
@@ -182,6 +193,10 @@ def set_behaviour(ship_symbol, behaviour_id):
 
 def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
     shipyard_wps = client.find_waypoints_by_trait(system_symbol, "SHIPYARD")
+    if not shipyard_wps:
+        logging.warning("No shipyards found yet - can't scale.")
+        return
+
     if len(shipyard_wps) == 0:
         return False
     agent = client.view_my_self(True)

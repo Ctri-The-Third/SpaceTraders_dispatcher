@@ -31,14 +31,14 @@
             ]
         },
         {
-            "name": "dispatcher -U",
+            "name": "dispatcher -L",
             "type": "python",
             "request": "launch",
             "program": "dispatcherWK3.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-UC"
+                "CTRI-LWK5-"
             ]
         },
         {
