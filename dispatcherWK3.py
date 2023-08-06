@@ -264,6 +264,7 @@ if __name__ == "__main__":
     hq_sym = dips.current_agent.headquarters
 
     hq = dips.waypoints_view_one(hq_sys, hq_sym)
+    home_wapys = dips.waypoints_view(hq_sys)
     hq: Waypoint
     if len(hq.traits) == 0:
         dips.waypoints_view(hq_sys, True)
