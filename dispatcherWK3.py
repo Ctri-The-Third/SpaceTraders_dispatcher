@@ -258,13 +258,14 @@ if __name__ == "__main__":
         os.environ.get("ST_DB_PASSWORD"),
         user[1],
     )
-
+    dips.run()
+    exit()
     ships = dips.ships_view(True)
     hq_sys = list(dips.ships_view().values())[1].nav.system_symbol
     hq_sym = dips.current_agent.headquarters
 
     hq = dips.waypoints_view_one(hq_sys, hq_sym)
-    home_wapys = dips.waypoints_view(hq_sys)
+    # home_wapys = dips.waypoints_view(hq_sys, True)
     hq: Waypoint
     if len(hq.traits) == 0:
         dips.waypoints_view(hq_sys, True)
