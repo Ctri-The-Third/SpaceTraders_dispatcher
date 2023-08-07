@@ -114,15 +114,24 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
-        if isinstance(update_obj, Agent):
-            self.current_agent_name = update_obj.symbol
         return
 
     def register(
         self, callsign, faction="COSMIC", email=None, response=None
     ) -> SpaceTradersResponse:
         endpoint = "register"
+
         self.log_event("register", "GLOBAL", endpoint, response)
+
+    def agents_view_one(
+        self, agent_symbol: str, response=None
+    ) -> "Agent" or SpaceTradersResponse:
+        endpoint = f"/agents/{agent_symbol}"
+        self.log_event("agents_view_one", "GLOBAL", endpoint, response)
+
+    def view_my_self(self, response=None) -> "Agent" or SpaceTradersResponse:
+        url = _url("my/agent")
+        self.log_event("view_my_self", "GLOBAL", url, response)
 
     def waypoints_view(
         self, system_symbol: str, response=None
@@ -163,7 +172,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         pass
 
     def find_waypoints_by_trait(
-        self, system_symbol: str, trait: str
+        self, system_symbol: str, trait: str, resp=None
     ) -> list[Waypoint] or SpaceTradersResponse:
         # don't log anything, not an API call
 
@@ -176,9 +185,15 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         pass
 
-    def find_waypoint_by_type(
+    def find_waypoints_by_type_one(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
+        # don't log anything, not an API call
+        pass
+
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
         # don't log anything, not an API call
         pass
 
@@ -187,9 +202,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("ship_orbit", ship.name, url, response)
         pass
 
-    def ship_change_course(
-        self, ship: "Ship", dest_waypoint_symbol: str, response=None
-    ):
+    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str, response=None):
         """my/ships/:shipSymbol/course"""
         url = _url(f"my/ships/:ship_name/navigate")
         self.log_event("ship_change_course", ship.name, url, response)
@@ -202,6 +215,19 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         url = _url(f"my/ships/:ship_name/navigate")
         self.log_event("ship_move", ship.name, url, response)
 
+        pass
+
+    def ship_jump(
+        self, ship: "Ship", dest_waypoint_symbol: str, response=None
+    ) -> SpaceTradersResponse:
+        """my/ships/:shipSymbol/jump"""
+        url = _url(f"my/ships/:ship_name/jump")
+        self.log_event("ship_jump", ship.name, url, response)
+
+        pass
+
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
         pass
 
     def ship_extract(
@@ -260,13 +286,19 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("system_market", "GLOBAL", url, response)
         pass
 
-    def systems_list_all(
+    def systems_view_all(
         self, response=None
     ) -> dict[str:"System"] or SpaceTradersResponse:
-        """/game/systems"""
+        """/systems"""
         url = _url(f"game/systems")
         self.log_event("systems_list_all", "GLOBAL", url, response)
         pass
+
+    def systems_view_one(
+        self, system_symbol: str, response
+    ) -> "System" or SpaceTradersResponse:
+        url = _url(f"/systems/{system_symbol}")
+        self.log_event("systems_view_one", "GLOBAL", url, response)
 
     def system_shipyard(
         self, waypoint: Waypoint, response=None
@@ -275,6 +307,14 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         url = _url(f"game/locations/{waypoint.symbol}/shipyard")
         self.log_event("system_shipyard", "GLOBAL", url, response)
 
+        pass
+
+    def system_jumpgate(
+        self, wp: Waypoint, force_update=False
+    ) -> "JumpGate" or SpaceTradersResponse:
+        """/game/systems/{symbol}/jumpgate"""
+        url = _url(f"game/systems/{wp.system_symbol}/jumpgate")
+        self.log_event("system_jumpgate", "GLOBAL", url, None)
         pass
 
     def ship_negotiate(

@@ -1,5 +1,5 @@
 from typing import Protocol, runtime_checkable
-from .models import Waypoint, Survey, Market, Shipyard
+from .models import Waypoint, Survey, Market, Shipyard, JumpGate
 from .responses import SpaceTradersResponse
 from abc import abstractmethod
 
@@ -31,6 +31,14 @@ class SpaceTradersClient(Protocol):
 
     @abstractmethod
     def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def agents_view_one(self, agent_symbol: str) -> "Agent" or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def view_my_self(self) -> "Agent" or SpaceTradersResponse:
         pass
 
     @abstractmethod
@@ -81,9 +89,20 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def find_waypoint_by_type(
+    def find_waypoints_by_type_one(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
         pass
 
     @abstractmethod
@@ -92,7 +111,7 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str):
         """my/ships/:shipSymbol/course"""
         pass
 
@@ -101,6 +120,12 @@ class SpaceTradersClient(Protocol):
         self, ship: "Ship", dest_waypoint_symbol: str
     ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/navigate"""
+
+        pass
+
+    @abstractmethod
+    def ship_jump(self, ship, dest_symbol_string) -> SpaceTradersResponse:
+        """my/ships/:shipSymbol/jump"""
 
         pass
 
@@ -140,8 +165,6 @@ class SpaceTradersClient(Protocol):
     ) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/transfer"""
 
-        pass
-
     @abstractmethod
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
@@ -149,8 +172,19 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
-    def systems_list_all(self) -> dict[str:"System"] or SpaceTradersResponse:
+    def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
+        """/systems/{systemSymbol}/waypoints/{waypointSymbol}/jump-gate"""
+        pass
+
+    @abstractmethod
+    def systems_view_all(self) -> dict[str:"System"] or SpaceTradersResponse:
         """/game/systems"""
+
+        pass
+
+    @abstractmethod
+    def systems_view_one(self, symbol: str) -> "System" or SpaceTradersResponse:
+        """/game/systems/{symbol}"""
 
         pass
 

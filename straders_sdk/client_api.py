@@ -17,6 +17,7 @@ from .models import (
     MarketTradeGoodListing,
     Shipyard,
     System,
+    JumpGate,
     Agent,
 )
 from .contracts import Contract
@@ -34,6 +35,24 @@ class SpaceTradersApiClient(SpaceTradersClient):
         self.token = token
         self.config = ApiConfig(base_url, version)
         self.current_agent = None
+        self.current_agent_symbol = None
+        pass
+
+    def agents_view_one(self, agent_symbol: str) -> "Agent" or SpaceTradersResponse:
+        url = f"/agents/{agent_symbol}"
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return Agent.from_json(resp.data)
+        return resp
+
+    def view_my_self(self) -> "Agent" or SpaceTradersResponse:
+        url = _url("my/agent")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            self.current_agent = Agent.from_json(resp.data)
+            self.current_agent_symbol = self.current_agent.symbol
+            return self.current_agent
+        return resp
         pass
 
     def waypoints_view_one(
@@ -95,10 +114,10 @@ class SpaceTradersApiClient(SpaceTradersClient):
             self.update(resp.data)
         return resp
 
-    def ship_change_course(self, ship: Ship, dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: Ship, flight_mode: str):
         "my/ships/:shipSymbol/course"
         url = _url(f"my/ships/{ship.name}/navigate")
-        data = {"waypointSymbol": dest_waypoint_symbol}
+        data = {"flightMode": flight_mode}
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
@@ -112,6 +131,15 @@ class SpaceTradersApiClient(SpaceTradersClient):
             self.ship_orbit(ship)
         url = _url(f"my/ships/{ship.name}/navigate")
         data = {"waypointSymbol": dest_waypoint_symbol}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if resp:
+            self.update(resp.data)
+        return resp
+
+    def ship_jump(self, ship: Ship, dest_system_symbol: str):
+        "my/ships/:shipSymbol/jump"
+        url = _url(f"my/ships/{ship.name}/jump")
+        data = {"systemSymbol": dest_system_symbol}
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
@@ -134,11 +162,10 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         if ship.seconds_until_cooldown > 0:
             return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4200, url=url)
-        if ship.nav.status == "DOCKED":
-            self.ship_orbit(ship)
-        data = survey.to_json() if survey is not None else None
 
-        resp = post_and_validate(url, data=data, headers=self._headers())
+        data = {"survey": survey.to_json()} if survey is not None else None
+
+        resp = post_and_validate(url, json=data, headers=self._headers())
         if resp:
             self.update(resp.data)
             ship.update(resp.data)
@@ -218,24 +245,41 @@ class SpaceTradersApiClient(SpaceTradersClient):
     # find_waypoint_by_coords, find_waypoint_by_type, find_waypoints_by_trait, find_waypoints_by_trait_one, system_market_view
 
     def find_waypoints_by_trait(self, system_symbol: str, trait: str) -> list[Waypoint]:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoints_by_trait")
 
-    def find_waypoint_by_type(self, system_wp, waypoint_type) -> Waypoint:
-        return dummy_response(__class__.__name__, __name__)
+    def find_waypoints_by_type_one(self, system_wp, waypoint_type) -> Waypoint:
+        return dummy_response(__class__.__name__, "find_waypoint_by_type")
 
     def find_waypoint_by_coords(self, system_symbol: str, x: int, y: int) -> Waypoint:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoint_by_coords")
 
     def find_waypoints_by_trait_one(self, system_symbol: str, trait: str) -> Waypoint:
-        return dummy_response(__class__.__name__, __name__)
+        return dummy_response(__class__.__name__, "find_waypoints_by_trait_one")
 
-    def systems_list_all(self) -> list[System] or SpaceTradersResponse:
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        return dummy_response(__class__.__name__, "surveys_remove_one")
+        pass
+
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "find_survey_best_deposit")
+
+    def systems_view_all(self) -> list[System] or SpaceTradersResponse:
         url = _url("systems")
         resp = get_and_validate_paginated(
             url, per_page=20, page_limit=999, headers=self._headers()
         )
         if resp:
             resp = [System.from_json(d) for d in resp.data]
+        return resp
+
+    def systems_view_one(self, system_symbol: str) -> System or SpaceTradersResponse:
+        url = _url(f"systems/{system_symbol}")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return System.from_json(resp.data)
         return resp
 
     def system_market(self, wp: Waypoint) -> Market:
@@ -262,6 +306,16 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if resp:
             return Shipyard.from_json(resp.data)
 
+        return resp
+
+    def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
+        """/systems/{systemSymbol}/waypoints/{waypointSymbol}/jump-gate"""
+        url = _url(f"systems/{wp.system_symbol}/waypoints/{wp.symbol}/jump-gate")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            gate = JumpGate.from_json(resp.data)
+            gate.waypoint_symbol = wp.symbol
+            return gate
         return resp
 
     def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:

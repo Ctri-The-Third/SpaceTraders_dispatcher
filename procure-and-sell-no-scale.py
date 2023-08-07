@@ -1,9 +1,9 @@
 import json
 import sys
 import threading
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.models import ShipyardShip
-from spacetraders_v2.ship import Ship
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.models import ShipyardShip
+from straders_sdk.ship import Ship
 
 from procure_questWK2 import (
     mine_until_full,
@@ -81,7 +81,9 @@ def extractor_quest_loop(
     ship: Ship,
     st: SpaceTraders,
 ):
-    mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_site_wp = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     ship.orbit()

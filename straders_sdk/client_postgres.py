@@ -4,18 +4,26 @@ from .models import (
     WaypointTrait,
     Market,
     Survey,
+    Deposit,
     Shipyard,
     MarketTradeGood,
     MarketTradeGoodListing,
     System,
+    Agent,
+    JumpGate,
 )
+from datetime import datetime
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
-from .pg_upserts.upsert_waypoint import _upsert_waypoint
-from .pg_upserts.upsert_shipyard import _upsert_shipyard
-from .pg_upserts.upsert_market import _upsert_market
-from .pg_upserts.upsert_ship import _upsert_ship
-from .pg_upserts.upsert_system import _upsert_system
+from .pg_pieces.upsert_waypoint import _upsert_waypoint
+from .pg_pieces.upsert_shipyard import _upsert_shipyard
+from .pg_pieces.upsert_market import _upsert_market
+from .pg_pieces.upsert_ship import _upsert_ship
+from .pg_pieces.upsert_system import _upsert_system
+from .pg_pieces.upsert_survey import _upsert_survey
+from .pg_pieces.select_ship import _select_ships
+from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
+from .pg_pieces.agents import _upsert_agent, select_agent_one
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
 import psycopg2
@@ -51,6 +59,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def update(self, update_obj):
         "Accepts objects and stores them in the DB"
+        if isinstance(update_obj, JumpGate):
+            _upsert_jump_gate(self.connection, update_obj)
+        if isinstance(update_obj, Survey):
+            _upsert_survey(self.connection, update_obj)
         if isinstance(update_obj, Waypoint):
             _upsert_waypoint(self.connection, update_obj)
         if isinstance(update_obj, Shipyard):
@@ -61,10 +73,18 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_ship(self.connection, update_obj)
         if isinstance(update_obj, System):
             _upsert_system(self.connection, update_obj)
+        if isinstance(update_obj, Agent):
+            _upsert_agent(self.connection, update_obj)
         pass
 
     def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
         return dummy_response(__class__.__name__, "register")
+
+    def agents_view_one(self, agent_symbol: str) -> Agent or SpaceTradersResponse:
+        return select_agent_one(self.connection, agent_symbol)
+
+    def view_my_self(self) -> Agent or SpaceTradersResponse:
+        return select_agent_one(self.connection, self.current_agent_symbol)
 
     def waypoints_view(
         self, system_symbol: str
@@ -152,7 +172,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     ) -> Waypoint or SpaceTradersResponse:
         pass
 
-    def find_waypoint_by_type(
+    def find_waypoints_by_type_one(
         self, system_wp: str, waypoint_type
     ) -> Waypoint or SpaceTradersResponse:
         db_wayps = self.waypoints_view(system_wp)
@@ -169,14 +189,71 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             f"find_waypoint_by_type({system_wp}, {waypoint_type})",
         )
 
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
+        sql = """select s.signature, waypoint, expiration, size 
+                from survey s join survey_deposit sd on sd.signature = s.signature  
+                where expiration >= (now() at time zone 'utc')
+                and symbol = %s and waypoint = %s
+                order by count desc, expiration asc"""
+
+        deposits_sql = (
+            """select symbol, count from survey_deposit where signature = %s """
+        )
+        resp = try_execute_select(
+            self.connection, sql, (deposit_symbol, waypoint_symbol)
+        )
+        if not resp:
+            return resp
+        surveys = []
+        for survey_row in resp:
+            deposits_resp = try_execute_select(
+                self.connection, deposits_sql, (survey_row[0],)
+            )
+            if not deposits_resp:
+                return deposits_resp
+            deposits = []
+            deposits_json = []
+            for deposit_row in deposits_resp:
+                deposit = Deposit(deposit_row[0])
+                for i in range(deposit_row[1]):
+                    deposits.append(deposit)
+                    deposits_json.append({"symbol": deposit.symbol})
+            json = {
+                "signature": survey_row[0],
+                "symbol": survey_row[1],
+                "deposits": deposits_json,
+                "expiration": survey_row[2].isoformat(),
+                "size": survey_row[3],
+            }
+            surveys.append(
+                Survey(
+                    survey_row[0],
+                    survey_row[1],
+                    deposits,
+                    survey_row[2],
+                    survey_row[3],
+                    json,
+                )
+            )
+        return surveys[0]
+
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        sql = """update survey where signature = %s
+        set expiration = (now() at time zone utc)"""
+        resp = try_execute_no_results(self.connection, sql, (survey_signature,))
+        return resp
+
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
         """my/ships/:miningShipSymbol/orbit takes the ship name or the ship object"""
         return dummy_response(__class__.__name__, "ship_orbit")
         pass
 
-    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        return dummy_response(__class__.__name__, "ship_change_course")
+        return dummy_response(__class__.__name__, "ship_patch_nav")
         pass
 
     def ship_move(
@@ -185,6 +262,13 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """my/ships/:shipSymbol/navigate"""
 
         return dummy_response(__class__.__name__, "ship_move")
+        pass
+
+    def ship_jump(
+        self, ship: "Ship", dest_waypoint_symbol: str
+    ) -> SpaceTradersResponse:
+        """my/ships/:shipSymbol/jump"""
+        return dummy_response(__class__.__name__, "ship_jump")
         pass
 
     def ship_negotiate(self, ship: "Ship") -> "Contract" or SpaceTradersResponse:
@@ -232,6 +316,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             cur = self.connection.cursor()
             cur.execute(sql, (wp.symbol,))
             rows = cur.fetchall()
+            if not rows:
+                return LocalSpaceTradersRespose(
+                    f"Could not find market data for that waypoint", 0, 0, sql
+                )
             imports = [MarketTradeGood(*row) for row in rows if row[2] == "buy"]
             exports = [MarketTradeGood(*row) for row in rows if row[2] == "sell"]
             return Market(wp.symbol, imports, exports, [])
@@ -240,11 +328,14 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 "Could not find market data for that waypoint", 0, 0, sql
             )
 
-    def systems_list_all(self) -> list["Waypoint"] or SpaceTradersResponse:
+    def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
+        return select_jump_gate_one(self.connection, wp)
+
+    def systems_view_all(self) -> list["Waypoint"] or SpaceTradersResponse:
         """/game/systems"""
-        sql = """SELECT * FROM waypoints"""
+        sql = """SELECT symbol, sector_symbol, type, x, y FROM systems"""
         cur = self.connection.cursor()
-        wayps = {}
+        cysts = {}
         try:
             cur.execute(sql)
             rows = cur.fetchall()
@@ -256,9 +347,26 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 __name__ + ".systems_list_all",
             )
         for row in rows:
-            wayp = Waypoint(row[2], row[0], row[1], row[3], row[4], [], [], {}, {})
-            wayps[wayp.symbol] = wayp
-        return wayps
+            syst = System(row[0], row[1], row[2], row[3], row[4], [])
+            cysts[syst.symbol] = syst
+        return cysts
+
+    def systems_view_one(self, symbol: str) -> Waypoint or SpaceTradersResponse:
+        sql = """SELECT symbol, sector_symbol, type, x, y FROM systems where symbol = %s limit 1"""
+        cur = self.connection.cursor()
+        try:
+            cur.execute(sql, (symbol,))
+            rows = cur.fetchall()
+        except Exception as err:
+            return LocalSpaceTradersRespose(
+                f"Wasn't able to get waypoint {err}",
+                0,
+                0,
+                __name__ + ".systems_list_all",
+            )
+        for row in rows:
+            syst = System(row[0], row[1], row[2], row[3], row[4], [])
+            return syst
 
     def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
@@ -297,72 +405,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ships_view(self) -> dict[str:"Ship"] or SpaceTradersResponse:
         """/my/ships"""
-        sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
-                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
-                from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
-                where agent_name = %s
-                
-                """
-        try:
-            cur = self.connection.cursor()
-            cur.execute(sql, (self.current_agent_symbol,))
-            rows = cur.fetchall()
-            ships = {}
-            for row in rows:
-                ship = Ship()
-                ship.name = row[0]
-                ship.faction = row[2]
-                ship.role = row[3]
-                ship.cargo_capacity = row[4]
-                ship.cargo_units_used = row[5]
-                # , 6: n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
 
-                # SHIP NAV BEGINS
-                current_system = self.waypoints_view_one("", row[6])
-                if not current_system:
-                    current_system = None
+        # PROBLEM - the client doesn't really know who the current agent is - so we can't filter by agent.
+        # but the DB is home to many ships. Therefore, this client needs to become aware of the agent name on init.
+        # WAIT WE ALREADY DO THAT. well done past C'tri
 
-                origin = self.waypoints_view_one("", row[9])
-                if not origin:
-                    origin = None
-                destination = self.waypoints_view_one("", row[10])
-                if not destination:
-                    destination = None
-
-                ship.nav = ShipNav(
-                    current_system.system_symbol,
-                    current_system.symbol,
-                    RouteNode(
-                        destination.symbol,
-                        destination.type,
-                        destination.system_symbol,
-                        destination.x,
-                        destination.y,
-                    ),
-                    RouteNode(
-                        origin.symbol,
-                        origin.type,
-                        origin.system_symbol,
-                        origin.x,
-                        origin.y,
-                    ),
-                    row[7],
-                    row[8],
-                    row[11],
-                    row[12],
-                )
-                # SHIP NAV ENDS
-
-                ships[ship.name] = ship
-            return ships
-        except Exception as err:
-            LocalSpaceTradersRespose(
-                error=err,
-                status_code=0,
-                error_code=0,
-                url=f"{__class__.__name__}.ships_view",
-            )
-        pass
+        return _select_ships(self.connection, self.current_agent_symbol, self)
 
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}"""
@@ -390,3 +438,29 @@ def dummy_response(class_name, method_name):
     return LocalSpaceTradersRespose(
         "Not implemented in this client", 0, 0, f"{class_name}.{method_name}"
     )
+
+
+def try_execute_select(connection, sql, params) -> list:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        return rows
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
+        )
+
+
+def try_execute_no_results(connection, sql, params) -> LocalSpaceTradersRespose:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        connection.commit()
+        return LocalSpaceTradersRespose(
+            error=None, status_code=0, error_code=0, url=f"{__name__}.try_execute"
+        )
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute"
+        )

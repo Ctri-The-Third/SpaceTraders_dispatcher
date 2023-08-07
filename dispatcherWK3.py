@@ -3,20 +3,197 @@
 import json
 import logging
 import psycopg2
-import uuid
-from spacetraders_v2 import SpaceTraders
-from spacetraders_v2.utils import set_logging
-import threading
+import sys, threading, os, uuid, time
+
+from straders_sdk.models import Agent
+from straders_sdk import SpaceTraders
+from straders_sdk.models import Waypoint
+from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
-import time
+from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
+from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
+from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
+from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
+from behaviours.explore_jump_gates import (
+    ExploreJumpGates,
+    BEHAVIOUR_NAME as BHVR_EXPLORE_JUMP_GATES,
+)
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
-BHVR_EXTRACT_AND_TRANSFER = "EXTRACT_AND_TRANSFER"
+BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
+BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
+BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
 
 logger = logging.getLogger("dispatcher")
+
+
+class dispatcher(SpaceTraders):
+    def __init__(
+        self,
+        token,
+        db_host: str,
+        db_port: str,
+        db_name: str,
+        db_user: str,
+        db_pass: str,
+        current_agent_symbol: str,
+    ) -> None:
+        self.lock_id = "Week3-dispatcher " + str(uuid.uuid1())
+        self.db_host = db_host
+        self.db_port = db_port
+        self.db_name = db_name
+        self.db_user = db_user
+        self.db_pass = db_pass
+        self._connection = None
+        super().__init__(
+            token,
+            db_host=db_host,
+            db_port=db_port,
+            db_name=db_name,
+            db_user=db_user,
+            db_pass=db_pass,
+            current_agent_symbol=current_agent_symbol,
+        )
+
+        self.agent = self.view_my_self()
+        self.ships = self.ships_view()
+
+    def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
+        sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until 
+    from ship s 
+    left join ship_behaviours sb 
+    on s.ship_symbol = sb.ship_symbol
+
+    where agent_name = %s
+    and (locked_until <= (now() at time zone 'utc') or locked_until is null or locked_by = %s)
+    order by last_updated asc """
+        rows = self.query(sql, (current_agent_symbol, self.lock_id))
+
+        return [{"name": row[0], "behaviour_id": row[1]} for row in rows]
+
+    def lock_ship(self, ship_symbol, lock_id, duration=60):
+        sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
+    VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
+    ON CONFLICT (ship_symbol) DO UPDATE SET
+        locked_by = %s,
+        locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
+
+        return self.query(sql, (ship_symbol, lock_id, duration, lock_id, duration))
+
+    def unlock_ship(self, connect, ship_symbol, lock_id):
+        sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
+                WHERE ship_symbol = %s and locked_by = %s"""
+        self.query(sql, (ship_symbol, lock_id))
+
+    @property
+    def connection(self):
+        if self._connection is None or self._connection.closed > 0:
+            self._connection = psycopg2.connect(
+                host=self.db_host,
+                port=self.db_port,
+                database=self.db_name,
+                user=self.db_user,
+                password=self.db_pass,
+            )
+            self._connection.autocommit = True
+        return self._connection
+
+    def query(self, sql, args: list):
+        for int in range(0, 5):
+            try:
+                cur = self.connection.cursor()
+                cur.execute(sql, args)
+                return cur.fetchall()
+            except psycopg2.ProgrammingError as err:
+                return []
+            except Exception as err:
+                logger.error("could not execute %s because %s", sql, err)
+                time.sleep((int + 1) * int)
+                return None
+
+        return []
+
+    def run(self):
+        ships_and_threads: dict[str : threading.Thread] = {}
+
+        while True:
+            # every 15 seconds update the list of unlocked ships with a DB query.
+
+            unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
+            logging.debug(" found %d unlocked ships", len(unlocked_ships))
+            # every second, check if we have idle ships whose behaviours we can execute.
+            for i in range(15):
+                for ship_and_behaviour in unlocked_ships:
+                    # are we already running this behaviour?
+
+                    if ship_and_behaviour["name"] in ships_and_threads:
+                        thread = ships_and_threads[ship_and_behaviour["name"]]
+                        thread: threading.Thread
+                        if thread.is_alive():
+                            continue
+                        else:
+                            # the thread is dead, so unlock the ship and remove it from the list
+                            self.unlock_ship(
+                                self.connection,
+                                ship_and_behaviour["name"],
+                                self.lock_id,
+                            )
+                            del ships_and_threads[ship_and_behaviour["name"]]
+                    else:
+                        # first time we've seen this ship - create a thread
+                        pass
+                    bhvr = None
+                    behaviour_params: dict = ({},)
+
+                    if ship_and_behaviour["behaviour_id"] == BHVR_EXTRACT_AND_SELL:
+                        bhvr = ExtractAndSell(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+                    elif (
+                        ship_and_behaviour["behaviour_id"]
+                        == BHVR_EXTRACT_AND_TRANSFER_HIGHEST
+                    ):
+                        bhvr = ExtractAndTransferHeighest_1(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+                    elif ship_and_behaviour["behaviour_id"] == BHVR_RECEIVE_AND_FULFILL:
+                        bhvr = ReceiveAndFulfillOrSell_3(
+                            self.agent.symbol,
+                            ship_and_behaviour["name"],
+                            {"receive_wp": "X1-ZN71-00455Z"},
+                        )
+                    elif (
+                        ship_and_behaviour["behaviour_id"]
+                        == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES
+                    ):
+                        bhvr = ExtractAndTransferOrSell_4(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+                    elif ship_and_behaviour["behaviour_id"] == BHVR_EXPLORE_JUMP_GATES:
+                        bhvr = ExploreJumpGates(
+                            self.agent.symbol, ship_and_behaviour["name"]
+                        )
+
+                    if not bhvr:
+                        continue
+
+                    lock_r = self.lock_ship(ship_and_behaviour["name"], self.lock_id)
+                    if lock_r is None:
+                        continue
+                    # we know this is behaviour, so lock it and start it.
+                    ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
+                        target=bhvr.run,
+                        name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
+                    )
+
+                    ships_and_threads[ship_and_behaviour["name"]].start()
+                    time.sleep(10)  # stagger ships
+                    pass
+
+                time.sleep(1)
 
 
 def register_and_store_user(username) -> str:
@@ -52,143 +229,57 @@ def register_and_store_user(username) -> str:
     return resp.data["token"]
 
 
-def get_unlocked_ships(connection, current_agent_symbol: str) -> list[dict]:
-    cur = connection.cursor()
-    sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until 
-from ship s 
-left join ship_behaviours sb 
-on s.ship_symbol = sb.ship_name
-
-where agent_name = %s
-and (locked_until <= now() or locked_until is null or locked_by = %s)
-order by last_updated asc """
+def load_user(username):
     try:
-        cur.execute(sql, (current_agent_symbol, lock_id))
-        rows = cur.fetchall()
-    except Exception as err:
-        logger.error("could not get unlocked ships becase %s", err)
-        return []
-
-    return [{"name": row[0], "behaviour_id": row[1]} for row in rows]
-
-
-def lock_ship(connection, ship_name, lock_id):
-    sql = """INSERT INTO ship_behaviours (ship_name, locked_by, locked_until)
-VALUES (%s, %s, now() + interval '60 minutes')
-ON CONFLICT (ship_name) DO UPDATE SET
-    locked_by = %s,
-    locked_until = now() + interval '15 minutes';"""
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, (ship_name, lock_id, lock_id))
-        return True
-    except Exception as err:
-        logger.error("could not lock ship %s because %s", ship_name, err)
-        return False
-
-
-def unlock_ship(connect, ship_name, lock_id):
-    sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
-            WHERE ship_name = %s and locked_by = %s"""
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, (ship_name, lock_id))
-        return True
-    except Exception as err:
-        logger.error("could not unlock ship %s because %s", ship_name, err)
-        return False
-
-
-def execute(sql, args: list):
-    for int in range(0, 5):
-        try:
-            cur = connection.cursor()
-            cur.execute(sql, args)
-            return True
-        except Exception as err:
-            logger.error("could not execute %s because %s", sql, err)
-            time.sleep(1)
+        user = json.load(open("user.json", "r"))
+    except FileNotFoundError:
+        register_and_store_user(username)
+        register_and_store_user(username)
+        return
+    for agent in user["agents"]:
+        if agent["username"] == username:
+            return agent["token"], agent["username"]
+    register_and_store_user(username)
+    return load_user(username)
 
 
 if __name__ == "__main__":
-    register_and_store_user("O2O")
-    set_logging()
-    lock_id = "Week3-dispatcher " + str(uuid.uuid1())
-    user = json.load(open("user.json", "r"))
-    st = SpaceTraders(
-        user["agents"][0]["token"],
-        db_host=user["db_host"],
-        db_port=user["db_port"],
-        db_name=user["db_name"],
-        db_user=user["db_user"],
-        db_pass=user["db_pass"],
-        current_agent_symbol=user["agents"][0]["username"],
-    )
-    agent = st.view_my_self()
-    ships = st.ships_view()
-    hq_sys = list(ships.values())[1].nav.system_symbol
+    target_user = sys.argv[1].upper()
 
+    set_logging(level=logging.DEBUG)
+    user = load_user(target_user)
+
+    dips = dispatcher(
+        user[0],
+        os.environ.get("ST_DB_HOST"),
+        os.environ.get("ST_DB_PORT"),
+        os.environ.get("ST_DB_NAME"),
+        os.environ.get("ST_DB_USER"),
+        os.environ.get("ST_DB_PASSWORD"),
+        user[1],
+    )
+    dips.run()
+    exit()
+    ships = dips.ships_view(True)
+    hq_sys = list(dips.ships_view().values())[1].nav.system_symbol
+    hq_sym = dips.current_agent.headquarters
+
+    hq = dips.waypoints_view_one(hq_sys, hq_sym)
+    # home_wapys = dips.waypoints_view(hq_sys, True)
+    hq: Waypoint
+    if len(hq.traits) == 0:
+        dips.waypoints_view(hq_sys, True)
     pytest_blob = {
-        "token": st.token,
+        "token": dips.token,
         "hq_sys": hq_sys,
         "hq_wayp": list(ships.values())[1].nav.waypoint_symbol,
-        "market_wayp": st.find_waypoints_by_trait_one(hq_sys, "MARKETPLACE").symbol,
-        "shipyard_wayp": st.find_waypoints_by_trait_one(hq_sys, "SHIPYARD").symbol,
+        "market_wayp": dips.find_waypoints_by_trait_one(hq_sys, "MARKETPLACE").symbol,
+        "shipyard_wayp": dips.find_waypoints_by_trait_one(hq_sys, "SHIPYARD").symbol,
     }
     print(json.dumps(pytest_blob, indent=2))
 
-    connection = psycopg2.connect(
-        host=user["db_host"],
-        port=user["db_port"],
-        database=user["db_name"],
-        user=user["db_user"],
-        password=user["db_pass"],
-    )
-    connection.autocommit = True
-
-    ships_and_threads: dict[str : threading.Thread] = {}
-
+    dips.run()
     # need to assign default behaviours here.
 
     # get unlocked ships with behaviours
     # unlocked_ships = [{"name": "ship_id", "behaviour_id": "EXTRACT_AND_SELL"}]
-    while True:
-        # every 15 seconds update the list of unlocked ships with a DB query.
-        unlocked_ships = get_unlocked_ships(connection, agent.symbol)
-        logging.debug(" found %d unlocked ships", len(unlocked_ships))
-        # every second, check if we have idle ships whose behaviours we can execute.
-        for i in range(15):
-            for ship_and_behaviour in unlocked_ships:
-                # are we already running this behaviour?
-
-                if ship_and_behaviour["name"] in ships_and_threads:
-                    thread = ships_and_threads[ship_and_behaviour["name"]]
-                    thread: threading.Thread
-                    if thread.is_alive():
-                        continue
-                    else:
-                        # the thread is dead, so unlock the ship and remove it from the list
-                        unlock_ship(connection, ship_and_behaviour["name"], lock_id)
-                        del ships_and_threads[ship_and_behaviour["name"]]
-                bhvr = None
-                behaviour_params: dict = ({},)
-
-                if ship_and_behaviour["behaviour_id"] == BHVR_EXTRACT_AND_SELL:
-                    bhvr = ExtractAndSell(agent.symbol, ship_and_behaviour["name"])
-
-                if not bhvr:
-                    continue
-
-                if not lock_ship(connection, ship_and_behaviour["name"], lock_id):
-                    continue
-                # we know this is behaviour, so lock it and start it.
-                ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
-                    target=bhvr.run,
-                    name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
-                )
-
-                ships_and_threads[ship_and_behaviour["name"]].start()
-                time.sleep(10)  # stagger ships
-                pass
-
-            time.sleep(1)

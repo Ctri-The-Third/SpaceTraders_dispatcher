@@ -1,7 +1,11 @@
+import sys
+
+sys.path.append(".")
+
 import json
-from spacetraders_v2 import SpaceTraders
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.utils import set_logging
+from straders_sdk import SpaceTraders
+from straders_sdk.ship import Ship
+from straders_sdk.utils import set_logging
 import logging
 from behaviours.generic_behaviour import Behaviour
 
@@ -14,35 +18,14 @@ class ExtractAndSell(Behaviour):
         behaviour_params: dict = {},
         config_file_name="user.json",
     ) -> None:
+        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
         self.logger = logging.getLogger("bhvr_extract_and_sell")
-        self.behaviour_params = behaviour_params
-        saved_data = json.load(open(config_file_name, "r+"))
-        for agent in saved_data["agents"]:
-            if agent["username"] == agent_name:
-                token = agent["token"]
-        if not token:
-            # register the user
-            pass
-        db_host = saved_data.get("db_host", None)
-        db_port = saved_data.get("db_port", None)
-        db_name = saved_data.get("db_name", None)
-        db_user = saved_data.get("db_user", None)
-        db_pass = saved_data.get("db_pass", None)
-        self.st = SpaceTraders(
-            token,
-            db_host=db_host,
-            db_port=db_port,
-            db_name=db_name,
-            db_user=db_user,
-            db_pass=db_pass,
-        )
-        self.ship = self.st.ships_view_one(ship_name, force=False)
-        self.agent = self.st.view_my_self()
-        set_logging()
+        self.logger.info("initialising...")
 
     def run(self):
-        # all threads should have this.
-
+        # all  threads should have this.
+        self.logger.info("Beginning...")
+        starting_credts = self.agent.credits
         ship = self.ship
         st = self.st
         agent = self.agent
@@ -54,7 +37,7 @@ class ExtractAndSell(Behaviour):
         try:
             target_wp_sym = self.behaviour_params.get(
                 "extract_waypoint",
-                st.find_waypoint_by_type(
+                st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,
             )
@@ -69,8 +52,21 @@ class ExtractAndSell(Behaviour):
             return
 
         self.ship_intrasolar(target_wp_sym)
-        self.extract_till_full()
+        self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()
         self.refuel_if_low()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
+        self.logger.info(
+            "Completed. Credits: %s, change = %s",
+            agent.credits,
+            agent.credits - starting_credts,
+        )
+
+
+if __name__ == "__main__":
+    agent = sys.argv[1] if len(sys.argv) >= 3 else "CTRI"
+    ship = sys.argv[2] if len(sys.argv) >= 3 else "CTRI-3"
+    set_logging()
+    bhvr = ExtractAndSell(agent, ship)
+    bhvr.run()

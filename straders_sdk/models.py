@@ -32,8 +32,8 @@ class FuelInfo:
 @dataclass
 class ShipRequirements:
     crew: int = 0
-    modules: int = 0
-    slots: int = 0
+    module_slots: int = 0
+    power: int = 0
 
     @classmethod
     def from_json(cls, json_data: dict):
@@ -243,21 +243,42 @@ class ShipRoute:
 
 
 @dataclass
-class Agent(SymbolClass):
-    account_id: str
-    symbol: str
-    headquaters: str
-    credits: int = 0
-    starting_faction: str = "NOT YET SET"
-    ship_count: int = 0
+class Agent:
+    def __init__(
+        self,
+        symbol: str,
+        headquarters: str,
+        credits: int,
+        starting_faction: str,
+        ship_count: int = None,
+        account_id: str = None,
+    ):
+        self.symbol = symbol
+        self.headquarters = headquarters
+        self.credits = credits
+        self.starting_faction = starting_faction
+        self.ship_count = ship_count
+        self.account_id = account_id
 
     @classmethod
     def from_json(cls, json_data: dict):
-        return cls(*json_data.values())
+        return cls(
+            json_data["symbol"],
+            json_data["headquarters"],
+            json_data["credits"],
+            json_data["startingFaction"],
+            json_data.get("shipCount", None),
+            json_data.get("accountId", None),
+        )
 
     def update(self, json_data: dict):
         if "agent" in json_data:
-            self.__init__(*json_data["agent"].values())
+            self.symbol = json_data["agent"]["symbol"]
+            self.headquarters = json_data["agent"]["headquarters"]
+            self.credits = json_data["agent"]["credits"]
+            self.starting_faction = json_data["agent"]["startingFaction"]
+            self.ship_count = json_data["agent"].get("shipCount", self.ship_count)
+            self.account_id = json_data["agent"].get("accountId", self.account_id)
 
 
 @dataclass
@@ -282,6 +303,7 @@ class Waypoint(SymbolClass):
     @classmethod
     def from_json(cls, json_data: dict):
         # a waypoint can be a fully scanned thing, or a stub from scanning the system.
+        # future C'tri - there are actually two different kinds of waypoint, SystemWaypoint and Waypoint.
         if "orbitals" not in json_data:
             json_data["orbitals"] = []
         if "traits" not in json_data:
@@ -315,8 +337,34 @@ class Waypoint(SymbolClass):
     def has_market(self) -> bool:
         return "MARKETPLACE" in [t.symbol for t in self.traits]
 
+    def has_jump_gate(self) -> bool:
+        return "JUMP_GATE" in [t.symbol for t in self.traits]
+
     def __str__(self):
         return self.symbol
+
+
+class JumpGate:
+    def __init__(
+        self,
+        waypoint_symbol: str,
+        jump_range: int,
+        connected_waypoints: list["JumpGateConnection"],
+        faction_symbol: str = "",
+    ) -> None:
+        self.waypoint_symbol = waypoint_symbol
+        self.jump_range = jump_range
+        self.faction_symbol = faction_symbol
+        self.connected_waypoints = connected_waypoints
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(
+            "",
+            json_data["jumpRange"],
+            [JumpGateConnection.from_json(wp) for wp in json_data["connectedSystems"]],
+            json_data.get("factionSymbol", ""),
+        )
 
 
 @dataclass
@@ -331,7 +379,7 @@ class System(SymbolClass):
     @classmethod
     def from_json(cls, json_data: dict):
         wayps = []
-        for wp in json_data["waypoints"]:
+        for wp in json_data.get("waypoints", []):
             wp["systemSymbol"] = json_data["symbol"]
             wayps.append(Waypoint.from_json(wp))
         return cls(
@@ -340,7 +388,31 @@ class System(SymbolClass):
             json_data["type"],
             json_data["x"],
             json_data["y"],
-            [Waypoint.from_json(wp) for wp in json_data["waypoints"]],
+            wayps,
+        )
+
+
+@dataclass
+class JumpGateConnection(SymbolClass):
+    symbol: str
+    sector_symbol: str
+    type: str
+
+    x: int
+    y: int
+    distance: int
+    faction_symbol: str = ""
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(
+            json_data["symbol"],
+            json_data["sectorSymbol"],
+            json_data["type"],
+            json_data["x"],
+            json_data["y"],
+            json_data["distance"],
+            json_data.get("factionSymbol", ""),
         )
 
 

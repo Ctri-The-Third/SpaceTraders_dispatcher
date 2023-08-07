@@ -3,10 +3,10 @@ import logging
 from sys import stdout
 from logging import FileHandler, StreamHandler
 import uuid
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.contracts import Contract
-from spacetraders_v2.models import (
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.ship import Ship
+from straders_sdk.contracts import Contract
+from straders_sdk.models import (
     Waypoint,
     WaypointTrait,
     Agent,

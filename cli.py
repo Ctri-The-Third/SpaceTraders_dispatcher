@@ -1,5 +1,5 @@
 import fire
-from spacetraders_v2.client_mediator import SpaceTraders
+from straders_sdk.client_mediator import SpaceTraders
 
 if __name__ == "__main__":
     st = SpaceTraders()

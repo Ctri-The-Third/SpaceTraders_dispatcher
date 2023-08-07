@@ -5,7 +5,16 @@ from .client_interface import SpaceTradersInteractive, SpaceTradersClient
 from .responses import SpaceTradersResponse
 from .local_response import LocalSpaceTradersRespose
 from .contracts import Contract
-from .models import Waypoint, ShipyardShip, GameStatus, Agent, Survey, ShipNav, Market
+from .models import (
+    Waypoint,
+    ShipyardShip,
+    GameStatus,
+    Agent,
+    Survey,
+    ShipNav,
+    Market,
+    JumpGate,
+)
 from .models import Shipyard, System
 from .ship import Ship
 from .client_api import SpaceTradersApiClient
@@ -108,7 +117,21 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.update(resp.data)
         return resp
 
-    def view_my_self(self, force=False) -> Agent or None:
+    def agents_view_one(
+        self, symbol: str, force=False
+    ) -> Agent or SpaceTradersResponse:
+        if not force:
+            resp = self.db_client.agents_view_one(symbol)
+            if resp:
+                return resp
+
+        resp = self.api_client.agents_view_one(symbol)
+        if resp:
+            self.logging_client.agents_view_one(resp)
+            self.update(resp)
+        return resp
+
+    def view_my_self(self, force=False) -> Agent or SpaceTradersResponse:
         """view the current agent, uses cached value unless forced.
 
         Args:
@@ -118,13 +141,21 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         # db handling of this should include MD5 hashing of the token for identification.
         if self.current_agent and not force:
             return self.current_agent
-        url = _url("my/agent")
-        resp = get_and_validate(url, headers=self._headers())
+
+        if not force:
+            resp = self.db_client.view_my_self()
+            if resp:
+                self.current_agent = resp
+                self.current_agent_symbol = resp.symbol
+                return resp
+
+        resp = self.api_client.view_my_self()
+        self.logging_client.view_my_self(resp)
         if resp:
-            self.current_agent = Agent.from_json(resp.data)
-            self.current_agent_symbol = self.current_agent.symbol
-            self.logging_client.update(self.current_agent)
-        return self.current_agent
+            self.current_agent = resp
+            self.current_agent_symbol = resp.symbol
+            self.update(resp)
+        return resp
 
     def ships_view(self, force=False) -> dict[str, Ship] or SpaceTradersResponse:
         """view the current ships the agent has, a dict that's accessible by ship symbol.
@@ -171,7 +202,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         return resp
 
     def ships_purchase(
-        self, waypoint: str or Waypoint, ship_type: str or ShipyardShip
+        self, ship_type: str or ShipyardShip, waypoint: str or Waypoint
     ) -> tuple[Ship, Agent] or SpaceTradersResponse:
         """purchase a ship from a given shipyard waypoint.
 
@@ -181,7 +212,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
             Returns:
                 Either a Ship object or a SpaceTradersResponse object on failure."""
-        resp = self.api_client.ships_purchase(waypoint, ship_type)
+        resp = self.api_client.ships_purchase(ship_type, waypoint)
         if resp:
             self.update(resp[0])
             self.update(resp[1])
@@ -236,7 +267,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if isinstance(json_data, dict):
             if "agent" in json_data:
                 if self.current_agent is not None:
-                    self.current_agent.update(json_data["agent"])
+                    self.current_agent.update(json_data)
                 else:
                     self.current_agent = Agent.from_json(json_data["agent"])
             if "surveys" in json_data:
@@ -339,23 +370,45 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
-    def systems_list_all(
+    def systems_view_all(
         self, force=False
     ) -> dict[str:"System"] or SpaceTradersResponse:
         """/game/systems"""
         if not force:
-            resp = self.db_client.systems_list_all()
+            resp = self.db_client.systems_view_all()
             if resp:
                 return resp
 
-        resp = self.api_client.systems_list_all()
-        self.logging_client.systems_list_all(resp)
+        resp = self.api_client.systems_view_all()
+        self.logging_client.systems_view_all(resp)
         if resp:
             for syst in resp:
                 syst: System
                 print(f"{syst.symbol} {syst.x},{syst.y}")
                 self.db_client.update(syst)
             return {d.symbol: d for d in resp}
+
+    def systems_view_one(
+        self, system_symbol: str, force=False
+    ) -> System or SpaceTradersResponse:
+        """View a single system. Uses cached values by default.
+
+        Args:
+            `system_symbol` (str): The symbol of the system to view.
+
+        Returns:
+            Either a System object or a SpaceTradersResponse object on failure.
+        """
+        if not force:
+            resp = self.db_client.systems_view_one(system_symbol)
+            if resp:
+                return resp
+
+        resp = self.api_client.systems_view_one(system_symbol)
+        self.logging_client.systems_view_one(system_symbol, resp)
+        if resp:
+            self.db_client.update(resp)
+        return resp
 
     def system_shipyard(
         self, wp: Waypoint, force_update=False
@@ -393,6 +446,29 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             return resp
         return resp
 
+    def system_jumpgate(
+        self, wp: Waypoint, force_update=False
+    ) -> JumpGate or SpaceTradersResponse:
+        """View the jumpgates at a waypoint. Note, requires a vessel to be at the waypoint to provide details.
+
+        Args:
+            `wp` (Waypoint): The waypoint to view the jumpgates at.
+
+        Returns:
+            Either a list of JumpGate objects or a SpaceTradersResponse object on failure.
+        """
+
+        if not force_update:
+            resp = self.db_client.system_jumpgate(wp)
+            if bool(resp):
+                return resp
+        resp = self.api_client.system_jumpgate(wp)
+
+        self.logging_client.system_jumpgate(wp, resp)
+        if resp:
+            self.db_client.update(resp)
+        return resp
+
     def view_available_ships_details(
         self, wp: Waypoint
     ) -> dict[str:ShipyardShip] or SpaceTradersResponse:
@@ -416,40 +492,20 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         return resp
 
-    def find_surveys(
-        self, waypoint_symbol: str = None, material_symbol: str = None
-    ) -> list[Survey]:
+    def find_surveys(self, waypoint_symbol: str = None) -> list[Survey]:
         """filter cached surveys by system, and material
 
         Args:
             `waypoint_symbol` (str): Optional - The symbol of the waypoint to filter by.
-            `material_symbol` (str): Optional - The symbol of the material we're looking for.
 
         Returns:
             A list of Survey objects that match the filter. If no filter is provided, all surveys are returned.
         """
-        matching_surveys = []
-        surveys_to_remove = []
-        for survey in self.surveys.values():
-            survey: Survey
-            if survey.expiration < datetime.utcnow():
-                surveys_to_remove.append(survey.signature)
-                continue
-            if waypoint_symbol and survey.symbol != waypoint_symbol:
-                continue
-            if material_symbol:
-                for deposit in survey.deposits:
-                    if deposit.symbol == material_symbol:
-                        matching_surveys.append(survey)
-        for sig in surveys_to_remove:
-            self.surveys.pop(sig)
-        return matching_surveys
+        pass
 
-    def find_survey_best(
-        self,
-        material_symbol,
-        waypoint_symbol=None,
-    ) -> Survey or None:
+    def find_survey_best_deposit(
+        self, waypoint_symbol: str, deposit_symbol: str
+    ) -> Survey or SpaceTradersResponse:
         """find the survey with the best chance of giving a specific material.
 
         Args:
@@ -459,21 +515,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             A Survey object that has the best chance of giving the material. If no matching survey is found, None is returned.
         """
-        surveys = self.find_surveys(waypoint_symbol, material_symbol)
-        best_survey = None
-        best_chance = 0
-        for survey in surveys:
-            deposits = len(survey.deposits)
-            chance = sum(
-                1 for deposit in survey.deposits if deposit.symbol == material_symbol
-            )
 
-            chance = chance / deposits
-            if chance > best_chance:
-                best_chance = chance
-                best_survey = survey
-        logging.debug("best survey: (%s%%)", best_chance)
-        return best_survey
+        surveys = self.db_client.find_survey_best_deposit(
+            waypoint_symbol, deposit_symbol
+        )
+        return surveys
 
     def find_waypoint_by_coords(self, system: str, x: int, y: int) -> Waypoint or None:
         """find a waypoint by its coordinates. Only searches cached values.
@@ -491,7 +537,29 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 return waypoint
         return None
 
-    def find_waypoint_by_type(
+    def find_waypoints_by_type(
+        self, system_wp, waypoint_type
+    ) -> list[Waypoint] or SpaceTradersResponse:
+        """find a waypoint by its type. searches cached values first, then makes a request if no match is found.
+
+        Args:
+            `system_wp` (str): The symbol of the system to search in.
+            `waypoint_type` (str): The type of waypoint to search for.
+
+        returns:
+            Either a Waypoint object or a SpaceTradersResponse object on API failure.
+            If no matching waypoint is found and no errors occur, None is returned."""
+
+        waypoints = self.waypoints_view(system_wp, waypoint_type)
+        if not waypoints:
+            return waypoints
+        return [
+            waypoint
+            for waypoint in waypoints.values()
+            if waypoint.type == waypoint_type
+        ]
+
+    def find_waypoints_by_type_one(
         self, system_wp, waypoint_type
     ) -> Waypoint or SpaceTradersResponse or None:
         """find a waypoint by its type. searches cached values first, then makes a request if no match is found.
@@ -524,25 +592,25 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 if wp_trait.symbol == trait:
                     resp.append(wayp)
 
-        resp = [
-            wayp
-            for wayp in self.waypoints_view(system_symbol).values()
-            for wp_trait in wayp.traits
-            if wp_trait.symbol == trait
-        ]
         if isinstance(resp, list) and len(resp) > 0:
             return resp
         resp = self.db_client.find_waypoints_by_trait(system_symbol, trait)
         if resp:
             return resp
         wayps = self.api_client.find_waypoints_by_trait(system_symbol, trait)
-        self.logging_client.find_waypoints_by_trait(wayps)
+        self.logging_client.find_waypoints_by_trait(system_symbol, trait, wayps)
         if isinstance(wayps, list):
             wayps: list
             for wayp in wayps:
                 self.db_client.update(wayp)
                 self.update(wayp)
-        return wayps
+            return wayps
+        return LocalSpaceTradersRespose(
+            "Could not find any waypoints with that trait.",
+            0,
+            0,
+            f"{__name__}.find_waypoints_by_trait",
+        )
 
     def find_waypoints_by_trait_one(
         self, system_wp: str, trait_symbol: str
@@ -582,12 +650,15 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return
 
-    def ship_change_course(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/course"""
-        resp = self.api_client.ship_change_course(ship, dest_waypoint_symbol)
-        self.logging_client.ship_change_course(ship, resp)
+        resp = self.api_client.ship_patch_nav(ship, dest_waypoint_symbol)
+        self.logging_client.ship_patch_nav(ship, resp)
         if resp:
             ship.update(resp)
+            self.update(ship)
+
+        return resp
 
     def ship_move(self, ship: "Ship", dest_waypoint_symbol: str):
         """my/ships/:shipSymbol/navigate"""
@@ -600,6 +671,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             )
         resp = self.api_client.ship_move(ship, dest_waypoint_symbol)
         self.logging_client.ship_move(ship, dest_waypoint_symbol, resp)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+            self.ships[ship.name] = ship
+        return resp
+
+    def ship_jump(self, ship: "Ship", dest_system_symbol: str):
+        """my/ships/:shipSymbol/jump"""
+        resp = self.api_client.ship_jump(ship, dest_system_symbol)
+        self.logging_client.ship_jump(ship, dest_system_symbol, resp)
         if resp:
             ship.update(resp.data)
             self.db_client.update(ship)
@@ -626,6 +707,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             ship.update(resp.data)
             self.db_client.update(ship)
         if not resp:
+            if resp.error_code in [4224, 4221, 4220]:
+                self.surveys_remove_one(survey.signature)
             self.logger.error(
                 "status_code = %s, error_code = %s,  error = %s",
                 resp.status_code,
@@ -633,6 +716,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 resp.error,
             )
         return resp
+
+    def surveys_remove_one(self, survey_signature) -> None:
+        """Removes a survey from any caching - called after an invalid survey response."""
+        self.db_client.surveys_remove_one(survey_signature)
+        pass
 
     def ship_dock(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/dock"""

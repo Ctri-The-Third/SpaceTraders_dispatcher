@@ -72,6 +72,7 @@ def get_and_validate(
             TimeoutError,
             TypeError,
             TimeoutError,
+            requests.ReadTimeout,
         ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
             return LocalSpaceTradersRespose(
@@ -84,6 +85,7 @@ def get_and_validate(
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
             time.sleep(i * (i + random.random()))
+            continue
         if response.status_code >= 500 and response.status_code < 600:
             logging.error(
                 "SpaceTraders Server error: %s, %s", url, response.status_code
@@ -115,6 +117,7 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
 
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
+            return LocalSpaceTradersRespose(f"Could not connect!! {err}", 404, 0, url)
         _log_response(response)
         if response.status_code == 429:
             logging.debug("Rate limited. Waiting %s seconds", i)
@@ -161,13 +164,13 @@ def _log_response(response: requests.Response) -> None:
     ST_LOGGER.debug("%s %s %s", response.status_code, url_stub, error_text)
 
 
-def set_logging(filename: str = None):
+def set_logging(filename: str = None, level=logging.INFO):
     format = "%(asctime)s:%(levelname)s:%(threadName)s:%(name)s  %(message)s"
 
     log_file = filename if filename else "ShipTrader.log"
     logging.basicConfig(
         handlers=[FileHandler(log_file), StreamHandler(stdout)],
-        level=logging.INFO,
+        level=level,
         format=format,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)

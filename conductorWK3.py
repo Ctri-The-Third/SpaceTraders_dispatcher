@@ -6,10 +6,11 @@
 # we can assume that each agent is based at a different IP Address, and orchestrate accordingly.
 import json
 import psycopg2
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import ShipyardShip
-from spacetraders_v2.utils import set_logging
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.ship import Ship
+
+from straders_sdk.models import ShipyardShip, Waypoint
+from straders_sdk.utils import set_logging
 import logging
 import time
 from dispatcherWK3 import (
@@ -17,7 +18,8 @@ from dispatcherWK3 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXPLORE_CURRENT_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER,
+    BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES,
+    BHVR_EXTRACT_AND_TRANSFER_ALL,
 )
 
 logger = logging.getLogger("conductor")
@@ -54,22 +56,35 @@ def master():
 def stage_0(client: SpaceTraders):
     client.ships_view(True)
     # populate the ships from the API
+    found_shipyard = False
+    wayps = client.waypoints_view(client.view_my_self().headquarters)
+    if wayps:
+        for wayp in wayps:
+            for trait in wayp.traits:
+                if trait.symbol == "SHIPYARD":
+                    return 1  # we can scale!
+    commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
+    for commander in commanders:
+        set_behaviour(commander.name, BHVR_EXPLORE_CURRENT_SYSTEM)
     return 1  # not implemented yet, skip to stage 1
     pass
 
 
 def stage_1(client: SpaceTraders):
     # activity location is the commander's location.
+    # currently the conductor isn't getting updated information from the agent.
+    # It's therefore important that we do a DB sync here.
     ships = client.ships_view()
-    agent = client.view_my_self()
+
+    extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    if len(extractors) >= 2:
+        return 2
+
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     for ship in commanders:
         ship: Ship
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
 
-    extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    if len(extractors) >= 5:
-        return 2
     else:
         for ship in extractors:
             set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
@@ -90,48 +105,87 @@ def stage_1(client: SpaceTraders):
 
 
 def stage_2(client: SpaceTraders):
+    # we're at 5 extractors and one freighter and it's not bottlenecked on the freighter yet.
+    # recommend switching to getting more ore hounds after 2 drones.
     ships = client.ships_view()
 
-    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
-    if len(haulers) >= 1:
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
+    if len(hounds) >= 1:
         return 3
     else:
         maybe_ship = maybe_buy_ship(
-            client, ships.values()[0].nav.system_symbol, "SHIP_FREIGHTER"
+            client, list(ships.values())[0].nav.system_symbol, "SHIP_ORE_HOUND"
         )
         if maybe_ship:
-            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_TRANSFER)
+            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
+    commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
+    excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    for ship in commanders:
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+    for ship in excavators:
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     return 2
-    pass
 
 
 def stage_3(client: SpaceTraders):
     ships = client.ships_view()
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    for excavator in excavators:
-        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER)
-
+    hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
+
+    if len(hounds) >= 30 and len(haulers) >= 3:
+        return 4
+
+    for excavator in excavators:
+        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
-
-    if len(ships) <= 50:
-        pass
-
+    if len(haulers) == 0:
+        for commander in commanders:
+            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL)
+    if len(hounds) <= 30:
+        ship = maybe_buy_ship(client, excavators[0].nav.system_symbol, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+    if len(haulers) <= len(hounds) / 10:
+        ship = maybe_buy_ship(
+            client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
+        )
+        if ship:
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
     return 3
 
 
-def stage_4():
+def stage_4(client: SpaceTraders):
+    ships = client.ships_view()
+
+    drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
+    hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    for drone in drones:
+        set_behaviour(drone.name, "DISABLED")
+
+    if len(hounds) <= 60:
+        ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+    if len(haulers) <= len(hounds) / 10:
+        ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+
+    # switch off mining drones.
     pass
 
 
-def set_behaviour(ship_name, behaviour_id):
-    sql = """insert into ship_behaviours (ship_name, behaviour_id)
-    values (%s, %s) on conflict (ship_name) do update set behaviour_id = %s"""
+def set_behaviour(ship_symbol, behaviour_id):
+    sql = """insert into ship_behaviours (ship_symbol, behaviour_id)
+    values (%s, %s) on conflict (ship_symbol) do update set behaviour_id = %s"""
     cursor = connection.cursor()
     try:
-        cursor.execute(sql, (ship_name, behaviour_id, behaviour_id))
+        cursor.execute(sql, (ship_symbol, behaviour_id, behaviour_id))
     except Exception as e:
         logging.error(e)
         return False
@@ -139,9 +193,13 @@ def set_behaviour(ship_name, behaviour_id):
 
 def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
     shipyard_wps = client.find_waypoints_by_trait(system_symbol, "SHIPYARD")
+    if not shipyard_wps:
+        logging.warning("No shipyards found yet - can't scale.")
+        return
+
     if len(shipyard_wps) == 0:
         return False
-    agent = client.view_my_self()
+    agent = client.view_my_self(True)
     if shipyard_wps[0].symbol in cached_ship_details:
         ship_details = cached_ship_details[shipyard_wps[0].symbol]
     else:
@@ -150,11 +208,11 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
 
     if not ship_details:
         return False
-    for ship_symbol, detail in ship_details.items():
+    for _, detail in ship_details.items():
         detail: ShipyardShip
         if detail.type == ship_symbol:
             if agent.credits > detail.purchase_price:
-                resp = client.ships_purchase(shipyard_wps[0], ship_symbol)
+                resp = client.ships_purchase(ship_symbol, shipyard_wps[0].symbol)
                 if resp:
                     return resp[0]
 

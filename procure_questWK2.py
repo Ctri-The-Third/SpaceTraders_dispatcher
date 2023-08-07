@@ -1,15 +1,15 @@
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.ship import Ship
-from spacetraders_v2.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
-from spacetraders_v2.contracts import Contract
-from spacetraders_v2.utils import sleep
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.ship import Ship
+from straders_sdk.models import Waypoint, Agent, ShipyardShip, Survey, Deposit
+from straders_sdk.contracts import Contract
+from straders_sdk.utils import sleep
 import json
-from spacetraders_v2.utils import set_logging
+from straders_sdk.utils import set_logging
 import logging
 import sys
 import math
 import threading
-from spacetraders_v2.utils import sleep
+from straders_sdk.utils import sleep
 
 logger = logging.getLogger("game-file")
 
@@ -103,7 +103,9 @@ def extractor_quest_loop(
     ship: Ship, st: SpaceTraders, contract: Contract, viable_transports: list[Ship]
 ):
     target_material = contract.deliverables[0].symbol
-    mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_site_wp = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
 
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
     if ship.nav.waypoint_symbol != mining_site_wp.symbol:
@@ -182,7 +184,9 @@ def extractor_quest_loop(
 def surveyor_quest_loop(ship: Ship, st: SpaceTraders, contract: Contract):
     target_site_wp = contract.deliverables[0].destination_symbol
     target_material = contract.deliverables[0].symbol
-    mining_site_wp = st.find_waypoint_by_type(ship.nav.system_symbol, "ASTEROID_FIELD")
+    mining_site_wp = st.find_waypoints_by_type_one(
+        ship.nav.system_symbol, "ASTEROID_FIELD"
+    )
 
     if ship.cargo_units_used >= ship.cargo_capacity - 10:
         st.ship_move(ship, target_site_wp)
@@ -313,17 +317,19 @@ def master(st: SpaceTraders, contract: Contract):
     ):
         if len(extractors_and_threads) < target_extractors:
             if agent.credits >= drone_cost * 2 or len(extractors_and_threads) < 2:
-                new_ship = st.ships_purchase(shipyard_wp, "SHIP_MINING_DRONE")
-                if not new_ship:
+                resp = st.ships_purchase("SHIP_MINING_DRONE", shipyard_wp.symbol)
+                if not resp:
                     logger.error("failed to purchase new ship")
-                thread = threading.Thread(
-                    target=extractor_quest_loop,
-                    args=(new_ship, st, contract, viable_transports),
-                    name=new_ship.name,
-                )
+                else:
+                    new_ship = resp[0]
+                    thread = threading.Thread(
+                        target=extractor_quest_loop,
+                        args=(new_ship, st, contract, viable_transports),
+                        name=new_ship.name,
+                    )
 
-                extractors_and_threads[new_ship.name] = thread
-                thread.start()
+                    extractors_and_threads[new_ship.name] = thread
+                    thread.start()
 
         if len(extractors_and_threads) / 10 > len(surveyors_and_threads):
             if agent.credits >= hauler_cost:

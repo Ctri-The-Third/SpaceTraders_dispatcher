@@ -210,28 +210,28 @@ class Ship(SpaceTradersInteractive):
         self.update(resp.data)
         return resp
 
-    def update(self, ship_data: dict):
-        # expecting bits of JSON from response objects
-        if ship_data is None:
+    def update(self, json_data: dict):
+        "Update the ship with the contents of a response object"
+        if json_data is None:
             return
 
-        if isinstance(ship_data, dict):
-            if "nav" in ship_data:
-                self.nav = ShipNav.from_json(ship_data["nav"])
-            if "cargo" in ship_data:
-                self.cargo_capacity = ship_data["cargo"]["capacity"]
-                self.cargo_units_used = ship_data["cargo"]["units"]
+        if isinstance(json_data, dict):
+            if "nav" in json_data:
+                self.nav = ShipNav.from_json(json_data["nav"])
+            if "cargo" in json_data:
+                self.cargo_capacity = json_data["cargo"]["capacity"]
+                self.cargo_units_used = json_data["cargo"]["units"]
                 self.cargo_inventory: list[ShipInventory] = [
-                    ShipInventory.from_json(d) for d in ship_data["cargo"]["inventory"]
+                    ShipInventory.from_json(d) for d in json_data["cargo"]["inventory"]
                 ]
-            if "cooldown" in ship_data:
-                self._cooldown = parse_timestamp(ship_data["cooldown"]["expiration"])
+            if "cooldown" in json_data:
+                self._cooldown = parse_timestamp(json_data["cooldown"]["expiration"])
                 if self.seconds_until_cooldown > 6000:
                     self.logger.warning("Cooldown is over 100 minutes")
-            if "fuel" in ship_data:
-                self.fuel_capacity = ship_data["fuel"]["capacity"]
-                self.fuel_current = ship_data["fuel"]["current"]
-                self.fuel_consumed_history = ship_data["fuel"]["consumed"]
+            if "fuel" in json_data:
+                self.fuel_capacity = json_data["fuel"]["capacity"]
+                self.fuel_current = json_data["fuel"]["current"]
+                self.fuel_consumed_history = json_data["fuel"]["consumed"]
         # pass the updated ship to the client to be logged appropriately
 
     @property

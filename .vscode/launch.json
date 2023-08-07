@@ -20,12 +20,37 @@
             "justMyCode": true
         },
         {
-            "name": "dispatcher",
+            "name": "procure-quest",
+            "type": "python",
+            "request": "launch",
+            "program": "procure_questWK2.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "CTRI-B"
+            ]
+        },
+        {
+            "name": "dispatcher -L",
             "type": "python",
             "request": "launch",
             "program": "dispatcherWK3.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "args": [
+                "CTRI-LWK5-"
+            ]
+        },
+        {
+            "name": "dispatcher -test",
+            "type": "python",
+            "request": "launch",
+            "program": "dispatcherWK3.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "CTRI-TEST-KALE"
+            ]
         },
         {
             "name": "Python: rtb&negotiate",

@@ -81,7 +81,8 @@ SET default_table_access_method = heap;
 CREATE TABLE public.logging (
     event_name text NOT NULL,
     event_timestamp timestamp without time zone NOT NULL,
-    ship_name text NOT NULL,
+    agent_name, text NOT NULL,
+    ship_symbol text NOT NULL,
     session_id text,
     endpoint_name text,
     new_credits integer,
@@ -265,14 +266,81 @@ CREATE TABLE public.waypoints (
 
 CREATE TABLE IF NOT EXISTS public.ship_behaviours
 (
-    ship_name text COLLATE pg_catalog."default" NOT NULL,
+    ship_symbol text COLLATE pg_catalog."default" NOT NULL,
     behaviour_id text COLLATE pg_catalog."default",
     locked_by text COLLATE pg_catalog."default",
     locked_until timestamp without time zone,
-    CONSTRAINT ship_behaviours_pkey PRIMARY KEY (ship_name)
+    CONSTRAINT ship_behaviours_pkey PRIMARY KEY (ship_symbol)
+)
+
+-- Table: public.survey
+
+-- DROP TABLE IF EXISTS public.survey;
+
+CREATE TABLE IF NOT EXISTS public.survey
+(
+    signature text COLLATE pg_catalog."default" NOT NULL,
+    waypoint text COLLATE pg_catalog."default",
+    expiration timestamp without time zone,
+    size text COLLATE pg_catalog."default",
+    CONSTRAINT survey_pkey PRIMARY KEY (signature)
+)
+
+
+ALTER TABLE IF EXISTS public.survey
+    OWNER to spacetraders;
+CREATE TABLE IF NOT EXISTS public.survey_deposit
+(
+    signature text COLLATE pg_catalog."default" NOT NULL,
+    symbol text COLLATE pg_catalog."default" NOT NULL,
+    count integer,
+    CONSTRAINT survey_deposit_pkey PRIMARY KEY (signature, symbol)
+)
+
+
+-- Table: public.ship_frame_links
+
+-- DROP TABLE IF EXISTS public.ship_frame_links;
+
+CREATE TABLE IF NOT EXISTS public.ship_frame_links
+(
+    ship_symbol text COLLATE pg_catalog."default" NOT NULL,
+    frame_symbol text COLLATE pg_catalog."default" NOT NULL,
+    condition integer,
+    CONSTRAINT ship_frame_links_pkey PRIMARY KEY (ship_symbol, frame_symbol)
 )
 
 TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.ship_frame_links
+    OWNER to spacetraders;
+
+    -- Table: public.ship_frame-- Table: public.ship_frames
+
+-- DROP TABLE IF EXISTS public.ship_frames;
+
+CREATE TABLE IF NOT EXISTS public.ship_frames
+(
+    frame_symbol text COLLATE pg_catalog."default" NOT NULL,
+    name text COLLATE pg_catalog."default",
+    description text COLLATE pg_catalog."default",
+    module_slots integer,
+    mount_points integer,
+    fuel_capacity integer,
+    required_power integer,
+    required_crew integer,
+    required_slots integer,
+    CONSTRAINT ship_frames_pkey PRIMARY KEY (frame_symbol)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.ship_frames
+    OWNER to spacetraders;
+
+
+ALTER TABLE IF EXISTS public.survey_deposit
+    OWNER to spacetraders;
 
 ALTER TABLE IF EXISTS public.ship_behaviours
     OWNER to spacetraders;
@@ -286,7 +354,7 @@ ALTER TABLE public.waypoints OWNER TO spacetraders;
 --
 
 ALTER TABLE ONLY public.logging
-    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_name);
+    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_name, event_timestamp, ship_symbol);
 
 
 --

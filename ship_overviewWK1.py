@@ -5,8 +5,8 @@ from textual.widget import Widget
 from textual.reactive import Reactive
 from textual.containers import ScrollableContainer, Container
 from textual.css.query import NoMatches
-from spacetraders_v2.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from spacetraders_v2.ship import Ship
+from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
+from straders_sdk.ship import Ship
 import json
 import sys
 

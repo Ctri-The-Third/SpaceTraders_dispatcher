@@ -1,8 +1,8 @@
 import sys
 import json
 
-from spacetraders_v2 import SpaceTraders
-from spacetraders_v2.utils import set_logging, sleep
+from straders_sdk import SpaceTraders
+from straders_sdk.utils import set_logging, sleep
 
 
 def master(st: SpaceTraders):
