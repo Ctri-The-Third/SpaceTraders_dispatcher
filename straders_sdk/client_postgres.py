@@ -6,6 +6,7 @@ from .models import (
     Survey,
     Deposit,
     Shipyard,
+    ShipyardShip,
     MarketTradeGood,
     MarketTradeGoodListing,
     System,
@@ -25,7 +26,7 @@ from .pg_pieces.select_ship import _select_ships
 from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
 from .pg_pieces.agents import _upsert_agent, select_agent_one
 from .local_response import LocalSpaceTradersRespose
-from .ship import Ship, ShipInventory, ShipNav, RouteNode, Ship
+from .ship import Ship, ShipInventory, ShipNav, RouteNode
 import psycopg2
 
 
@@ -368,7 +369,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             syst = System(row[0], row[1], row[2], row[3], row[4], [])
             return syst
 
-    def system_shipyard(self, wp: Waypoint) -> list[str] or SpaceTradersResponse:
+    def system_shipyard(self, wp: Waypoint) -> Shipyard or SpaceTradersResponse:
         """View the types of ships available at a shipyard.
 
         Args:
@@ -377,14 +378,20 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         Returns:
             Either a list of ship types (symbols for purchase) or a SpaceTradersResponse object on failure.
         """
-        sql = """SELECT * FROM shipyard_types where shipyard_symbol = %s"""
+        sql = """SELECT ship_type, ship_cost  FROM shipyard_types where shipyard_symbol = %s"""
         try:
             cu = self.connection.cursor()
             cu.execute(sql, (wp.symbol,))
             rows = cu.fetchall()
             if len(rows) >= 1:
-                types = [row[1] for row in rows]
-                found_shipyard = Shipyard(wp.symbol, types, {})
+                types = [row[0] for row in rows]
+                ships = {
+                    row[0]: ShipyardShip(
+                        None, None, None, row[0], None, row[0], row[1], [], []
+                    )
+                    for row in rows
+                }
+                found_shipyard = Shipyard(wp.symbol, types, ships)
                 return found_shipyard
         except Exception as err:
             return LocalSpaceTradersRespose(

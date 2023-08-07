@@ -28,38 +28,48 @@ def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
             ship.cargo_capacity = row[4]
             ship.cargo_units_used = row[5]
             # , 6: n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
-            ship.nav = _nav_from_row(row, db_client)
-            ship.frame = _frame_from_row(row)
+
+            ship.nav = _nav_from_row(row[6:13], db_client)
+            ship.frame = _frame_from_row(row[13:24])
             ship.fuel_capacity = row[23]
             ship.fuel_current = row[24]
             ships[ship.name] = ship
         return ships
     except Exception as err:
-        LocalSpaceTradersRespose(
+        return LocalSpaceTradersRespose(
             error=err,
             status_code=0,
             error_code=0,
             url=f"select_ship._select_ship",
         )
-    pass
 
 
 def _nav_from_row(row, db_client: SpaceTradersClient) -> ShipNav:
-    # SHIP NAV BEGINS
-    current_system = db_client.waypoints_view_one("", row[6])
-    if not current_system:
-        current_system = None
+    """
+    expected:
+    0: n.waypoint_symbol,
+    1: n.departure_time,
+    2: n.arrival_time,
+    3: n.origin_waypoint,
+    4: n.destination_waypoint,
+    5: n.flight_status,
+    6: n.flight_mode
 
-    origin = db_client.waypoints_view_one("", row[9])
+    """
+    current_waypoint = db_client.waypoints_view_one("", row[0])
+    if not current_waypoint:
+        current_waypoint = None
+
+    origin = db_client.waypoints_view_one("", row[3])
     if not origin:
         origin = None
-    destination = db_client.waypoints_view_one("", row[10])
+    destination = db_client.waypoints_view_one("", row[4])
     if not destination:
         destination = None
 
     return_obj = ShipNav(
-        current_system.system_symbol,
-        current_system.symbol,
+        current_waypoint.system_symbol,
+        current_waypoint.symbol,
         RouteNode(
             destination.symbol,
             destination.type,
@@ -74,10 +84,10 @@ def _nav_from_row(row, db_client: SpaceTradersClient) -> ShipNav:
             origin.x,
             origin.y,
         ),
-        row[7],
-        row[8],
-        row[11],
-        row[12],
+        row[1],
+        row[2],
+        row[5],
+        row[6],
     )
     # SHIP NAV ENDS
 
@@ -85,10 +95,31 @@ def _nav_from_row(row, db_client: SpaceTradersClient) -> ShipNav:
 
 
 def _frame_from_row(row) -> ShipFrame:
-    reqiurements = ShipRequirements(row[21], row[22], row[20])
+    """
+
+
+
+    0: sf.frame_symbol,
+    1: sf.name,
+    2: sf.description,
+    3: sf.module_slots,
+    4: sf.mount_points,
+    5: sf.fuel_capacity,
+    6: sf.required_power,
+    7: sf.required_crew,
+    8: sf.required_slots,
+    9: s.fuel_capacity,
+    10: s.fuel_current,
+    11: sfl.condition
+
+    """
+
+    ##crew moduels power
+    reqiurements = ShipRequirements(row[8], row[9], row[7])
     return_obj = ShipFrame(
-        row[14], row[15], row[16], row[17], row[18], row[19], row[13], reqiurements
+        row[1], row[2], row[3], row[4], row[5], row[6], row[0], reqiurements
     )
+
     return return_obj
 
 

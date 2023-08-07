@@ -9,7 +9,7 @@ import psycopg2
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 
-from straders_sdk.models import ShipyardShip, Waypoint
+from straders_sdk.models import ShipyardShip, Waypoint, Shipyard
 from straders_sdk.utils import set_logging
 import logging
 import time
@@ -23,7 +23,6 @@ from dispatcherWK3 import (
 )
 
 logger = logging.getLogger("conductor")
-cached_ship_details = {}
 
 
 def master():
@@ -48,7 +47,7 @@ def master():
             stages_per_agent[agent] = stage_functions[current_stage](client)
         time.sleep(sleep_time)
 
-        sleep_time = 60
+        sleep_time = 6-
 
     pass
 
@@ -56,6 +55,7 @@ def master():
 def stage_0(client: SpaceTraders):
     client.ships_view(True)
     # populate the ships from the API
+    # trigger the local commander to go explore the system.
     found_shipyard = False
     wayps = client.waypoints_view(client.view_my_self().headquarters)
     if wayps:
@@ -71,9 +71,7 @@ def stage_0(client: SpaceTraders):
 
 
 def stage_1(client: SpaceTraders):
-    # activity location is the commander's location.
-    # currently the conductor isn't getting updated information from the agent.
-    # It's therefore important that we do a DB sync here.
+    # scale up to 2 extractors.
     ships = client.ships_view()
 
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
@@ -85,45 +83,58 @@ def stage_1(client: SpaceTraders):
         ship: Ship
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
 
-    else:
-        for ship in extractors:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
-        maybe_ship = maybe_buy_ship(
-            client, commanders[0].nav.system_symbol, "SHIP_MINING_DRONE"
-        )
-        if maybe_ship:
-            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
-
-    # find the number of excavators - if greater than 5, stage = 2
-
-    # else, check how much excavators cost. If we don't know - send the Commander to find out.
-
-    # if we do know, and we can afford an excavator, buy up to 5.
-
-    # set all excavators to extract and sell.
+    for ship in extractors:
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+    maybe_ship = maybe_buy_ship(
+        client, commanders[0].nav.system_symbol, "SHIP_MINING_DRONE"
+    )
+    if maybe_ship:
+        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     return 1
 
 
 def stage_2(client: SpaceTraders):
-    # we're at 5 extractors and one freighter and it's not bottlenecked on the freighter yet.
-    # recommend switching to getting more ore hounds after 2 drones.
+    # we're at 2 extractors and one commander and it's not bottlenecked on the freighter yet.
+    # we need to selectively scale up based on cost per mining power.
+
     ships = client.ships_view()
+    hq_system = list(client.ships.values())[1].nav.system_symbol
+    # 1. decide on what ship to purchase.
+    # ore hounds = 25 mining power
+    # excavator = 10 mining power
 
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     if len(hounds) >= 1:
         return 3
-    else:
-        maybe_ship = maybe_buy_ship(
-            client, list(ships.values())[0].nav.system_symbol, "SHIP_ORE_HOUND"
-        )
-        if maybe_ship:
-            set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
+
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     for ship in commanders:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     for ship in excavators:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+
+    shipyard_wps = client.find_waypoints_by_trait(hq_system, "SHIPYARD")
+    if not shipyard_wps or len(shipyard_wps) == 0:
+        return 2
+    shipyard_wp: Waypoint = shipyard_wps[0]
+    shipyard = client.system_shipyard(shipyard_wp)
+    if not shipyard:
+        return 2
+    shipyard: Shipyard
+    orehound_price_per_power = 9999999
+    drone_price_per_power = 9999998
+    for ship_type, ship in shipyard.ships.items():
+        ship: ShipyardShip
+        if ship_type == "SHIP_ORE_HOUND":
+            orehound_price_per_power = ship.purchase_price / 25
+        if ship_type == "SHIP_MINING_DRONE":
+            drone_price_per_power = ship.purchase_price / 10
+
+    if orehound_price_per_power < drone_price_per_power:
+        maybe_buy_ship(client, hq_system, "SHIP_ORE_HOUND")
+    else:
+        maybe_buy_ship(client, hq_system, "SHIP_MINING_DRONE")
     return 2
 
 
@@ -200,17 +211,14 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
     if len(shipyard_wps) == 0:
         return False
     agent = client.view_my_self(True)
-    if shipyard_wps[0].symbol in cached_ship_details:
-        ship_details = cached_ship_details[shipyard_wps[0].symbol]
-    else:
-        ship_details = client.view_available_ships_details(shipyard_wps[0])
-        cached_ship_details[shipyard_wps[0].symbol] = ship_details
 
-    if not ship_details:
+    shipyard = client.system_shipyard(shipyard_wps[0])
+
+    if not shipyard:
         return False
-    for _, detail in ship_details.items():
+    for _, detail in shipyard.ships.items():
         detail: ShipyardShip
-        if detail.type == ship_symbol:
+        if detail.ship_type == ship_symbol:
             if agent.credits > detail.purchase_price:
                 resp = client.ships_purchase(ship_symbol, shipyard_wps[0].symbol)
                 if resp:

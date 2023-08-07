@@ -417,29 +417,41 @@ class JumpGateConnection(SymbolClass):
 
 
 class ShipyardShip:
-    def __init__(self, json_data: dict) -> None:
-        self.frame = ShipFrame.from_json(json_data["frame"])
-        self.reactor = ShipReactor.from_json(json_data["reactor"])
-        self.engine = ShipEngine.from_json(json_data["engine"])
-        self.name = json_data["name"]
-        self.description = json_data["description"]
-        self.type = json_data["type"]
-        self.purchase_price = json_data["purchasePrice"]
-        # ------------------
-        # ---- CREW INFO ----
-
-        # needs expanded out into a class probably
-
-        # ----  REACTOR INFO ----
-
-        # todo: modules and mounts
-        self.modules = [ShipModule(d) for d in json_data["modules"]]
-        self.mounts = [ShipMount(d) for d in json_data["mounts"]]
-        pass
+    def __init__(
+        self,
+        frame: ShipFrame,
+        reactor: ShipReactor,
+        engine: ShipEngine,
+        name,
+        description,
+        ship_type,
+        purchase_price,
+        modules,
+        mounts,
+    ):
+        self.frame = frame
+        self.reactor = reactor
+        self.engine = engine
+        self.name = name
+        self.description = description
+        self.ship_type = ship_type
+        self.purchase_price = purchase_price
+        self.modules = modules
+        self.mounts = mounts
 
     @classmethod
     def from_json(cls, json_data: dict):
-        return cls(json_data)
+        frame = ShipFrame.from_json(json_data["frame"])
+        reactor = ShipReactor.from_json(json_data["reactor"])
+        engine = ShipEngine.from_json(json_data["engine"])
+        name = json_data["name"]
+        description = json_data["description"]
+        ship_type = json_data["type"]
+        purchase_price = json_data["purchasePrice"]
+
+        modules = [ShipModule(d) for d in json_data["modules"]]
+        mounts = [ShipMount(d) for d in json_data["mounts"]]
+        pass
 
 
 @dataclass

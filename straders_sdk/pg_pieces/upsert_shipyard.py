@@ -6,11 +6,18 @@ import logging
 def _upsert_shipyard(connection, shipyard: Shipyard):
     try:
         sql = """INSERT INTO public.shipyard_types(
-	shipyard_symbol, ship_type)
-	VALUES (%s, %s)
-    ON CONFLICT (shipyard_symbol, ship_type) DO NOTHING;"""
+	shipyard_symbol, ship_type, ship_cost, last_updated)
+	VALUES (%s, %s, %s, now() at time zone 'utc')
+    ON CONFLICT (shipyard_symbol, ship_type) DO UPDATE
+    SET ship_cost = %s;"""
         for ship_type in shipyard.ship_types:
-            connection.cursor().execute(sql, (shipyard.waypoint, ship_type))
+            ship_cost = None
+            ship_details = shipyard.ships.get(ship_type, None)
+            if ship_details:
+                ship_cost = ship_details.purchase_price
+            connection.cursor().execute(
+                sql, (shipyard.waypoint, ship_type, ship_cost, ship_cost)
+            )
 
         connection.commit()
     except Exception as err:
