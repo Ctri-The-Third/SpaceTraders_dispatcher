@@ -47,7 +47,7 @@ def master():
             stages_per_agent[agent] = stage_functions[current_stage](client)
         time.sleep(sleep_time)
 
-        sleep_time = 6-
+        sleep_time = 60
 
     pass
 
