@@ -77,6 +77,13 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.logger.warning(
                 "Couldn't enable DB client, missing info, no logs will be taken"
             )
+            self.logger.debug(
+                "passed in values were: %s, %s, %s, %s",
+                db_host,
+                db_name,
+                db_user,
+                db_pass,
+            )
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )

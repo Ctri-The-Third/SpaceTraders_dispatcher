@@ -173,6 +173,7 @@ def set_logging(filename: str = None, level=logging.INFO):
         level=level,
         format=format,
     )
+    logging.getLogger("client_mediator").setLevel(logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     ST_LOGGER.setLevel(logging.DEBUG)
 
