@@ -15,7 +15,7 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK3.py",
+            "program": "conductorWK5.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
