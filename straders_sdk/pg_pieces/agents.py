@@ -7,7 +7,9 @@ import datetime
 def _upsert_agent(connection, agent: Agent):
     sql = """INSERT INTO public.agents(
 	symbol, headquarters, credits, starting_faction, ship_count, last_updated)
-	VALUES (%s, %s, %s, %s, %s, now() at time zone 'utc' ) on conflict(symbol) do update set credits = %s"""
+	VALUES (%s, %s, %s, %s, %s, now() at time zone 'utc' ) on conflict(symbol) do update set 
+    credits = %s,
+    last_updated = now() at time zone 'utc'"""
 
     cur = connection.cursor()
     cur.execute(
