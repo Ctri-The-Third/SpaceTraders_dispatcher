@@ -248,7 +248,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     user = load_user(target_user)
-
+    print(user)
     dips = dispatcher(
         user[0],
         os.environ.get("ST_DB_HOST", "DB_HOST_not_set"),
