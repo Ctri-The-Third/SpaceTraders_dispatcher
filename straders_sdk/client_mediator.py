@@ -275,17 +275,19 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             if "agent" in json_data:
                 if self.current_agent is not None:
                     self.current_agent.update(json_data)
+                    self.update(self.current_agent)
                 else:
                     self.current_agent = Agent.from_json(json_data["agent"])
             if "surveys" in json_data:
                 for survey in json_data["surveys"]:
-                    self.surveys[survey["signature"]] = Survey.from_json(survey)
+                    surv = Survey.from_json(survey)
+                    self.update(surv)
             if "contract" in json_data:
                 self.contracts[json_data["contract"]["id"]] = Contract(
                     json_data["contract"]
                 )
             if "nav" in json_data:
-                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead, then do self.update(ship)
             if "cooldown" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
         if isinstance(json_data, Survey):
@@ -301,6 +303,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.waypoints[json_data.symbol] = json_data
         if isinstance(json_data, Agent):
             self.current_agent = json_data
+            self.db_client.update(json_data)
+        if isinstance(json_data, Survey):
+            self.surveys[json_data.signature] = json_data
             self.db_client.update(json_data)
 
     def waypoints_view_one(

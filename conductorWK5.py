@@ -18,7 +18,7 @@ from dispatcherWK3 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXPLORE_CURRENT_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES,
+    EXTRACT_TRANSFER,
     BHVR_EXTRACT_AND_TRANSFER_ALL,
 )
 
@@ -47,7 +47,7 @@ def master():
             stages_per_agent[agent] = stage_functions[current_stage](client)
         time.sleep(sleep_time)
 
-        sleep_time = 60
+        sleep_time = 10
 
     pass
 
@@ -142,13 +142,16 @@ def stage_3(client: SpaceTraders):
     #
     # set behaviours. use commander until we have a freighter.
     #
+    asteroid_wp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")
+    if asteroid_wp:
+        behaviour_params = {"asteroid_wp": asteroid_wp[0].symbol}
     for excavator in excavators:
-        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+        set_behaviour(excavator.name, EXTRACT_TRANSFER, behaviour_params)
     for hauler in haulers:
-        set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
+        set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
     if len(haulers) == 0:
         for commander in commanders:
-            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL)
+            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
 
     #
     # Scale up to 30 miners and 3 haulers.
@@ -163,13 +166,13 @@ def stage_3(client: SpaceTraders):
             ship = maybe_buy_ship(client, hq_system, "SHIP_MINING_DRONE")
 
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(
             client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
         )
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
     return 3
 
 
@@ -192,7 +195,7 @@ def stage_4(client: SpaceTraders):
     if len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_ORE_HOUND")
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, EXTRACT_TRANSFER)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
         if ship:
@@ -202,14 +205,31 @@ def stage_4(client: SpaceTraders):
     pass
 
 
-def set_behaviour(ship_symbol, behaviour_id):
-    sql = """insert into ship_behaviours (ship_symbol, behaviour_id)
-    values (%s, %s) on conflict (ship_symbol) do update set behaviour_id = %s"""
+def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
+    sql = """INSERT INTO ship_behaviours (ship_symbol, behaviour_id, behaviour_params)
+    VALUES (%s, %s, %s)
+    ON CONFLICT (ship_symbol) DO UPDATE SET
+        behaviour_id = %s,
+        behaviour_params = %s
+    """
     cursor = connection.cursor()
+    behaviour_params_s = (
+        json.dumps(behaviour_params) if behaviour_params is not None else None
+    )
+
     try:
-        cursor.execute(sql, (ship_symbol, behaviour_id, behaviour_id))
-    except Exception as e:
-        logging.error(e)
+        cursor.execute(
+            sql,
+            (
+                ship_symbol,
+                behaviour_id,
+                behaviour_params_s,
+                behaviour_id,
+                behaviour_params_s,
+            ),
+        )
+    except Exception as err:
+        logging.error(err)
         return False
 
 

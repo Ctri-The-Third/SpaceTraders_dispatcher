@@ -18,7 +18,7 @@ from dispatcherWK3 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXPLORE_CURRENT_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES,
+    EXTRACT_TRANSFER,
     BHVR_EXTRACT_AND_TRANSFER_ALL,
 )
 
@@ -143,7 +143,7 @@ def stage_3(client: SpaceTraders):
     # set behaviours. use commander until we have a freighter.
     #
     for excavator in excavators:
-        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+        set_behaviour(excavator.name, EXTRACT_TRANSFER)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL)
     if len(haulers) == 0:
@@ -163,13 +163,13 @@ def stage_3(client: SpaceTraders):
             ship = maybe_buy_ship(client, hq_system, "SHIP_MINING_DRONE")
 
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, EXTRACT_TRANSFER)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(
             client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
         )
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, EXTRACT_TRANSFER)
     return 3
 
 
@@ -192,7 +192,7 @@ def stage_4(client: SpaceTraders):
     if len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_ORE_HOUND")
         if ship:
-            set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES)
+            set_behaviour(ship.name, EXTRACT_TRANSFER)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
         if ship:

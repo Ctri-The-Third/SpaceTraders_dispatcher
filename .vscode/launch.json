@@ -20,21 +20,10 @@
             "justMyCode": true
         },
         {
-            "name": "procure-quest",
-            "type": "python",
-            "request": "launch",
-            "program": "procure_questWK2.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "CTRI-B"
-            ]
-        },
-        {
             "name": "dispatcher -L",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK3.py",
+            "program": "dispatcherWK5.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -42,26 +31,15 @@
             ]
         },
         {
-            "name": "dispatcher -test",
+            "name": "dispatcher -CTRI-UWK5-",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK3.py",
+            "program": "dispatcherWK5.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-TEST-KALE"
+                "CTRI-UWK5-"
             ]
-        },
-        {
-            "name": "Python: rtb&negotiate",
-            "type": "python",
-            "request": "launch",
-            "program": "RTB_and_negotiateWK2.py",
-            "args": [
-                "CTRI"
-            ],
-            "console": "integratedTerminal",
-            "justMyCode": true
         },
         {
             "name": "Python: explore-and-get-data ",

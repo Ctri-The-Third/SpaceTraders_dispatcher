@@ -18,6 +18,7 @@ from behaviours.explore_jump_gates import (
     ExploreJumpGates,
     BEHAVIOUR_NAME as BHVR_EXPLORE_JUMP_GATES,
 )
+from behaviours.generic_behaviour import Behaviour
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
@@ -62,7 +63,7 @@ class dispatcher(SpaceTraders):
         self.ships = self.ships_view()
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
-        sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until 
+        sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
     from ship s 
     left join ship_behaviours sb 
     on s.ship_symbol = sb.ship_symbol
@@ -72,7 +73,10 @@ class dispatcher(SpaceTraders):
     order by last_updated asc """
         rows = self.query(sql, (current_agent_symbol, self.lock_id))
 
-        return [{"name": row[0], "behaviour_id": row[1]} for row in rows]
+        return [
+            {"name": row[0], "behaviour_id": row[1], "behaviour_params": row[4]}
+            for row in rows
+        ]
 
     def lock_ship(self, ship_symbol, lock_id, duration=60):
         sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
@@ -147,35 +151,11 @@ class dispatcher(SpaceTraders):
                         pass
                     bhvr = None
                     behaviour_params: dict = ({},)
-
-                    if ship_and_behaviour["behaviour_id"] == BHVR_EXTRACT_AND_SELL:
-                        bhvr = ExtractAndSell(
-                            self.agent.symbol, ship_and_behaviour["name"]
-                        )
-                    elif (
-                        ship_and_behaviour["behaviour_id"]
-                        == BHVR_EXTRACT_AND_TRANSFER_HIGHEST
-                    ):
-                        bhvr = ExtractAndTransferHeighest_1(
-                            self.agent.symbol, ship_and_behaviour["name"]
-                        )
-                    elif ship_and_behaviour["behaviour_id"] == BHVR_RECEIVE_AND_FULFILL:
-                        bhvr = ReceiveAndFulfillOrSell_3(
-                            self.agent.symbol,
-                            ship_and_behaviour["name"],
-                            {"receive_wp": "X1-ZN71-00455Z"},
-                        )
-                    elif (
-                        ship_and_behaviour["behaviour_id"]
-                        == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES
-                    ):
-                        bhvr = ExtractAndTransferOrSell_4(
-                            self.agent.symbol, ship_and_behaviour["name"]
-                        )
-                    elif ship_and_behaviour["behaviour_id"] == BHVR_EXPLORE_JUMP_GATES:
-                        bhvr = ExploreJumpGates(
-                            self.agent.symbol, ship_and_behaviour["name"]
-                        )
+                    bhvr = self.map_behaviour_to_class(
+                        ship_and_behaviour["behaviour_id"],
+                        ship_and_behaviour["name"],
+                        ship_and_behaviour["behaviour_params"],
+                    )
 
                     if not bhvr:
                         continue
@@ -195,6 +175,30 @@ class dispatcher(SpaceTraders):
 
                 time.sleep(1)
 
+    def map_behaviour_to_class(
+        self, behaviour_id: str, ship_symbol: str, behaviour_params: dict
+    ) -> Behaviour:
+        aname = self.agent.symbol
+        id = behaviour_id
+        sname = ship_symbol
+        bhvr_params = behaviour_params
+        bhvr = None
+        if id == BHVR_EXTRACT_AND_SELL:
+            bhvr = ExtractAndSell(aname, sname)
+        elif id == BHVR_EXTRACT_AND_TRANSFER_HIGHEST:
+            bhvr = ExtractAndTransferHeighest_1(aname, sname)
+        elif id == BHVR_RECEIVE_AND_FULFILL:
+            bhvr = ReceiveAndFulfillOrSell_3(
+                aname,
+                sname,
+                behaviour_params,
+            )
+        elif id == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES:
+            bhvr = ExtractAndTransferOrSell_4(aname, sname)
+        elif id == BHVR_EXPLORE_JUMP_GATES:
+            bhvr = ExploreJumpGates(aname, sname)
+        return bhvr
+
 
 def register_and_store_user(username) -> str:
     "returns the token"
@@ -207,6 +211,7 @@ def register_and_store_user(username) -> str:
             indent=2,
         )
         return
+    logging.info("Starting up empty ST class to register user - expect warnings")
     st = SpaceTraders()
     resp = st.register(username, faction=user["faction"], email=user["email"])
     if not resp:
@@ -239,8 +244,11 @@ def load_user(username):
     for agent in user["agents"]:
         if agent["username"] == username:
             return agent["token"], agent["username"]
-    register_and_store_user(username)
-    return load_user(username)
+    resp = register_and_store_user(username)
+    if resp:
+        return load_user(username)
+
+    logging.error("Could neither load nor register user %s", username)
 
 
 if __name__ == "__main__":
@@ -248,7 +256,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     user = load_user(target_user)
-    logging.warning("Foudn user? %s", user)
+
     dips = dispatcher(
         user[0],
         os.environ.get("ST_DB_HOST", "DB_HOST_not_set"),

@@ -35,8 +35,8 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             st.ship_dock(ship)
             st.ship_refuel(ship)
             st.ship_orbit(ship)
-        if "receive_wp" in self.behaviour_params:
-            start_waypoint = self.behaviour_params["receive_wp"]
+        if "asteroid_wp" in self.behaviour_params:
+            start_waypoint = self.behaviour_params["asteroid_wp"]
             self.ship_intrasolar(start_waypoint)
         else:
             start_waypoint = None
@@ -104,7 +104,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI"
-    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-1"
-    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params={})
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-TEST-LAMP"
+    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-TEST-LAMP-1"
+    bhvr = ReceiveAndFulfillOrSell_3(
+        agent, ship, behaviour_params={"asteroid_wp": "X1-YA22-87615D"}
+    )
     bhvr.run()

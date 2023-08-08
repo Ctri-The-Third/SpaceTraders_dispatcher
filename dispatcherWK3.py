@@ -22,7 +22,7 @@ from behaviours.explore_jump_gates import (
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER_DELIVERABLES"
+EXTRACT_TRANSFER = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
@@ -165,10 +165,7 @@ class dispatcher(SpaceTraders):
                             ship_and_behaviour["name"],
                             {"receive_wp": "X1-ZN71-00455Z"},
                         )
-                    elif (
-                        ship_and_behaviour["behaviour_id"]
-                        == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES
-                    ):
+                    elif ship_and_behaviour["behaviour_id"] == EXTRACT_TRANSFER:
                         bhvr = ExtractAndTransferOrSell_4(
                             self.agent.symbol, ship_and_behaviour["name"]
                         )

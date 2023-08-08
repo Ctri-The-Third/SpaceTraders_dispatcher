@@ -23,6 +23,7 @@ class Behaviour:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params
         saved_data = json.load(open(config_file_name, "r+"))
+        token = None
         for agent in saved_data["agents"]:
             if agent["username"] == agent_name:
                 token = agent["token"]
