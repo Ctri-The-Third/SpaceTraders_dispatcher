@@ -251,11 +251,11 @@ if __name__ == "__main__":
 
     dips = dispatcher(
         user[0],
-        os.environ.get("ST_DB_HOST"),
-        os.environ.get("ST_DB_PORT"),
-        os.environ.get("ST_DB_NAME"),
-        os.environ.get("ST_DB_USER"),
-        os.environ.get("ST_DB_PASSWORD"),
+        os.environ.get("ST_DB_HOST", "DB_HOST_not_set"),
+        os.environ.get("ST_DB_PORT", "DB_PORT_not_set"),
+        os.environ.get("ST_DB_NAME", "DB_NAME_not_set"),
+        os.environ.get("ST_DB_USER", "DB_USER_not_set"),
+        os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
         user[1],
     )
     dips.run()
