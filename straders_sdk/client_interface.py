@@ -42,6 +42,10 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def view_my_contracts(self) -> list["Contract"] or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def waypoints_view(
         self, system_symbol: str
     ) -> dict[str:list] or SpaceTradersResponse:

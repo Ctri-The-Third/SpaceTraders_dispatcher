@@ -237,15 +237,19 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             Either a dict of Contract objects or a SpaceTradersResponse object on failure.
         """
-        if self.contracts and not force:
-            return self.contracts
-        url = _url("my/contracts")
-        resp = get_and_validate(url, headers=self._headers())  #
-        if not resp:
-            return resp
+        if not force:
+            resp = self.db_client.view_my_contracts()
+            if resp:
+                self.contracts = self.contracts | {c.contract: c for c in resp}
+                return resp
 
-        self.contracts = self.contracts | {c["id"]: Contract(c) for c in resp.data}
-        return self.contracts
+        resp = self.api_client.view_my_contracts()
+        self.logging_client.view_my_contracts(resp)
+        if resp or len(resp) == 0:
+            for c in resp:
+                self.update(c)
+            self.contracts = self.contracts | {c.id: c for c in resp}
+            return resp
 
     def contract_accept(self, contract_id) -> Contract or SpaceTradersResponse:
         """accept a contract
@@ -260,7 +264,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         if not resp:
             return resp
-        new_contract = Contract(resp.data["contract"])
+        new_contract = Contract.from_json(resp.data["contract"])
         self.contracts[new_contract.id] = new_contract
         return new_contract
 
@@ -293,9 +297,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if isinstance(json_data, Survey):
             self.surveys[json_data.signature] = json_data
             self.db_client.update(json_data)
-        if isinstance(json_data, list):
-            for contract in json_data:
-                self.contracts[contract["id"]] = Contract(contract)
         if isinstance(json_data, Ship):
             self.ships[json_data.name] = json_data
             self.db_client.update(json_data)
@@ -306,6 +307,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(json_data)
         if isinstance(json_data, Survey):
             self.surveys[json_data.signature] = json_data
+            self.db_client.update(json_data)
+        if isinstance(json_data, Contract):
+            self.contracts[json_data.id] = json_data
             self.db_client.update(json_data)
 
     def waypoints_view_one(

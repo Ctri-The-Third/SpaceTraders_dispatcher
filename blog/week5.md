@@ -11,7 +11,14 @@ We will eventually want to scale up our fleet including Ore Hounds, but not from
 Observation - Pyramid widening, spending less time on the API, the DB has decent coverage, more time being spent on orchestration, and behaviour tuning.
 Very satisfying to see a low level fix/change (e.g. surveys) ripple upwards to have positive impacts on behaviour without any change there.
 
+## Development expereience
 
+At this point most of the structure is in place, and it feels less like I'm solving interesting problems and just tinkering with the game and fleshing it out - in Factorio terms, the main bus is built and I'm just forking off to build the various factories.
+
+Because (unlike factorio) scaling is largely a factor of time and credits, without much need to go back and change behaviours themselves, the game loop experience of continual refactoring is not necessary at this stage of the gameplay.
+
+I think I'll likely see that once I get into the endgame and reach request saturation. I don't currently have signposting / logging for that.
+ 
 ## Goals
 
 * receive_and_fulfill behaviour needs to automatically have contract management if it doesn't already
@@ -25,3 +32,12 @@ Very satisfying to see a low level fix/change (e.g. surveys) ripple upwards to h
  * after selling have the behaviour also ping the market for latest prices.
 
 * Develop A* jump network pathfinding and complete exploration of the network
+* Record 429 counts in the DB, consider queue based throttling 
+
+
+## Queue based throttling & logging
+since pretty much everything is happening in the same application, we can use a queue. 
+When the request makes it into the utils function, it puts itself into a global queue, and then checks if the next item is itself. If the next item is itself, it sleeps for 0.3s and executes, otherwise it sleeps for 0.3 and waits.
+
+Currently we have high-level logging.
+Logging is a very low-leel thing, and I think if we pass the logging client into the API client as an optional thing (maybe a stub otherwise) then we can have the API client log at a lower level, and the logging client can decide what to do with it.

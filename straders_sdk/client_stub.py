@@ -28,6 +28,15 @@ class SpaceTradersStubClient:
         """
         pass
 
+    def agents_view_one(self, agent_symbol: str) -> "Agent" or SpaceTradersResponse:
+        pass
+
+    def view_my_self(self) -> "Agent" or SpaceTradersResponse:
+        pass
+
+    def view_my_contracts(self) -> list["Contract"] or SpaceTradersResponse:
+        pass
+
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
     ) -> Waypoint or SpaceTradersResponse:

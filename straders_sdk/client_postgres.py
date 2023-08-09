@@ -13,6 +13,7 @@ from .models import (
     Agent,
     JumpGate,
 )
+from .contracts import Contract
 from datetime import datetime
 from .responses import SpaceTradersResponse
 from .client_interface import SpaceTradersClient
@@ -25,6 +26,7 @@ from .pg_pieces.upsert_survey import _upsert_survey
 from .pg_pieces.select_ship import _select_ships
 from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
 from .pg_pieces.agents import _upsert_agent, select_agent_one
+from .pg_pieces.contracts import _upsert_contract
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode
 import psycopg2
@@ -76,6 +78,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_system(self.connection, update_obj)
         if isinstance(update_obj, Agent):
             _upsert_agent(self.connection, update_obj)
+        if isinstance(update_obj, Contract):
+            _upsert_contract(self.connection, self.current_agent_symbol, update_obj)
         pass
 
     def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
@@ -86,6 +90,11 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def view_my_self(self) -> Agent or SpaceTradersResponse:
         return select_agent_one(self.connection, self.current_agent_symbol)
+
+    def view_my_contracts(self) -> list["Contract"] or SpaceTradersResponse:
+        return LocalSpaceTradersRespose(
+            "not implemented yet", 0, 0, f"{__name__}.view_my_contracts"
+        )
 
     def waypoints_view(
         self, system_symbol: str

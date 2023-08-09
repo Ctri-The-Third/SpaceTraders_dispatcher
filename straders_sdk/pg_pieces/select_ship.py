@@ -2,6 +2,7 @@ from ..local_response import LocalSpaceTradersRespose
 from ..ship import Ship, ShipFrame, ShipNav, RouteNode
 from ..client_interface import SpaceTradersClient
 from ..models import ShipRequirements
+from ..utils import try_execute_select, try_execute_upsert
 
 
 def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
@@ -121,15 +122,3 @@ def _frame_from_row(row) -> ShipFrame:
     )
 
     return return_obj
-
-
-def try_execute_select(connection, sql, params) -> list:
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-        return rows
-    except Exception as err:
-        return LocalSpaceTradersRespose(
-            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
-        )

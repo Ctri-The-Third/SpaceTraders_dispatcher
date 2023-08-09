@@ -31,37 +31,70 @@ class Contract:
     accepted: bool
     fulfilled: bool
     expiration: datetime
-    deadline_for_accept: datetime = None
+    deadline_to_accept: datetime = None
     token: str = None
     client: SpaceTradersClient = None
 
     def __init__(
         self,
-        json_data: dict,
+        id,
+        faction_symbol,
+        type,
+        deadline,
+        expiration,
+        deadline_to_accept,
+        payment_upfront,
+        payment_completion,
+        deliverables,
+        accepted,
+        fulfilled,
     ) -> None:
-        self.id = json_data["id"]
-        self.faction_symbol = json_data["factionSymbol"]
-        self.type = json_data["type"]
-        self.deadline = datetime.strptime(json_data["terms"]["deadline"], DATE_FORMAT)
-        self.expiration = datetime.strptime(json_data["expiration"], DATE_FORMAT)
+        self.id = id
+        self.faction_symbol = faction_symbol
+        self.type = type
+        self.deadline = deadline
+        self.expiration = expiration
+        self.deadline_to_accept = deadline_to_accept
+        self.payment_upfront = payment_upfront
+        self.payment_completion = payment_completion
+        self.deliverables = deliverables
+        self.accepted = accepted
+        self.fulfilled = fulfilled
 
-        self.deadline_to_accept = (
+    @classmethod
+    def from_json(cls, json_data: dict):
+        id = json_data["id"]
+        faction_symbol = json_data["factionSymbol"]
+        type = json_data["type"]
+        deadline = datetime.strptime(json_data["terms"]["deadline"], DATE_FORMAT)
+        expiration = datetime.strptime(json_data["expiration"], DATE_FORMAT)
+
+        deadline_to_accept = (
             datetime.strptime(json_data["deadlineToAccept"], DATE_FORMAT)
             if json_data["deadlineToAccept"] is not None
             else None
         )
-        self.payment_upfront = json_data["terms"]["payment"]["onAccepted"]
-        self.payment_completion = json_data["terms"]["payment"]["onFulfilled"]
-        self.deliverables = [
+        payment_upfront = json_data["terms"]["payment"]["onAccepted"]
+        payment_completion = json_data["terms"]["payment"]["onFulfilled"]
+        deliverables = [
             ContractDeliverGood(*d.values())
             for d in json_data["terms"].get("deliver", [])
         ]
-        self.accepted = json_data["accepted"]
-        self.fulfilled = json_data["fulfilled"]
-
-    @classmethod
-    def from_json(cls, json_data: dict):
-        return cls(json_data)
+        accepted = json_data["accepted"]
+        fulfilled = json_data["fulfilled"]
+        return cls(
+            id,
+            faction_symbol,
+            type,
+            deadline,
+            expiration,
+            deadline_to_accept,
+            payment_upfront,
+            payment_completion,
+            deliverables,
+            accepted,
+            fulfilled,
+        )
 
     def update(self, json_data: dict):
         self.__init__(json_data)

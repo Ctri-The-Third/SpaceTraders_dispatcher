@@ -197,3 +197,28 @@ def waypoint_slicer(waypoint_symbol: str) -> str:
     "returns the system symbol from a waypoint symbol"
     pieces = waypoint_symbol.split("-")
     return f"{pieces[0]}-{pieces[1]}"
+
+
+def try_execute_upsert(connection, sql, params) -> LocalSpaceTradersRespose:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        return LocalSpaceTradersRespose(
+            None, None, None, url=f"{__name__}.try_execute_upsert"
+        )
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_upsert"
+        )
+
+
+def try_execute_select(connection, sql, params) -> list:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        return rows
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
+        )

@@ -55,6 +55,13 @@ class SpaceTradersApiClient(SpaceTradersClient):
         return resp
         pass
 
+    def view_my_contracts(self) -> list["Contract"] or SpaceTradersResponse:
+        url = _url("my/contracts")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return [Contract.from_json(d) for d in resp.data]
+        return resp
+
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
     ) -> Waypoint or SpaceTradersResponse:

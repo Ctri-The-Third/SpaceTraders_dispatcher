@@ -133,6 +133,12 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         url = _url("my/agent")
         self.log_event("view_my_self", "GLOBAL", url, response)
 
+    def view_my_contracts(
+        self, response=None
+    ) -> list["Contract"] or SpaceTradersResponse:
+        url = _url("my/contracts")
+        self.log_event("view_my_contracts", "GLOBAL", url, response)
+
     def waypoints_view(
         self, system_symbol: str, response=None
     ) -> dict[str:list] or SpaceTradersResponse:

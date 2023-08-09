@@ -8,7 +8,7 @@ import json
 import psycopg2
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
-
+from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard
 from straders_sdk.utils import set_logging
 import logging
@@ -56,7 +56,7 @@ def stage_0(client: SpaceTraders):
     client.ships_view(True)
     # populate the ships from the API
     # trigger the local commander to go explore the system.
-    found_shipyard = False
+
     wayps = client.waypoints_view(client.view_my_self().headquarters)
     if wayps:
         for wayp in wayps:
@@ -64,8 +64,18 @@ def stage_0(client: SpaceTraders):
                 if trait.symbol == "SHIPYARD":
                     return 1  # we can scale!
     commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
+    satelites = [ship for ship in client.ships.values() if ship.role == "SATELLITE"]
     for commander in commanders:
         set_behaviour(commander.name, BHVR_EXPLORE_CURRENT_SYSTEM)
+
+    contracts = client.view_my_contracts()
+    if len(contracts) == 0:
+        client.ship_negotiate(satelites[0])
+        contracts = client.view_my_contracts()
+    for con in contracts:
+        con: Contract
+        if not con.accepted:
+            client.contract_accept(con.id)
     return 1  # not implemented yet, skip to stage 1
     pass
 
