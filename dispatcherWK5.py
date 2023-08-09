@@ -194,7 +194,7 @@ class dispatcher(SpaceTraders):
                 behaviour_params,
             )
         elif id == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES:
-            bhvr = ExtractAndTransferOrSell_4(aname, sname)
+            bhvr = ExtractAndTransferOrSell_4(aname, sname, bhvr_params)
         elif id == BHVR_EXPLORE_JUMP_GATES:
             bhvr = ExploreJumpGates(aname, sname)
         return bhvr

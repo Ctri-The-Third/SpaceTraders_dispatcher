@@ -40,7 +40,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         #
         try:
             target_wp_sym = self.behaviour_params.get(
-                "extract_waypoint",
+                "asteroid_wp",
                 st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,

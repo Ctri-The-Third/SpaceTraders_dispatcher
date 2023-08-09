@@ -215,6 +215,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             self.connection, sql, (deposit_symbol, waypoint_symbol)
         )
         if not resp:
+            if isinstance(resp, list):
+                return LocalSpaceTradersRespose(
+                    "Didn't find a matching survey", 0, 0, sql
+                )
             return resp
         surveys = []
         for survey_row in resp:
