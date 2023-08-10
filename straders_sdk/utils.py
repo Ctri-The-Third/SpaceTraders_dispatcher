@@ -38,6 +38,15 @@ class ApiConfig:
             self.version = version
 
 
+def get_and_validate_page(
+    url, page_number, params=None, headers=None
+) -> SpaceTradersResponse or None:
+    params = params or {}
+    params["page"] = page_number
+    params["limit"] = 20
+    return get_and_validate(url, params=params, headers=headers)
+
+
 def get_and_validate_paginated(
     url, per_page: int, page_limit: int, params=None, headers=None
 ) -> SpaceTradersResponse or None:

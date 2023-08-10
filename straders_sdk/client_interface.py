@@ -185,6 +185,12 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def systems_view_twenty(
+        self, page_number: int, force=False
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def systems_view_all(self) -> dict[str:"System"] or SpaceTradersResponse:
         """/game/systems"""
 

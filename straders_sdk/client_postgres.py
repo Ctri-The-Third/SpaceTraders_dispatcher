@@ -399,6 +399,11 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
         return select_jump_gate_one(self.connection, wp)
 
+    def systems_view_twenty(
+        self, page_number: int, force=False
+    ) -> list["System"] or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "systems_view_twenty")
+
     def systems_view_all(self) -> list["Waypoint"] or SpaceTradersResponse:
         """/game/systems"""
         sql = """SELECT symbol, sector_symbol, type, x, y FROM systems"""

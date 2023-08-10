@@ -41,3 +41,20 @@ When the request makes it into the utils function, it puts itself into a global 
 
 Currently we have high-level logging.
 Logging is a very low-leel thing, and I think if we pass the logging client into the API client as an optional thing (maybe a stub otherwise) then we can have the API client log at a lower level, and the logging client can decide what to do with it.
+
+
+## Deciding when to go exploring.
+
+There comes a point where it's better to have command ships going out to visit systems on the jump gate network and hitting up shipyards and marketplaces - this initial information can help inform quests. 
+
+This kind of behaviour can be tagged to the command ship - we set it to the asteroid WP and start doing surveys whilst polling systems.
+
+This behaviour should ensure the following
+* All systems are in the DB
+* The main jump gate network is explored and connected
+* All uncharted systems are tagged to be explored
+* All marketplace systems are tagged to be explored
+* All shipyard systems are tagged to be explored
+* Once this is complete, the command ship should depart the main system to explore these systems.
+
+* This behaviour is called "explore_jump_network", and replaces the existing week 4 behaviour.

@@ -320,10 +320,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             return self.waypoints[waypoint_symbol]
 
         # check db
-        wayp = self.db_client.waypoints_view_one(system_symbol, waypoint_symbol)
-        if wayp:
-            self.update(wayp)
-            return wayp
+        if not force:
+            wayp = self.db_client.waypoints_view_one(system_symbol, waypoint_symbol)
+            if wayp:
+                self.update(wayp)
+                return wayp
         # check api
         wayp = self.api_client.waypoints_view_one(system_symbol, waypoint_symbol)
         self.logging_client.waypoints_view_one(system_symbol, waypoint_symbol, wayp)
@@ -385,6 +386,22 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         ship = Ship.from_json(resp.data)
         self.ships[ship_id] = ship
         return ship
+
+    def systems_view_twenty(
+        self, page_number, force=False
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        """View 20 systems at a time. No caching available for this method, as we can't guarantee a syncing between the order of the DB and the API."""
+
+        resp = self.api_client.systems_view_twenty(page_number)
+        self.logging_client.systems_view_twenty(resp)
+
+        if not resp:
+            return resp
+        if resp:
+            for syst in resp:
+                syst: System
+                self.db_client.update(syst)
+        return resp
 
     def systems_view_all(
         self, force=False

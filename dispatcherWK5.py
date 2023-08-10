@@ -15,8 +15,8 @@ from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
 from behaviours.explore_jump_gates import (
-    ExploreJumpGates,
-    BEHAVIOUR_NAME as BHVR_EXPLORE_JUMP_GATES,
+    RemoteScanWaypoints,
+    BEHAVIOUR_NAME as BHVR_REMOTE_SCAN_AND_SURV,
 )
 from behaviours.explore_system import (
     ExploreSystem,
@@ -199,8 +199,8 @@ class dispatcher(SpaceTraders):
             )
         elif id == EXTRACT_TRANSFER:
             bhvr = ExtractAndTransferOrSell_4(aname, sname, bhvr_params)
-        elif id == BHVR_EXPLORE_JUMP_GATES:
-            bhvr = ExploreJumpGates(aname, sname)
+        elif id == BHVR_REMOTE_SCAN_AND_SURV:
+            bhvr = RemoteScanWaypoints(aname, sname)
         elif id == BHVR_EXPLORE_SYSTEM:
             bhvr = ExploreSystem(aname, sname)
         return bhvr

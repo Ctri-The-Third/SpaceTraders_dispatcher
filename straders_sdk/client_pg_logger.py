@@ -139,6 +139,12 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         url = _url("my/contracts")
         self.log_event("view_my_contracts", "GLOBAL", url, response)
 
+    def systems_view_twenty(
+        self, page_number, force=False, response=None
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        url = _url("systems")
+        self.log_event("systems_view_twenty", "GLOBAL", url, response)
+
     def waypoints_view(
         self, system_symbol: str, response=None
     ) -> dict[str:list] or SpaceTradersResponse:
@@ -307,14 +313,14 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     def systems_view_one(
         self, system_symbol: str, response
     ) -> "System" or SpaceTradersResponse:
-        url = _url(f"/systems/{system_symbol}")
+        url = _url(f"/systems/:system_symbol")
         self.log_event("systems_view_one", "GLOBAL", url, response)
 
     def system_shipyard(
         self, waypoint: Waypoint, response=None
     ) -> Shipyard or SpaceTradersResponse:
         """/game/locations/{symbol}/shipyard"""
-        url = _url(f"game/locations/{waypoint.symbol}/shipyard")
+        url = _url(f"game/locations/:waypoint_symbol/shipyard")
         self.log_event("system_shipyard", "GLOBAL", url, response)
 
         pass
@@ -323,7 +329,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self, wp: Waypoint, force_update=False
     ) -> "JumpGate" or SpaceTradersResponse:
         """/game/systems/{symbol}/jumpgate"""
-        url = _url(f"game/systems/{wp.system_symbol}/jumpgate")
+        url = _url(f"game/systems/:waypoint_symbol/jumpgate")
         self.log_event("system_jumpgate", "GLOBAL", url, None)
         pass
 

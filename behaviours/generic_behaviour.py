@@ -51,7 +51,7 @@ class Behaviour:
     def run(self):
         pass
 
-    def ship_intrasolar(self, target_wp_symbol: "str"):
+    def ship_intrasolar(self, target_wp_symbol: "str", sleep_till_done=True):
         st = self.st
         ship = self.ship
         wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
@@ -65,10 +65,10 @@ class Behaviour:
             resp = st.ship_move(self.ship, target_wp_symbol)
             if not resp:
                 return False
-
-            sleep_until_ready(self.ship)
-            ship.nav.status = "IN_ORBIT"
-            ship.nav.waypoint_symbol = target_wp_symbol
+            if sleep_till_done:
+                sleep_until_ready(self.ship)
+                ship.nav.status = "IN_ORBIT"
+                ship.nav.waypoint_symbol = target_wp_symbol
             return resp
 
     def extract_till_full(self, cargo_to_target: list = None):

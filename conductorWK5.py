@@ -18,6 +18,7 @@ from dispatcherWK5 import (
     BHVR_RECEIVE_AND_FULFILL,
     EXTRACT_TRANSFER,
     BHVR_EXPLORE_SYSTEM,
+    BHVR_REMOTE_SCAN_AND_SURV,
 )
 
 logger = logging.getLogger("conductor")
@@ -36,6 +37,7 @@ def master():
     ## if there are 40 total ore-hounds, disable extractors
     ## if there are 50 total ore-hounds move on
     # stage 5 - no behaviour.
+
     stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4]
     sleep_time = 1
     while True:
@@ -45,7 +47,7 @@ def master():
             stages_per_agent[agent] = stage_functions[current_stage](client)
         time.sleep(sleep_time)
 
-        sleep_time = 10
+        sleep_time = 60
 
     pass
 
@@ -76,7 +78,7 @@ def stage_0(client: SpaceTraders):
 
     commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
     for commander in commanders:
-        set_behaviour(commander.name, BHVR_EXPLORE_SYSTEM, {"target_wp": sys_wp})
+        set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV)
 
     return 1
 
@@ -175,7 +177,6 @@ def stage_3(client: SpaceTraders):
     #
     # set behaviours. use commander until we have a freighter.
     #
-    # DELETE THIS LINE asteroid_wp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")
     if asteroid_wp:
         behaviour_params = {"asteroid_wp": asteroid_wp.symbol}
     for excavator in excavators:
@@ -185,7 +186,9 @@ def stage_3(client: SpaceTraders):
     if len(haulers) == 0:
         for commander in commanders:
             set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
-
+    else:
+        for commander in commanders:
+            set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV, behaviour_params)
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #

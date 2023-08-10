@@ -55,11 +55,6 @@ class ExtractAndTransferAll_2(Behaviour):
             )
             time.sleep(70)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-        self.logger.info(
-            "Completed. Credits: %s, change = %s",
-            agent.credits,
-            agent.credits - starting_credts,
-        )
 
     def extract_and_transfer_10_times(self):
         ship = self.ship

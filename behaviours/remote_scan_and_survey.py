@@ -4,13 +4,15 @@ sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint, System
+from straders_sdk.utils import waypoint_slicer, try_execute_select
+import time
 import math
 import logging
 
-BEHAVIOUR_NAME = "EXPLORE_JUMP_NETWORK"
+BEHAVIOUR_NAME = "SCAN_WAYPOINTS_AND_SURVEY"
 
 
-class ExploreJumpGates(Behaviour):
+class RemoteScanWaypoints(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -22,61 +24,90 @@ class ExploreJumpGates(Behaviour):
 
     def run(self):
         ship = self.ship
+        agent = self.agent
+        hq_system = waypoint_slicer(agent.headquarters)
         st = self.st
         # check all markets in the system
-        ships = st.ships_view(True)
-        other_ships = st.ships_view()
-        unexplored_systems = [ship.nav.system_symbol]
-        explored_systems = []
-        agent = self.agent
-
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-        # PING A JUMP GATE - get its systems
-        # check if I've explored the system
-        # do the waypoints have traits? no - add to list.
-        # do the waypoints have traits? yes
-        # are there any shipyards/ markets/ jump gates?
-        # do I have details on them? - no - add to list
-        # Have I got the connceted systems?
-        # yes - skip
-        # pick my nearest neighbour.
-        # A* to it via jump gates.
-        jump_gate = st.find_waypoints_by_type_one(ship.nav.system_symbol, "JUMP_GATE")
-        if jump_gate:
-            self.ship_intrasolar(jump_gate.symbol)
-            jg = st.system_jumpgate(jump_gate)
-            if not jg:
-                print("jump gate not found?")
-                return
+        agent = self.agent
+        asteroid_field = self.behaviour_params.get("asteroid_wp", None)
+        if not asteroid_field:
+            asteroid_field = st.find_waypoints_by_type_one(hq_system, "ASTEROID_FIELD")
+            if asteroid_field:
+                asteroid_field = asteroid_field.symbol
+        # move the ship to the asteroid field.
+        self.ship_intrasolar(asteroid_field, False)
 
-        else:
-            print("no jump gate found")
-            return
-        unexplored_systems = self.find_unexplored_jumpgate_systems()
-        start = self.st.systems_view_one(ship.nav.system_symbol)
-        order_to_visit = nearest_neighbour_systems(unexplored_systems, start)
-        while order_to_visit:
-            system = order_to_visit.pop(0)
-            self.logger.info(
-                f"About to explore {system}, remaining: {len(order_to_visit)}"
-            )
+        # check the total number of systems by pinging the status.
+        # get all systems a page at a time (new function? expand function?)
+        # whilst getting systems, survey continually.
 
-            self.sleep_until_ready()
-            jump_resp = self.st.ship_jump(ship, system)
+        systems_sweep = self.have_we_all_the_gates()
+        if not systems_sweep[0]:
+            for i in range(1, math.ceil(systems_sweep[1] / 20) + 1):
+                print(i)
+                resp = st.systems_view_twenty(i, True)
+                while not resp:
+                    time.sleep(20)
+                    resp = st.systems_view_twenty(i, True)
+                    self.logger.warn("Failed to get system - page %s - retrying", i)
+                if not resp:
+                    self.logger.error(
+                        "Failed to get system - page %s - redo this later!", i
+                    )
+                if ship.seconds_until_cooldown > 0:
+                    continue
+                if ship.nav.travel_time_remaining > 0:
+                    continue
+                if ship.can_survey:
+                    st.ship_survey(ship)
+                time.sleep(1.2)
+        wayps = self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
+        for wayp in wayps:
+            resp = st.waypoints_view_one(wayp[2], wayp[0], True)
+            time.sleep(1.2)
+            if ship.seconds_until_cooldown > 0:
+                continue
+            if ship.nav.travel_time_remaining > 0:
+                continue
+            if ship.can_survey:
+                st.ship_survey(ship)
+                time.sleep(0.5)
 
-            if ship.nav.system_symbol == system:
-                starting_wp = ship.nav.waypoint_symbol
-                self.scan_local_system()
-                self.refuel_if_low()
-                self.ship_intrasolar(starting_wp)
-            else:
-                self.logger.error(
-                    f"Failed to jump to {system} because {jump_resp.error}"
-                )
-            # jump to system
-            # explore system
-            # return to gate
+        # orbital stations
+        # asteroid fields
+        # planets
+
+        # refresh shipyards and markets (note, will get basic data for most)
+        # tag uncharted, marketplace, and shipyard systems for visit
+        # stop surveying and depart.
+
+        # jump to system
+        # explore system
+        # return to gate
+
+        st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+
+    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[Waypoint]:
+        sql = """
+        select * from waypoints_not_scanned
+        where type = %s
+        limit 20
+        order by random 
+        """
+        return try_execute_select(self.st.db_client.connection, sql, (type,))
+
+    def have_we_all_the_gates(self):
+        sql = """select count(distinct symbol) from systems"""
+        cursor = self.st.db_client.connection.cursor()
+        cursor.execute(sql, ())
+        row = cursor.fetchone()
+        db_systems = row[0]
+
+        status = self.st.game_status()
+        api_systems = status.total_systems
+        return (db_systems >= api_systems, status.total_systems)
 
     def recursive_fetch_navgate_systems(
         self, system_symbol: str, collected_system_symbols: list[str] = list()
@@ -218,4 +249,4 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 
 if __name__ == "__main__":
-    ExploreJumpGates("CTRI-TEST-ALDV", "CTRI-TEST-ALDV-1").run()
+    RemoteScanWaypoints("CTRI-LWK5-", "CTRI-LWK5--1", {}).run()

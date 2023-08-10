@@ -8,6 +8,7 @@ from .utils import (
     get_and_validate,
     post_and_validate,
     get_and_validate_paginated,
+    get_and_validate_page,
 )
 from .local_response import LocalSpaceTradersRespose
 from .models import (
@@ -275,6 +276,16 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
     def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
         return dummy_response(__class__.__name__, "find_survey_best_deposit")
+
+    def systems_view_twenty(
+        self, page_number: int, force=False
+    ) -> list["System"] or SpaceTradersResponse:
+        url = _url("systems")
+        resp = get_and_validate_page(url, page_number, headers=self._headers())
+
+        if resp:
+            resp = [System.from_json(system) for system in resp.data]
+        return resp
 
     def systems_view_all(self) -> list[System] or SpaceTradersResponse:
         url = _url("systems")
