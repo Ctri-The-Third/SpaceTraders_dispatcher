@@ -78,7 +78,7 @@ def stage_0(client: SpaceTraders):
 
     commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
     for commander in commanders:
-        set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV)
+        set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV, {})
 
     return 1
 

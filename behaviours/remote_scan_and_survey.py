@@ -36,6 +36,8 @@ class RemoteScanWaypoints(Behaviour):
             asteroid_field = st.find_waypoints_by_type_one(hq_system, "ASTEROID_FIELD")
             if asteroid_field:
                 asteroid_field = asteroid_field.symbol
+            else:
+                asteroid_field = ship.nav.waypoint_symbol
         # move the ship to the asteroid field.
         self.ship_intrasolar(asteroid_field, False)
 
