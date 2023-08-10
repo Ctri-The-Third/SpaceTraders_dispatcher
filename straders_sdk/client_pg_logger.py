@@ -203,6 +203,10 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         # don't log anything, not an API call
         pass
 
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        # don't log anything, not an API call
+        pass
+
     def ship_orbit(self, ship, response=None) -> SpaceTradersResponse:
         url = _url(f"my/ships/:ship_name/orbit")
         self.log_event("ship_orbit", ship.name, url, response)

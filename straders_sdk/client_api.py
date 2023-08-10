@@ -273,6 +273,9 @@ class SpaceTradersApiClient(SpaceTradersClient):
     ) -> Survey or SpaceTradersResponse:
         return dummy_response(__class__.__name__, "find_survey_best_deposit")
 
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "find_survey_best_deposit")
+
     def systems_view_all(self) -> list[System] or SpaceTradersResponse:
         url = _url("systems")
         resp = get_and_validate_paginated(

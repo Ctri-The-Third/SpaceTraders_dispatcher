@@ -287,8 +287,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                     surv = Survey.from_json(survey)
                     self.update(surv)
             if "contract" in json_data:
-                self.contracts[json_data["contract"]["id"]] = Contract(
-                    json_data["contract"]
+                self.contracts[json_data["contract"]["id"]] = Contract.from_json(
+                    ["contract"]
                 )
             if "nav" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead, then do self.update(ship)
@@ -532,10 +532,22 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             A Survey object that has the best chance of giving the material. If no matching survey is found, None is returned.
         """
 
-        surveys = self.db_client.find_survey_best_deposit(
+        survey = self.db_client.find_survey_best_deposit(
             waypoint_symbol, deposit_symbol
         )
-        return surveys
+        return survey
+
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        """find the survey with the best chance of giving a specific material.
+
+        Args:
+            `waypoint_symbol` (str): Optional - The symbol of the waypoint to filter by.
+
+        REturns:
+            A Survey object that has the best chance of giving the material. If no matching survey is found, None is returned.
+        """
+        survey = self.db_client.find_survey_best(waypoint_symbol)
+        return survey
 
     def find_waypoint_by_coords(self, system: str, x: int, y: int) -> Waypoint or None:
         """find a waypoint by its coordinates. Only searches cached values.

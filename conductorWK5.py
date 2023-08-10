@@ -13,13 +13,11 @@ from straders_sdk.models import ShipyardShip, Waypoint, Shipyard
 from straders_sdk.utils import set_logging, waypoint_slicer
 import logging
 import time
-from dispatcherWK3 import (
-    BHVR_RECEIVE_AND_SELL,
+from dispatcherWK5 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
-    BHVR_EXPLORE_CURRENT_SYSTEM,
     EXTRACT_TRANSFER,
-    BHVR_EXTRACT_AND_TRANSFER_ALL,
+    BHVR_EXPLORE_SYSTEM,
 )
 
 logger = logging.getLogger("conductor")
@@ -54,19 +52,12 @@ def master():
 
 def stage_0(client: SpaceTraders):
     client.ships_view(True)
+
     # populate the ships from the API
     # trigger the local commander to go explore the system.
-
-    wayps = client.waypoints_view(client.view_my_self().headquarters)
-    if wayps:
-        for wayp in wayps:
-            for trait in wayp.traits:
-                if trait.symbol == "SHIPYARD":
-                    return 1  # we can scale!
-    commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
+    sys_wp = waypoint_slicer(client.view_my_self().headquarters)
+    wayps = client.waypoints_view(sys_wp)
     satelites = [ship for ship in client.ships.values() if ship.role == "SATELLITE"]
-    for commander in commanders:
-        set_behaviour(commander.name, BHVR_EXPLORE_CURRENT_SYSTEM)
 
     contracts = client.view_my_contracts()
     if len(contracts) == 0:
@@ -76,8 +67,18 @@ def stage_0(client: SpaceTraders):
         con: Contract
         if not con.accepted:
             client.contract_accept(con.id)
-    return 1  # not implemented yet, skip to stage 1
-    pass
+
+    if wayps:
+        for wayp in wayps.values():
+            for trait in wayp.traits:
+                if trait.symbol == "SHIPYARD":
+                    return 1  # we can scale!
+
+    commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
+    for commander in commanders:
+        set_behaviour(commander.name, BHVR_EXPLORE_SYSTEM, {"target_wp": sys_wp})
+
+    return 1
 
 
 def stage_1(client: SpaceTraders):
@@ -86,7 +87,6 @@ def stage_1(client: SpaceTraders):
     agent = client.view_my_self()
     hq_wp = agent.headquarters
     hq_sys = waypoint_slicer(hq_wp)
-    asteroid_wp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
     # commander behaviour
 
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
@@ -117,6 +117,8 @@ def stage_2(client: SpaceTraders):
     # we need to selectively scale up based on cost per mining power.
     # Move to stage 3 either once we have 5 dedicated excavators, or 2 excavators and one ore hound.
     ships = client.ships_view()
+
+    ships = client.ships_view()
     hq_system = list(client.ships.values())[1].nav.system_symbol
     # 1. decide on what ship to purchase.
     # ore hounds = 25 mining power
@@ -146,6 +148,12 @@ def stage_2(client: SpaceTraders):
 def stage_3(client: SpaceTraders):
     # we're have 1 or 2 surveyors, and 3 or 5 excavators.
     # at this point we want to switch to surveying and hauling, not raw hauling.
+    agent = client.view_my_self()
+    hq_wp = agent.headquarters
+    hq_sys = waypoint_slicer(hq_wp)
+
+    asteroid_wp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
+
     if is_market_data_stale(client, asteroid_wp.symbol):
         logger.warning("Market data is stale, refresh behaviour not implemented.")
 
@@ -167,9 +175,9 @@ def stage_3(client: SpaceTraders):
     #
     # set behaviours. use commander until we have a freighter.
     #
-    asteroid_wp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")
+    # DELETE THIS LINE asteroid_wp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")
     if asteroid_wp:
-        behaviour_params = {"asteroid_wp": asteroid_wp[0].symbol}
+        behaviour_params = {"asteroid_wp": asteroid_wp.symbol}
     for excavator in excavators:
         set_behaviour(excavator.name, EXTRACT_TRANSFER, behaviour_params)
     for hauler in haulers:
@@ -179,9 +187,15 @@ def stage_3(client: SpaceTraders):
             set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
 
     #
-    # Scale up to 30 miners and 3 haulers.
+    # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
-    if len(excavators) <= 30:
+    if len(haulers) <= (len(excavators) / 10):
+        ship = maybe_buy_ship(
+            client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
+        )
+        if ship:
+            set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
+    elif len(excavators) <= 30:
         prices = get_ship_prices_in_hq_system(client)
         if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
             "SHIP_MINING_DRONE", 99999999
@@ -192,12 +206,7 @@ def stage_3(client: SpaceTraders):
 
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
-    if len(haulers) <= len(hounds) / 10:
-        ship = maybe_buy_ship(
-            client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
-        )
-        if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
+
     return 3
 
 

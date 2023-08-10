@@ -202,18 +202,70 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def find_survey_best_deposit(
         self, waypoint_symbol: str, deposit_symbol: str
     ) -> Survey or SpaceTradersResponse:
-        sql = """select s.signature, waypoint, expiration, size 
-                from survey s join survey_deposit sd on sd.signature = s.signature  
-                where expiration >= (now() at time zone 'utc')
-                and symbol = %s and waypoint = %s
-                order by count desc, expiration asc"""
+        sql = """select s.signature, s.waypoint, s.expiration, s.size 
+                from survey_chance_and_values scv 
+                join survey s on scv.signature = s.signature 
+                where symbol = %s and waypoint = %s
+                limit 1 
+                """
 
         deposits_sql = (
             """select symbol, count from survey_deposit where signature = %s """
         )
         resp = try_execute_select(
-            self.connection, sql, (deposit_symbol, waypoint_symbol)
+            self.connection, sql, (deposit_symbol, (waypoint_symbol))
         )
+        if not resp:
+            if isinstance(resp, list):
+                return LocalSpaceTradersRespose(
+                    "Didn't find a matching survey", 0, 0, sql
+                )
+            return resp
+        surveys = []
+        for survey_row in resp:
+            deposits_resp = try_execute_select(
+                self.connection, deposits_sql, (survey_row[0],)
+            )
+            if not deposits_resp:
+                return deposits_resp
+            deposits = []
+            deposits_json = []
+            for deposit_row in deposits_resp:
+                deposit = Deposit(deposit_row[0])
+                for i in range(deposit_row[1]):
+                    deposits.append(deposit)
+                    deposits_json.append({"symbol": deposit.symbol})
+            json = {
+                "signature": survey_row[0],
+                "symbol": survey_row[1],
+                "deposits": deposits_json,
+                "expiration": survey_row[2].isoformat(),
+                "size": survey_row[3],
+            }
+            surveys.append(
+                Survey(
+                    survey_row[0],
+                    survey_row[1],
+                    deposits,
+                    survey_row[2],
+                    survey_row[3],
+                    json,
+                )
+            )
+        return surveys[0]
+
+    def find_survey_best(self, waypoint_symbol: str):
+        sql = """SELECT s.signature, s.waypoint, s.expiration, s.size 
+                FROM survey_chance_and_values scv 
+                JOIN survey s on scv.signature = s.signature 
+                WHERE waypoint = %s
+                LIMIT 1 
+                """
+
+        deposits_sql = (
+            """select symbol, count from survey_deposit where signature = %s """
+        )
+        resp = try_execute_select(self.connection, sql, (waypoint_symbol,))
         if not resp:
             if isinstance(resp, list):
                 return LocalSpaceTradersRespose(

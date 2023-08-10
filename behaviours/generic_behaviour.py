@@ -73,17 +73,20 @@ class Behaviour:
 
     def extract_till_full(self, cargo_to_target: list = None):
         # need to validate that the ship'  s current WP is a valid location
+        wayp_s = self.ship.nav.waypoint_symbol
         st = self.st
         if cargo_to_target is None:
             cargo_to_target = []
         survey = None
         if len(cargo_to_target) > 0:
             survey = (
-                st.find_survey_best_deposit(
-                    self.ship.nav.waypoint_symbol, cargo_to_target[0]
-                )
+                st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
+                or st.find_survey_best(wayp_s)
                 or None
             )
+
+        else:
+            survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
         ship = self.ship
         st = self.st
         if ship.nav.status == "DOCKED":

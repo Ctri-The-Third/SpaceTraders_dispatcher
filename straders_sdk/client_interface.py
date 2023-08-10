@@ -105,6 +105,10 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
         pass

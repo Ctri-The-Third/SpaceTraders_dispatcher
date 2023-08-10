@@ -18,12 +18,16 @@ from behaviours.explore_jump_gates import (
     ExploreJumpGates,
     BEHAVIOUR_NAME as BHVR_EXPLORE_JUMP_GATES,
 )
+from behaviours.explore_system import (
+    ExploreSystem,
+    BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
+)
 from behaviours.generic_behaviour import Behaviour
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES = "EXTRACT_AND_TRANSFER_DELIVERABLES"
+EXTRACT_TRANSFER = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
@@ -193,10 +197,12 @@ class dispatcher(SpaceTraders):
                 sname,
                 behaviour_params,
             )
-        elif id == BHVR_EXTRACT_AND_TRANSFER_DELIVERABLES:
+        elif id == EXTRACT_TRANSFER:
             bhvr = ExtractAndTransferOrSell_4(aname, sname, bhvr_params)
         elif id == BHVR_EXPLORE_JUMP_GATES:
             bhvr = ExploreJumpGates(aname, sname)
+        elif id == BHVR_EXPLORE_SYSTEM:
+            bhvr = ExploreSystem(aname, sname)
         return bhvr
 
 
