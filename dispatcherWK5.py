@@ -188,9 +188,9 @@ class dispatcher(SpaceTraders):
         bhvr_params = behaviour_params
         bhvr = None
         if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(aname, sname)
+            bhvr = ExtractAndSell(aname, sname, bhvr_params)
         elif id == BHVR_EXTRACT_AND_TRANSFER_HIGHEST:
-            bhvr = ExtractAndTransferHeighest_1(aname, sname)
+            bhvr = ExtractAndTransferHeighest_1(aname, sname, bhvr_params)
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
                 aname,
@@ -200,9 +200,9 @@ class dispatcher(SpaceTraders):
         elif id == EXTRACT_TRANSFER:
             bhvr = ExtractAndTransferOrSell_4(aname, sname, bhvr_params)
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
-            bhvr = RemoteScanWaypoints(aname, sname)
+            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params)
         elif id == BHVR_EXPLORE_SYSTEM:
-            bhvr = ExploreSystem(aname, sname)
+            bhvr = ExploreSystem(aname, sname, bhvr_params)
         return bhvr
 
 
