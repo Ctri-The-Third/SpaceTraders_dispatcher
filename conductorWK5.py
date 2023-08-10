@@ -10,7 +10,7 @@ from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTrad
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard
-from straders_sdk.utils import set_logging
+from straders_sdk.utils import set_logging, waypoint_slicer
 import logging
 import time
 from dispatcherWK3 import (
@@ -72,7 +72,7 @@ def stage_0(client: SpaceTraders):
     if len(contracts) == 0:
         client.ship_negotiate(satelites[0])
         contracts = client.view_my_contracts()
-    for con in contracts:
+    for con in contracts.values():
         con: Contract
         if not con.accepted:
             client.contract_accept(con.id)
@@ -83,10 +83,19 @@ def stage_0(client: SpaceTraders):
 def stage_1(client: SpaceTraders):
     # scale up to 2 extractors.
     ships = client.ships_view()
+    agent = client.view_my_self()
+    hq_wp = agent.headquarters
+    hq_sys = waypoint_slicer(hq_wp)
+    asteroid_wp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
+    # commander behaviour
 
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     if len(extractors) >= 2:
         return 2
+
+    # 1. check market data - if stale, refresh
+    # 2. check survey values - if low perform a survey
+    # 3. set to extract and sell
 
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     for ship in commanders:
@@ -137,6 +146,12 @@ def stage_2(client: SpaceTraders):
 def stage_3(client: SpaceTraders):
     # we're have 1 or 2 surveyors, and 3 or 5 excavators.
     # at this point we want to switch to surveying and hauling, not raw hauling.
+    if is_market_data_stale(client, asteroid_wp.symbol):
+        logger.warning("Market data is stale, refresh behaviour not implemented.")
+
+    if are_surveys_weak(client, asteroid_wp.symbol):
+        logger.warning("Surveys are weak, refresh behaviour not implemented")
+
     ships = client.ships_view()
     hq_system = list(client.ships.values())[1].nav.system_symbol
 
@@ -308,6 +323,27 @@ def get_agents():
         )
         agents_and_clients[row[0]] = st
     return agents_and_clients
+
+
+def is_market_data_stale(
+    client: SpaceTraders, waypoint_sym: str, age_in_minutes: int = 60
+):
+    wp = client.waypoints_view_one(waypoint_slicer(waypoint_sym), waypoint_sym)
+    market = client.system_market(wp)
+    return market.is_stale()
+
+
+def are_surveys_weak(client: SpaceTraders, asteroid_waypoint_symbol: str) -> bool:
+    asteroid_wp = client.waypoints_view_one(
+        waypoint_slicer(asteroid_waypoint_symbol), asteroid_waypoint_symbol
+    )
+
+    # determine value for each survey based on the market data.
+    # asteroid should have a "max market value", which is the highest sell price possible
+    # if the best survey is less than 50% of the max market value, surveys are weak.
+
+    # survey has a value per market. We should calculate and store this with an expiration date died to the staleness of the data.
+    #
 
 
 if __name__ == "__main__":

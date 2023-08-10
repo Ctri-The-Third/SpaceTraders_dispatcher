@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 
 from .utils import DATE_FORMAT
@@ -515,6 +515,7 @@ class MarketTradeGoodListing:
     supply: str
     purchase: int
     sell_price: int
+    recorded_ts: datetime = datetime.now()
 
 
 @dataclass
@@ -537,11 +538,21 @@ class Market:
         exports = [MarketTradeGood(**export) for export in json_data["exports"]]
         imports = [MarketTradeGood(**import_) for import_ in json_data["imports"]]
         exchange = [MarketTradeGood(**listing) for listing in json_data["exchange"]]
+        listings = []
         if "tradeGoods" in json_data:
-            listings = [
-                MarketTradeGoodListing(*listing.values())
-                for listing in json_data["tradeGoods"]
-            ]
+            for listing in json_data["tradeGoods"]:
+                mtgl = MarketTradeGoodListing(*listing.values())
+                listings.append(mtgl)
         else:
             listings = []
         return cls(json_data["symbol"], exports, imports, exchange, listings)
+
+    def is_stale(self, age: int = 60):
+        if not self.listings:
+            return True
+
+        target_time = datetime.now() - timedelta(minutes=age)
+        for listing in self.listings:
+            if listing.recorded_ts < target_time:
+                return True
+        return False

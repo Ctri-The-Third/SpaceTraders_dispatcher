@@ -59,7 +59,10 @@ ON CONFLICT (symbol) DO NOTHING;"""
             ( market_symbol, symbol, supply, purchase_price, sell_price, last_updated )
             VALUES ( %s, %s, %s, %s, %s, %s )
             ON CONFLICT (market_symbol, symbol) DO UPDATE
-                    SET supply = %s,  purchase_price = %s, sell_price = %s, last_updated = %s"""
+                    SET supply = EXCLUDED.supply
+                    , purchase_price = EXCLUDED.purchase_price
+                    , sell_price = EXCLUDED.sell_price
+                    , last_updated = EXCLUDED.last_updated"""
         for listing in market.listings:
             listing: MarketTradeGoodListing
             resp = try_execute_upsert(
@@ -71,10 +74,6 @@ ON CONFLICT (symbol) DO NOTHING;"""
                     listing.supply,
                     listing.purchase,
                     listing.sell_price,
-                    datetime.now(),
-                    listing.supply,
-                    listing.purchase,
-                    listing.sell_price,
-                    datetime.now(),
+                    listing.recorded_ts,
                 ),
             )
