@@ -63,7 +63,12 @@ class RemoteScanWaypoints(Behaviour):
                 if ship.can_survey:
                     st.ship_survey(ship)
                 time.sleep(1.2)
-        wayps = self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
+        wayps = (
+            self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
+            or self.get_twenty_unscanned_waypoints("ASTEROID_FIELD")
+            or self.get_twenty_unscanned_waypoints("PLANET")
+            or []
+        )
         for wayp in wayps:
             resp = st.waypoints_view_one(wayp[2], wayp[0], True)
             time.sleep(1.2)
@@ -93,8 +98,8 @@ class RemoteScanWaypoints(Behaviour):
         sql = """
         select * from waypoints_not_scanned
         where type = %s
+        order by random() 
         limit 20
-        order by random 
         """
         return try_execute_select(self.st.db_client.connection, sql, (type,))
 

@@ -14,7 +14,7 @@ from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
-from behaviours.explore_jump_gates import (
+from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
     BEHAVIOUR_NAME as BHVR_REMOTE_SCAN_AND_SURV,
 )
