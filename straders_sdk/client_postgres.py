@@ -307,8 +307,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
-        sql = """update survey where signature = %s
-        set expiration = (now() at time zone utc)"""
+        sql = """update survey 
+        set expiration = (now() at time zone 'utc')
+        where signature = %s
+        """
         resp = try_execute_no_results(self.connection, sql, (survey_signature,))
         return resp
 
