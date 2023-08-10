@@ -22,6 +22,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         self.logger.info("initialising...")
 
     def run(self):
+        starting_credts = self.st.view_my_self().credits
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
@@ -106,6 +107,11 @@ class ExtractAndTransferOrSell_4(Behaviour):
         # end of script.
         #
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        self.logger.info(
+            "Completed. Credits: %s, change = %s",
+            agent.credits,
+            agent.credits - starting_credts,
+        )
 
     def find_hauler(self, waypoint_symbol, valid_agents: list):
         st = self.st
