@@ -137,7 +137,7 @@ class dispatcher(SpaceTraders):
                 " found %d unlocked ships - %s active (%s%%)",
                 len(unlocked_ships),
                 active_ships,
-                round(active_ships / len(unlocked_ships) * 100, 2),
+                round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
             )
             if len(unlocked_ships) > 10:
                 set_logging(level=logging.INFO)

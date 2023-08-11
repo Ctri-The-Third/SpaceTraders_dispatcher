@@ -103,6 +103,8 @@ class Behaviour:
 
     def refuel_if_low(self):
         ship = self.ship
+        if ship.fuel_capacity == 0:
+            return
         refuel_points = self.st.find_waypoints_by_trait(
             self.ship.nav.system_symbol, "MARKETPLACE"
         )
