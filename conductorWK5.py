@@ -79,7 +79,10 @@ def stage_0(client: SpaceTraders):
 
     commanders = [ship for ship in client.ships.values() if ship.role == "COMMAND"]
     for commander in commanders:
-        set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV, {})
+        set_behaviour(commander.name, BHVR_EXPLORE_SYSTEM, {"target_sys": sys_wp})
+
+    for satelite in satelites:
+        set_behaviour(satelite.name, BHVR_REMOTE_SCAN_AND_SURV, {})
 
     return 1
 
@@ -99,11 +102,15 @@ def stage_1(client: SpaceTraders):
     # 1. check market data - if stale, refresh
     # 2. check survey values - if low perform a survey
     # 3. set to extract and sell
-
+    satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     for ship in commanders:
         ship: Ship
+        # if refresh_instruction returns something, do that, otherwise:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+
+    for ship in satelites:
+        set_behaviour(ship.name, BHVR_REMOTE_SCAN_AND_SURV)
 
     for ship in extractors:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
@@ -132,7 +139,7 @@ def stage_2(client: SpaceTraders):
     # 1. decide on what ship to purchase.
     # ore hounds = 25 mining power
     # excavator = 10 mining power
-
+    satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
@@ -142,6 +149,8 @@ def stage_2(client: SpaceTraders):
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
     for ship in excavators:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
+    for ship in satelites:
+        set_behaviour(ship.name, BHVR_REMOTE_SCAN_AND_SURV)
 
     prices = get_ship_prices_in_hq_system(client)
 
@@ -176,6 +185,7 @@ def stage_3(client: SpaceTraders):
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
+    satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
     # once we're at 30 excavators and 3 haulers, we can move on.
     if len(excavators) >= 30 and len(haulers) >= 3:
@@ -190,11 +200,14 @@ def stage_3(client: SpaceTraders):
         set_behaviour(excavator.name, EXTRACT_TRANSFER, behaviour_params)
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
-    if len(haulers) == 0:
-        for commander in commanders:
+    for satelite in satelites:
+        set_behaviour(satelite.name, BHVR_REMOTE_SCAN_AND_SURV, behaviour_params)
+    for commander in commanders:
+        # if there's no hauler, do that.
+        if len(haulers) == 0:
             set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
-    else:
-        for commander in commanders:
+        else:
+            # do the refresh behaviour
             set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV, behaviour_params)
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.

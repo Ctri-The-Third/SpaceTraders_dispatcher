@@ -45,7 +45,7 @@ class RemoteScanWaypoints(Behaviour):
         # get all systems a page at a time (new function? expand function?)
         # whilst getting systems, survey continually.
 
-        systems_sweep = self.have_we_all_the_gates()
+        systems_sweep = self.have_we_all_the_systems()
         if not systems_sweep[0]:
             for i in range(1, math.ceil(systems_sweep[1] / 20) + 1):
                 print(i)
@@ -132,7 +132,7 @@ order by random()
 limit 20"""
         return try_execute_select(self.st.db_client.connection, sql, ())
 
-    def have_we_all_the_gates(self):
+    def have_we_all_the_systems(self):
         sql = """select count(distinct symbol) from systems"""
         cursor = self.st.db_client.connection.cursor()
         cursor.execute(sql, ())

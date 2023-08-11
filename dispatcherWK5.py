@@ -163,7 +163,6 @@ class dispatcher(SpaceTraders):
                         # first time we've seen this ship - create a thread
                         pass
                     bhvr = None
-                    behaviour_params: dict = ({},)
                     bhvr = self.map_behaviour_to_class(
                         ship_and_behaviour["behaviour_id"],
                         ship_and_behaviour["name"],
