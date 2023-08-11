@@ -127,7 +127,7 @@ def stage_2(client: SpaceTraders):
     # we need to selectively scale up based on cost per mining power.
     # Move to stage 3 either once we have 5 dedicated excavators, or 2 excavators and one ore hound.
     ships = client.ships_view()
-
+    agent = client.view_my_self()
     ships = client.ships_view()
     hq_system = list(client.ships.values())[1].nav.system_symbol
 
@@ -150,7 +150,9 @@ def stage_2(client: SpaceTraders):
     for ship in excavators:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
     for ship in satelites:
-        set_behaviour(ship.name, BHVR_REMOTE_SCAN_AND_SURV)
+        set_behaviour(
+            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": agent.headquarters}
+        )
 
     prices = get_ship_prices_in_hq_system(client)
 
@@ -201,7 +203,11 @@ def stage_3(client: SpaceTraders):
     for hauler in haulers:
         set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
     for satelite in satelites:
-        set_behaviour(satelite.name, BHVR_REMOTE_SCAN_AND_SURV, behaviour_params)
+        set_behaviour(
+            satelite.name,
+            BHVR_REMOTE_SCAN_AND_SURV,
+            {"asteroid_wp": agent.headquarters},
+        )
     for commander in commanders:
         # if there's no hauler, do that.
         if len(haulers) == 0:
