@@ -214,7 +214,11 @@ def stage_3(client: SpaceTraders):
             set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
         else:
             # do the refresh behaviour
-            set_behaviour(commander.name, BHVR_REMOTE_SCAN_AND_SURV, behaviour_params)
+            set_behaviour(
+                commander.name,
+                BHVR_REMOTE_SCAN_AND_SURV,
+                {"asteroid_wp": shipyard_wp.symbol},
+            )
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #

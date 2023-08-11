@@ -73,6 +73,7 @@ class RemoteScanWaypoints(Behaviour):
         )
         for wayp in wayps:
             resp = st.waypoints_view_one(wayp[2], wayp[0], True)
+
             time.sleep(1.2)
             if ship.seconds_until_cooldown > 0:
                 continue
