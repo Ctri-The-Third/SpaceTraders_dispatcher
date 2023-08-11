@@ -70,10 +70,11 @@ class SpaceTradersApiClient(SpaceTradersClient):
             raise ValueError("waypoint_symbol cannot be empty")
         url = _url(f"systems/{system_symbol}/waypoints/{waypoint_symbol}")
         resp = get_and_validate(url, headers=self._headers())
-        wayp = Waypoint.from_json(resp.data)
         if not resp:
             print(resp.error)
             return resp
+        wayp = Waypoint.from_json(resp.data)
+
         return wayp
 
     def waypoints_view(

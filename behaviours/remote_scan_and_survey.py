@@ -82,6 +82,25 @@ class RemoteScanWaypoints(Behaviour):
                 st.ship_survey(ship)
                 time.sleep(0.5)
 
+        rows = self.get_twenty_unscanned_jumpgates()
+        for row in rows:
+            jump_gate_sym = row[0]
+            sys = waypoint_slicer(jump_gate_sym)
+
+            wp = st.waypoints_view_one(sys, jump_gate_sym)
+            if not wp.is_charted:
+                wp = st.waypoints_view_one(sys, jump_gate_sym, True)
+            if not wp.is_charted:
+                continue
+            resp = st.system_jumpgate(wp, True)
+            time.sleep(1.2)
+            if ship.seconds_until_cooldown > 0:
+                continue
+            if ship.nav.travel_time_remaining > 0:
+                continue
+            if ship.can_survey:
+                st.ship_survey(ship)
+                time.sleep(0.5)
         # orbital stations
         # asteroid fields
 
@@ -95,7 +114,7 @@ class RemoteScanWaypoints(Behaviour):
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[Waypoint]:
+    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[list]:
         sql = """
         select * from waypoints_not_scanned
         where type = %s
@@ -103,6 +122,15 @@ class RemoteScanWaypoints(Behaviour):
         limit 20
         """
         return try_execute_select(self.st.db_client.connection, sql, (type,))
+
+    def get_twenty_unscanned_jumpgates(self) -> list[Waypoint]:
+        sql = """ select w.symbol from waypoints w 
+left join jump_gates jg on jg.waypoint_symbol = w.symbol
+where w.type = 'JUMP_GATE'
+and jg.waypoint_symbol is null
+order by random()
+limit 20"""
+        return try_execute_select(self.st.db_client.connection, sql, ())
 
     def have_we_all_the_gates(self):
         sql = """select count(distinct symbol) from systems"""
