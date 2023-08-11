@@ -15,7 +15,7 @@ def run(client: SpaceTraders, ships: list["Ship"]):
     # do we need to do the system sweep?
     # if yes - put that on the satelite
     for ship in ships:
-        
+        pass
 
     if not _have_we_all_the_systems(client):
         return ExploreSystem.run(client)
