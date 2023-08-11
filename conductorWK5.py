@@ -132,10 +132,10 @@ def stage_2(client: SpaceTraders):
     hq_system = list(client.ships.values())[1].nav.system_symbol
 
     wayps = client.systems_view_one(hq_system)
-    wayp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")
+    wayp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")[0]
     if not wayp:
         logger.warning("No asteroid field found yet shouldn't happen.")
-    wayp: Waypoint
+
     # 1. decide on what ship to purchase.
     # ore hounds = 25 mining power
     # excavator = 10 mining power
