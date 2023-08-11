@@ -19,6 +19,7 @@ class ExtractAndSell(Behaviour):
         config_file_name="user.json",
     ) -> None:
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+
         self.logger = logging.getLogger("bhvr_extract_and_sell")
         self.logger.info("initialising...")
 
@@ -36,7 +37,7 @@ class ExtractAndSell(Behaviour):
 
         try:
             target_wp_sym = self.behaviour_params.get(
-                "extract_waypoint",
+                "asteroid_wp",
                 st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,

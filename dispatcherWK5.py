@@ -131,7 +131,14 @@ class dispatcher(SpaceTraders):
             # every 15 seconds update the list of unlocked ships with a DB query.
 
             unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
-            logging.debug(" found %d unlocked ships", len(unlocked_ships))
+            active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
+
+            logging.debug(
+                " found %d unlocked ships - %s active (%s%%)",
+                len(unlocked_ships),
+                active_ships,
+                round(active_ships / len(unlocked_ships) * 100, 2),
+            )
             # every second, check if we have idle ships whose behaviours we can execute.
             for i in range(15):
                 for ship_and_behaviour in unlocked_ships:

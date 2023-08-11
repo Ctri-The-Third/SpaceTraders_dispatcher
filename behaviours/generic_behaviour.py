@@ -21,7 +21,7 @@ class Behaviour:
     ) -> None:
         set_logging()
         self.logger = logging.getLogger(__name__)
-        self.behaviour_params = behaviour_params
+        self.behaviour_params = behaviour_params or {}
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
         for agent in saved_data["agents"]:
