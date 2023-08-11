@@ -283,4 +283,6 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 
 if __name__ == "__main__":
-    RemoteScanWaypoints("CTRI-LWK5-", "CTRI-LWK5--1", {}).run()
+    RemoteScanWaypoints(
+        "CTRI-UWK5-", "CTRI-UWK5--2", {"asteroid_wp": "X1-YA22-18767C"}
+    ).run()

@@ -171,7 +171,7 @@ def stage_3(client: SpaceTraders):
     agent = client.view_my_self()
     hq_wp = agent.headquarters
     hq_sys = waypoint_slicer(hq_wp)
-
+    shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     asteroid_wp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
 
     if is_market_data_stale(client, asteroid_wp.symbol):
@@ -206,7 +206,7 @@ def stage_3(client: SpaceTraders):
         set_behaviour(
             satelite.name,
             BHVR_REMOTE_SCAN_AND_SURV,
-            {"asteroid_wp": agent.headquarters},
+            {"asteroid_wp": shipyard_wp.symbol},
         )
     for commander in commanders:
         # if there's no hauler, do that.
