@@ -78,20 +78,21 @@ class Behaviour:
         if cargo_to_target is None:
             cargo_to_target = []
         survey = None
-        if len(cargo_to_target) > 0:
-            survey = (
-                st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
-                or st.find_survey_best(wayp_s)
-                or None
-            )
 
-        else:
-            survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
         ship = self.ship
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         while ship.cargo_units_used < ship.cargo_capacity:
+            if len(cargo_to_target) > 0:
+                survey = (
+                    st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
+                    or st.find_survey_best(wayp_s)
+                    or None
+                )
+            else:
+                survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
+
             resp = st.ship_extract(ship, survey)
             if not resp:
                 sleep(30)

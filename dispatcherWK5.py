@@ -139,6 +139,8 @@ class dispatcher(SpaceTraders):
                 active_ships,
                 round(active_ships / len(unlocked_ships) * 100, 2),
             )
+            if len(unlocked_ships) > 10:
+                set_logging(level=logging.INFO)
             # every second, check if we have idle ships whose behaviours we can execute.
             for i in range(15):
                 for ship_and_behaviour in unlocked_ships:
@@ -179,7 +181,9 @@ class dispatcher(SpaceTraders):
                         target=bhvr.run,
                         name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
                     )
-
+                    self.logger.info(
+                        "Starting thread for ship %s", ship_and_behaviour["name"]
+                    )
                     ships_and_threads[ship_and_behaviour["name"]].start()
                     time.sleep(min(10, 100 / len(ships_and_threads)))  # stagger ships
                     pass

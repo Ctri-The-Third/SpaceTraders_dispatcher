@@ -21,7 +21,6 @@ class ExtractAndSell(Behaviour):
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
 
         self.logger = logging.getLogger("bhvr_extract_and_sell")
-        self.logger.info("initialising...")
 
     def run(self):
         # all  threads should have this.

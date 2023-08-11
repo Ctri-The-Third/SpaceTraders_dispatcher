@@ -19,7 +19,6 @@ class ExtractAndTransferOrSell_4(Behaviour):
     ) -> None:
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
-        self.logger.info("initialising...")
 
     def run(self):
         starting_credts = self.st.view_my_self().credits
