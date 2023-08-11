@@ -122,6 +122,12 @@ def stage_2(client: SpaceTraders):
 
     ships = client.ships_view()
     hq_system = list(client.ships.values())[1].nav.system_symbol
+
+    wayps = client.systems_view_one(hq_system)
+    wayp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")
+    if not wayp:
+        logger.warning("No asteroid field found yet shouldn't happen.")
+    wayp: Waypoint
     # 1. decide on what ship to purchase.
     # ore hounds = 25 mining power
     # excavator = 10 mining power
@@ -132,9 +138,9 @@ def stage_2(client: SpaceTraders):
     if len(excavators) >= 5 or len(hounds) >= 1:
         return 3
     for ship in commanders:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
     for ship in excavators:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
 
     prices = get_ship_prices_in_hq_system(client)
 
