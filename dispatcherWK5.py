@@ -174,7 +174,7 @@ class dispatcher(SpaceTraders):
                     )
 
                     ships_and_threads[ship_and_behaviour["name"]].start()
-                    time.sleep(10)  # stagger ships
+                    time.sleep(min(10, 100 / len(ships_and_threads)))  # stagger ships
                     pass
 
                 time.sleep(1)
