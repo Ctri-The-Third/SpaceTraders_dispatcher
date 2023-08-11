@@ -21,16 +21,16 @@ I think I'll likely see that once I get into the endgame and reach request satur
  
 ## Goals
 
-* receive_and_fulfill behaviour needs to automatically have contract management if it doesn't already
-* compile survey values in the DB
- * Have ships extarcting for money pick the one with the most valuable out
- * Have ships extracting for quest material pick the one with the highest concentration of quest material, and then secondarily the most valuable out in the event of a tie.
+* ✅ receive_and_fulfill behaviour needs to automatically have contract management if it doesn't already
+* ✅ compile survey values in the DB
+ * ✅ Have ships extarcting for money pick the one with the most valuable out
+ * ✅ Have ships extracting for quest material pick the one with the highest concentration of quest material, and then secondarily the most valuable out in the event of a tie.
 
-* Record contracts in DB 
+* ✅ Record contracts in DB 
 * Record extractions in DB (will require a refactor)
 * Record sell orders in DB (will require a refactor)
  * after selling have the behaviour also ping the market for latest prices.
-
+* put ship cooldowns into DB
 * Develop A* jump network pathfinding and complete exploration of the network
 * Record 429 counts in the DB, consider queue based throttling 
 

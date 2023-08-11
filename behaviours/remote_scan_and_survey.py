@@ -68,7 +68,7 @@ class RemoteScanWaypoints(Behaviour):
         wayps = (
             self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
             or self.get_twenty_unscanned_waypoints("ASTEROID_FIELD")
-            or self.get_twenty_unscanned_waypoints("PLANET")
+            or self.get_twenty_unscanned_waypoints("JUMP_GATE")
             or []
         )
         for wayp in wayps:
@@ -84,7 +84,6 @@ class RemoteScanWaypoints(Behaviour):
 
         # orbital stations
         # asteroid fields
-        # planets
 
         # refresh shipyards and markets (note, will get basic data for most)
         # tag uncharted, marketplace, and shipyard systems for visit

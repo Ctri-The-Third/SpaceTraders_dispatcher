@@ -11,6 +11,7 @@ from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard
 from straders_sdk.utils import set_logging, waypoint_slicer
+from behaviours.conductor_refresh import run as refresh_stale_waypoints
 import logging
 import time
 from dispatcherWK5 import (
@@ -274,6 +275,15 @@ def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
     except Exception as err:
         logging.error(err)
         return False
+
+
+def fleet_refresh_market_data(client: SpaceTraders):
+    #
+    # 0. Get all systems
+    # 0. Get all jump gates
+    # 1. pick an out-of-date location on the jump gate network to refresh
+
+    pass
 
 
 def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
