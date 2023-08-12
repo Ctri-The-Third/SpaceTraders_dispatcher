@@ -45,6 +45,7 @@ class Behaviour:
             db_pass=db_pass,
             current_agent_symbol=agent_name,
         )
+        self.connection = self.st.db_client.connection
         self.ship = self.st.ships_view_one(ship_name, force=True)
         self.st.ship_cooldown(self.ship)
         # get the cooldown info as well from the DB
@@ -71,6 +72,11 @@ class Behaviour:
                 sleep_until_ready(self.ship)
                 ship.nav.status = "IN_ORBIT"
                 ship.nav.waypoint_symbol = target_wp_symbol
+            self.logger.debug(
+                "moved to %s, time to destination %s",
+                ship.name,
+                ship.nav.travel_time_remaining,
+            )
             return resp
 
     def extract_till_full(self, cargo_to_target: list = None):

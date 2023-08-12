@@ -347,6 +347,14 @@ class Waypoint(SymbolClass):
     def __str__(self):
         return self.symbol
 
+    def __hash__(self) -> int:
+        return self.symbol.__hash__()
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, Waypoint):
+            return self.symbol == o.symbol
+        return False
+
 
 class JumpGate:
     def __init__(
@@ -394,6 +402,14 @@ class System(SymbolClass):
             json_data["y"],
             wayps,
         )
+
+    def __hash__(self) -> int:
+        return self.symbol.__hash__()
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, System):
+            return self.symbol == o.symbol
+        return False
 
 
 @dataclass
@@ -468,7 +484,8 @@ class Shipyard:
     def from_json(cls, json_data: dict):
         types = [type_["type"] for type_ in json_data["shipTypes"]]
         ships = {
-            ship["type"]: ShipyardShip(ship) for ship in json_data.get("ships", [])
+            ship["type"]: ShipyardShip.from_json(ship)
+            for ship in json_data.get("ships", [])
         }
 
         return cls(json_data["symbol"], types, ships)
