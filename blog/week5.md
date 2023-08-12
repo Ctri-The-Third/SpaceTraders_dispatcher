@@ -27,6 +27,7 @@ I think I'll likely see that once I get into the endgame and reach request satur
  * ✅ Have ships extracting for quest material pick the one with the highest concentration of quest material, and then secondarily the most valuable out in the event of a tie.
 
 * ✅ Record contracts in DB 
+* Record whether we've got a detailed view of the waypoint in the DB - add in the DB "find waypoint by" methods
 * Record cooldowns into DB
 * Record extractions in DB (will require a refactor)
 * Record sell orders in DB (will require a refactor)

@@ -46,7 +46,7 @@ class dispatcher(SpaceTraders):
         db_pass: str,
         current_agent_symbol: str,
     ) -> None:
-        self.lock_id = "Week3-dispatcher " + str(uuid.uuid1())
+        self.lock_id = "Week5-dispatcher " + str(uuid.uuid1())
         self.db_host = db_host
         self.db_port = db_port
         self.db_name = db_name
