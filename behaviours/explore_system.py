@@ -37,13 +37,16 @@ class ExploreSystem(Behaviour):
 
         time.sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
 
-        tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
-                FROM public.mkt_shpyrds_systems_last_updated_jumpgates j
-			    JOIN waypoints w1 on j.symbol = w1.symbol
-                order by last_updated, random()"""
-        target = try_execute_select(self.connection, tar_sys_sql, ())[0]
-        self.logger.debug("Random destination selected: target %s", target[0])
-        d_sys = System(target[0], "", "", target[1], target[2], [])
+        if self.behaviour_params and "target_sys" in self.behaviour_params:
+            d_sys = st.systems_view_one(self.behaviour_params["target_sys"])
+        else:
+            tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
+                    FROM public.mkt_shpyrds_systems_last_updated_jumpgates j
+                    JOIN waypoints w1 on j.symbol = w1.symbol
+                    order by last_updated, random()"""
+            target = try_execute_select(self.connection, tar_sys_sql, ())[0]
+            self.logger.debug("Random destination selected: target %s", target[0])
+            d_sys = System(target[0], "", "", target[1], target[2], [])
 
         arrived = True
         if ship.nav.system_symbol != d_sys:
@@ -162,7 +165,8 @@ join systems s on w.system_symbol = s.symbol"""
             next_sys: System
             st.ship_jump(ship, next_sys.symbol)
             time.sleep(ship.seconds_until_cooldown)
-        # Then, hit it.
+        # Then, hit it.care
+        return True
 
 
 def nearest_neighbour(waypoints: list[Waypoint], start: Waypoint):
@@ -274,4 +278,6 @@ if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-LWK5-"
     ship_suffix = "1"
-    ExploreSystem(agent_symbol, f"{agent_symbol}-{ship_suffix}").run()
+    params = None
+    #   params = {"asteroid_wp": "", "target_sys": "X1-FZ5"}
+    ExploreSystem(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
