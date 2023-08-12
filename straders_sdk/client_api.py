@@ -348,7 +348,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if resp and "expiration" in resp.data:
             ship.update({"cooldown": resp.data})
         else:
-            ship._cooldown = datetime.utcnow()
+            ship._cooldown_expiration = datetime.utcnow()
         pass
         return resp
 

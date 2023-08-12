@@ -728,7 +728,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.logging_client.ship_jump(ship, dest_system_symbol, resp)
         if resp:
             ship.update(resp.data)
-            self.db_client.update(ship)
+            self.update(ship)
             self.ships[ship.name] = ship
         return resp
 
@@ -806,6 +806,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 self.db_client.update(survey)
             self.update(resp.data)
             ship.update(resp.data)
+            self.update(ship)
 
         elif resp.data is not None:
             self.update(resp.data)
@@ -824,13 +825,19 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return resp
 
-    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+    def ship_cooldown(self, ship: "Ship", force=False) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/cooldown"""
+        if not force:
+            resp = self.db_client.ship_cooldown(ship)
+            if resp:
+                ship.update(resp.data)
+                self.update(ship)
+                return resp
         resp = self.api_client.ship_cooldown(ship)
         self.logging_client.ship_cooldown(resp)
         if resp:
             ship.update(resp.data)
-            self.db_client.update(ship)
+            self.update(ship)
         return resp
 
     def contracts_deliver(

@@ -73,7 +73,6 @@ class RemoteScanWaypoints(Behaviour):
         )
         for wayp in wayps:
             resp = st.waypoints_view_one(wayp[2], wayp[0], True)
-
             time.sleep(1.2)
             if ship.seconds_until_cooldown > 0:
                 continue
@@ -112,7 +111,6 @@ class RemoteScanWaypoints(Behaviour):
         # jump to system
         # explore system
         # return to gate
-
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
     def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[list]:
@@ -285,5 +283,6 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 if __name__ == "__main__":
     RemoteScanWaypoints(
-        "CTRI-UWK5-", "CTRI-UWK5--2", {"asteroid_wp": "X1-YA22-18767C"}
+        "CTRI-LWK5-", "CTRI-LWK5--1", {"asteroid_wp": "X1-YA22-87615D"}
     ).run()
+    # "CTRI-UWK5-", "CTRI-UWK5--2", {"asteroid_wp": "X1-YA22-18767C"}

@@ -46,6 +46,8 @@ class Behaviour:
             current_agent_symbol=agent_name,
         )
         self.ship = self.st.ships_view_one(ship_name, force=True)
+        self.st.ship_cooldown(self.ship)
+        # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
 
     def run(self):

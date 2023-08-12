@@ -29,6 +29,7 @@ from .pg_pieces.agents import _upsert_agent, select_agent_one
 from .pg_pieces.contracts import _upsert_contract
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode
+from .utils import try_execute_select, try_execute_no_results
 import psycopg2
 
 
@@ -475,7 +476,26 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/cooldown"""
-        dummy_response(__class__.__name__, "ship_cooldown")
+        sql = """select total_seconds, expiration from ship_cooldown where ship_symbol = %s"""
+        resp = try_execute_select(self.connection, sql, (ship.name,))
+        if not resp:
+            return resp
+        expiration = resp[0][1]
+        expiration: datetime
+
+        data = {
+            "cooldown": {
+                "shipSymbol": ship.name,
+                "totalSeconds": resp[0][0],
+                "remainingSeconds": 0,
+                "expiration": f"{expiration.isoformat()}Z",
+            }
+        }
+        resp = LocalSpaceTradersRespose(
+            None, 0, None, url=f"{__class__.__name__}.ship_cooldown"
+        )
+        resp.data = data
+        return resp
 
     def ships_purchase(
         self, ship_type: str, shipyard_waypoint: str
@@ -517,29 +537,3 @@ def dummy_response(class_name, method_name):
     return LocalSpaceTradersRespose(
         "Not implemented in this client", 0, 0, f"{class_name}.{method_name}"
     )
-
-
-def try_execute_select(connection, sql, params) -> list:
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-        return rows
-    except Exception as err:
-        return LocalSpaceTradersRespose(
-            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
-        )
-
-
-def try_execute_no_results(connection, sql, params) -> LocalSpaceTradersRespose:
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, params)
-        connection.commit()
-        return LocalSpaceTradersRespose(
-            error=None, status_code=0, error_code=0, url=f"{__name__}.try_execute"
-        )
-    except Exception as err:
-        return LocalSpaceTradersRespose(
-            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute"
-        )

@@ -52,6 +52,11 @@ Logging is a very low-leel thing, and I think if we pass the logging client into
 There comes a point where it's better to have command ships going out to visit systems on the jump gate network and hitting up shipyards and marketplaces - this initial information can help inform quests. 
 
 This kind of behaviour can be tagged to the command ship - we set it to the asteroid WP and start doing surveys whilst polling systems.
+currently this behaviour triggers after stage 3 has gotten one hauler, but I'm considering making it toggle. If we've strong surveys - explore. If surveys are weak, return.
+
+Our phase 2 behaviours need to be as follow:
+* Receive and fulfill / Survey (if a contract is in place, or surveys are weak)
+* Explore the gate network.
 
 This behaviour should ensure the following
 * All systems are in the DB
@@ -62,3 +67,6 @@ This behaviour should ensure the following
 * Once this is complete, the command ship should depart the main system to explore these systems.
 
 * This behaviour is called "explore_jump_network", and replaces the existing week 4 behaviour.
+
+we will then be able to investigate money-making opportunities - combinations of extractors & freighters can go out to asteroid fields near compatible marketplaces, free from player saturation.
+If trading becomes a more viable option, we can undertake it.

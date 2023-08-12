@@ -76,7 +76,8 @@ class Ship(SpaceTradersInteractive):
     fuel_consumed_history: dict
     # needs expanded out into a class probably
 
-    _cooldown = None
+    _cooldown_expiration = None
+    _cooldown_length = 0
     # ----  REACTOR INFO ----
 
     # todo: modules and mounts
@@ -145,7 +146,8 @@ class Ship(SpaceTradersInteractive):
         ship.fuel_consumed_history = json_data["fuel"]["consumed"]
         # needs expanded out into a class probably
 
-        ship._cooldown = None
+        ship._cooldown_expiration: datetime = None
+        ship._cooldown_length: int = 0
         # ----  REACTOR INFO ----
 
         # todo: modules and mounts
@@ -225,7 +227,9 @@ class Ship(SpaceTradersInteractive):
                     ShipInventory.from_json(d) for d in json_data["cargo"]["inventory"]
                 ]
             if "cooldown" in json_data:
-                self._cooldown = parse_timestamp(json_data["cooldown"]["expiration"])
+                self._cooldown_expiration = parse_timestamp(
+                    json_data["cooldown"]["expiration"]
+                )
                 if self.seconds_until_cooldown > 6000:
                     self.logger.warning("Cooldown is over 100 minutes")
             if "fuel" in json_data:
@@ -236,9 +240,9 @@ class Ship(SpaceTradersInteractive):
 
     @property
     def seconds_until_cooldown(self) -> timedelta:
-        if not self._cooldown:
+        if not self._cooldown_expiration:
             return 0
-        time_to_wait = self._cooldown - datetime.utcnow()
+        time_to_wait = self._cooldown_expiration - datetime.utcnow()
         seconds = max(time_to_wait.seconds + (time_to_wait.days * 86400), 0)
         if seconds > 6000:
             self.logger.warning("Cooldown is over 100 minutes")
