@@ -91,6 +91,8 @@ class RemoteScanWaypoints(Behaviour):
             if not wp.is_charted:
                 wp = st.waypoints_view_one(sys, jump_gate_sym, True)
             if not wp.is_charted:
+                time.sleep(1.2)
+
                 continue
             resp = st.system_jumpgate(wp, True)
             time.sleep(1.2)
