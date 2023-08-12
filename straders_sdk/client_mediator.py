@@ -834,7 +834,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 self.update(ship)
                 return resp
         resp = self.api_client.ship_cooldown(ship)
-        self.logging_client.ship_cooldown(resp)
+        self.logging_client.ship_cooldown(ship, resp)
         if resp:
             ship.update(resp.data)
             self.update(ship)
