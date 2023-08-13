@@ -28,7 +28,7 @@ I think I'll likely see that once I get into the endgame and reach request satur
 
 * ✅ Record contracts in DB 
 * Record whether we've got a detailed view of the waypoint in the DB - add in the DB "find waypoint by" methods
-* Record cooldowns into DB
+* ✅ Record cooldowns into DB
 * Record extractions in DB (will require a refactor)
 * Record sell orders in DB (will require a refactor)
  * after selling have the behaviour also ping the market for latest prices.

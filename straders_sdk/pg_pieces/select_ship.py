@@ -11,7 +11,7 @@ def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
                 , sfl.condition --13
 				, sf.frame_symbol, sf.name, sf.description, sf.module_slots, sf.mount_points, sf.fuel_capacity, sf.required_power, sf.required_crew, sf.required_slots
                 , s.fuel_capacity, s.fuel_current --24  
-                , sc.expiration, sc.total_length --26
+                , sc.expiration, sc.total_seconds --26
                 from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
 				left join ship_frame_links sfl on s.ship_symbol = sfl.ship_symbol
 				left join ship_frames sf on sf.frame_symbol = sfl.frame_symbol
