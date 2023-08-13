@@ -8,7 +8,6 @@ from datetime import datetime
 import random
 import time
 from .local_response import LocalSpaceTradersRespose
-from time import sleep
 
 ST_LOGGER = logging.getLogger("API-Client")
 
