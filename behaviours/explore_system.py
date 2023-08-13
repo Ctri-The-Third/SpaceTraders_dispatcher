@@ -54,7 +54,6 @@ class ExploreSystem(Behaviour):
         if not arrived:
             self.logger.error("Couldn't jump! Unknown reason.")
             return
-
         self.scan_local_system()
         # travel to target system
         # scan target system
