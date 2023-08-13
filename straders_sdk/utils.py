@@ -187,7 +187,7 @@ def set_logging(filename: str = None, level=logging.INFO):
 
 
 def parse_timestamp(timestamp: str) -> datetime:
-    ts None 
+    ts = None
     try:
         ts = datetime.fromisoformat(timestamp)
         return ts
