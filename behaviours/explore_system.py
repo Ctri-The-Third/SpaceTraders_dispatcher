@@ -51,7 +51,7 @@ class ExploreSystem(Behaviour):
         arrived = True
         if ship.nav.system_symbol != d_sys:
             arrived = self.ship_extrasolar(ship, d_sys)
-        if not arrived:
+         if not arrived:
             self.logger.error("Couldn't jump! Unknown reason.")
             return
 
@@ -164,6 +164,9 @@ join systems s on w.system_symbol = s.symbol"""
         for next_sys in route:
             next_sys: System
             st.ship_jump(ship, next_sys.symbol)
+            if next_sys.symbol == destination_system.symbol:
+                #we've arrived, no need to sleep
+                break
             time.sleep(ship.seconds_until_cooldown)
         # Then, hit it.care
         return True
