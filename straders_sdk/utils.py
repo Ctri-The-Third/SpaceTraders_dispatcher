@@ -188,7 +188,14 @@ def set_logging(filename: str = None, level=logging.INFO):
 
 
 def parse_timestamp(timestamp: str) -> datetime:
-    ts = datetime.strptime(timestamp, DATE_FORMAT)
+    try:
+        ts = datetime.fromisoformat(timestamp)
+    except:
+        pass
+    try:
+        ts = datetime.strptime(timestamp, DATE_FORMAT)
+    except:
+        pass
     return ts
 
 
