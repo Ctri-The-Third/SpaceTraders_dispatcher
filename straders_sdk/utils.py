@@ -190,12 +190,15 @@ def set_logging(filename: str = None, level=logging.INFO):
 def parse_timestamp(timestamp: str) -> datetime:
     try:
         ts = datetime.fromisoformat(timestamp)
+        return ts
     except:
         pass
-    try:
-        ts = datetime.strptime(timestamp, DATE_FORMAT)
-    except:
-        pass
+    for timestamp_format in [DATE_FORMAT, "%Y-%m-%dT%H:%M:%SZ"]:
+        try:
+            ts = datetime.strptime(timestamp, DATE_FORMAT)
+            return ts
+        except:
+            pass
     return ts
 
 
