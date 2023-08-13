@@ -36,7 +36,7 @@ I think I'll likely see that once I get into the endgame and reach request satur
  * How to handle systems that _were_ uncharted but are now charted? the upsert doesn't delete the "UNCHARTED" tag. 
  * An event driven thing? or an ETL?
 
-* Develop A* jump network pathfinding and complete exploration of the network
+* ☑️ Develop A* jump network pathfinding and complete exploration of the network
 * Record 429 counts in the DB, consider queue based throttling 
 
 
@@ -45,7 +45,7 @@ since pretty much everything is happening in the same application, we can use a 
 When the request makes it into the utils function, it puts itself into a global queue, and then checks if the next item is itself. If the next item is itself, it sleeps for 0.3s and executes, otherwise it sleeps for 0.3 and waits.
 
 Currently we have high-level logging.
-Logging is a very low-leel thing, and I think if we pass the logging client into the API client as an optional thing (maybe a stub otherwise) then we can have the API client log at a lower level, and the logging client can decide what to do with it.
+429s are a very low-leel thing, and I think if we pass the logging client into the API client as an optional thing (maybe a stub otherwise) then we can have the API client log at a lower level, and the logging client can decide what to do with it.
 
 
 ## Deciding when to go exploring.

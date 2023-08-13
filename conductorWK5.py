@@ -93,6 +93,7 @@ def stage_1(client: SpaceTraders):
     agent = client.view_my_self()
     hq_wp = agent.headquarters
     hq_sys = waypoint_slicer(hq_wp)
+    shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     # commander behaviour
 
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
@@ -118,7 +119,7 @@ def stage_1(client: SpaceTraders):
         client, commanders[0].nav.system_symbol, "SHIP_MINING_DRONE"
     )
     if maybe_ship:
-        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
+        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": hq_wp})
     return 1
 
 
