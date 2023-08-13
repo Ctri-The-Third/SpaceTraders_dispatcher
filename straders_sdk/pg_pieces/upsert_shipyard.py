@@ -9,15 +9,14 @@ def _upsert_shipyard(connection, shipyard: Shipyard):
 	shipyard_symbol, ship_type, ship_cost, last_updated)
 	VALUES (%s, %s, %s, now() at time zone 'utc')
     ON CONFLICT (shipyard_symbol, ship_type) DO UPDATE
-    SET ship_cost = %s;"""
+    SET ship_cost = EXCLUDED.ship_cost,
+    last_updated = now() at time zone 'utc';"""
         for ship_type in shipyard.ship_types:
             ship_cost = None
             ship_details = shipyard.ships.get(ship_type, None)
             if ship_details:
                 ship_cost = ship_details.purchase_price
-            connection.cursor().execute(
-                sql, (shipyard.waypoint, ship_type, ship_cost, ship_cost)
-            )
+            connection.cursor().execute(sql, (shipyard.waypoint, ship_type, ship_cost))
 
         connection.commit()
     except Exception as err:

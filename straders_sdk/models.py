@@ -471,7 +471,17 @@ class ShipyardShip:
 
         modules = [ShipModule(d) for d in json_data["modules"]]
         mounts = [ShipMount(d) for d in json_data["mounts"]]
-        pass
+        return cls(
+            frame,
+            reactor,
+            engine,
+            name,
+            description,
+            ship_type,
+            purchase_price,
+            modules,
+            mounts,
+        )
 
 
 @dataclass

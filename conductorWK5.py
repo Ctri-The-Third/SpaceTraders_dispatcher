@@ -91,8 +91,7 @@ def stage_1(client: SpaceTraders):
     # scale up to 2 extractors.
     ships = client.ships_view()
     agent = client.view_my_self()
-    hq_wp = agent.headquarters
-    hq_sys = waypoint_slicer(hq_wp)
+    hq_sys = waypoint_slicer(agent.headquarters)
     shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     # commander behaviour
 
@@ -132,10 +131,10 @@ def stage_2(client: SpaceTraders):
     ships = client.ships_view()
     agent = client.view_my_self()
     ships = client.ships_view()
-    hq_system = list(client.ships.values())[1].nav.system_symbol
+    hq_sys = waypoint_slicer(agent.headquarters)
 
-    wayps = client.systems_view_one(hq_system)
-    wayp = client.find_waypoints_by_type(hq_system, "ASTEROID_FIELD")[0]
+    wayps = client.systems_view_one(hq_sys)
+    wayp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
     if not wayp:
         logger.warning("No asteroid field found yet shouldn't happen.")
 
@@ -162,9 +161,9 @@ def stage_2(client: SpaceTraders):
     if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
         "SHIP_MINING_DRONE", 99999999
     ) / 10:
-        maybe_buy_ship(client, hq_system, "SHIP_ORE_HOUND")
+        maybe_buy_ship(client, hq_sys, "SHIP_ORE_HOUND")
     else:
-        maybe_buy_ship(client, hq_system, "SHIP_MINING_DRONE")
+        maybe_buy_ship(client, hq_sys, "SHIP_MINING_DRONE")
     return 2
 
 
@@ -184,7 +183,6 @@ def stage_3(client: SpaceTraders):
         logger.warning("Surveys are weak, refresh behaviour not implemented")
 
     ships = client.ships_view()
-    hq_system = list(client.ships.values())[1].nav.system_symbol
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
@@ -236,9 +234,9 @@ def stage_3(client: SpaceTraders):
         if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
             "SHIP_MINING_DRONE", 99999999
         ) / 10:
-            ship = maybe_buy_ship(client, hq_system, "SHIP_ORE_HOUND")
+            ship = maybe_buy_ship(client, hq_sys, "SHIP_ORE_HOUND")
         else:
-            ship = maybe_buy_ship(client, hq_system, "SHIP_MINING_DRONE")
+            ship = maybe_buy_ship(client, hq_sys, "SHIP_MINING_DRONE")
 
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
@@ -249,27 +247,34 @@ def stage_3(client: SpaceTraders):
 def stage_4(client: SpaceTraders):
     # we're at at 30 excavators and 3 haulers.
     # Ideally we want to start building up hounds, replacing excavators.
+    agent = client.view_my_self()
+    hq_sys = waypoint_slicer(agent.headquarters)
+
     ships = client.ships_view()
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     target_hounds = 50
-    #
+
+    # determine the most >time-efficient< way to sell minables - excluding the starting market (which will be our failover)
+    # set the extractors to extract and transfer
+    # set the haulers to receive and fulfill
+    # if the surveys are weak, set the surveyors to survey instead.
     # for drone in drones:
     #    set_behaviour(drone.name, "DISABLED")
     if len(excavators) >= target_hounds:
         # go through the first $EXCESS drones and disable them.
         for drone in drones[: len(excavators) - target_hounds]:
             set_behaviour(drone.name, "DISABLED")
-    if len(hounds) <= target_hounds:
-        ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_ORE_HOUND")
-        if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER)
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+    elif len(hounds) <= target_hounds:
+        ship = maybe_buy_ship(client, hq_sys, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(ship.name, EXTRACT_TRANSFER)
 
     # switch off mining drones.
     pass
