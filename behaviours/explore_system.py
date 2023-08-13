@@ -160,7 +160,7 @@ join systems s on w.system_symbol = s.symbol"""
             if not resp:
                 self.logger.warn("Unable to jump - not at warp gate.")
                 return False
-        route.pop()
+        route.pop(0)
         for next_sys in route:
             next_sys: System
             st.ship_jump(ship, next_sys.symbol)
@@ -279,5 +279,5 @@ if __name__ == "__main__":
     agent_symbol = "CTRI-LWK5-"
     ship_suffix = "1"
     params = None
-    #   params = {"asteroid_wp": "", "target_sys": "X1-FZ5"}
+    params = {"asteroid_wp": "", "target_sys": "X1-K94"}
     ExploreSystem(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
