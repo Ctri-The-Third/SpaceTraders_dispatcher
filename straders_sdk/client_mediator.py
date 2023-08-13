@@ -287,9 +287,9 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                     surv = Survey.from_json(survey)
                     self.update(surv)
             if "contract" in json_data:
-                self.contracts[json_data["contract"]["id"]] = Contract.from_json(
-                    ["contract"]
-                )
+                contract = Contract.from_json(json_data["contract"])
+                self.contracts[json_data["contract"]["id"]] = contract
+                self.update(contract)
             if "nav" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead, then do self.update(ship)
             if "cooldown" in json_data:
