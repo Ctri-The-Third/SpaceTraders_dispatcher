@@ -60,7 +60,8 @@ class Behaviour:
         wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
 
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
-        if fuel_cost > ship.fuel_current:
+        if fuel_cost > ship.fuel_current and ship.fuel_capacity > 0:
+            # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.refuel_if_low()
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
