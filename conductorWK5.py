@@ -112,7 +112,7 @@ def stage_1(client: SpaceTraders):
 
     for ship in satelites:
         set_behaviour(
-            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp}
+            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp.symbol}
         )
 
     for ship in extractors:
