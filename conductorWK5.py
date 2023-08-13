@@ -111,7 +111,9 @@ def stage_1(client: SpaceTraders):
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
 
     for ship in satelites:
-        set_behaviour(ship.name, BHVR_REMOTE_SCAN_AND_SURV)
+        set_behaviour(
+            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp}
+        )
 
     for ship in extractors:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
@@ -119,7 +121,7 @@ def stage_1(client: SpaceTraders):
         client, commanders[0].nav.system_symbol, "SHIP_MINING_DRONE"
     )
     if maybe_ship:
-        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": hq_wp})
+        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     return 1
 
 
