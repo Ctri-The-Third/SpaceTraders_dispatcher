@@ -54,7 +54,9 @@ class Behaviour:
     def run(self):
         pass
 
-    def ship_intrasolar(self, target_wp_symbol: "str", sleep_till_done=True):
+    def ship_intrasolar(
+        self, target_wp_symbol: "str", sleep_till_done=True, flight_mode="CRUISE"
+    ):
         st = self.st
         ship = self.ship
         wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
@@ -62,10 +64,13 @@ class Behaviour:
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
         if fuel_cost > ship.fuel_current and ship.fuel_capacity > 0:
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
+
             self.refuel_if_low()
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
+            if ship.nav.flight_mode != flight_mode:
+                st.ship_patch_nav(ship, flight_mode)
             resp = st.ship_move(self.ship, target_wp_symbol)
             if not resp:
                 return False
@@ -125,15 +130,15 @@ class Behaviour:
                 nearest_refuel_distance = distance
                 nearest_refuel_wp = refuel_point
         if nearest_refuel_wp is not None:
-            previous_state = None
+            flight_mode = ship.nav.flight_mode
+
             if self.determine_fuel_cost(ship, nearest_refuel_wp) > ship.fuel_current:
-                previous_state = ship.nav.flight_mode
-                self.st.ship_patch_nav(ship, "DRIFT")
-            self.ship_intrasolar(nearest_refuel_wp.symbol)
+                flight_mode = "DRIFT"
+            self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
             self.st.ship_dock(ship)
             self.st.ship_refuel(ship)
-            if previous_state:
-                self.st.ship_patch_nav(ship, previous_state)
+            if flight_mode:
+                self.st.ship_patch_nav(ship, flight_mode)
 
     def sell_all_cargo(self, exceptions: list = []):
         ship = self.ship
