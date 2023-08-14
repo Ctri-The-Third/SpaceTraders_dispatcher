@@ -12,14 +12,17 @@ But
 ## Goals
 
 * Record 429 counts in the DB, consider queue based throttling 
-* Record whether we've got a detailed view of the waypoint in the DB - add in the DB "find waypoint by" methods
+* ✅ Record whether we've got a detailed view of the waypoint in the DB - add in the DB "find waypoint by" methods
 * Record extractions in DB (will require a refactor)
 * Record sell orders in DB (will require a refactor)
  * after selling have the behaviour also ping the market for latest prices.
 * Record waypoint chart state in DB (will require a refactor)
  * How to handle systems that _were_ uncharted but are now charted? the upsert doesn't delete the "UNCHARTED" tag. 
  * An event driven thing? or an ETL?
-
+* be selective about which contracts we accept - we should only accept contracts we can fulfill - either because we can buy/sell, or because we can mine/fulfill.
+* Satelites should/ could be deployed to shipyards and marketplaces of value.
+ * Each shipyard with the lowest_cost available should get a satelite.
+ * extra satelites should be deployed to the marketplaces facilitating the current thing.
 ## Tasks
 
 Currently at each stage the conductor sets a ship's behaviour, with parameters for where and where it should do the thing.

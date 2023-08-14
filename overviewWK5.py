@@ -44,24 +44,26 @@ def scan_progress():
             union 
             select  * from waypoints_not_scanned_progress """
     rows = try_execute_select(connection, sql, ())
-    output = """| Search | Total | Scanned | Progress |
+    output = """| Search | Scanned | Total | Progress |
                 | ------ | ----- | ------- | -------- |"""
     for row in rows:
-        output += f"\n| {row[0]} | {row[1]} | {row[2]} | {row[3]} |"
+        output += f"\n| {row[0]} | {row[1]} | {row[2]} | {row[3]}% |"
 
     return output
 
 
 def commander_overview():
-    sql = "select * from agent_overview"
+    sql = """select ao.symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated from agent_overview ao 
+            join contracts_overview co on ao.symbol = co.agent_symbol 
+            order by last_updated desc"""
     cursor.execute(sql)
     rows = cursor.fetchall()
     response = ""
     if len(rows) > 0:
-        response = "| Agent | Credits | faction | ships | last_updated |\n"
-        response += "| --- | --- | --- | --- | --- |\n"
+        response = "| Agent | Credits | faction | ships | contract for | quantities | progress | last_updated |\n"
+        response += "| ---  |     --- |     --- | ---   |          --- |  ----             |  ---     |    ---       |\n"
     for row in rows:
-        response += f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} |\n"
+        response += f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} |  {row[4]} | {row[5]} / {row[6]} | {row[7]}% | {row[8]} |\n"
     return response
 
 
