@@ -8,6 +8,7 @@ import markdown
 import psycopg2
 from time import sleep
 import json
+from straders_sdk.utils import try_execute_select
 
 config_file_name = "user.json"
 saved_data = json.load(open(config_file_name, "r+"))
@@ -27,13 +28,28 @@ mk_str = """
 %s
 
 # Commanders & contracts
-%s
+
+<div markdown = block>%s</div>
+<div markdown = block>%s</div>
 
 # Ships & behaviours
 %s
 
 %s
 """
+
+
+def scan_progress():
+    sql = """select * from  mkt_shpyrds_systems_visit_progress
+            union 
+            select  * from waypoints_not_scanned_progress """
+    rows = try_execute_select(connection, sql, ())
+    output = """| Search | Total | Scanned | Progress |
+                | ------ | ----- | ------- | -------- |"""
+    for row in rows:
+        output += f"\n| {row[0]} | {row[1]} | {row[2]} | {row[3]} |"
+
+    return output
 
 
 def commander_overview():
@@ -50,9 +66,19 @@ def commander_overview():
 
 
 def ship_overview():
-    sql = "select ship_symbol, ship_role, frame_symbol, waypoint_symbol, cargo_in_use, cargo_capacity, behaviour_id, locked_until from ship_overview"
-    cursor.execute(sql)
-    rows = cursor.fetchall()
+    sql = """select ship_symbol
+, ship_role
+, frame_symbol
+, waypoint_symbol
+, cargo_in_use
+, cargo_capacity
+, behaviour_id
+, locked_until from ship_overview
+where locked_until > now() at time zone 'utc'
+order by ship_symbol
+    """
+
+    rows = try_execute_select(connection, sql, ())
     response = ""
     if len(rows) > 0:
         response = "| ship | role/ frame | waypoint | cargo/ | capacity | behaviour | locked_until |\n"
@@ -91,10 +117,11 @@ while True:
     out_str = mk_str % (
         css_blob,
         commander_overview(),
+        scan_progress(),
         ship_overview(),
         javascript_refresh_blob,
     )
-    out_str = markdown.markdown(out_str, extensions=["tables"])
+    out_str = markdown.markdown(out_str, extensions=["tables", "md_in_html"])
     file = open("overview.md", "w+")
     file.write(out_str)
     file.close()

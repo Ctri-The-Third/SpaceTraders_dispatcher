@@ -276,6 +276,7 @@ def stage_4(client: SpaceTraders):
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER)
 
+    return 4
     # switch off mining drones.
     pass
 

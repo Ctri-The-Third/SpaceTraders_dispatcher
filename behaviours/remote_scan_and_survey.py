@@ -71,6 +71,7 @@ class RemoteScanWaypoints(Behaviour):
             or self.get_twenty_unscanned_waypoints("JUMP_GATE")
             or []
         )
+
         for wayp in wayps:
             resp = st.waypoints_view_one(wayp[2], wayp[0], True)
             time.sleep(1.2)
@@ -83,6 +84,12 @@ class RemoteScanWaypoints(Behaviour):
                 time.sleep(0.5)
 
         rows = self.get_twenty_unscanned_jumpgates()
+
+        if len(wayps) + len(rows) == 0:
+            self.logger.warning(
+                "No unscanned waypoints found. stalling for 10 minutes and exiting."
+            )
+            time.sleep(600)
         for row in rows:
             jump_gate_sym = row[0]
             sys = waypoint_slicer(jump_gate_sym)
