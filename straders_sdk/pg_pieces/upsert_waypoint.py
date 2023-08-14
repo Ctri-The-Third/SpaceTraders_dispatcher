@@ -2,6 +2,7 @@ import psycopg2
 
 
 from ..models import Waypoint, WaypointTrait
+from ..utils import try_execute_upsert
 
 
 def _upsert_waypoint(connection, waypoint: Waypoint):
@@ -14,7 +15,8 @@ def _upsert_waypoint(connection, waypoint: Waypoint):
                 , system_symbol = EXCLUDED.system_symbol
                 , x = EXCLUDED.x, y = EXCLUDED.y
                 , checked = EXCLUDED.checked"""
-        connection.cursor().execute(
+        try_execute_upsert(
+            connection,
             sql,
             (
                 waypoint.symbol,
@@ -30,7 +32,8 @@ def _upsert_waypoint(connection, waypoint: Waypoint):
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT (waypoint, symbol) DO UPDATE
                         SET name = EXCLUDED.name, description = EXCLUDED.description"""
-            connection.cursor().execute(
+            try_execute_upsert(
+                connection,
                 sql,
                 (
                     waypoint.symbol,
@@ -39,6 +42,21 @@ def _upsert_waypoint(connection, waypoint: Waypoint):
                     trait.description,
                 ),
             )
+        if waypoint.is_charted:
+            sql = """INSERT into waypoint_charts 
+            ( waypoint_symbol, submitted_by, submitted_on)
+            VALUES (%s, %s, %s)
+            ON CONFLICT do nothing"""
+            try_execute_upsert(
+                connection,
+                sql,
+                (
+                    waypoint.symbol,
+                    waypoint.chart["submittedBy"],
+                    waypoint.chart["submittedOn"],
+                ),
+            )
+
         connection.commit()
     except Exception as err:
         print(err)

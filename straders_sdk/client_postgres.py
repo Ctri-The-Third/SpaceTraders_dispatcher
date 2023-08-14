@@ -109,7 +109,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
 
-        sql = """SELECT * FROM waypoints WHERE system_symbol = %s"""
+        sql = """SELECT * FROM waypoints w 
+        left join waypoint_charts wc on w.symbol = wc.waypoint_symbol 
+         
+           WHERE system_symbol = %s"""
         cur = self.connection.cursor()
         cur.execute(sql, (system_symbol,))
         rows = cur.fetchall()
@@ -123,6 +126,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             traits = []
             for trait_row in trait_rows:
                 traits.append(WaypointTrait(trait_row[1], trait_row[2], trait_row[3]))
+            chart = {"waypointSymbol": row[6], "submittedBy": row[7], "submittedOn": row[8]}
             waypoint = Waypoint(
                 row[2], row[0], row[1], row[3], row[4], [], traits, {}, {}
             )
