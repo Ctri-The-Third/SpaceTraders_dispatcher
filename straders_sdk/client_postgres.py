@@ -23,7 +23,7 @@ from .pg_pieces.upsert_market import _upsert_market
 from .pg_pieces.upsert_ship import _upsert_ship
 from .pg_pieces.upsert_system import _upsert_system
 from .pg_pieces.upsert_survey import _upsert_survey
-from .pg_pieces.select_ship import _select_ships
+from .pg_pieces.select_ship import _select_ships, _select_ship_one
 from .pg_pieces.jump_gates import _upsert_jump_gate, select_jump_gate_one
 from .pg_pieces.agents import _upsert_agent, select_agent_one
 from .pg_pieces.contracts import _upsert_contract
@@ -126,7 +126,11 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             traits = []
             for trait_row in trait_rows:
                 traits.append(WaypointTrait(trait_row[1], trait_row[2], trait_row[3]))
-            chart = {"waypointSymbol": row[6], "submittedBy": row[7], "submittedOn": row[8]}
+            chart = {
+                "waypointSymbol": row[6],
+                "submittedBy": row[7],
+                "submittedOn": row[8],
+            }
             waypoint = Waypoint(
                 row[2], row[0], row[1], row[3], row[4], [], traits, {}, {}
             )
@@ -517,14 +521,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def ships_view_one(self, symbol: str) -> "Ship" or SpaceTradersResponse:
         """/my/ships/{shipSymbol}"""
-        ships = self.ships_view()
-        ship = ships.get(
-            symbol,
-            LocalSpaceTradersRespose(
-                "Ship not found in DB", 0, 404, "client_postgres.ships_view_one"
-            ),
-        )
-        return ship
+        resp = _select_ship_one(symbol, self)
+        if resp:
+            return resp[symbol]
+        return 
 
     def contracts_deliver(
         self, contract: "Contract", ship: "Ship", trade_symbol: str, units: int

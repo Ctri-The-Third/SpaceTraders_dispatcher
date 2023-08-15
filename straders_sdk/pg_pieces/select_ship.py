@@ -18,8 +18,13 @@ def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
                 left join ship_cooldown sc on s.ship_symbol = sc.ship_symbol
                 where s.agent_name = %s
                 """
+    return _select_some_ships(db_client, sql, (agent_name,))
+
+
+def _select_some_ships(db_client: SpaceTradersClient, sql, params):
+    connection = db_client.connection
     try:
-        rows = try_execute_select(connection, sql, (agent_name,))
+        rows = try_execute_select(connection, sql, params)
         if not rows:
             return rows
         ships = {}
@@ -47,6 +52,22 @@ def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
             error_code=0,
             url=f"select_ship._select_ship",
         )
+
+
+def _select_ship_one(ship_symbol: str, db_client: SpaceTradersClient):
+    sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
+                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
+                , sfl.condition --13
+                , sf.frame_symbol, sf.name, sf.description, sf.module_slots, sf.mount_points, sf.fuel_capacity, sf.required_power, sf.required_crew, sf.required_slots
+                , s.fuel_capacity, s.fuel_current --24  
+                , sc.expiration, sc.total_seconds --26
+                from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
+                left join ship_frame_links sfl on s.ship_symbol = sfl.ship_symbol
+                left join ship_frames sf on sf.frame_symbol = sfl.frame_symbol
+                left join ship_cooldown sc on s.ship_symbol = sc.ship_symbol
+                where s.ship_symbol = %s
+                """
+    return _select_some_ships(db_client, sql, (ship_symbol,))
 
 
 def _nav_from_row(row, db_client: SpaceTradersClient) -> ShipNav:
