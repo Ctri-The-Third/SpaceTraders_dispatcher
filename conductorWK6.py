@@ -256,7 +256,7 @@ def stage_4(client: SpaceTraders):
     drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
-        refiners = [
+    refiners = [
         ship
         for ship in ships.values()
         if ship.frame.symbol == "SHIP_REFINING_FREIGHTER"
