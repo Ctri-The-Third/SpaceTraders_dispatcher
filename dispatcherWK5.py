@@ -142,6 +142,7 @@ class dispatcher(SpaceTraders):
                 round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
             )
             if len(unlocked_ships) > 10:
+                print("Scaling down logging")
                 set_logging(level=logging.INFO)
                 logging.getLogger("API-Client").setLevel(logging.INFO)
                 self.logger.level = logging.INFO
