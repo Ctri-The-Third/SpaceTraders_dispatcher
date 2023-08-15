@@ -13,6 +13,7 @@ from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
+from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
@@ -131,6 +132,7 @@ class dispatcher(SpaceTraders):
             # every 15 seconds update the list of unlocked ships with a DB query.
 
             unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
+
             active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
 
             logging.debug(
@@ -141,6 +143,10 @@ class dispatcher(SpaceTraders):
             )
             if len(unlocked_ships) > 10:
                 set_logging(level=logging.INFO)
+                logging.getLogger("API-Client").setLevel(logging.INFO)
+                self.logger.level = logging.INFO
+                logging.getLogger().setLevel(logging.INFO)
+
             # every second, check if we have idle ships whose behaviours we can execute.
             for i in range(15):
                 for ship_and_behaviour in unlocked_ships:

@@ -338,7 +338,7 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
 
     if len(shipyard_wps) == 0:
         return False
-    agent = client.view_my_self(True)
+    agent = client.view_my_self()
 
     shipyard = client.system_shipyard(shipyard_wps[0])
 
