@@ -17,7 +17,7 @@ But
 * Record extractions in DB (will require a refactor of the pg_logging client?)
 * Record sell orders in DB (will require a refactor)
  * after selling have the behaviour also ping the market for latest prices.
-* Record waypoint chart state in DB (will require a refactor)
+* ✅ Record waypoint chart state in DB (will require a refactor)
  * How to handle systems that _were_ uncharted but are now charted? the upsert doesn't delete the "UNCHARTED" tag. 
  * An event driven thing? or an ETL?
 * be selective about which contracts we accept - we should only accept contracts we can fulfill - either because we can buy/sell, or because we can mine/fulfill.
