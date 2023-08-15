@@ -13,7 +13,8 @@ But
 
 * Record 429 counts in the DB, consider queue based throttling 
 * ✅ Record whether we've got a detailed view of the waypoint in the DB - add in the DB "find waypoint by" methods
-* Record extractions in DB (will require a refactor)
+* Alter the remote scan behaviour to do a first ping of markets and shipyards to find out what's available there.
+* Record extractions in DB (will require a refactor of the pg_logging client?)
 * Record sell orders in DB (will require a refactor)
  * after selling have the behaviour also ping the market for latest prices.
 * Record waypoint chart state in DB (will require a refactor)
@@ -45,3 +46,5 @@ These supporting behaviours need to be _extremely light_ on requests to avoid st
 
 As the primary agent scales up and gains greater capability, we can scale down the supporting agents.
 Ideally by the time the primary agent is at the point of being request limited, we've got a jump gate network that's been explored.
+
+# check into the deliver endpoint - contracts now need to be intiialised with arguments

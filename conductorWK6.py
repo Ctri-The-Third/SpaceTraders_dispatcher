@@ -256,7 +256,13 @@ def stage_4(client: SpaceTraders):
     drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+        refiners = [
+        ship
+        for ship in ships.values()
+        if ship.frame.symbol == "SHIP_REFINING_FREIGHTER"
+    ]
     target_hounds = 50
+    target_refiners = 1
 
     # determine the most >time-efficient< way to sell minables - excluding the starting market (which will be our failover)
     # set the extractors to extract and transfer
@@ -268,6 +274,11 @@ def stage_4(client: SpaceTraders):
         # go through the first $EXCESS drones and disable them.
         for drone in drones[: len(excavators) - target_hounds]:
             set_behaviour(drone.name, "DISABLED")
+    if len(refiners) < target_refiners:
+        ship = maybe_buy_ship(client, hq_sys, "SHIP_REFINING_FREIGHTER")
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+
     if len(haulers) <= len(hounds) / 10:
         ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
         if ship:
