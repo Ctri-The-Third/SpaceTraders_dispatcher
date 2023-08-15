@@ -6,6 +6,7 @@ from .utils import (
     ApiConfig,
     _url,
     get_and_validate,
+    patch_and_validate,
     post_and_validate,
     get_and_validate_paginated,
     get_and_validate_page,
@@ -124,10 +125,10 @@ class SpaceTradersApiClient(SpaceTradersClient):
         return resp
 
     def ship_patch_nav(self, ship: Ship, flight_mode: str):
-        "my/ships/:shipSymbol/course"
-        url = _url(f"my/ships/{ship.name}/navigate")
+        "my/ships/:shipSymbol/nav"
+        url = _url(f"my/ships/{ship.name}/nav")
         data = {"flightMode": flight_mode}
-        resp = post_and_validate(url, data, headers=self._headers())
+        resp = patch_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
         return resp

@@ -47,6 +47,9 @@ class Behaviour:
         )
         self.connection = self.st.db_client.connection
         self.ship = self.st.ships_view_one(ship_name, force=True)
+        if not self.ship:
+            self.logger.error("error getting ship, aborting - %s", self.ship.error)
+            raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
         # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
@@ -59,18 +62,23 @@ class Behaviour:
     ):
         st = self.st
         ship = self.ship
+        if ship.nav.flight_mode != flight_mode:
+            st.ship_patch_nav(ship, flight_mode)
         wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
 
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
-        if fuel_cost > ship.fuel_current and ship.fuel_capacity > 0:
+        if (
+            flight_mode != "DRIFT"
+            and fuel_cost > ship.fuel_current
+            and ship.fuel_capacity > 0
+        ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
 
             self.refuel_if_low()
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
-            if ship.nav.flight_mode != flight_mode:
-                st.ship_patch_nav(ship, flight_mode)
+
             resp = st.ship_move(self.ship, target_wp_symbol)
             if not resp:
                 return False

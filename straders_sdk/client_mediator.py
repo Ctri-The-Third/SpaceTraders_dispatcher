@@ -700,7 +700,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         resp = self.api_client.ship_patch_nav(ship, dest_waypoint_symbol)
         self.logging_client.ship_patch_nav(ship, resp)
         if resp:
-            ship.update(resp)
+            ship.update({"nav": resp.data})
             self.update(ship)
 
         return resp

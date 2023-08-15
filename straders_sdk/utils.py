@@ -106,6 +106,17 @@ def rate_limit_check(response: requests.Response):
         return
 
 
+def request_and_validate(method, url, data=None, json=None, headers=None):
+    if method == "GET":
+        return get_and_validate(url, params=data, headers=headers)
+    elif method == "POST":
+        return post_and_validate(url, data=data, json=json, headers=headers)
+    elif method == "PATCH":
+        return patch_and_validate(url, data=data, json=json, headers=headers)
+    else:
+        return LocalSpaceTradersRespose("Method %s not supported", 0, 0, url)
+
+
 def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
     "wraps the requests.post function to make it easier to use"
 

@@ -49,7 +49,7 @@ class ExploreSystem(Behaviour):
             d_sys = System(target[0], "", "", target[1], target[2], [])
 
         arrived = True
-        if ship.nav.system_symbol != d_sys:
+        if ship.nav.system_symbol != d_sys.symbol:
             arrived = self.ship_extrasolar(ship, d_sys)
         if not arrived:
             self.logger.error("Couldn't jump! Unknown reason.")
@@ -279,8 +279,8 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-LWK5-"
+    agent_symbol = "CTRI-RWK5-"
     ship_suffix = "1"
     params = None
-    params = {"asteroid_wp": "", "target_sys": "X1-K94"}
+    params = {"asteroid_wp": "", "target_sys": "X1-BF39"}
     ExploreSystem(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
