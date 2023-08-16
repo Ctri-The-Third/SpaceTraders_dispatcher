@@ -54,7 +54,7 @@ class Behaviour:
 
     @property
     def connection(self):
-        if not self._connection or self.connection.closed > 0:
+        if not self._connection or self._connection.closed > 0:
             self._connection = self.st.db_client.connection
         return self._connection
 

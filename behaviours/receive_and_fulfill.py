@@ -26,6 +26,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
     def run(self):
+        super().run()
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
