@@ -102,6 +102,11 @@ class SpaceTradersStubClient:
 
         pass
 
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        pass
+
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
 

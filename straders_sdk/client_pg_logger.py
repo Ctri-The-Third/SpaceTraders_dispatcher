@@ -276,6 +276,12 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         pass
 
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity, response=None
+    ) -> SpaceTradersResponse:
+        url = _url(f"my/ships/:ship_name/purchase")
+        self.log_event("ship_purchase_cargo", ship.name, url, response)
+
     def ship_survey(
         self, ship: "ship", response=None
     ) -> list[Survey] or SpaceTradersResponse:

@@ -162,6 +162,13 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/purchase"""
+        pass
+
+    @abstractmethod
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
 

@@ -796,6 +796,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.update(resp.data)
         return resp
 
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        resp = self.api_client.ship_purchase_cargo(ship, symbol, quantity)
+        self.logging_client.ship_purchase_cargo(ship, symbol, quantity, resp)
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
+        return resp
+
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
         resp = self.api_client.ship_survey(ship)

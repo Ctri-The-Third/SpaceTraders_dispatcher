@@ -47,7 +47,18 @@ ON CONFLICT (symbol) DO NOTHING;"""
                 trade_good.description,
             ),
         )
-
+    for trade_good in market.exchange:
+        try_execute_upsert(
+            connection,
+            sql,
+            (
+                market.symbol,
+                trade_good.symbol,
+                "exchange",
+                trade_good.name,
+                trade_good.description,
+            ),
+        )
     # if market.exchange is not None and len(market.exchange) > 0:
 
     #    for trade_good in market.exchange:

@@ -194,7 +194,6 @@ def set_logging(filename: str = None, level=logging.INFO):
     )
     logging.getLogger("client_mediator").setLevel(logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    ST_LOGGER.setLevel(logging.DEBUG)
 
 
 def parse_timestamp(timestamp: str) -> datetime:

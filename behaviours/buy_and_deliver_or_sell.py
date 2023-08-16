@@ -9,7 +9,7 @@ from straders_sdk.utils import waypoint_slicer, try_execute_select
 from behaviours.generic_behaviour import Behaviour
 import logging
 import time
-
+import math
 
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
@@ -70,7 +70,10 @@ class BuyAndDeliverOrSell_6(Behaviour):
             )
         if "transfer_ship" in self.behaviour_params:
             receive_ship = st.ships_view_one(self.behaviour_params["transfer_ship"])
-            end_system = receive_ship.nav.system_symbol
+            end_system = st.systems_view_one(receive_ship.nav.system_symbol)
+            end_waypoint = st.waypoints_view_one(
+                end_system.symbol, receive_ship.nav.waypoint_symbol
+            )
 
         target_waypoints = self.find_cheapest_markets_for_good(target_tradegood)
 
@@ -97,13 +100,22 @@ class BuyAndDeliverOrSell_6(Behaviour):
         #
         # we know where we're going, we know what we're getting. Deployment.
         #
+        if target_tradegood not in [item.symbol for item in ship.cargo_inventory]:
+            self.fetch_half(
+                local_jumpgate,
+                target_system,
+                target_waypoint,
+                path,
+                max_to_buy,
+                target_tradegood,
+            )
+        if target_tradegood in [item.symbol for item in ship.cargo_inventory]:
+            # self.return_half()
 
-        self.ship_intrasolar(local_jumpgate.symbol)
-        resp = self.ship_extrasolar(target_waypoint, path)
-        self.ship_intrasolar(target_waypoint.symbol)
-
-        st.ship_dock(ship)
-        space = ship.cargo_capacity - ship.cargo_units_used
+            st.ship_orbit(ship)
+            rtb = False
+            self.ship_extrasolar(end_system)
+            self.ship_intrasolar(end_waypoint)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listing
@@ -117,6 +129,50 @@ order by purchase_price asc """
             )
             return wayps
         return [wayp[0] for wayp in wayps]
+
+    def fetch_half(
+        self,
+        local_jumpgate,
+        target_system: "System",
+        target_waypoint: "Waypoint",
+        path: list,
+        max_to_buy: int,
+        target_tradegood: str,
+    ):
+        ship = self.ship
+        st = self.st
+        if ship.nav.system_symbol != target_system.symbol:
+            self.ship_intrasolar(local_jumpgate.symbol)
+            self.ship_extrasolar(target_waypoint, path)
+        self.ship_intrasolar(target_waypoint.symbol)
+
+        st.ship_dock(ship)
+        current_market = st.system_market(target_waypoint)
+        if not current_market:
+            self.logger.error(
+                "No market found at waypoint %s", ship.nav.waypoint_symbol
+            )
+            time.sleep(SAFETY_PADDING)
+            return
+        target_price = 1
+        for listing in current_market.listings:
+            if listing.symbol == target_tradegood:
+                target_price = listing.purchase
+                break
+
+        space = ship.cargo_capacity - ship.cargo_units_used
+
+        amount = min(space, max_to_buy, math.floor(agent.credits / target_price))
+
+        resp = st.ship_purchase_cargo(ship, target_tradegood, amount)
+        if not resp:
+            # couldn't buy anything.
+
+            time.sleep(SAFETY_PADDING)
+            return
+
+    def return_half():
+        pass
 
 
 if __name__ == "__main__":

@@ -135,16 +135,16 @@ class dispatcher(SpaceTraders):
 
             active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
 
-            logging.debug(
+            logging.info(
                 " found %d unlocked ships - %s active (%s%%)",
                 len(unlocked_ships),
                 active_ships,
                 round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
             )
             if len(unlocked_ships) > 10:
-                print("Scaling down logging")
                 set_logging(level=logging.INFO)
-                logging.getLogger("API-Client").setLevel(logging.INFO)
+                api_logger = logging.getLogger("API-Client")
+                api_logger.setLevel(logging.INFO)
                 self.logger.level = logging.INFO
                 logging.getLogger().setLevel(logging.INFO)
 

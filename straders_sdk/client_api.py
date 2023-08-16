@@ -209,11 +209,26 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
     def ship_sell(self, ship: Ship, symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
+        url = _url(f"my/ships/{ship.name}/sell")
 
         if ship.nav.status != "DOCKED":
-            self.ship_dock(ship)
+            return LocalSpaceTradersRespose(
+                "Ship must be docked to sell", 0, 0, url=url
+            )
 
-        url = _url(f"my/ships/{ship.name}/sell")
+        data = {"symbol": symbol, "units": quantity}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
+        return resp
+
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/purchase"""
+
+        url = _url(f"my/ships/{ship.name}/purchase")
         data = {"symbol": symbol, "units": quantity}
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
