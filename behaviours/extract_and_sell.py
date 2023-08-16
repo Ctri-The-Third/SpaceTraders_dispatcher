@@ -23,6 +23,7 @@ class ExtractAndSell(Behaviour):
         self.logger = logging.getLogger("bhvr_extract_and_sell")
 
     def run(self):
+        super().run()
         # all  threads should have this.
         self.logger.info("Beginning...")
         starting_credts = self.agent.credits

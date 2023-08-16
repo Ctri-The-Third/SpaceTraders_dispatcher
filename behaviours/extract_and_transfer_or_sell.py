@@ -21,6 +21,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
 
     def run(self):
+        super().run()
         starting_credts = self.st.view_my_self().credits
         ship = self.ship
         st = self.st

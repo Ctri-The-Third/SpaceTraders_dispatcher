@@ -28,6 +28,7 @@ class ExploreSystem(Behaviour):
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
 
     def run(self):
+        super().run()
         ship = self.ship
         st = self.st
         agent = st.view_my_self()

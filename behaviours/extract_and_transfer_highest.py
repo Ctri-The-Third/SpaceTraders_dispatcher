@@ -25,6 +25,7 @@ class ExtractAndTransferHeighest_1(Behaviour):
         )
 
     def run(self):
+        super().run()
         ship = self.ship
         st = self.st
         agent = st.view_my_self()

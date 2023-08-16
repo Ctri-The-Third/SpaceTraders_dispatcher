@@ -25,6 +25,7 @@ class Behaviour:
         self.behaviour_params = behaviour_params or {}
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
+        self.ship_name = ship_name
         for agent in saved_data["agents"]:
             if agent["username"] == agent_name:
                 token = agent["token"]
@@ -46,10 +47,21 @@ class Behaviour:
             db_pass=db_pass,
             current_agent_symbol=agent_name,
         )
-        self.connection = self.st.db_client.connection
+        self._connection = None
+        self.graph = None
+        self.ships = None
+        self.agent = None
+
+    @property
+    def connection(self):
+        if not self._connection or self.connection.closed > 0:
+            self._connection = self.st.db_client.connection
+        return self._connection
+
+    def run(self):
         self.graph = self._populate_graph()
 
-        self.ship = self.st.ships_view_one(ship_name, force=True)
+        self.ship = self.st.ships_view_one(self.ship_name, force=True)
         if not self.ship:
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
             raise Exception("error getting ship, aborting - %s", self.ship.error)
@@ -57,7 +69,6 @@ class Behaviour:
         # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
 
-    def run(self):
         pass
 
     def ship_intrasolar(

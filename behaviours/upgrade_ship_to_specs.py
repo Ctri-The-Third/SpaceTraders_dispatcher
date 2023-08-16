@@ -33,6 +33,7 @@ class FindModulesAndEquip(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
     def run(self):
+        super().run()
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
