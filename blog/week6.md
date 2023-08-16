@@ -4,8 +4,10 @@ moving into the second half of the 5th reset since I started playing, carrying o
 Where are we at? 
 * The starting system behaviours are great - ideal for the first few days, with compensation for varying prices for ships.
 * We've got rudimentary exploration of the jump gate network, but it's slow and inneficent.
-
-But
+* The mid game hump (moving from small scale ships to medium ships) is proving cumbersome. Ore Hound costs fucked us this time around. 
+  * We should throw in commanders as an alternative to ore_hounds, especially once upgraded with more powerful lasers and surveys.
+  * We could look at buying command frigates and outfitting them for more powerful mining instead of ore hounds.
+  * Ideally compile that behaviour hourly with some heavy computation on market distance.
 * Our starting script does have a hiccup in that the satelite isn't immediately and automatically moved to the shipyard
 * Our "ping all waypoints" behaviour in the DB doesn't have good handling of uncharted systems - it's not clear if we've got a detailed view of the system or not.
 
@@ -34,17 +36,67 @@ The solution is a "tasks" list - behaviour, parameters, a "value" (priority) and
 
 ## Multi-agent orchestration
 
-during the early stage of the game, we have an abundance of spare request capacity and insufficient ships.
-we need 429 counts for this but ideally:
+Whilst we originally had planned to do a multiboxing solution, this isn't possible due to the discovery that cargo transfer between agents is prohibited.
 
-* Look at request utilisation by the primary agent
-* Look at the 429 counts across the cluster.
+As such, our system architecture will need to pivot.
+We'll have 3 nodes:
+* Behaviour set A - Best fully automated set of behaviours
+* Behaviour set B - whatever experimental behaviours I'm working on.
+* Recon behaviour 
 
-Based on the number of 429s vs utilisation, we can decide whether or not to spin up a new agent.
-the new Commander can then be instructed to either go and survey/mine and transfer to the primary agent, or to go and explore the jump gate network. 
-These supporting behaviours need to be _extremely light_ on requests to avoid starving the primary agent.
+The recon behaviour will be responsible for scaling slowly, whilst focusing primarily on the following
+* Surveying asteroid fields where ships from either agent are extracting
+* Scanning waypoints & markets
+* Ensuring market data is up to date. 
 
-As the primary agent scales up and gains greater capability, we can scale down the supporting agents.
-Ideally by the time the primary agent is at the point of being request limited, we've got a jump gate network that's been explored.
 
-# check into the deliver endpoint - contracts now need to be intiialised with arguments
+
+## NEW ASTEROID BEHAVIOUR
+FOR EXTRACTORS
+* Find asteroids
+* Find markets that can accept goods from the asteroids
+* Map the asteroid_field to its closest market. 
+* Find the best asteorid field, and deploy all extractors there.
+* Extract using the most valuable survey (uses galactic average).
+
+FOR TRADERS
+* Look at the surveys we actively have from a given asteroid.
+* Look at all the market-places that have one or more items in that survey
+
+* Calculate the actual value of this survey at that marketplace
+* Calculate the time to travel to that marketplace & number of requests
+* Final value is value / travel time.
+
+* REQUIRED ANALYSIS - ARE WE PRODUCING MORE THAN WE CAN EXPORT?
+  * if so - the asteroid will run out of surveys.
+  * If not - good, the haulers can continue to create surveys.
+  * we can produce 10 every 70 seconds
+  * a hauler can accept 120, and be filled by an extractor in 840 seconds.
+  * two extractors can fill a hauler in 480 seconds. 
+  * 10 extractors can fill a hauler 84 seconds - extractors cannot produce surveys
+  * Based on the current route duration, we can group extractors with haulers
+  * Spare extractors can go extrasolar.
+  
+
+* PERSISTING THE TARGET MATERIALS UNTIL NEXT EXECUTION IS IMPORTANT.
+
+
+new ship_overview view
+SELECT s.ship_symbol,
+    s.ship_role,
+    sfl.frame_symbol,
+    sn.waypoint_symbol,
+    s.cargo_in_use,
+    s.cargo_capacity,
+    sb.behaviour_id,
+	sb.locked_until,
+	date_trunc( 'SECONDS',
+	CASE WHEN (now() at time zone 'utc' - s.last_updated) > INTERVAL '00:00'  
+    	THEN (now() at time zone 'utc' - s.last_updated) 
+    	ELSE interval '00:00'
+	END) as LAST_UPDATED
+   FROM ship s
+     LEFT JOIN ship_behaviours sb ON s.ship_symbol = sb.ship_symbol
+     JOIN ship_frame_links sfl ON s.ship_symbol = sfl.ship_symbol
+     JOIN ship_nav sn ON s.ship_symbol = sn.ship_symbol
+  ORDER BY s.last_updated DESC;

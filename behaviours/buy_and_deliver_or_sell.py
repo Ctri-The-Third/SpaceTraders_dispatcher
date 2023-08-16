@@ -5,7 +5,7 @@
 import sys
 
 sys.path.append(".")
-from straders_sdk.utils import waypoint_slicer, try_execute_select
+from straders_sdk.utils import waypoint_slicer, try_execute_select, set_logging
 from behaviours.generic_behaviour import Behaviour
 import logging
 import time
@@ -109,13 +109,27 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 max_to_buy,
                 target_tradegood,
             )
-        if target_tradegood in [item.symbol for item in ship.cargo_inventory]:
-            # self.return_half()
+        quantity = 0
+        for ship_inventory_item in ship.cargo_inventory:
+            if ship_inventory_item.symbol == target_tradegood:
+                quantity = ship_inventory_item.units
 
-            st.ship_orbit(ship)
-            rtb = False
-            self.ship_extrasolar(end_system)
-            self.ship_intrasolar(end_waypoint)
+        rtb = False
+        self.ship_extrasolar(end_system)
+        self.ship_intrasolar(end_waypoint)
+
+        if receive_ship and quantity > 0:
+            resp = st.ship_transfer_cargo(
+                ship, target_tradegood, quantity, receive_ship.name
+            )
+            if not resp:
+                self.logger.error(
+                    "Couldn't transfer %s %s to ship %s, because %s",
+                    quantity,
+                    target_tradegood,
+                    receive_ship.name,
+                    resp.error,
+                )
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listing
@@ -178,13 +192,15 @@ order by purchase_price asc """
 if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-VWK6A-"
     ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-VWK6A--1"
+
     bhvr = BuyAndDeliverOrSell_6(
         agent,
         ship,
         behaviour_params={
             "tradegood": "MODULE_ORE_REFINERY_I",
-            "quantity": 9,
-            "transfer_ship": "CTRI-UWK5--1",
+            "quantity": 1,
+            "transfer_ship": "CTRI-UWK5--12",
         },
     )
+    set_logging()
     bhvr.run()

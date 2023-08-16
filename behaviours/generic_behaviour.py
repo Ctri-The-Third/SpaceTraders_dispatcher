@@ -21,8 +21,6 @@ class Behaviour:
         behaviour_params: dict = {},
         config_file_name="user.json",
     ) -> None:
-        set_logging()
-
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
         saved_data = json.load(open(config_file_name, "r+"))
@@ -65,6 +63,8 @@ class Behaviour:
     def ship_intrasolar(
         self, target_wp_symbol: "str", sleep_till_done=True, flight_mode="CRUISE"
     ):
+        if isinstance(target_wp_symbol, Waypoint):
+            target_wp_symbol = target_wp_symbol.symbol
         st = self.st
         ship = self.ship
         if ship.nav.flight_mode != flight_mode:
@@ -241,6 +241,8 @@ class Behaviour:
     def ship_extrasolar(self, destination_system: System, route: list = None):
         st = self.st
         ship = self.ship
+        if ship.nav.system_symbol == destination_system.symbol:
+            return True
         o_sys = st.systems_view_one(ship.nav.system_symbol)
         route = route or self.astar(self.graph, o_sys, destination_system)
         if not route:

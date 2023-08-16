@@ -75,7 +75,7 @@ def ship_overview():
 , cargo_in_use
 , cargo_capacity
 , behaviour_id
-, locked_until from ship_overview
+, last_updated from ship_overview
 where locked_until > now() at time zone 'utc'
 order by ship_symbol
     """
