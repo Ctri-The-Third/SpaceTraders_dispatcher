@@ -4,6 +4,7 @@ from .ship import Ship
 from .client_interface import SpaceTradersClient
 
 from .responses import SpaceTradersResponse
+from .pg_pieces.transactions import _upsert_transaction
 import psycopg2
 import uuid
 import json
@@ -114,6 +115,13 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
+        if isinstance(update_obj, SpaceTradersResponse):
+            update_obj = update_obj.data
+        if isinstance(update_obj, dict):
+            if "transaction" in update_obj:
+                _upsert_transaction(
+                    self.connection, update_obj["transaction"], self.session_id
+                )
         return
 
     def register(
@@ -273,6 +281,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         url = _url(f"my/ships/:ship_name/sell")
         self.log_event("ship_sell", ship.name, url, response)
+        self.update(response)
 
         pass
 

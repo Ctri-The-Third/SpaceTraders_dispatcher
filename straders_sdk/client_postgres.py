@@ -92,7 +92,6 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             _upsert_agent(self.connection, update_obj)
         if isinstance(update_obj, Contract):
             _upsert_contract(self.connection, self.current_agent_symbol, update_obj)
-        pass
 
     def register(self, callsign, faction="COSMIC", email=None) -> SpaceTradersResponse:
         return dummy_response(__class__.__name__, "register")
