@@ -1057,6 +1057,20 @@ CREATE OR REPLACE VIEW public.survey_average_values AS
   ORDER BY (sum((mp.sell_price * (sd.count)::numeric))) DESC;
 
 
+--
+-- TOC entry 3103 (class 2620 OID 16686)
+-- Name: ship update_a_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
+--
+
+CREATE TRIGGER update_a_last_updated AFTER UPDATE ON public.ship FOR EACH ROW EXECUTE FUNCTION public.update_last_updated();
+
+
+--
+-- TOC entry 3104 (class 2620 OID 16687)
+-- Name: ship update_ship_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
+--
+
+CREATE TRIGGER update_ship_last_updated AFTER UPDATE ON public.ship FOR EACH ROW EXECUTE FUNCTION public.update_last_updated();
 
 
 --
