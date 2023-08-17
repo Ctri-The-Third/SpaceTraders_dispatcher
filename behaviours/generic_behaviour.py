@@ -2,7 +2,7 @@ import json
 from straders_sdk import SpaceTraders
 from time import sleep
 from straders_sdk.ship import Ship
-from straders_sdk.models import Waypoint, System
+from straders_sdk.models import Waypoint, System, Market
 from straders_sdk.utils import set_logging, try_execute_select
 import logging
 import math
@@ -164,15 +164,28 @@ class Behaviour:
             if flight_mode:
                 self.st.ship_patch_nav(ship, flight_mode)
 
-    def sell_all_cargo(self, exceptions: list = []):
+    def sell_all_cargo(self, exceptions: list = [], market: Market = None):
         ship = self.ship
         st = self.st
+        listings = {}
+        if market is not None:
+            listings = {listing.symbol: listing for listing in market.listings}
         if ship.nav.status != "DOCKED":
             st.ship_dock(ship)
         for cargo in ship.cargo_inventory:
             if cargo.symbol in exceptions:
                 continue
-            st.ship_sell(ship, cargo.symbol, cargo.units)
+            # we need to validate that we're not selling more than the tradegood volume for the market allows.
+            listing = listings.get(cargo.symbol, None)
+            trade_volume = cargo.units
+            if listing:
+                trade_volume = listing.trade_volume
+            for i in range(0, cargo.units // trade_volume + 1):
+                resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
+                if not resp:
+                    return resp
+
+        return True
 
     def scan_local_system(self):
         st = self.st
@@ -263,8 +276,8 @@ class Behaviour:
             return True
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
-        if ship.nav.travel_time_remaining > 0:
-            sleep(ship.nav.travel_time_remaining)
+        if ship.nav.travel_time_remaining > 0 or ship.seconds_until_cooldown > 0:
+            sleep(max(ship.nav.travel_time_remaining, ship.seconds_until_cooldown))
         current_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )

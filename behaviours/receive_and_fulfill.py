@@ -10,6 +10,7 @@ from behaviours.generic_behaviour import Behaviour
 import logging
 
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
+from straders_sdk.utils import waypoint_slicer, set_logging
 
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
 
@@ -27,63 +28,56 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
     def run(self):
         super().run()
-        ship = self.ship
         st = self.st
+        ship = self.ship
+        st.ship_cooldown(ship)
+
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+
+        fulfill_wp_s = None
+        start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
+        start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
+        market_wp_s = self.behaviour_params.get("market_wp", None)
+
+        destination_sys = st.systems_view_one(
+            waypoint_slicer(market_wp_s or fulfill_wp_s)
+        )
 
         if ship.fuel_current < min(ship.fuel_capacity, 200):
             st.ship_dock(ship)
             st.ship_refuel(ship)
             st.ship_orbit(ship)
-        if "asteroid_wp" in self.behaviour_params:
-            start_waypoint = self.behaviour_params["asteroid_wp"]
-            self.ship_intrasolar(start_waypoint)
-        else:
-            start_waypoint = None
         if ship.nav.status != "IN_ORBIT":
             st.ship_orbit(ship)
         if ship.can_survey:
             st.ship_survey(ship)
-
-        if ship.cargo_units_used >= ship.cargo_capacity - 10:
-            # lets go get the contract information
-            start_waypoint = (
-                ship.nav.waypoint_symbol if start_waypoint is None else start_waypoint
-            )
+        # we're full, prep and deploy
+        if (
+            ship.cargo_units_used >= ship.cargo_capacity - 10
+            or ship.nav.system_symbol == destination_sys.symbol
+        ):
+            # are we doing a sell, or a contract?
+            # check if we have a contract for the items in our inventory
             found_contracts = st.view_my_contracts()
             contracts = []
             for id, contract in found_contracts.items():
-                if not contract.accepted:
-                    resp = st.contract_accept(id)
-                    if resp:
-                        contracts.append(contract)
-                elif contract.accepted and not contract.fulfilled:
+                if contract.accepted and not contract.fulfilled:
                     contracts.append(contract)
             cargo_to_skip = []
-            fulfill_waypoint = None
-            if len(contracts) > 0:
-                for contract in contracts:
-                    for item in contract.deliverables:
-                        if item.units_fulfilled < item.units_required:
-                            fulfill_waypoint = item.destination_symbol
-                            cargo_to_skip.append(item.symbol)
-            # now we have a list of cargo items to skip
-            # lets sell at the current location
-
-            self.sell_all_cargo(cargo_to_skip)
-
-            rtb = False
-            for cargo_item in ship.cargo_inventory:
-                if cargo_item.symbol in cargo_to_skip:
-                    rtb = True
+            # if len(contracts) > 0:
+            #    for contract in contracts:
+            #        for item in contract.deliverables:
+            #            if item.units_fulfilled < item.units_required:
+            #                fulfill_wp_s = item.destination_symbol
+            #                cargo_to_skip.append(item.symbol)
 
             st.ship_orbit(ship)
-            if rtb:
-                self.ship_intrasolar(fulfill_waypoint)
+            self.ship_extrasolar(destination_sys)
+            self.ship_intrasolar(market_wp_s or fulfill_wp_s)
 
-                # for deliverables, check if we have them in inventory, and delivery.
-                st.ship_dock(ship)
+            st.ship_dock(ship)
+            if fulfill_wp_s:
                 for contract in contracts:
                     for item in contract.deliverables:
                         if item.units_fulfilled < item.units_required:
@@ -95,8 +89,19 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                                         cargo_item.symbol,
                                         cargo_item.units,
                                     )
-                st.ship_orbit(ship)
-                self.ship_intrasolar(start_waypoint)
+            else:
+                market = st.system_market(
+                    st.waypoints_view_one(destination_sys, market_wp_s)
+                )
+                resp = self.sell_all_cargo(market=market)
+
+                st.system_market(
+                    st.waypoints_view_one(destination_sys, market_wp_s), True
+                )
+                if resp:
+                    st.ship_orbit(ship)
+                    self.ship_extrasolar(start_sys)
+                    self.ship_intrasolar(start_wp_s)
 
         self.sleep_until_ready()
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -105,9 +110,16 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-TEST-LAMP"
-    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-TEST-LAMP-1"
+    set_logging(level=logging.DEBUG)
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-UWK5-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "12"
+    ship = f"{agent}-{ship_number}"
     bhvr = ReceiveAndFulfillOrSell_3(
-        agent, ship, behaviour_params={"asteroid_wp": "X1-YA22-87615D"}
+        agent,
+        ship,
+        behaviour_params={
+            "market_wp": "X1-JJ96-77642Z",
+            "asteroid_wp": "X1-YA22-87615D",
+        },
     )
     bhvr.run()

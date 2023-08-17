@@ -76,7 +76,8 @@ class FindModulesAndEquip(Behaviour):
 
             if ship.nav.waypoint_symbol == destination_wp_sym:
                 st.ship_dock(ship)
-                resp = st.ship_purchase_cargo(ship, target_mount, 1)
+                # resp = st.ship_purchase_cargo(ship, target_mount, 1)
+                resp = True
                 if not resp:
                     time.sleep(SAFETY_PADDING)
                     continue

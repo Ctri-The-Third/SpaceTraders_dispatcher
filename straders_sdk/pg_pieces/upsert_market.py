@@ -67,7 +67,7 @@ ON CONFLICT (symbol) DO NOTHING;"""
 
     if market.listings:
         sql = """INSERT INTO public.market_tradegood_listing 
-            ( market_symbol, symbol, supply, purchase_price, sell_price, last_updated )
+            ( market_symbol, symbol, supply, market_depth, purchase_price, sell_price, last_updated )
             VALUES ( %s, %s, %s, %s, %s, %s )
             ON CONFLICT (market_symbol, symbol) DO UPDATE
                     SET supply = EXCLUDED.supply
@@ -83,6 +83,7 @@ ON CONFLICT (symbol) DO NOTHING;"""
                     market.symbol,
                     listing.symbol,
                     listing.supply,
+                    listing.trade_volume,
                     listing.purchase,
                     listing.sell_price,
                     listing.recorded_ts,

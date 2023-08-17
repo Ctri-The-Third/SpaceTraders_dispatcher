@@ -9,7 +9,7 @@ import psycopg2
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
-from straders_sdk.models import ShipyardShip, Waypoint, Shipyard
+from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
 
 from behaviours.conductor_refresh import run as refresh_stale_waypoints
@@ -23,12 +23,17 @@ from dispatcherWK5 import (
     BHVR_REMOTE_SCAN_AND_SURV,
 )
 
+BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
+    "Placeholder, receive & fulfill or sell (update in conductor)"
+)
+
 logger = logging.getLogger("conductor")
 
 
 def master():
     agents_and_clients = get_agents()
-    stages_per_agent = {agent: 0 for agent in agents_and_clients}
+    starting_stage = 4
+    stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
     # stage 1 - commander to extract & sell
@@ -100,9 +105,6 @@ def stage_1(client: SpaceTraders):
     if len(extractors) >= 2:
         return 2
 
-    # 1. check market data - if stale, refresh
-    # 2. check survey values - if low perform a survey
-    # 3. set to extract and sell
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     for ship in commanders:
@@ -170,7 +172,7 @@ def stage_2(client: SpaceTraders):
 
 def stage_3(client: SpaceTraders):
     # we're have 1 or 2 surveyors, and 3 or 5 excavators.
-    # at this point we want to switch to surveying and hauling, not raw hauling.
+    # at this point we want to switch to surveying and extracting, not raw extracting.
     agent = client.view_my_self()
     hq_wp = agent.headquarters
     hq_sys = waypoint_slicer(hq_wp)
@@ -191,8 +193,12 @@ def stage_3(client: SpaceTraders):
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
+    extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
-    if len(excavators) >= 30 and len(haulers) >= 3:
+    if (
+        len(excavators) >= 30
+        and len(haulers) >= len(excavators) / extractors_per_hauler
+    ):
         return 4
 
     #
@@ -224,7 +230,7 @@ def stage_3(client: SpaceTraders):
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
-    if len(haulers) <= (len(excavators) / 10):
+    if len(haulers) <= (len(excavators) / extractors_per_hauler):
         ship = maybe_buy_ship(
             client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
         )
@@ -248,13 +254,14 @@ def stage_3(client: SpaceTraders):
 def stage_4(client: SpaceTraders):
     # we're at at 30 excavators and 3 haulers.
     # Ideally we want to start building up hounds, replacing excavators.
+    # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
     agent = client.view_my_self()
-    hq_sys = waypoint_slicer(agent.headquarters)
-
+    hq_sys_sym = waypoint_slicer(agent.headquarters)
+    connection = client.db_client.connection
     ships = client.ships_view()
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
-    hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
+    drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     refiners = [
         ship
@@ -263,28 +270,41 @@ def stage_4(client: SpaceTraders):
     ]
     target_hounds = 50
     target_refiners = 1
+    extractors_per_hauler = 5
+    # once we're at 30 excavators and 3 haulers, we can move on.
+    if (
+        len(hounds) >= target_hounds
+        and len(haulers) >= len(excavators) / extractors_per_hauler
+    ):
+        return 5
+    # note at stage 4, behaviour should be handled less frequently, based on compiled stuff.
 
-    # determine the most >time-efficient< way to sell minables - excluding the starting market (which will be our failover)
-    # set the extractors to extract and transfer
+    # set the extractors to extract and transfer only the most valuable item from that survey
     # set the haulers to receive and fulfill
     # if the surveys are weak, set the surveyors to survey instead.
     # for drone in drones:
     #    set_behaviour(drone.name, "DISABLED")
+
     if len(excavators) >= target_hounds:
         # go through the first $EXCESS drones and disable them.
         for drone in drones[: len(excavators) - target_hounds]:
             set_behaviour(drone.name, "DISABLED")
-    if len(refiners) < target_refiners:
-        ship = maybe_buy_ship(client, hq_sys, "SHIP_REFINING_FREIGHTER")
+
+    # scale up freighters - either way we need this.
+    if (
+        len(haulers)
+        <= min(len(excavators) + len(hounds), target_hounds) / extractors_per_hauler
+    ):
+        ship = maybe_buy_ship(client, hq_sys_sym, "SHIP_LIGHT_HAULER")
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
-
-    if len(haulers) <= len(hounds) / 10:
-        ship = maybe_buy_ship(client, hounds[0].nav.system_symbol, "SHIP_LIGHT_HAULER")
+    # then either buy a refining freighter, or an ore hound
+    if len(refiners) < target_refiners:
+        ship = maybe_buy_ship(client, hq_sys_sym, "SHIP_REFINING_FREIGHTER")
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     elif len(hounds) <= target_hounds:
-        ship = maybe_buy_ship(client, hq_sys, "SHIP_ORE_HOUND")
+        ship = maybe_buy_ship(client, hq_sys_sym, "SHIP_ORE_HOUND")
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER)
 
@@ -405,8 +425,8 @@ def get_systems_to_explore(client: SpaceTraders, ships: list[Ship]):
     limit %s """
     results = try_execute_select(sql, client.db_client.connection, (len(ships),))
     return_obj = {ship.name: "" for ship in ships}
-    for results in results:
-        return_obj[results[0]] = (results[1], results[2])
+    for result in results:
+        return_obj[results[0]] = (result[1], result[2])
     # limit ourselves to the 50 oldest waypoints.
 
     # for each potential waypoint targets figure out the age / distance
