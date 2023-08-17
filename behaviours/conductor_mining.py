@@ -62,7 +62,10 @@ def run(client: SpaceTraders):
             "asteroid_wp": asteroid_wp.symbol,
             "market_wp": target_info[0],
         }
-        for excavator in excavators:
+        extractors_per_hauler = 3
+        hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
+        other_extractors = excavators[len(haulers) * extractors_per_hauler :]
+        for excavator in hauler_extractors:
             set_behaviour(
                 connection, excavator.name, EXTRACT_TRANSFER, extraction_params
             )
@@ -73,6 +76,8 @@ def run(client: SpaceTraders):
                 BHVR_RECEIVE_AND_FULFILL_OR_SELL,
                 transfer_params,
             )
+        for excavator in other_extractors:
+            set_behaviour(connection, excavator.name, BHVR_EXTRACT_AND_SELL)
 
 
 def get_price_per_distance_for_survey(

@@ -792,7 +792,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.logging_client.ship_sell(ship, symbol, quantity, resp)
         if resp:
             ship.update(resp.data)
-            self.db_client.update(resp)
+            self.update(ship)
             self.update(resp.data)
         return resp
 

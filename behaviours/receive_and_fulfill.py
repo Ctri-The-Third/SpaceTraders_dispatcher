@@ -102,6 +102,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                     st.ship_orbit(ship)
                     self.ship_extrasolar(start_sys)
                     self.ship_intrasolar(start_wp_s)
+        else:
+            self.ship_extrasolar(start_sys)
+            self.ship_intrasolar(start_wp_s)
 
         self.sleep_until_ready()
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -114,12 +117,5 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-UWK5-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "12"
     ship = f"{agent}-{ship_number}"
-    bhvr = ReceiveAndFulfillOrSell_3(
-        agent,
-        ship,
-        behaviour_params={
-            "market_wp": "X1-JJ96-77642Z",
-            "asteroid_wp": "X1-YA22-87615D",
-        },
-    )
+    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, {})
     bhvr.run()

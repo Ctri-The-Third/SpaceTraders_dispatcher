@@ -12,7 +12,7 @@ from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
 
-from behaviours.conductor_refresh import run as refresh_stale_waypoints
+from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
 from dispatcherWK5 import (

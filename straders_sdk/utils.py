@@ -226,6 +226,8 @@ def sleep_until_ready(ship: "Ship"):
 
 def waypoint_slicer(waypoint_symbol: str) -> str:
     "returns the system symbol from a waypoint symbol"
+    if not waypoint_symbol:
+        return None
     pieces = waypoint_symbol.split("-")
     return f"{pieces[0]}-{pieces[1]}"
 
