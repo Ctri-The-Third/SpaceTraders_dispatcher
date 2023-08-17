@@ -96,9 +96,9 @@ class ExtractAndTransferOrSell_4(Behaviour):
                         )
 
         #
-        # sell all remaining cargo now we're full.
+        # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
         #
-        self.sell_all_cargo(cargo_to_transfer)
+        self.sell_all_cargo()
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
             time.sleep(300)

@@ -277,18 +277,7 @@ def stage_4(client: SpaceTraders):
         and len(haulers) >= len(excavators) / extractors_per_hauler
     ):
         return 5
-    # note at stage 4, behaviour should be handled less frequently, based on compiled stuff.
-
-    # set the extractors to extract and transfer only the most valuable item from that survey
-    # set the haulers to receive and fulfill
-    # if the surveys are weak, set the surveyors to survey instead.
-    # for drone in drones:
-    #    set_behaviour(drone.name, "DISABLED")
-
-    if len(excavators) >= target_hounds:
-        # go through the first $EXCESS drones and disable them.
-        for drone in drones[: len(excavators) - target_hounds]:
-            set_behaviour(drone.name, "DISABLED")
+    # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
 
     # scale up freighters - either way we need this.
     if (

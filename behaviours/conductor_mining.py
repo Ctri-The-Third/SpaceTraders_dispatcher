@@ -62,7 +62,7 @@ def run(client: SpaceTraders):
             "asteroid_wp": asteroid_wp.symbol,
             "market_wp": target_info[0],
         }
-        extractors_per_hauler = 3
+        extractors_per_hauler = 2
         hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
         other_extractors = excavators[len(haulers) * extractors_per_hauler :]
         for excavator in hauler_extractors:

@@ -3,7 +3,7 @@
 # display ships & behaviours
 
 # display discovered shipyards & market info (if available)
-
+import pandas as pd
 import markdown
 import psycopg2
 from time import sleep
@@ -31,12 +31,25 @@ mk_str = """
 
 <div markdown = block>%s</div>
 <div markdown = block>%s</div>
+<div markdown = block>%s</div>
 
 # Ships & behaviours
 %s
 
 %s
 """
+
+
+def transaction_summary():
+    sql = """select agent_name, credits_earned, event_hour 
+    from agent_credits_per_hour """
+    rows = try_execute_select(connection, sql, ())
+    df = pd.DataFrame(rows, columns=["agent_name", "credits_earned", "event_hour"])
+    pivot_df = pd.pivot(
+        index="event_hour", columns="agent_name", values="credits_earned", data=df
+    )
+    out_str = pivot_df.to_markdown()
+    return out_str
 
 
 def scan_progress():
@@ -120,6 +133,7 @@ while True:
         css_blob,
         commander_overview(),
         scan_progress(),
+        transaction_summary(),
         ship_overview(),
         javascript_refresh_blob,
     )
