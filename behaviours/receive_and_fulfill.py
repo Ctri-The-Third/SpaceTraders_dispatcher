@@ -102,6 +102,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                     st.ship_orbit(ship)
                     self.ship_extrasolar(start_sys)
                     self.ship_intrasolar(start_wp_s)
+
+                    # we added this in for circumstances when we've incorrect, left over cargo in the hold that needs drained. Might need a "vent all" option too.
+                    self.sell_all_cargo()
         else:
             self.ship_extrasolar(start_sys)
             self.ship_intrasolar(start_wp_s)
