@@ -197,7 +197,7 @@ def stage_3(client: SpaceTraders):
     # once we're at 30 excavators and 3 haulers, we can move on.
     if (
         len(excavators) >= 30
-        and len(haulers) >= len(excavators) / extractors_per_hauler
+        and len(haulers) >= len(excavators) // extractors_per_hauler
     ):
         return 4
 
