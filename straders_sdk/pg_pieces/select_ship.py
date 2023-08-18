@@ -17,6 +17,7 @@ def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
 				left join ship_frames sf on sf.frame_symbol = sfl.frame_symbol
                 left join ship_cooldown sc on s.ship_symbol = sc.ship_symbol
                 where s.agent_name = %s
+                order by s.ship_symbol
                 """
     return _select_some_ships(db_client, sql, (agent_name,))
 
