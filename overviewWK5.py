@@ -81,7 +81,7 @@ def scan_progress():
 
 def commander_overview():
     sql = """select ao.symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated from agent_overview ao 
-            join contrashipcts_overview co on ao.symbol = co.agent_symbol 
+            join contracts_overview co on ao.symbol = co.agent_symbol 
             order by last_updated desc"""
     cursor.execute(sql)
     rows = cursor.fetchall()

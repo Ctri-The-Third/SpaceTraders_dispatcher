@@ -417,7 +417,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             for syst in resp:
                 syst: System
-                print(f"{syst.symbol} {syst.x},{syst.y}")
                 self.db_client.update(syst)
             return {d.symbol: d for d in resp}
 

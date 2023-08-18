@@ -252,7 +252,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         """my/ships/:shipSymbol/jump"""
         url = _url(f"my/ships/:ship_name/jump")
         event_params = {"dest_waypoint_symbol": dest_waypoint_symbol}
-        self.log_event("ship_jump", ship.name, url, response)
+        self.log_event("ship_jump", ship.name, url, response, event_params)
 
         pass
 

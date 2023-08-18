@@ -43,6 +43,7 @@ class MonitorPrices(Behaviour):
             )
             time.sleep(600)
             return
+        print(f"Searching for ship {rows[0][0]} at  wayp {rows[0][1]} ")
         target_wp = rows[0][1]
         target_sys_sym = waypoint_slicer(target_wp)
         target_sys = st.systems_view_one(target_sys_sym)
@@ -58,7 +59,7 @@ class MonitorPrices(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-UWK5-"
-    ship_suffix = "27"
+    ship_suffix = "25"
     params = None
     params = {"ship_type": "SHIP_ORE_HOUND"}
     MonitorPrices(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()

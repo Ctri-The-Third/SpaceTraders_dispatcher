@@ -304,11 +304,11 @@ def stage_4(client: SpaceTraders):
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     # then either buy a refining freighter, or an ore hound
-    if len(refiners) < target_refiners:
-        ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
-        if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
-    elif len(hounds) <= target_hounds:
+    # if len(refiners) < target_refiners:
+    #    ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
+    #    if ship:
+    #        set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+    if len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER)
@@ -364,6 +364,7 @@ def maybe_buy_ship(client: SpaceTraders, connection, ship_symbol):
         logger.error("Couldn't find ship type %s", ship_symbol)
         return False
     target_wp_sym = rows[0][1]
+    print (f"attempting to buy ore hound at price {} from ")
     target_wp = client.waypoints_view_one(waypoint_slicer(target_wp_sym), target_wp_sym)
     shipyard = client.system_shipyard(target_wp)
     return _maybe_buy_ship(client, shipyard, ship_symbol)
