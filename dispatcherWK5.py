@@ -163,10 +163,10 @@ class dispatcher(SpaceTraders):
                 if ship_sym not in unlocked_ship_symbols:
                     # we're running a ship that's no longer unlocked - terminate the thread
                     thread: threading.Thread
-                    thread.terminate()
+                    # here's where we'd send a terminate event to the thread, but I'm not going to do this right now.
                     del ships_and_threads[ship_sym]
                     self.logger.warning(
-                        "lost lock for active ship %s - terminating!", ship_sym
+                        "lost lock for active ship %s - risk of conflict!", ship_sym
                     )
 
             # every second, check if we have idle ships whose behaviours we can execute.
