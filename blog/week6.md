@@ -23,12 +23,12 @@ Where are we at?
  * How to handle systems that _were_ uncharted but are now charted? the upsert doesn't delete the "UNCHARTED" tag. 
  * An event driven thing? or an ETL?
 * be selective about which contracts we accept - we should only accept contracts we can fulfill - either because we can buy/sell, or because we can mine/fulfill.
-* Satelites should/ could be deployed to shipyards and marketplaces of value.
- * Each shipyard with the lowest_cost available should get a satelite.
+* ☑️Satelites should/ could be deployed to shipyards and marketplaces of value.
+ * ✅ Each shipyard with the lowest_cost available should get a satelite.
  * extra satelites should be deployed to the marketplaces facilitating the current thing.
-* Currently whenever we want to make a change, we have to reset the dispatcher. I didn't realise how much of an impact it makes, but even a single restart knocks about a thousand credits off the hour's outcome.
- * Dispatcher needs to stop refreshing threads for ships that aren't returned by the "unlocked" function - this will let us change who they're locked to in the DB, and have the new dispatcher pick them up as they phase off the old dispatcher.
- * Dispatchers need better names - have ChatGPT come up with 50 possibilities.
+* ✅ Currently whenever we want to make a change, we have to reset the dispatcher. I didn't realise how much of an impact it makes, but even a single restart knocks about a thousand credits off the hour's outcome.
+ * ✅ Dispatcher needs to stop refreshing threads for ships that aren't returned by the "unlocked" function (already implemented). To phase between them, switch the lock from one to the other, ideally 10 at a time to avoid old_node tanking before new_node is up to speed.
+ * ✅ Dispatchers need better names - have ChatGPT come up with 50 possibilities.
  * What's the best ship / behaviour to expand more of? Is it an excavator, a freighter, or an ore hound? 
    * How have the behaviours been performing in the last hour?
 ## Tasks
@@ -53,27 +53,3 @@ The recon behaviour will be responsible for scaling slowly, whilst focusing prim
 * Surveying asteroid fields where ships from either agent are extracting
 * Scanning waypoints & markets
 * Ensuring market data is up to date. 
-
-
-
-## NEW ASTEROID BEHAVIOUR
-FOR EXTRACTORS
-
-* Find asteroids
-* Find markets that can accept goods from the asteroids
-* Map the asteroid_field to its closest market. 
-* Find the best asteorid field, and deploy all extractors there.
-* Extract using the most valuable survey (uses galactic average).
-
-* we should have "spare" extractors go mine precious materials and sell them.
-
-FOR TRADERS
-* Look at the surveys we actively have from a given asteroid.
-* Look at all the market-places that have one or more items in that survey
-
-* Calculate the actual value of this survey at that marketplace
-* Calculate the time to travel to that marketplace & number of requests
-* Final value is value / travel time.
-* We need to drain haulers afterwards - looks like they're getting stuck when targets change. TODO tonight - drain haulers before bed.
-
-  

@@ -57,8 +57,8 @@ class MonitorPrices(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-RWK5-"
-    ship_suffix = "1"
+    agent_symbol = "CTRI-UWK5-"
+    ship_suffix = "27"
     params = None
-    params = {"ship_type": "SHIP_LIGHT_HAULER"}
+    params = {"ship_type": "SHIP_ORE_HOUND"}
     MonitorPrices(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
