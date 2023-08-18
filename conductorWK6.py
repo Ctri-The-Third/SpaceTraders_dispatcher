@@ -52,7 +52,11 @@ def master():
         for agent, client in agents_and_clients.items():
             logger.info(f"Agent {agent} is at stage {stages_per_agent[agent]}")
             current_stage = stages_per_agent[agent]
-            stages_per_agent[agent] = stage_functions[current_stage](client)
+            try:
+                stages_per_agent[agent] = stage_functions[current_stage](client)
+            except Exception as err:
+                logger.error(err)
+                continue
         time.sleep(sleep_time)
 
         sleep_time = 60
@@ -364,7 +368,7 @@ def maybe_buy_ship(client: SpaceTraders, connection, ship_symbol):
         logger.error("Couldn't find ship type %s", ship_symbol)
         return False
     target_wp_sym = rows[0][1]
-    print (f"attempting to buy ore hound at price {} from ")
+    print(f"attempting to buy {ship_symbol} at price from {target_wp_sym}")
     target_wp = client.waypoints_view_one(waypoint_slicer(target_wp_sym), target_wp_sym)
     shipyard = client.system_shipyard(target_wp)
     return _maybe_buy_ship(client, shipyard, ship_symbol)
