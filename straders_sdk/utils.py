@@ -9,6 +9,7 @@ import random
 import time
 from .local_response import LocalSpaceTradersRespose
 
+st_log_client: "SpaceTradersClient" = None
 ST_LOGGER = logging.getLogger("API-Client")
 
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -91,6 +92,8 @@ def get_and_validate(
             logging.error("Error: %s, %s", url, err)
         _log_response(response)
         if response.status_code == 429:
+            if st_log_client:
+                st_log_client.log_429(url, RemoteSpaceTradersRespose(response))
             logging.debug("Rate limited. Waiting %s seconds", i)
             time.sleep(i * (i + random.random()))
             continue

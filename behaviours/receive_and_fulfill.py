@@ -41,7 +41,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         market_wp_s = self.behaviour_params.get("market_wp", None)
 
         destination_sys = st.systems_view_one(
-            waypoint_slicer(market_wp_s or fulfill_wp_s)
+            waypoint_slicer(market_wp_s or fulfill_wp_s or start_wp_s)
         )
 
         if ship.fuel_current < min(ship.fuel_capacity, 200):

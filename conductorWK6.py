@@ -269,7 +269,7 @@ def stage_4(client: SpaceTraders):
     ]
     target_hounds = 50
     target_refiners = 1
-    extractors_per_hauler = 5
+    extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
     if (
         len(hounds) >= target_hounds

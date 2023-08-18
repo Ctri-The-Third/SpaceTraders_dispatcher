@@ -24,7 +24,8 @@ connection = psycopg2.connect(
 
 cursor = connection.cursor()
 
-mk_str = """
+agent_str = """
+<title> Agents overview </title>
 %s
 
 # Commanders & contracts
@@ -33,11 +34,17 @@ mk_str = """
 <div markdown = block>%s</div>
 <div markdown = block>%s</div>
 
-# Ships & behaviours
-%s
 
 %s
 """
+
+ship_str = """
+<title> Ships overview</title>
+%s
+# Ships & behaviours
+%s
+
+%s"""
 
 
 def transaction_summary():
@@ -74,7 +81,7 @@ def scan_progress():
 
 def commander_overview():
     sql = """select ao.symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated from agent_overview ao 
-            join contracts_overview co on ao.symbol = co.agent_symbol 
+            join contrashipcts_overview co on ao.symbol = co.agent_symbol 
             order by last_updated desc"""
     cursor.execute(sql)
     rows = cursor.fetchall()
@@ -135,17 +142,29 @@ setTimeout(function(){
 </script>
 """
 
-while True:
-    out_str = mk_str % (
-        css_blob,
-        commander_overview(),
-        scan_progress(),
-        transaction_summary(),
-        ship_overview(),
-        javascript_refresh_blob,
-    )
-    out_str = markdown.markdown(out_str, extensions=["tables", "md_in_html"])
-    file = open("overview.md", "w+")
-    file.write(out_str)
+
+def out_to_file(str, filename):
+    str = markdown.markdown(str, extensions=["tables", "md_in_html"])
+    file = open(filename, "w+")
+    file.write(str)
     file.close()
+
+
+while True:
+    out_to_file(
+        agent_str
+        % (
+            css_blob,
+            commander_overview(),
+            scan_progress(),
+            transaction_summary(),
+            javascript_refresh_blob,
+        ),
+        "overview.md",
+    )
+
+    out_to_file(
+        ship_str % (css_blob, ship_overview(), javascript_refresh_blob),
+        "overview_ships.md",
+    )
     sleep(30)

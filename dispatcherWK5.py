@@ -52,7 +52,7 @@ class dispatcher(SpaceTraders):
         db_pass: str,
         current_agent_symbol: str,
     ) -> None:
-        self.lock_id = f"W5dis {get_fun_name()}"
+        self.lock_id = f"w5dis {get_fun_name()}"
         self.db_host = db_host
         self.db_port = db_port
         self.db_name = db_name
