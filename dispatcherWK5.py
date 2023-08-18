@@ -141,7 +141,8 @@ class dispatcher(SpaceTraders):
             active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
 
             logging.info(
-                " found %d unlocked ships - %s active (%s%%)",
+                "dispatcher %s found %d unlocked ships - %s active (%s%%)",
+                self.lock_id,
                 len(unlocked_ships),
                 active_ships,
                 round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
@@ -152,6 +153,21 @@ class dispatcher(SpaceTraders):
                 api_logger.setLevel(logging.INFO)
                 self.logger.level = logging.INFO
                 logging.getLogger().setLevel(logging.INFO)
+
+            # if we're running a ship and the lock has expired during execution, what do we do?
+            # do we relock the ship whilst we're running it, or terminate the thread
+            # I say terminate.
+
+            unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
+            for ship_sym, thread in ships_and_threads.items():
+                if ship_sym not in unlocked_ship_symbols:
+                    # we're running a ship that's no longer unlocked - terminate the thread
+                    thread: threading.Thread
+                    thread.terminate()
+                    del ships_and_threads[ship_sym]
+                    self.logger.warning(
+                        "lost lock for active ship %s - terminating!", ship_sym
+                    )
 
             # every second, check if we have idle ships whose behaviours we can execute.
             for i in range(15):
@@ -245,7 +261,7 @@ def get_fun_name():
         "titan",
         "helios",
     ]
-    suffixes = ["five", "seven", "nine"]
+    suffixes = ["five", "seven", "nine", "prime"]
     prefix_index = random.randint(0, len(mid_parts) - 1)
     mid_index = random.randint(0, len(mid_parts) - 1)
     suffix_index = random.randint(0, len(mid_parts) - 1)
