@@ -695,10 +695,10 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return
 
-    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str):
         """my/ships/:shipSymbol/course"""
-        resp = self.api_client.ship_patch_nav(ship, dest_waypoint_symbol)
-        self.logging_client.ship_patch_nav(ship, resp)
+        resp = self.api_client.ship_patch_nav(ship, flight_mode)
+        self.logging_client.ship_patch_nav(ship, flight_mode, resp)
         if resp:
             ship.update({"nav": resp.data})
             self.update(ship)

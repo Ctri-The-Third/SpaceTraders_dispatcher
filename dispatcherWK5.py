@@ -131,6 +131,22 @@ class dispatcher(SpaceTraders):
         return []
 
     def run(self):
+        print(f"***  DISPATCHER [{self.lock_id}] ACTIVATED ***")
+        print("")
+        print(" TO TRANSFER SHIPS TO THIS DISPATCHER WITHOUT DOWNTIME, USE THE FOLLOWING COMMANDS:")
+        print(
+            f"""update ship_behaviours
+set locked_by = '{self.lock_id}'
+where ship_symbol in (
+	select ship_symbol from ship_behaviours
+	where ship_symbol ilike 'CTRI-UWK5%'
+	and locked_by != '{self.lock_id}'
+	limit 10
+)"""
+        )
+        print(
+            """WAIT UNTIL DISPATCHER IS REPORTING ON UNLOCKED SHIPS AGAIN BEFORE REPEATING.\N
+            EXPECT TO SEE ERRORS IF OTHER DISPATCHER STILL RUNNING, UNTIL PREV BEHAVIOURS PHASE OUT.""")
         ships_and_threads: dict[str : threading.Thread] = {}
 
         while True:

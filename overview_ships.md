@@ -95,7 +95,7 @@ padding-right:10px;
 <td>CTRI-RWK5--4</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>28</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -104,7 +104,7 @@ padding-right:10px;
 <td>CTRI-RWK5--5</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>27</td>
+<td>9</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -113,7 +113,7 @@ padding-right:10px;
 <td>CTRI-RWK5--6</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>13</td>
+<td>27</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -122,7 +122,7 @@ padding-right:10px;
 <td>CTRI-RWK5--7</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>21</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -148,7 +148,7 @@ padding-right:10px;
 <tr>
 <td>CTRI-UWK5--1</td>
 <td>COMMAND__FRIGATE</td>
-<td>X1-QD78-37510D</td>
+<td>X1-XV11-52811C</td>
 <td>20</td>
 <td>60</td>
 <td>EXPLORE_ONE_SYSTEM</td>
@@ -257,7 +257,7 @@ padding-right:10px;
 <td>CTRI-UWK5--1B</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>24</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -266,7 +266,7 @@ padding-right:10px;
 <td>CTRI-UWK5--1C</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>24</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -275,7 +275,7 @@ padding-right:10px;
 <td>CTRI-UWK5--1D</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>23</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -338,7 +338,7 @@ padding-right:10px;
 <td>CTRI-UWK5--23</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>21</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -355,7 +355,7 @@ padding-right:10px;
 <tr>
 <td>CTRI-UWK5--25</td>
 <td>SATELLITE__PROBE</td>
-<td>X1-FQ9-39244E</td>
+<td>X1-AH40-33046F</td>
 <td>0</td>
 <td>0</td>
 <td>MONITOR_CHEAPEST_SHIPYARD_PRICE</td>
@@ -392,7 +392,7 @@ padding-right:10px;
 <td>CTRI-UWK5--4</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>26</td>
+<td>0</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -401,7 +401,7 @@ padding-right:10px;
 <td>CTRI-UWK5--5</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>23</td>
+<td>21</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -419,7 +419,7 @@ padding-right:10px;
 <td>CTRI-UWK5--7</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>29</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -437,7 +437,7 @@ padding-right:10px;
 <td>CTRI-UWK5--9</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>21</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -446,7 +446,7 @@ padding-right:10px;
 <td>CTRI-UWK5--A</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>24</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -464,7 +464,7 @@ padding-right:10px;
 <td>CTRI-UWK5--C</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>21</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -473,7 +473,7 @@ padding-right:10px;
 <td>CTRI-UWK5--D</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>10</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -482,7 +482,7 @@ padding-right:10px;
 <td>CTRI-UWK5--E</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>22</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_SELL</td>
 <td>0:00:00</td>
@@ -500,7 +500,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--10</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>29</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -509,7 +509,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--11</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>23</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -536,7 +536,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--14</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>29</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -545,7 +545,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--15</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>27</td>
+<td>24</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -554,7 +554,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--16</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>26</td>
+<td>18</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -563,7 +563,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--17</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>13</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -572,7 +572,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--18</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>12</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -599,7 +599,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--1B</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>9</td>
+<td>5</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -617,7 +617,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--1D</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>27</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -635,7 +635,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--1F</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>10</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -653,7 +653,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--20</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>25</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -680,7 +680,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--23</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>25</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -698,7 +698,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--4</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>27</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -725,7 +725,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--7</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>21</td>
+<td>29</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -743,7 +743,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--9</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>30</td>
+<td>26</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -752,7 +752,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--A</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>25</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -761,7 +761,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--B</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>28</td>
+<td>29</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -770,7 +770,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--C</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>13</td>
+<td>30</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
@@ -797,7 +797,7 @@ padding-right:10px;
 <td>CTRI-VWK6A--F</td>
 <td>EXCAVATOR__DRONE</td>
 <td>X1-YA22-87615D</td>
-<td>18</td>
+<td>19</td>
 <td>30</td>
 <td>EXTRACT_AND_TRANSFER_DELIVERABLES</td>
 <td>0:00:00</td>
