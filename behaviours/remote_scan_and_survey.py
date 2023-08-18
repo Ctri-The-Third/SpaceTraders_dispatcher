@@ -4,7 +4,7 @@ sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint, System
-from straders_sdk.utils import waypoint_slicer, try_execute_select
+from straders_sdk.utils import waypoint_slicer, try_execute_select, set_logging
 import time
 import math
 import logging
@@ -32,20 +32,26 @@ class RemoteScanWaypoints(Behaviour):
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         agent = self.agent
-        asteroid_field = self.behaviour_params.get("asteroid_wp", None)
-        if not asteroid_field:
-            asteroid_field = st.find_waypoints_by_type_one(hq_system, "ASTEROID_FIELD")
-            if asteroid_field:
-                asteroid_field = asteroid_field.symbol
-            else:
-                asteroid_field = ship.nav.waypoint_symbol
-        # move the ship to the asteroid field.
-        self.ship_intrasolar(asteroid_field, False)
+        if ship.can_survey:
+            asteroid_field = self.behaviour_params.get("asteroid_wp", None)
+            if not asteroid_field:
+                asteroid_field = st.find_waypoints_by_type_one(
+                    hq_system, "ASTEROID_FIELD"
+                )
+                if asteroid_field:
+                    asteroid_field = asteroid_field.symbol
+                else:
+                    asteroid_field = ship.nav.waypoint_symbol
+            # move the ship to the asteroid field.
+            self.ship_intrasolar(asteroid_field, False)
 
         # check the total number of systems by pinging the status.
         # get all systems a page at a time (new function? expand function?)
         # whilst getting systems, survey continually.
 
+        #
+        # get all unscanned systems
+        #
         systems_sweep = self.have_we_all_the_systems()
         if not systems_sweep[0]:
             for i in range(1, math.ceil(systems_sweep[1] / 20) + 1):
@@ -66,6 +72,9 @@ class RemoteScanWaypoints(Behaviour):
                 if ship.can_survey:
                     st.ship_survey(ship)
                 time.sleep(1.2)
+        #
+        # get 20 unscanned waypoints, focusing on stations, asteroids, and gates
+        #
         wayps = (
             self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
             or self.get_twenty_unscanned_waypoints("ASTEROID_FIELD")
@@ -84,13 +93,12 @@ class RemoteScanWaypoints(Behaviour):
                 st.ship_survey(ship)
                 time.sleep(0.5)
 
+        #
+        # get 20 unscanned jump gates
+        #
+
         rows = self.get_twenty_unscanned_jumpgates()
 
-        if len(wayps) + len(rows) == 0:
-            self.logger.warning(
-                "No unscanned waypoints found. stalling for 10 minutes and exiting."
-            )
-            time.sleep(600)
         for row in rows:
             jump_gate_sym = row[0]
             sys = waypoint_slicer(jump_gate_sym)
@@ -111,6 +119,32 @@ class RemoteScanWaypoints(Behaviour):
             if ship.can_survey:
                 st.ship_survey(ship)
                 time.sleep(0.5)
+
+        #
+        # MARKETS and SHIPYARDS
+        #
+
+        rows = self.get_twenty_unscanned_markets_or_shipyards()
+        for row in rows:
+            wp_sym = row[0]
+            sys = waypoint_slicer(wp_sym)
+            wp = st.waypoints_view_one(sys, wp_sym)
+            if wp.has_market:
+                resp = st.system_market(wp, True)
+                time.sleep(1.2)
+            if wp.has_shipyard:
+                resp = st.system_shipyard(wp, True)
+                time.sleep(1.2)
+            if ship.can_survey:
+                st.ship_survey(ship)
+                time.sleep(0.5)
+
+        if len(wayps) + len(rows) == 0:
+            self.logger.warning(
+                "No unscanned waypoints found. stalling for 10 minutes and exiting."
+            )
+        time.sleep(600)
+
         # orbital stations
         # asteroid fields
 
@@ -123,7 +157,7 @@ class RemoteScanWaypoints(Behaviour):
         # return to gate
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[list]:
+    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[str]:
         sql = """
         select * from waypoints_not_scanned
         where type = %s
@@ -132,13 +166,17 @@ class RemoteScanWaypoints(Behaviour):
         """
         return try_execute_select(self.st.db_client.connection, sql, (type,))
 
-    def get_twenty_unscanned_jumpgates(self) -> list[Waypoint]:
-        sql = """ select w.symbol from waypoints w 
-left join jump_gates jg on jg.waypoint_symbol = w.symbol
-where w.type = 'JUMP_GATE'
-and jg.waypoint_symbol is null
+    def get_twenty_unscanned_jumpgates(self) -> list[str]:
+        sql = """ select * from jumpgates_scanned
+where charted and not scanned
 order by random()
 limit 20"""
+        return try_execute_select(self.st.db_client.connection, sql, ())
+
+    def get_twenty_unscanned_markets_or_shipyards(self) -> list[str]:
+        sql = """select * from mkt_shpyrds_waypoints_scanned
+where not scanned
+order by random()"""
         return try_execute_select(self.st.db_client.connection, sql, ())
 
     def have_we_all_the_systems(self):
@@ -179,41 +217,6 @@ limit 20"""
                 self.recursive_fetch_navgate_systems(
                     system.symbol, collected_system_symbols
                 )
-
-    def find_unexplored_jumpgate_systems(
-        self,
-    ) -> list[str]:
-        sql = """
-with mapped_systems as (
-select s.symbol,  true as mapped 
-from waypoints w 
-join systems s on w.system_symbol=s.symbol 
-join waypoint_traits wt on w.symbol = wt.waypoint
-group by 1
-having count(*) > 0
-	)
-select system_symbol, coalesce (mapped, false) as mapped, s.x, s.y
-from jump_gates jg 
-join waypoints w on jg.waypoint_symbol = w.symbol
-left join mapped_systems ms on ms.symbol = w.system_symbol
-left join systems s on system_symbol = s.symbol
-where coalesce(mapped, false) = false
-"""
-        try:
-            cursor = self.st.db_client.connection.cursor()
-            cursor.execute(sql, ())
-            # fetch all rows
-            resp = cursor.fetchall()
-        except Exception as err:
-            print(err)
-            return []
-        if not resp:
-            return []
-        unexplored_systems = []
-        all_systems = self.st.systems_view_all()
-        for row in resp:
-            unexplored_systems.append(all_systems.get(row[0]))
-        return unexplored_systems
 
     def scan_local_system(self):
         st = self.st
@@ -292,7 +295,9 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 
 if __name__ == "__main__":
+    set_logging(level=logging.DEBUG)
     RemoteScanWaypoints(
-        "CTRI-LWK5-", "CTRI-LWK5--1", {"asteroid_wp": "X1-YA22-87615D"}
+        "CTRI-LWK5-",
+        "CTRI-LWK5--2",
     ).run()
     # "CTRI-UWK5-", "CTRI-UWK5--2", {"asteroid_wp": "X1-YA22-18767C"}

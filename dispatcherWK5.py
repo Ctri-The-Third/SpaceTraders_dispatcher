@@ -14,6 +14,7 @@ from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.generic_behaviour import Behaviour
+import random
 from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
@@ -22,6 +23,10 @@ from behaviours.remote_scan_and_survey import (
 from behaviours.explore_system import (
     ExploreSystem,
     BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
+)
+from behaviours.monitor_cheapest_price import (
+    MonitorPrices,
+    BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
 )
 from behaviours.generic_behaviour import Behaviour
 
@@ -47,7 +52,7 @@ class dispatcher(SpaceTraders):
         db_pass: str,
         current_agent_symbol: str,
     ) -> None:
-        self.lock_id = "Week5-dispatcher " + str(uuid.uuid1())
+        self.lock_id = f"W5dis {get_fun_name()}"
         self.db_host = db_host
         self.db_port = db_port
         self.db_name = db_name
@@ -159,12 +164,6 @@ class dispatcher(SpaceTraders):
                         if thread.is_alive():
                             continue
                         else:
-                            # the thread is dead, so unlock the ship and remove it from the list
-                            self.unlock_ship(
-                                self.connection,
-                                ship_and_behaviour["name"],
-                                self.lock_id,
-                            )
                             del ships_and_threads[ship_and_behaviour["name"]]
                     else:
                         # first time we've seen this ship - create a thread
@@ -220,7 +219,41 @@ class dispatcher(SpaceTraders):
             bhvr = RemoteScanWaypoints(aname, sname, bhvr_params)
         elif id == BHVR_EXPLORE_SYSTEM:
             bhvr = ExploreSystem(aname, sname, bhvr_params)
+        elif id == BHVR_MONITOR_CHEAPEST_PRICE:
+            bhvr = MonitorPrices(aname, sname, bhvr_params)
         return bhvr
+
+
+def get_fun_name():
+    prefixes = ["shadow", "crimson", "midnight", "dark", "mercury", "crimson", "black"]
+    mid_parts = [
+        "fall",
+        "epsilon",
+        "omega",
+        "phoenix",
+        "pandora",
+        "serpent",
+        "zephyr",
+        "tide",
+        "sun",
+        "nebula",
+        "horizon",
+        "rose",
+        "nova",
+        "weaver",
+        "sky",
+        "titan",
+        "helios",
+    ]
+    suffixes = ["five", "seven", "nine"]
+    prefix_index = random.randint(0, len(mid_parts) - 1)
+    mid_index = random.randint(0, len(mid_parts) - 1)
+    suffix_index = random.randint(0, len(mid_parts) - 1)
+    prefix = f"{prefixes[prefix_index]} " if prefix_index < len(prefixes) else ""
+    mid = mid_parts[mid_index]
+    suffix = f" {suffixes[suffix_index]}" if suffix_index < len(suffixes) else ""
+
+    return f"{prefix}{mid}{suffix}".lower()
 
 
 def register_and_store_user(username) -> str:

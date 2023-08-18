@@ -53,9 +53,16 @@ def transaction_summary():
 
 
 def scan_progress():
-    sql = """select * from  mkt_shpyrds_systems_visit_progress
+    sql = """ 
+            select  * from waypoints_not_scanned_progress 
+            union
+            select * from jumpgates_scanned_progress
             union 
-            select  * from waypoints_not_scanned_progress """
+            select * from mkt_shpyrds_waypoints_scanned_progress
+            union
+            select * from  mkt_shpyrds_systems_visit_progress
+            
+            """
     rows = try_execute_select(connection, sql, ())
     output = """| Search | Scanned | Total | Progress |
                 | ------ | ----- | ------- | -------- |"""
@@ -107,7 +114,7 @@ css_blob = """
 <style>
 body {
 font-family: "Lucida Console", Courier, monospace;
-background-color:#333;
+background-color:#222;
 color: #3f3;
 }
 table {

@@ -11,7 +11,7 @@ from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
-
+from itertools import zip_longest
 from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
@@ -21,6 +21,7 @@ from dispatcherWK5 import (
     EXTRACT_TRANSFER,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
+    BHVR_MONITOR_CHEAPEST_PRICE,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
@@ -32,7 +33,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 0
+    starting_stage = 4
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
@@ -119,9 +120,7 @@ def stage_1(client: SpaceTraders):
 
     for ship in extractors:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
-    maybe_ship = maybe_buy_ship(
-        client, commanders[0].nav.system_symbol, "SHIP_MINING_DRONE"
-    )
+    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     if maybe_ship:
         set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     return 1
@@ -164,9 +163,9 @@ def stage_2(client: SpaceTraders):
     if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
         "SHIP_MINING_DRONE", 99999999
     ) / 10:
-        maybe_buy_ship(client, hq_sys, "SHIP_ORE_HOUND")
+        maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
     else:
-        maybe_buy_ship(client, hq_sys, "SHIP_MINING_DRONE")
+        maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     return 2
 
 
@@ -231,9 +230,7 @@ def stage_3(client: SpaceTraders):
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
     if len(haulers) <= (len(excavators) / extractors_per_hauler):
-        ship = maybe_buy_ship(
-            client, excavators[0].nav.system_symbol, "SHIP_LIGHT_HAULER"
-        )
+        ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
     elif len(excavators) <= 30:
@@ -241,9 +238,9 @@ def stage_3(client: SpaceTraders):
         if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
             "SHIP_MINING_DRONE", 99999999
         ) / 10:
-            ship = maybe_buy_ship(client, hq_sys, "SHIP_ORE_HOUND")
+            ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
         else:
-            ship = maybe_buy_ship(client, hq_sys, "SHIP_MINING_DRONE")
+            ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
 
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
@@ -256,13 +253,15 @@ def stage_4(client: SpaceTraders):
     # Ideally we want to start building up hounds, replacing excavators.
     # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
     agent = client.view_my_self()
-    hq_sys_sym = waypoint_slicer(agent.headquarters)
+    # hq_sys_sym = waypoint_slicer(agent.headquarters)
     connection = client.db_client.connection
     ships = client.ships_view()
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
+
     refiners = [
         ship
         for ship in ships.values()
@@ -279,21 +278,38 @@ def stage_4(client: SpaceTraders):
         return 5
     # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
 
-    # scale up freighters - either way we need this.
+    ships_we_might_buy = [
+        "SHIP_PROBE",
+        "SHIP_ORE_HOUND",
+        "SHIP_REFINING_FREIGHTER",
+        "SHIP_LIGHT_HAULER",
+    ]
+    for ship, target in zip_longest(satelites, ships_we_might_buy, fillvalue=None):
+        if not ship or not target:
+            break
+        behaviour_params = {"ship_type": target}
+        set_behaviour(ship.name, BHVR_MONITOR_CHEAPEST_PRICE, behaviour_params)
+    if len(satelites) < len(ships_we_might_buy):
+        maybe_buy_ship_hq_sys(client, "SHIP_PROBE")
+
     if (
         len(haulers)
         <= min(len(excavators) + len(hounds), target_hounds) / extractors_per_hauler
     ):
-        ship = maybe_buy_ship(client, hq_sys_sym, "SHIP_LIGHT_HAULER")
+        ship = maybe_buy_ship(
+            client,
+            connection,
+            "SHIP_LIGHT_HAULER",
+        )
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     # then either buy a refining freighter, or an ore hound
     if len(refiners) < target_refiners:
-        ship = maybe_buy_ship(client, hq_sys_sym, "SHIP_REFINING_FREIGHTER")
+        ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
     elif len(hounds) <= target_hounds:
-        ship = maybe_buy_ship(client, hq_sys_sym, "SHIP_ORE_HOUND")
+        ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER)
 
@@ -339,7 +355,37 @@ def fleet_refresh_market_data(client: SpaceTraders):
     pass
 
 
-def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
+def maybe_buy_ship(client: SpaceTraders, connection, ship_symbol):
+    """at the cheapest shipyard in the galaxy"""
+    sql = """select ship_type, cheapest_location from shipyard_prices
+        where ship_type = %s"""
+    rows = try_execute_select(connection, sql, (ship_symbol,))
+    if not rows:
+        logger.error("Couldn't find ship type %s", ship_symbol)
+        return False
+    target_wp_sym = rows[0][1]
+    target_wp = client.waypoints_view_one(waypoint_slicer(target_wp_sym), target_wp_sym)
+    shipyard = client.system_shipyard(target_wp)
+    return _maybe_buy_ship(client, shipyard, ship_symbol)
+
+
+def _maybe_buy_ship(client: SpaceTraders, shipyard: Shipyard, ship_symbol: str):
+    agent = client.view_my_self()
+
+    if not shipyard:
+        return False
+    for _, detail in shipyard.ships.items():
+        detail: ShipyardShip
+        if detail.ship_type == ship_symbol:
+            if agent.credits > detail.purchase_price:
+                resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
+                if resp:
+                    return resp[0]
+
+
+def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol):
+    system_symbol = waypoint_slicer(client.view_my_self().headquarters)
+
     shipyard_wps = client.find_waypoints_by_trait(system_symbol, "SHIPYARD")
     if not shipyard_wps:
         logging.warning("No shipyards found yet - can't scale.")
@@ -350,16 +396,7 @@ def maybe_buy_ship(client: SpaceTraders, system_symbol, ship_symbol):
     agent = client.view_my_self()
 
     shipyard = client.system_shipyard(shipyard_wps[0])
-
-    if not shipyard:
-        return False
-    for _, detail in shipyard.ships.items():
-        detail: ShipyardShip
-        if detail.ship_type == ship_symbol:
-            if agent.credits > detail.purchase_price:
-                resp = client.ships_purchase(ship_symbol, shipyard_wps[0].symbol)
-                if resp:
-                    return resp[0]
+    return _maybe_buy_ship(client, shipyard, ship_symbol)
 
 
 def get_ship_prices_in_hq_system(client: SpaceTraders):

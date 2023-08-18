@@ -263,6 +263,9 @@ class Behaviour:
         return distance_between_wps(source, target_wp)
 
     def ship_extrasolar(self, destination_system: System, route: list = None):
+        if isinstance(destination_system, str):
+            self.logger.error("You passed a string not a system to ship_extrasolar")
+            return False
         st = self.st
         ship = self.ship
         if ship.nav.system_symbol == destination_system.symbol:
