@@ -4,13 +4,19 @@
 # allocating ships to go trading
 # and so on.
 # we can assume that each agent is based at a different IP Address, and orchestrate accordingly.
+import sys
 import json
-import psycopg2
+import psycopg2, psycopg2.sql
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
-from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
+from straders_sdk.utils import (
+    set_logging,
+    waypoint_slicer,
+    try_execute_select,
+    try_execute_upsert,
+)
 from itertools import zip_longest
 from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
@@ -33,7 +39,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 0
+    starting_stage = 3
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
@@ -138,7 +144,7 @@ def stage_2(client: SpaceTraders):
     agent = client.view_my_self()
     ships = client.ships_view()
     hq_sys = waypoint_slicer(agent.headquarters)
-
+    shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     wayps = client.systems_view_one(hq_sys)
     wayp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
     if not wayp:
@@ -159,17 +165,12 @@ def stage_2(client: SpaceTraders):
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
     for ship in satelites:
         set_behaviour(
-            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": agent.headquarters}
+            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp.symbol}
         )
 
-    prices = get_ship_prices_in_hq_system(client)
+    ship_to_buy = what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
+    ship = maybe_buy_ship_hq_sys(client, ship_to_buy)
 
-    if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
-        "SHIP_MINING_DRONE", 99999999
-    ) / 10:
-        maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
-    else:
-        maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     return 2
 
 
@@ -320,6 +321,74 @@ def stage_4(client: SpaceTraders):
     return 4
     # switch off mining drones.
     pass
+
+
+def refresh_materialised_views(connection):
+    sql = """refresh materialized view mat_session_stats;"""
+    try_execute_select(connection, sql, ())
+
+
+def what_ship_should_i_buy(
+    client: SpaceTraders,
+    default_ship_to_buy=None,
+    refresh=False,
+    speed_over_efficiency=True,
+) -> str:
+    # I assume this is mining but who knows.
+    order_by = "cph" if speed_over_efficiency else "cpr"
+    connection.cursor()
+    sql = psycopg2.sql.SQL(
+        """with total_cph as (select agent_name, avg(credits_earned) as avg_cph from agent_credits_per_hour acph
+where acph.event_hour >= now() at time zone 'utc' - interval '6 hours'
+group by 1 )
+
+select stp.agent_name, round(avg_cph,2),  coalesce(stp.shipyard_type, sp.ship_type)
+, coalesce(stp.best_price,sp.best_price) as best_price
+, coalesce(stp.count_of_ships, 0 ) as count_of_ships
+, coalesce(earnings,0) as earnings
+, coalesce(requests,0) as requests
+, coalesce(sessions,0) as sessions
+, round(coalesce(cph,0),2) as cph
+, round(coalesce(cpr,0),2) as cpr from shipyard_type_performance stp
+left join total_cph tc on stp.agent_name = tc.agent_name 
+full outer join shipyard_prices sp on stp.shipyard_type = sp.ship_type
+
+where stp.agent_name  = %s or stp.agent_name is null
+order by {} desc, sp.ship_type """
+    ).format(psycopg2.sql.Identifier(order_by))
+    rows = try_execute_select(connection, sql, (client.current_agent_symbol,))
+    if not rows:
+        logging.error(
+            "Couldn't get shipyard prices and performance stats becase %s", rows.error
+        )
+        return default_ship_to_buy or "SHIP_MINING_DRONE"
+    total_cph = rows[0][1]
+    best_ship_to_buy = default_ship_to_buy
+    if default_ship_to_buy:
+        found_row = None
+        for row in rows:
+            if row[2] == default_ship_to_buy:
+                found_row = row
+                break
+        if not found_row:
+            return default_ship_to_buy or "SHIP_MINING_DRONE"
+        best_ship_to_buy = found_row[2]
+        cost = found_row[3] or sys.maxsize
+    else:
+        best_ship_to_buy = rows[0][2]
+        cost = rows[0][3] or sys.maxsize
+
+    hours_to_save_for_best_ship = cost / total_cph
+
+    for ship in rows:
+        if not ship[3]:
+            continue
+        new_cost = ship[3] + cost
+        new_time = new_cost / total_cph
+        if new_time < hours_to_save_for_best_ship:
+            best_ship_to_buy = ship
+            hours_to_save_for_best_ship = new_time
+    return best_ship_to_buy
 
 
 def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):

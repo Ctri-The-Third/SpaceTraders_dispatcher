@@ -406,7 +406,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
         try:
-            sql = """SELECT mt.trade_symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
+            sql = """SELECT mt.symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
             rows = try_execute_select(self.connection, sql, (wp.symbol,))
             if not rows:
                 return LocalSpaceTradersRespose(
@@ -416,8 +416,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             exports = [MarketTradeGood(*row) for row in rows if row[2] == "sell"]
             exchanges = [MarketTradeGood(*row) for row in rows if row[2] == "exchange"]
 
-            listings_sql = """select trade_symbol, coalesce(trade_volume,999) , supply, purchase_price, sell_price, last_updated
-                            from market_tradegood_listing mtl
+            listings_sql = """select trade_symbol, market_depth , supply, purchase_price, sell_price, last_updated
+                            from market_tradegood_listings mtl
                             where market_symbol = %s"""
             rows = try_execute_select(self.connection, listings_sql, (wp.symbol,))
             listings = [MarketTradeGoodListing(*row) for row in rows]

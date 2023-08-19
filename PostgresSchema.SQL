@@ -551,9 +551,9 @@ ALTER TABLE public.market_tradegood OWNER TO spacetraders;
 --
 
 CREATE MATERIALIZED VIEW public.mat_shipyardtypes_to_ship AS
- SELECT unnest(ARRAY['HAULERFRAME_LIGHT_FREIGHTER'::text, 'EXCAVATORFRAME_MINER'::text, 'COMMANDFRAME_FRIGATE'::text, 'EXCAVATORFRAME_DRONE'::text]) AS ship_roleframe,
-    unnest(ARRAY['SHIP_LIGHT_FREIGHTER'::text, 'SHIP_ORE_HOUND'::text, 'SHIP_COMMAND_FRIGATE'::text, 'SHIP_MINING_DRONE'::text]) AS shipyard_type
-  WITH NO DATA;
+ SELECT unnest(ARRAY['SATELLITEFRAME_PROBE'::text,'HAULERFRAME_LIGHT_FREIGHTER'::text, 'EXCAVATORFRAME_MINER'::text, 'COMMANDFRAME_FRIGATE'::text, 'EXCAVATORFRAME_DRONE'::text]) AS ship_roleframe,
+    unnest(ARRAY['SHIP_PROBE'::text,'SHIP_LIGHT_FREIGHTER'::text, 'SHIP_ORE_HOUND'::text, 'SHIP_COMMAND_FRIGATE'::text, 'SHIP_MINING_DRONE'::text]) AS shipyard_type
+  WITH DATA;
 
 
 ALTER TABLE public.mat_shipyardtypes_to_ship OWNER TO spacetraders;
