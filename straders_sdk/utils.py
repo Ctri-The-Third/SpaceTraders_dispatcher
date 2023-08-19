@@ -186,7 +186,7 @@ def _log_response(response: requests.Response) -> None:
     ST_LOGGER.debug("%s %s %s", response.status_code, url_stub, error_text)
 
 
-def set_logging(filename: str = None, level=logging.INFO):
+def set_logging(level=logging.INFO, filename=None):
     format = "%(asctime)s:%(levelname)s:%(threadName)s:%(name)s  %(message)s"
 
     log_file = filename if filename else "ShipTrader.log"

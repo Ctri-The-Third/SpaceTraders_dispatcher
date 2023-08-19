@@ -13,7 +13,7 @@ Where are we at?
 
 ## Goals
 
-* Record 429 counts in the DB, consider queue based throttling 
+* ✅Record 429 counts in the DB, consider queue based throttling 
 * ✅ Record whether we've got a detailed view of the waypoint in the DB - add in the DB "find waypoint by" methods
 * ✅ Alter the remote scan behaviour to do a first ping of markets and shipyards to find out what's available there.
 * Record extractions in DB (will require a refactor of the pg_logging client?)

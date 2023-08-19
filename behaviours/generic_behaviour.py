@@ -141,6 +141,7 @@ class Behaviour:
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
+        sleep(ship.seconds_until_cooldown)
         while ship.cargo_units_used < ship.cargo_capacity:
             if len(cargo_to_target) > 0:
                 survey = (
@@ -206,7 +207,7 @@ class Behaviour:
             trade_volume = cargo.units
             if listing:
                 trade_volume = listing.trade_volume
-            for i in range(0, cargo.units // trade_volume + 1):
+            for i in range(0, cargo.units // trade_volume):
                 resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
                 if not resp:
                     return resp
