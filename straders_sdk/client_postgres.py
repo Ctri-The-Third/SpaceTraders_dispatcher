@@ -282,7 +282,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 """
 
         deposits_sql = (
-            """select trade_symbol, count from survey_deposit where signature = %s """
+            """select trade_symbol, count from survey_deposits where signature = %s """
         )
         resp = try_execute_select(self.connection, sql, (waypoint_symbol,))
         if not resp:
