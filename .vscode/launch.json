@@ -28,14 +28,14 @@
             ]
         },
         {
-            "name": "dispatcher -CTRI-UWK5-",
+            "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
             "program": "dispatcherWK5.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-UWK5-"
+                "CTRI-U7-"
             ]
         },
         {
