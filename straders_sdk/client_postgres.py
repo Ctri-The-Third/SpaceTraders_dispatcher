@@ -445,10 +445,10 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             cysts[syst.symbol] = syst
         return cysts
 
-    def systems_view_one(self, symbol: str) -> Waypoint or SpaceTradersResponse:
-        sql = """SELECT system_symbol, sector_symbol, type, x, y FROM systems where symbol = %s limit 1"""
+    def systems_view_one(self, system_symbol: str) -> Waypoint or SpaceTradersResponse:
+        sql = """SELECT system_symbol, sector_symbol, type, x, y FROM systems where system_symbol = %s limit 1"""
 
-        rows = try_execute_select(self.connection, sql, (symbol,))
+        rows = try_execute_select(self.connection, sql, (system_symbol,))
         if not rows:
             return rows
         for row in rows:
