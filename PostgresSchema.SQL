@@ -1,3 +1,5 @@
+--psql -U <username> -d <database_name> -f <file_name>.sql
+
 set search_path = public;
 
 -------------------------------------------
