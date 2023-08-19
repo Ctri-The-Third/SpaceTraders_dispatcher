@@ -100,7 +100,7 @@ class Behaviour:
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
 
-            self.refuel_if_low()
+            self.go_and_refuel()
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
@@ -161,7 +161,7 @@ class Behaviour:
             else:
                 sleep_until_ready(self.ship)
 
-    def refuel_if_low(self):
+    def go_and_refuel(self):
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
@@ -207,7 +207,7 @@ class Behaviour:
             trade_volume = cargo.units
             if listing:
                 trade_volume = listing.trade_volume
-            for i in range(0, cargo.units // trade_volume):
+            for i in range(0, math.ceil(cargo.units / trade_volume)):
                 resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
                 if not resp:
                     return resp

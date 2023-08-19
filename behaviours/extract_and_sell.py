@@ -63,11 +63,11 @@ class ExtractAndSell(Behaviour):
         time.sleep(ship.seconds_until_cooldown)
         if ship.can_survey:
             st.ship_survey(ship)
-        self.extract_till_full([])
+        # self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()
         st.system_market(current_wp, True)
-        self.refuel_if_low()
+
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
         self.logger.info(
             "Completed. Credits: %s, change = %s",

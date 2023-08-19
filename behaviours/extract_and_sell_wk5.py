@@ -58,7 +58,7 @@ class ExtractAndSell_old(Behaviour):
         self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()
-        self.refuel_if_low()
+        self.go_and_refuel()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
         self.logger.info(
             "Completed. Credits: %s, change = %s",

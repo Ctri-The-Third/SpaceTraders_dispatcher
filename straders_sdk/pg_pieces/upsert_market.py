@@ -66,10 +66,10 @@ ON CONFLICT (symbol) DO NOTHING;"""
     #        pass
 
     if market.listings:
-        sql = """INSERT INTO public.market_tradegood_listing 
-            ( market_symbol, symbol, supply, market_depth, purchase_price, sell_price, last_updated )
-            VALUES ( %s, %s, %s, %s, %s, %s )
-            ON CONFLICT (market_symbol, symbol) DO UPDATE
+        sql = """INSERT INTO public.market_tradegood_listings
+            ( market_symbol, trade_symbol, supply,  market_depth, purchase_price, sell_price, last_updated )
+            VALUES ( %s, %s, %s, %s, %s, %s, %s )
+            ON CONFLICT (market_symbol, trade_symbol) DO UPDATE
                     SET supply = EXCLUDED.supply
                     , purchase_price = EXCLUDED.purchase_price
                     , sell_price = EXCLUDED.sell_price
