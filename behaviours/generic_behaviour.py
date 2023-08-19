@@ -150,7 +150,8 @@ class Behaviour:
                 )
             else:
                 survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
-
+            if ship.seconds_until_cooldown > 0:  # we're coming into this already on CD
+                sleep(ship.seconds_until_cooldown)
             resp = st.ship_extract(ship, survey)
             if not resp:
                 sleep(30)

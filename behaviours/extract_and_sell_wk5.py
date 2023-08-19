@@ -10,7 +10,7 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 
 
-class ExtractAndSell(Behaviour):
+class ExtractAndSell_old(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -52,16 +52,12 @@ class ExtractAndSell(Behaviour):
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
-        current_wp = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint)
         # in a circumstance where the ship isn't in the specified system, it will go.
-        if ship.can_survey:
-            st.ship_survey(ship)
         self.ship_extrasolar(waypoint_slicer(target_wp_sym))
         self.ship_intrasolar(target_wp_sym)
         self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()
-        st.system_market(current_wp, True)
         self.refuel_if_low()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
         self.logger.info(
@@ -75,5 +71,5 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) >= 3 else "CTRI"
     ship = sys.argv[2] if len(sys.argv) >= 3 else "CTRI-3"
     set_logging()
-    bhvr = ExtractAndSell(agent, ship)
+    bhvr = ExtractAndSell_old(agent, ship)
     bhvr.run()
