@@ -49,7 +49,10 @@ ship_str = """
 
 def transaction_summary():
     sql = """select agent_name, credits_earned, event_hour 
-    from agent_credits_per_hour """
+    from agent_credits_per_hour 
+    where event_hour >= now() at time zone 'utc' - interval '8 hours'
+    order by event_hour desc, agent_name asc
+"""
     rows = try_execute_select(connection, sql, ())
     df = pd.DataFrame(rows, columns=["agent_name", "credits_earned", "event_hour"])
     pivot_df = pd.pivot(
