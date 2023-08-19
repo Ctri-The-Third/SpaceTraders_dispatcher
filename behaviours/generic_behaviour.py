@@ -195,7 +195,9 @@ class Behaviour:
         ship = self.ship
         st = self.st
         listings = {}
-        if market is not None:
+        if not market:
+            market = self.st.system_market(ship.nav.system_symbol, True)
+        if market:
             listings = {listing.symbol: listing for listing in market.listings}
         if ship.nav.status != "DOCKED":
             st.ship_dock(ship)

@@ -60,9 +60,9 @@ class ExtractAndSell(Behaviour):
 
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
-        # time.sleep(ship.seconds_until_cooldown)
-        # if ship.can_survey:
-        #    st.ship_survey(ship)
+        time.sleep(ship.seconds_until_cooldown)
+        if ship.can_survey:
+            st.ship_survey(ship)
         self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()

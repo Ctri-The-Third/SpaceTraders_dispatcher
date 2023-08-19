@@ -330,7 +330,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         set expiration = (now() at time zone 'utc')
         where signature = %s
         """
-        resp = try_execute_no_results(self.connection, sql, (survey_signature,))
+        resp = try_execute_upsert(self.connection, sql, (survey_signature,))
         return resp
 
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
@@ -338,7 +338,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, "ship_orbit")
         pass
 
-    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str):
         """my/ships/:shipSymbol/course"""
         return dummy_response(__class__.__name__, "ship_patch_nav")
         pass

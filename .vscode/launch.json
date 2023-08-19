@@ -39,6 +39,14 @@
             ]
         },
         {
+            "name": "Python: overview ",
+            "type": "python",
+            "request": "launch",
+            "program": "overviewWK7.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Python: explore-and-get-data ",
             "type": "python",
             "request": "launch",
