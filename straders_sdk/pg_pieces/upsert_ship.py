@@ -16,7 +16,7 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
     except:
         return
     owner_faction = "" if not owner else owner.starting_faction
-    sql = """INSERT into ship (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity
+    sql = """INSERT into ships (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity
     , cargo_in_use, fuel_capacity, fuel_current, last_updated)
         values (%s, %s, %s, %s, %s, %s, %s, %s, NOW() at time zone 'utc')
         ON CONFLICT (ship_symbol) DO UPDATE
@@ -64,15 +64,15 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
 def _upsert_ship_nav(connection, ship: Ship):
     # we need to add offsets to the ship times to get them to UTC.
     sql = """INSERT into ship_nav
-        (Ship_symbol, system_symbol, waypoint_symbol, departure_time, arrival_time, origin_waypoint, destination_waypoint, flight_status, flight_mode)
+        (Ship_symbol, system_symbol, waypoint_symbol, departure_time, arrival_time, o_waypoint_symbol, d_waypoint_symbol, flight_status, flight_mode)
         values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (ship_symbol) DO UPDATE
         SET system_symbol = EXCLUDED.system_symbol,
             waypoint_symbol = EXCLUDED.waypoint_symbol,
             departure_time = EXCLUDED.departure_time,
             arrival_time = EXCLUDED.arrival_time,
-            origin_waypoint = EXCLUDED.origin_waypoint,
-            destination_waypoint = EXCLUDED.destination_waypoint,
+            o_waypoint_symbol = EXCLUDED.o_waypoint_symbol,
+            d_waypoint_symbol = EXCLUDED.d_waypoint_symbol,
             flight_status = EXCLUDED.flight_status,
             flight_mode = EXCLUDED.flight_mode;"""
     values = (

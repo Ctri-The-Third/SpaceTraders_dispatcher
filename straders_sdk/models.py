@@ -331,7 +331,9 @@ class Waypoint(SymbolClass):
 
     @property
     def is_charted(self) -> bool:
-        return "UNCHARTED" not in [t.symbol for t in self.traits]
+        return len(self.traits) > 1 and (
+            "UNCHARTED" not in [t.symbol for t in self.traits]
+        )
 
     @property
     def has_shipyard(self) -> bool:

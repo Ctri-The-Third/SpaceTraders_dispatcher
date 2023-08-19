@@ -7,12 +7,12 @@ from ..utils import try_execute_select, try_execute_upsert
 
 def _select_ships(connection, agent_name, db_client: SpaceTradersClient):
     sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
-                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
+                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.o_waypoint_symbol, n.d_waypoint_symbol, n.flight_status, n.flight_mode
                 , sfl.condition --13
 				, sf.frame_symbol, sf.name, sf.description, sf.module_slots, sf.mount_points, sf.fuel_capacity, sf.required_power, sf.required_crew, sf.required_slots
                 , s.fuel_capacity, s.fuel_current --24  
                 , sc.expiration, sc.total_seconds --26
-                from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
+                from ships s join ship_nav n on s.ship_symbol = n.ship_symbol
 				left join ship_frame_links sfl on s.ship_symbol = sfl.ship_symbol
 				left join ship_frames sf on sf.frame_symbol = sfl.frame_symbol
                 left join ship_cooldown sc on s.ship_symbol = sc.ship_symbol
@@ -57,12 +57,12 @@ def _select_some_ships(db_client: SpaceTradersClient, sql, params):
 
 def _select_ship_one(ship_symbol: str, db_client: SpaceTradersClient):
     sql = """select s.ship_symbol, s.agent_name, s.faction_symbol, s.ship_role, s.cargo_capacity, s.cargo_in_use
-                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
+                , n.waypoint_symbol, n.departure_time, n.arrival_time, n.o_waypoint_symbol, n.d_waypoint_symbol, n.flight_status, n.flight_mode
                 , sfl.condition --13
                 , sf.frame_symbol, sf.name, sf.description, sf.module_slots, sf.mount_points, sf.fuel_capacity, sf.required_power, sf.required_crew, sf.required_slots
                 , s.fuel_capacity, s.fuel_current --24  
                 , sc.expiration, sc.total_seconds --26
-                from ship s join ship_nav n on s.ship_symbol = n.ship_symbol
+                from ships s join ship_nav n on s.ship_symbol = n.ship_symbol
                 left join ship_frame_links sfl on s.ship_symbol = sfl.ship_symbol
                 left join ship_frames sf on sf.frame_symbol = sfl.frame_symbol
                 left join ship_cooldown sc on s.ship_symbol = sc.ship_symbol

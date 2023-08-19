@@ -3,7 +3,8 @@ from straders_sdk import SpaceTraders
 from time import sleep
 from straders_sdk.ship import Ship
 from straders_sdk.models import Waypoint, System, Market
-from straders_sdk.utils import set_logging, try_execute_select
+from straders_sdk.local_response import LocalSpaceTradersRespose
+from straders_sdk.utils import set_logging, try_execute_select, waypoint_slicer
 import logging
 import math
 import networkx
@@ -78,6 +79,15 @@ class Behaviour:
             target_wp_symbol = target_wp_symbol.symbol
         st = self.st
         ship = self.ship
+
+        if ship.nav.system_symbol != waypoint_slicer(target_wp_symbol):
+            return LocalSpaceTradersRespose(
+                error="Ship is not in the same system as the target waypoint",
+                status_code=0,
+                error_code=4202,
+                url=f"{__name__}.ship_intrasolar",
+            )
+
         if ship.nav.flight_mode != flight_mode:
             st.ship_patch_nav(ship, flight_mode)
         wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
@@ -111,6 +121,16 @@ class Behaviour:
 
     def extract_till_full(self, cargo_to_target: list = None):
         # need to validate that the ship'  s current WP is a valid location
+        current_wayp = self.st.waypoints_view_one(
+            self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
+        )
+        if current_wayp.type != "ASTEROID_FIELD":
+            self.logger.error(
+                "Ship is not in an asteroid field, sleeping then aborting"
+            )
+            sleep(300)
+            return False
+
         wayp_s = self.ship.nav.waypoint_symbol
         st = self.st
         if cargo_to_target is None:
@@ -146,6 +166,11 @@ class Behaviour:
         refuel_points = self.st.find_waypoints_by_trait(
             self.ship.nav.system_symbol, "MARKETPLACE"
         )
+        if not refuel_points:
+            self.st.waypoints_view(self.ship.nav.system_symbol, True)
+            return LocalSpaceTradersRespose(
+                "No refuel points found in system. We should go extrasolar", 0, 0, ""
+            )
         nearest_refuel_wp = None
         nearest_refuel_distance = 99999
         for refuel_point in refuel_points:
@@ -408,9 +433,9 @@ class Behaviour:
 
     def _populate_graph(self):
         graph = networkx.Graph()
-        sql = """select s.symbol, s.sector_symbol, s.type, s.x, s.y from jump_gates jg 
-join waypoints w on jg.waypoint_symbol = w.symbol
-join systems s on w.system_symbol = s.symbol"""
+        sql = """select s.system_symbol, s.sector_symbol, s.type, s.x, s.y from jump_gates jg 
+join waypoints w on jg.waypoint_symbol = w.waypoint_symbol
+join systems s on w.system_symbol = s.system_symbol"""
 
         # the graph should be populated with Systems and Connections.
         # but note that the connections themselves need to by systems.
@@ -429,7 +454,7 @@ join systems s on w.system_symbol = s.symbol"""
         else:
             return graph
         sql = """select w1.system_symbol, destination_waypoint from jumpgate_connections jc
-                join waypoints w1 on jc.source_waypoint = w1.symbol
+                join waypoints w1 on jc.source_waypoint = w1.waypoint_symbol
                 """
         results = try_execute_select(self.connection, sql, ())
         connections = []

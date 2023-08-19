@@ -423,7 +423,7 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
 
 def get_agents():
-    sql = "select distinct agent_name from ship"
+    sql = "select distinct agent_name from ships"
     cur = connection.cursor()
     cur.execute(sql)
     rows = cur.fetchall()

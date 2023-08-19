@@ -3,15 +3,18 @@ import psycopg2
 
 from ..models import System
 from ..pg_pieces.upsert_waypoint import _upsert_waypoint
+from ..utils import try_execute_upsert
 
 
 def _upsert_system(connection, system: System):
     try:
-        sql = """INSERT INTO systems (symbol, type, sector_symbol, x, y)
+        connection.autocommit = False
+        sql = """INSERT INTO systems (system_symbol, type, sector_symbol, x, y)
                 VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (symbol) DO UPDATE
+                ON CONFLICT (system_symbol) DO UPDATE
                     SET type = %s,  sector_symbol = %s, x = %s, y = %s"""
-        connection.cursor().execute(
+        try_execute_upsert(
+            connection,
             sql,
             (
                 system.symbol,
@@ -25,10 +28,11 @@ def _upsert_system(connection, system: System):
                 system.y,
             ),
         )
-        connection.commit()
 
     except Exception as err:
         print(err)
 
     for waypoint in system.waypoints:
         _upsert_waypoint(connection, waypoint)
+    connection.commit()
+    connection.autocommit = True

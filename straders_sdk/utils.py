@@ -243,6 +243,8 @@ def try_execute_upsert(connection, sql, params) -> LocalSpaceTradersRespose:
             None, None, None, url=f"{__name__}.try_execute_upsert"
         )
     except Exception as err:
+        logging.error("Couldn't execute upsert: %s", err)
+        logging.debug("SQL: %s", sql)
         return LocalSpaceTradersRespose(
             error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_upsert"
         )
@@ -255,6 +257,8 @@ def try_execute_select(connection, sql, params) -> list:
         rows = cur.fetchall()
         return rows
     except Exception as err:
+        logging.error("Couldn't execute select: %s", err)
+        logging.debug("SQL: %s", sql)
         return LocalSpaceTradersRespose(
             error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
         )

@@ -21,7 +21,7 @@ db_pass = saved_data.get("db_pass", None)
 connection = psycopg2.connect(
     host=db_host, port=db_port, database=db_name, user=db_user, password=db_pass
 )
-
+connection.autocommit = True
 cursor = connection.cursor()
 
 agent_str = """
@@ -76,6 +76,9 @@ def scan_progress():
     rows = try_execute_select(connection, sql, ())
     output = """| Search | Scanned | Total | Progress |
                 | ------ | ----- | ------- | -------- |"""
+    if not rows:
+        output += "\n| got an error checking on the scans |"
+        return output
     for row in rows:
         output += f"\n| {row[0]} | {row[1]} | {row[2]} | {row[3]}% |"
 
@@ -83,8 +86,9 @@ def scan_progress():
 
 
 def commander_overview():
-    sql = """select ao.symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated from agent_overview ao 
-            join contracts_overview co on ao.symbol = co.agent_symbol 
+    sql = """select ao.agent_symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated 
+            from agent_overview ao 
+            join contracts_overview co on ao.agent_symbol = co.agent_symbol 
             order by last_updated desc"""
     cursor.execute(sql)
     rows = cursor.fetchall()

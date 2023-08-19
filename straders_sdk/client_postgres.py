@@ -29,7 +29,7 @@ from .pg_pieces.agents import _upsert_agent, select_agent_one
 from .pg_pieces.contracts import _upsert_contract
 from .local_response import LocalSpaceTradersRespose
 from .ship import Ship, ShipInventory, ShipNav, RouteNode
-from .utils import try_execute_select, try_execute_no_results
+from .utils import try_execute_select, try_execute_upsert
 import psycopg2
 
 
@@ -120,7 +120,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """
 
         sql = """SELECT * FROM waypoints w 
-        left join waypoint_charts wc on w.symbol = wc.waypoint_symbol 
+        left join waypoint_charts wc on w.waypoint_symbol = wc.waypoint_symbol 
          
            WHERE system_symbol = %s"""
         rows = try_execute_select(self.connection, sql, (system_symbol,))
@@ -128,7 +128,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
         for row in rows:
             waypoint_symbol = row[0]
-            new_sql = """SELECT * FROM waypoint_traits WHERE waypoint = %s"""
+            new_sql = """SELECT * FROM waypoint_traits WHERE waypoint_symbol = %s"""
             trait_rows = try_execute_select(
                 self.connection, new_sql, (waypoint_symbol,)
             )
@@ -158,14 +158,14 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
         Returns:
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
-        sql = """SELECT * FROM waypoints WHERE symbol = %s LIMIT 1;"""
+        sql = """SELECT * FROM waypoints WHERE waypoint_symbol = %s LIMIT 1;"""
         cur = self.connection.cursor()
         rows = try_execute_select(self.connection, sql, (waypoint_symbol,))
         waypoints = []
 
         for row in rows:
             waypoint_symbol = row[0]
-            new_sql = """SELECT * FROM waypoint_traits WHERE waypoint = %s"""
+            new_sql = """SELECT * FROM waypoint_traits WHERE waypoint_symbol = %s"""
 
             trait_rows = try_execute_select(
                 self.connection, new_sql, (waypoint_symbol,)
@@ -221,15 +221,15 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def find_survey_best_deposit(
         self, waypoint_symbol: str, deposit_symbol: str
     ) -> Survey or SpaceTradersResponse:
-        sql = """select s.signature, s.waypoint, s.expiration, s.size 
+        sql = """select s.signature, s.waypoint_symbol, s.expiration, s.size 
                 from survey_chance_and_values scv 
-                join survey s on scv.signature = s.signature 
-                where symbol = %s and waypoint = %s
+                join surveys s on scv.signature = s.signature 
+                where trade_symbol = %s and waypoint_symbol = %s
                 limit 1 
                 """
 
         deposits_sql = (
-            """select symbol, count from survey_deposit where signature = %s """
+            """select trade_symbol, count from survey_deposits where signature = %s """
         )
         resp = try_execute_select(
             self.connection, sql, (deposit_symbol, (waypoint_symbol))
@@ -274,15 +274,15 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return surveys[0]
 
     def find_survey_best(self, waypoint_symbol: str):
-        sql = """SELECT s.signature, s.waypoint, s.expiration, s.size 
+        sql = """SELECT s.signature, s.waypoint_symbol, s.expiration, s.size 
                 FROM survey_chance_and_values scv 
-                JOIN survey s on scv.signature = s.signature 
-                WHERE waypoint = %s
+                JOIN surveys s on scv.signature = s.signature 
+                WHERE waypoint_symbol = %s
                 LIMIT 1 
                 """
 
         deposits_sql = (
-            """select symbol, count from survey_deposit where signature = %s """
+            """select trade_symbol, count from survey_deposit where signature = %s """
         )
         resp = try_execute_select(self.connection, sql, (waypoint_symbol,))
         if not resp:
@@ -326,7 +326,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
-        sql = """update survey 
+        sql = """update survey s
         set expiration = (now() at time zone 'utc')
         where signature = %s
         """
@@ -406,7 +406,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
         try:
-            sql = """SELECT mt.symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
+            sql = """SELECT mt.trade_symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
             rows = try_execute_select(self.connection, sql, (wp.symbol,))
             if not rows:
                 return LocalSpaceTradersRespose(
@@ -416,7 +416,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             exports = [MarketTradeGood(*row) for row in rows if row[2] == "sell"]
             exchanges = [MarketTradeGood(*row) for row in rows if row[2] == "exchange"]
 
-            listings_sql = """select symbol, coalesce(trade_volume,999) , supply, purchase_price, sell_price, last_updated
+            listings_sql = """select trade_symbol, coalesce(trade_volume,999) , supply, purchase_price, sell_price, last_updated
                             from market_tradegood_listing mtl
                             where market_symbol = %s"""
             rows = try_execute_select(self.connection, listings_sql, (wp.symbol,))
@@ -437,7 +437,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def systems_view_all(self) -> list["Waypoint"] or SpaceTradersResponse:
         """/game/systems"""
-        sql = """SELECT symbol, sector_symbol, type, x, y FROM systems"""
+        sql = """SELECT system_symbol, sector_symbol, type, x, y FROM systems"""
         rows = try_execute_select(self.connection, sql, ())
         cysts = {}
         for row in rows:
@@ -446,7 +446,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return cysts
 
     def systems_view_one(self, symbol: str) -> Waypoint or SpaceTradersResponse:
-        sql = """SELECT symbol, sector_symbol, type, x, y FROM systems where symbol = %s limit 1"""
+        sql = """SELECT system_symbol, sector_symbol, type, x, y FROM systems where symbol = %s limit 1"""
 
         rows = try_execute_select(self.connection, sql, (symbol,))
         if not rows:

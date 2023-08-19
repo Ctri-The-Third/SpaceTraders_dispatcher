@@ -29,6 +29,7 @@ from behaviours.monitor_cheapest_price import (
     BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
 )
 from behaviours.generic_behaviour import Behaviour
+from straders_sdk.utils import try_execute_select, try_execute_upsert
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
@@ -74,7 +75,7 @@ class dispatcher(SpaceTraders):
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
-    from ship s 
+    from ships s 
     left join ship_behaviours sb 
     on s.ship_symbol = sb.ship_symbol
 
@@ -95,7 +96,9 @@ class dispatcher(SpaceTraders):
         locked_by = %s,
         locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
 
-        return self.query(sql, (ship_symbol, lock_id, duration, lock_id, duration))
+        return try_execute_upsert(
+            self.connection, sql, (ship_symbol, lock_id, duration, lock_id, duration)
+        )
 
     def unlock_ship(self, connect, ship_symbol, lock_id):
         sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
@@ -116,39 +119,27 @@ class dispatcher(SpaceTraders):
         return self._connection
 
     def query(self, sql, args: list):
-        for int in range(0, 5):
-            try:
-                cur = self.connection.cursor()
-                cur.execute(sql, args)
-                return cur.fetchall()
-            except psycopg2.ProgrammingError as err:
-                return []
-            except Exception as err:
-                logger.error("could not execute %s because %s", sql, err)
-                time.sleep((int + 1) * int)
-                return None
-
-        return []
+        return try_execute_select(self.connection, sql, args)
 
     def run(self):
-        print(f"***  DISPATCHER [{self.lock_id}] ACTIVATED ***")
+        print(f"-----  DISPATCHER [{self.lock_id}] ACTIVATED ------")
         print("")
         print(
-            " TO TRANSFER SHIPS TO THIS DISPATCHER WITHOUT DOWNTIME, USE THE FOLLOWING COMMANDS:"
+            "-- To transfer ships to this dispatcher without downtime, execute the following, step by step:"
         )
         print(
-            f"""update ship_behaviours
-set locked_by = '{self.lock_id}'
-where ship_symbol in (
-	select ship_symbol from ship_behaviours
-	where ship_symbol ilike 'CTRI-UWK5%'
-	and locked_by != '{self.lock_id}'
-	limit 10
+            f"""UPDATE SHIP_BEHAVIOURS
+SET locked_by = '{self.lock_id}'
+WHERE ship_symbol IN (
+	SELECT ship_symbol FROM ship_behaviours
+	WHERE ship_symbol ILIKE '{self.current_agent.symbol}%'
+	AND locked_by != '{self.lock_id}'
+	LIMIT 10
 )"""
         )
         print(
-            """WAIT UNTIL DISPATCHER IS REPORTING ON UNLOCKED SHIPS AGAIN BEFORE REPEATING.\n
-            EXPECT TO SEE ERRORS IF OTHER DISPATCHER STILL RUNNING, UNTIL PREV BEHAVIOURS PHASE OUT."""
+            """--\n --wait until we've activated all threads.\n
+            --EXPECT TO SEE ERRORS IF OTHER DISPATCHER STILL RUNNING, UNTIL PREV BEHAVIOURS PHASE OUT."""
         )
         ships_and_threads: dict[str : threading.Thread] = {}
 
@@ -347,7 +338,6 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     user = load_user(target_user)
-
     dips = dispatcher(
         user[0],
         os.environ.get("ST_DB_HOST", "DB_HOST_not_set"),

@@ -143,7 +143,7 @@ class RemoteScanWaypoints(Behaviour):
             self.logger.warning(
                 "No unscanned waypoints found. stalling for 10 minutes and exiting."
             )
-        time.sleep(600)
+            time.sleep(600)
 
         # orbital stations
         # asteroid fields
@@ -180,7 +180,7 @@ order by random()"""
         return try_execute_select(self.st.db_client.connection, sql, ())
 
     def have_we_all_the_systems(self):
-        sql = """select count(distinct symbol) from systems"""
+        sql = """select count(distinct system_symbol) from systems"""
         cursor = self.st.db_client.connection.cursor()
         cursor.execute(sql, ())
         row = cursor.fetchone()

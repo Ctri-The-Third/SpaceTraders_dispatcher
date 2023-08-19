@@ -5,11 +5,17 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
 import time
+from straders_sdk.utils import set_logging
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL"
 
 
 class ExtractAndTransferOrSell_4(Behaviour):
+    """Expects the following behaviour_params
+
+    Optional:
+    asteroid_wp: waypoint symbol to extract from"""
+
     def __init__(
         self,
         agent_name,
@@ -132,7 +138,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI"
-    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-6"
-    bhvr = ExtractAndTransferOrSell_4(agent, ship)
-    bhvr.run()
+    set_logging(level=logging.DEBUG)
+    agent_symbol = "CTRI-LWK5-"
+    ship_suffix = "1"
+    params = None
+    ExtractAndTransferOrSell_4(
+        agent_symbol, f"{agent_symbol}-{ship_suffix}", params
+    ).run()

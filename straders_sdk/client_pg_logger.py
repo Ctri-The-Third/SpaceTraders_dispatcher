@@ -48,7 +48,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     def log_custom_event(
         self, event_name, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
     ):
-        sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
+        sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
         values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor = self.connection.cursor()
         cursor.execute(
@@ -95,7 +95,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         if isinstance(ship_name, Ship):
             ship_name = ship_name.name
         sql = """INSERT INTO public.logging(
-	event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
+	event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
 	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
 
         cursor = self.connection.cursor()

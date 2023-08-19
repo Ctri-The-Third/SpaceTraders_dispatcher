@@ -1,3 +1,10 @@
+set search_path = public;
+
+-------------------------------------------
+--
+-- PostgreSQL database dump
+--
+
 --
 -- PostgreSQL database dump
 --
@@ -50,13 +57,29 @@ COMMENT ON EXTENSION tablefunc IS 'functions that manipulate whole tables, inclu
 -- Name: update_last_updated(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
+CREATE FUNCTION public.update_last_updated() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.last_updated := NOW();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.update_last_updated() OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
 --
 -- TOC entry 211 (class 1259 OID 16688)
 -- Name: agents; Type: TABLE; Schema: public; Owner: spacetraders
 --
 
 CREATE TABLE public.agents (
-    agent_symbol text NOT NULL,
+    symbol text NOT NULL,
     headquarters text,
     credits integer,
     starting_faction text,
@@ -72,7 +95,7 @@ ALTER TABLE public.agents OWNER TO spacetraders;
 -- Name: ship; Type: TABLE; Schema: public; Owner: spacetraders
 --
 
-CREATE TABLE public.ships (
+CREATE TABLE public.ship (
     ship_symbol text NOT NULL,
     agent_name text,
     faction_symbol text,
@@ -85,7 +108,7 @@ CREATE TABLE public.ships (
 );
 
 
-ALTER TABLE public.ships OWNER TO spacetraders;
+ALTER TABLE public.ship OWNER TO spacetraders;
 
 --
 -- TOC entry 235 (class 1259 OID 26901)
@@ -122,8 +145,8 @@ CREATE VIEW public.agent_credits_per_hour AS
                 END) AS credits_earned,
             date_trunc('hour'::text, t."timestamp") AS event_hour
            FROM ((public.transactions t
-             JOIN public.ships s ON ((t.ship_symbol = s.ship_symbol)))
-             JOIN public.agents a ON ((s.agent_name = a.agent_symbol)))
+             JOIN public.ship s ON ((t.ship_symbol = s.ship_symbol)))
+             JOIN public.agents a ON ((s.agent_name = a.symbol)))
           GROUP BY s.agent_name, (date_trunc('hour'::text, t."timestamp"))
         )
  SELECT data.agent_name,
@@ -140,14 +163,14 @@ ALTER TABLE public.agent_credits_per_hour OWNER TO spacetraders;
 --
 
 CREATE VIEW public.agent_overview AS
- SELECT a.agent_symbol,
+ SELECT a.symbol,
     a.credits,
     a.starting_faction,
     count(DISTINCT s.ship_symbol) AS ship_count,
     a.last_updated
    FROM (public.agents a
-     JOIN public.ships s ON ((s.agent_name = a.agent_symbol)))
-  GROUP BY a.agent_symbol, a.credits, a.starting_faction, a.last_updated
+     JOIN public.ship s ON ((s.agent_name = a.symbol)))
+  GROUP BY a.symbol, a.credits, a.starting_faction, a.last_updated
   ORDER BY a.last_updated DESC;
 
 
@@ -162,7 +185,7 @@ CREATE TABLE public.logging (
     event_name text,
     event_timestamp timestamp without time zone NOT NULL,
     agent_name text,
-    ship_symbol text NOT NULL,
+    ship_name text NOT NULL,
     session_id text,
     endpoint_name text,
     new_credits integer,
@@ -203,11 +226,11 @@ CREATE MATERIALIZED VIEW public.mat_session_stats AS
            FROM public.transactions t
           WHERE ((t.type = 'SELL'::text) AND (t."timestamp" >= (now() - '3 days'::interval)))
           GROUP BY t.session_id
-        ), sessions_and_ship_symbols AS (
-         SELECT DISTINCT logging.ship_symbol AS ship_symbol,
+        ), sessions_and_ship_names AS (
+         SELECT DISTINCT logging.ship_name AS ship_symbol,
             logging.session_id
            FROM public.logging
-          WHERE (logging.ship_symbol <> 'GLOBAL'::text)
+          WHERE (logging.ship_name <> 'GLOBAL'::text)
         )
  SELECT sas.ship_symbol,
     sar.session_start,
@@ -222,7 +245,7 @@ CREATE MATERIALIZED VIEW public.mat_session_stats AS
         END)::numeric) AS cpr
    FROM ((sessions_and_requests sar
      LEFT JOIN sessions_and_earnings ear ON ((ear.session_id = sar.session_id)))
-     LEFT JOIN sessions_and_ship_symbols sas ON ((sar.session_id = sas.session_id)))
+     LEFT JOIN sessions_and_ship_names sas ON ((sar.session_id = sas.session_id)))
   ORDER BY sar.session_start DESC
   WITH NO DATA;
 
@@ -260,7 +283,7 @@ CREATE VIEW public.behaviour_performance AS
             sum(mss.requests) AS requests,
             count(*) AS sessions
            FROM ((public.mat_session_stats mss
-             JOIN public.ships s ON ((mss.ship_symbol = s.ship_symbol)))
+             JOIN public.ship s ON ((mss.ship_symbol = s.ship_symbol)))
              JOIN public.ship_behaviours sb ON ((s.ship_symbol = sb.ship_symbol)))
           WHERE ((mss.session_start < date_trunc('hour'::text, now())) AND (mss.session_start >= (now() - '1 day'::interval)))
           GROUP BY (date_trunc('hour'::text, mss.session_start)), s.ship_symbol, s.ship_role, sb.behaviour_id
@@ -367,8 +390,8 @@ ALTER TABLE public.jump_gates OWNER TO spacetraders;
 --
 
 CREATE TABLE public.jumpgate_connections (
-    s_waypoint_symbol text NOT NULL,
-    d_waypoint_symbol text NOT NULL,
+    source_waypoint text NOT NULL,
+    destination_waypoint text NOT NULL,
     distance integer
 );
 
@@ -395,8 +418,8 @@ ALTER TABLE public.waypoint_charts OWNER TO spacetraders;
 --
 
 CREATE TABLE public.waypoint_traits (
-    waypoint_symbol text NOT NULL,
-    trait_symbol text NOT NULL,
+    waypoint text NOT NULL,
+    symbol text NOT NULL,
     name text,
     description text
 );
@@ -410,7 +433,7 @@ ALTER TABLE public.waypoint_traits OWNER TO spacetraders;
 --
 
 CREATE TABLE public.waypoints (
-    waypoint_symbol text NOT NULL,
+    symbol text NOT NULL,
     type text NOT NULL,
     system_symbol text NOT NULL,
     x smallint NOT NULL,
@@ -427,10 +450,10 @@ ALTER TABLE public.waypoints OWNER TO spacetraders;
 --
 
 CREATE VIEW public.jumpgates_scanned AS
- SELECT w.waypoint_symbol AS waypoint_symbol,
+ SELECT w.symbol AS waypoint_symbol,
     (count(
         CASE
-            WHEN (wt.trait_symbol= 'UNCHARTED'::text) THEN 1
+            WHEN (wt.symbol = 'UNCHARTED'::text) THEN 1
             ELSE NULL::integer
         END) > 0) AS uncharted,
     (count(
@@ -444,11 +467,11 @@ CREATE VIEW public.jumpgates_scanned AS
             ELSE NULL::integer
         END) > 0) AS scanned
    FROM (((public.waypoints w
-     LEFT JOIN public.waypoint_traits wt ON ((wt.waypoint_symbol = w.waypoint_symbol AND wt.trait_symbol = 'UNCHARTED'::text)))
-     LEFT JOIN public.waypoint_charts wc ON ((wc.waypoint_symbol = w.waypoint_symbol)))
-     LEFT JOIN public.jump_gates jg ON ((jg.waypoint_symbol = w.waypoint_symbol)))
+     LEFT JOIN public.waypoint_traits wt ON ((wt.waypoint = w.symbol)))
+     LEFT JOIN public.waypoint_charts wc ON ((wc.waypoint_symbol = w.symbol)))
+     LEFT JOIN public.jump_gates jg ON ((jg.waypoint_symbol = w.symbol)))
   WHERE (w.type = 'JUMP_GATE'::text)
-  GROUP BY w.waypoint_symbol;
+  GROUP BY w.symbol;
 
 
 ALTER TABLE public.jumpgates_scanned OWNER TO spacetraders;
@@ -500,9 +523,9 @@ ALTER TABLE public.market OWNER TO spacetraders;
 -- Name: market_tradegood_listing; Type: TABLE; Schema: public; Owner: spacetraders
 --
 
-CREATE TABLE public.market_tradegood_listings (
+CREATE TABLE public.market_tradegood_listing (
     market_symbol text NOT NULL,
-    trade_symbol text NOT NULL,
+    symbol text NOT NULL,
     supply text,
     purchase_price integer,
     sell_price integer,
@@ -511,7 +534,7 @@ CREATE TABLE public.market_tradegood_listings (
 );
 
 
-ALTER TABLE public.market_tradegood_listings OWNER TO spacetraders;
+ALTER TABLE public.market_tradegood_listing OWNER TO spacetraders;
 
 --
 -- TOC entry 220 (class 1259 OID 17106)
@@ -519,13 +542,13 @@ ALTER TABLE public.market_tradegood_listings OWNER TO spacetraders;
 --
 
 CREATE VIEW public.market_prices AS
- SELECT mtl.trade_symbol,
-    round(avg(mtl.purchase_price)) AS buy_price,
-    round(avg(mtl.sell_price)) AS sell_price,
+ SELECT market_tradegood_listing.symbol,
+    round(avg(market_tradegood_listing.purchase_price)) AS buy_price,
+    round(avg(market_tradegood_listing.sell_price)) AS sell_price,
     count(*) AS sources
-   FROM public.market_tradegood_listings mtl
-  GROUP BY mtl.trade_symbol
-  ORDER BY mtl.trade_symbol;
+   FROM public.market_tradegood_listing
+  GROUP BY market_tradegood_listing.symbol
+  ORDER BY market_tradegood_listing.symbol;
 
 
 ALTER TABLE public.market_prices OWNER TO spacetraders;
@@ -580,7 +603,7 @@ ALTER TABLE public.shipyard_types OWNER TO spacetraders;
 --
 
 CREATE TABLE public.systems (
-    system_symbol text NOT NULL,
+    symbol text NOT NULL,
     sector_symbol text,
     type text,
     x integer,
@@ -596,17 +619,17 @@ ALTER TABLE public.systems OWNER TO spacetraders;
 --
 
 CREATE VIEW public.mkt_shpyrds_systems_last_updated AS
- SELECT wt.waypoint_symbol,
+ SELECT wt.waypoint,
     s.x,
     s.y,
     min(COALESCE(mtl.last_updated, st.last_updated, '1990-01-01 00:00:00'::timestamp without time zone)) AS last_updated
    FROM ((((public.waypoint_traits wt
-     JOIN public.waypoints w ON ((w.waypoint_symbol = wt.waypoint_symbol)))
-     JOIN public.systems s ON ((s.system_symbol = w.system_symbol)))
-     LEFT JOIN public.market_tradegood_listings mtl ON ((mtl.market_symbol = wt.waypoint_symbol)))
-     LEFT JOIN public.shipyard_types st ON ((st.shipyard_symbol = w.waypoint_symbol)))
-  WHERE (wt.trait_symbol= ANY (ARRAY['MARKETPLACE'::text, 'SHIPYARD'::text]))
-  GROUP BY wt.waypoint_symbol, s.x, s.y;
+     JOIN public.waypoints w ON ((w.symbol = wt.waypoint)))
+     JOIN public.systems s ON ((s.symbol = w.system_symbol)))
+     LEFT JOIN public.market_tradegood_listing mtl ON ((mtl.market_symbol = wt.waypoint)))
+     LEFT JOIN public.shipyard_types st ON ((st.shipyard_symbol = w.symbol)))
+  WHERE (wt.symbol = ANY (ARRAY['MARKETPLACE'::text, 'SHIPYARD'::text]))
+  GROUP BY wt.waypoint, s.x, s.y;
 
 
 ALTER TABLE public.mkt_shpyrds_systems_last_updated OWNER TO spacetraders;
@@ -617,16 +640,16 @@ ALTER TABLE public.mkt_shpyrds_systems_last_updated OWNER TO spacetraders;
 --
 
 CREATE VIEW public.mkt_shpyrds_systems_last_updated_jumpgates AS
- SELECT w1.waypoint_symbol,
+ SELECT w1.symbol,
     msslu.x,
     msslu.y,
     msslu.last_updated,
-    w2.waypoint_symbol AS jump_gate_waypoint
+    w2.symbol AS jump_gate_waypoint
    FROM (((public.mkt_shpyrds_systems_last_updated msslu
-     JOIN public.waypoints w1 ON ((w1.waypoint_symbol = msslu.waypoint_symbol)))
+     JOIN public.waypoints w1 ON ((w1.symbol = msslu.waypoint)))
      JOIN public.waypoints w2 ON ((w1.system_symbol = w2.system_symbol)))
-     JOIN public.jump_gates j ON ((w2.waypoint_symbol = j.waypoint_symbol)))
-  WHERE ((w2.type = 'JUMP_GATE'::text) AND (w1.waypoint_symbol <> w2.waypoint_symbol));
+     JOIN public.jump_gates j ON ((w2.symbol = j.waypoint_symbol)))
+  WHERE ((w2.type = 'JUMP_GATE'::text) AND (w1.symbol <> w2.symbol));
 
 
 ALTER TABLE public.mkt_shpyrds_systems_last_updated_jumpgates OWNER TO spacetraders;
@@ -662,18 +685,18 @@ ALTER TABLE public.mkt_shpyrds_systems_visit_progress OWNER TO spacetraders;
 
 CREATE VIEW public.mkt_shpyrds_waypoints_scanned AS
  WITH data AS (
-         SELECT wt.waypoint_symbol AS waypoint_symbol,
-            wt.trait_symbol,
+         SELECT wt.waypoint AS waypoint_symbol,
+            wt.symbol,
             count(st.*) AS ships_available,
             count(mt.*) AS goods_available
            FROM (((((public.waypoint_traits wt
-             JOIN public.waypoints w1 ON ((wt.waypoint_symbol = w1.waypoint_symbol)))
-             JOIN public.waypoints w2 ON (((w1.system_symbol = w2.system_symbol) AND (w1.waypoint_symbol <> w2.waypoint_symbol))))
-             JOIN public.jump_gates jg ON ((jg.waypoint_symbol = w2.waypoint_symbol)))
-             LEFT JOIN public.shipyard_types st ON ((st.shipyard_symbol = w1.waypoint_symbol)))
-             LEFT JOIN public.market_tradegood mt ON ((mt.market_waypoint = w1.waypoint_symbol)))
-          WHERE (wt.trait_symbol= ANY (ARRAY['MARKETPLACE'::text, 'SHIPYARD'::text]))
-          GROUP BY wt.waypoint_symbol, wt.trait_symbol
+             JOIN public.waypoints w1 ON ((wt.waypoint = w1.symbol)))
+             JOIN public.waypoints w2 ON (((w1.system_symbol = w2.system_symbol) AND (w1.symbol <> w2.symbol))))
+             JOIN public.jump_gates jg ON ((jg.waypoint_symbol = w2.symbol)))
+             LEFT JOIN public.shipyard_types st ON ((st.shipyard_symbol = w1.symbol)))
+             LEFT JOIN public.market_tradegood mt ON ((mt.market_waypoint = w1.symbol)))
+          WHERE (wt.symbol = ANY (ARRAY['MARKETPLACE'::text, 'SHIPYARD'::text]))
+          GROUP BY wt.waypoint, wt.symbol
         )
  SELECT data.waypoint_symbol,
     ((data.ships_available > 0) OR (data.goods_available > 0)) AS scanned
@@ -718,7 +741,7 @@ CREATE VIEW public.session_stats_per_hour AS
     sum(mss.delayed_requests) AS delayed_requests,
     round((sum(mss.earnings) / sum(mss.requests)), 2) AS cpr
    FROM (public.mat_session_stats mss
-     JOIN public.ships s ON ((mss.ship_symbol = s.ship_symbol)))
+     JOIN public.ship s ON ((mss.ship_symbol = s.ship_symbol)))
   WHERE ((mss.session_start < date_trunc('hour'::text, timezone('utc'::text, now()))) AND (date_trunc('hour'::text, mss.session_start) > (now() - '06:00:00'::interval)))
   GROUP BY s.agent_name, (date_trunc('hour'::text, mss.session_start))
   ORDER BY (date_trunc('hour'::text, mss.session_start)) DESC, s.agent_name;
@@ -807,7 +830,7 @@ CREATE TABLE public.ship_nav (
     departure_time timestamp without time zone NOT NULL,
     arrival_time timestamp without time zone NOT NULL,
     origin_waypoint text NOT NULL,
-    d_waypoint_symbol text NOT NULL,
+    destination_waypoint text NOT NULL,
     flight_status text NOT NULL,
     flight_mode text NOT NULL
 );
@@ -830,7 +853,7 @@ CREATE VIEW public.ship_overview AS
     sb.behaviour_id,
     sb.locked_until,
     date_trunc('SECONDS'::text, s.last_updated) AS last_updated
-   FROM (((public.ships s
+   FROM (((public.ship s
      LEFT JOIN public.ship_behaviours sb ON ((s.ship_symbol = sb.ship_symbol)))
      JOIN public.ship_frame_links sfl ON ((s.ship_symbol = sfl.ship_symbol)))
      JOIN public.ship_nav sn ON ((s.ship_symbol = sn.ship_symbol)))
@@ -875,15 +898,15 @@ ALTER TABLE public.shipyard_prices OWNER TO spacetraders;
 -- Name: survey; Type: TABLE; Schema: public; Owner: spacetraders
 --
 
-CREATE TABLE public.surveys (
+CREATE TABLE public.survey (
     signature text NOT NULL,
-    waypoint_symbol text,
+    waypoint text,
     expiration timestamp without time zone,
     size text
 );
 
 
-ALTER TABLE public.surveys OWNER TO spacetraders;
+ALTER TABLE public.survey OWNER TO spacetraders;
 
 --
 -- TOC entry 221 (class 1259 OID 17165)
@@ -893,7 +916,7 @@ ALTER TABLE public.surveys OWNER TO spacetraders;
 CREATE VIEW public.survey_average_values AS
 SELECT
     NULL::text AS signature,
-    NULL::text AS waypoint_symbol,
+    NULL::text AS waypoint,
     NULL::timestamp without time zone AS expiration,
     NULL::text AS size,
     NULL::numeric AS survey_value;
@@ -906,14 +929,14 @@ ALTER TABLE public.survey_average_values OWNER TO spacetraders;
 -- Name: survey_deposit; Type: TABLE; Schema: public; Owner: spacetraders
 --
 
-CREATE TABLE public.survey_deposits (
+CREATE TABLE public.survey_deposit (
     signature text NOT NULL,
-    trade_symbol text NOT NULL,
+    symbol text NOT NULL,
     count integer
 );
 
 
-ALTER TABLE public.survey_deposits OWNER TO spacetraders;
+ALTER TABLE public.survey_deposit OWNER TO spacetraders;
 
 --
 -- TOC entry 222 (class 1259 OID 17170)
@@ -924,17 +947,17 @@ CREATE VIEW public.survey_chance_and_values AS
  WITH totals AS (
          SELECT sd_1.signature,
             count(*) AS total_deposits
-           FROM public.survey_deposits sd_1
+           FROM public.survey_deposit sd_1
           GROUP BY sd_1.signature
         )
  SELECT sd.signature,
-    sd.trade_symbol,
+    sd.symbol,
     sd.count,
     tot.total_deposits,
     round(((sd.count)::numeric / (tot.total_deposits)::numeric), 2) AS chance,
     sav.survey_value
-   FROM (((public.survey_deposits sd
-     JOIN public.surveys s ON ((s.signature = sd.signature)))
+   FROM (((public.survey_deposit sd
+     JOIN public.survey s ON ((s.signature = sd.signature)))
      JOIN totals tot ON ((sd.signature = tot.signature)))
      JOIN public.survey_average_values sav ON ((sd.signature = sav.signature)))
   WHERE (s.expiration >= timezone('utc'::text, now()))
@@ -952,9 +975,9 @@ CREATE VIEW public.waypoint_types_not_scanned_by_system AS
  SELECT w.type,
     w.system_symbol
    FROM (public.waypoints w
-     LEFT JOIN public.waypoint_traits wt ON ((w.waypoint_symbol = wt.waypoint_symbol)))
+     LEFT JOIN public.waypoint_traits wt ON ((w.symbol = wt.waypoint)))
   GROUP BY w.type, w.system_symbol
- HAVING (count(wt.trait_symbol) = 0);
+ HAVING (count(wt.symbol) = 0);
 
 
 ALTER TABLE public.waypoint_types_not_scanned_by_system OWNER TO spacetraders;
@@ -965,7 +988,7 @@ ALTER TABLE public.waypoint_types_not_scanned_by_system OWNER TO spacetraders;
 --
 
 CREATE VIEW public.waypoints_not_scanned AS
- SELECT w.waypoint_symbol,
+ SELECT w.symbol,
     w.type,
     w.system_symbol,
     w.x,
@@ -986,7 +1009,7 @@ CREATE VIEW public.waypoints_not_scanned_progress AS
          SELECT count(wns.*) AS remaining,
             count(*) AS total
            FROM (public.waypoints_not_scanned wns
-             RIGHT JOIN public.waypoints w ON ((wns.system_symbol = w.waypoint_symbol)))
+             RIGHT JOIN public.waypoints w ON ((wns.symbol = w.symbol)))
           WHERE (w.type = ANY (ARRAY['ORBITAL_STATION'::text, 'ASTEROID_FIELD'::text, 'JUMP_GATE'::text]))
         )
  SELECT 'Waypoint scanning progress'::text AS "?column?",
@@ -1004,7 +1027,7 @@ ALTER TABLE public.waypoints_not_scanned_progress OWNER TO spacetraders;
 --
 
 ALTER TABLE ONLY public.agents
-    ADD CONSTRAINT agents_pkey PRIMARY KEY (agent_symbol);
+    ADD CONSTRAINT agents_pkey PRIMARY KEY (symbol);
 
 
 --
@@ -1040,7 +1063,7 @@ ALTER TABLE ONLY public.jump_gates
 --
 
 ALTER TABLE ONLY public.jumpgate_connections
-    ADD CONSTRAINT jumpgate_connections_pkey PRIMARY KEY (s_waypoint_symbol, d_waypoint_symbol);
+    ADD CONSTRAINT jumpgate_connections_pkey PRIMARY KEY (source_waypoint, destination_waypoint);
 
 
 --
@@ -1049,7 +1072,7 @@ ALTER TABLE ONLY public.jumpgate_connections
 --
 
 ALTER TABLE ONLY public.logging
-    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_timestamp, ship_symbol);
+    ADD CONSTRAINT logging_pkey PRIMARY KEY (event_timestamp, ship_name);
 
 
 --
@@ -1120,7 +1143,7 @@ ALTER TABLE ONLY public.ship_nav
 -- Name: ship ship_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
-ALTER TABLE ONLY public.ships
+ALTER TABLE ONLY public.ship
     ADD CONSTRAINT ship_pkey PRIMARY KEY (ship_symbol);
 
 
@@ -1138,8 +1161,8 @@ ALTER TABLE ONLY public.shipyard_types
 -- Name: survey_deposit survey_deposit_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
-ALTER TABLE ONLY public.survey_deposits
-    ADD CONSTRAINT survey_deposit_pkey PRIMARY KEY (signature, trade_symbol);
+ALTER TABLE ONLY public.survey_deposit
+    ADD CONSTRAINT survey_deposit_pkey PRIMARY KEY (signature, symbol);
 
 
 --
@@ -1147,7 +1170,7 @@ ALTER TABLE ONLY public.survey_deposits
 -- Name: survey survey_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
-ALTER TABLE ONLY public.surveys
+ALTER TABLE ONLY public.survey
     ADD CONSTRAINT survey_pkey PRIMARY KEY (signature);
 
 
@@ -1157,7 +1180,7 @@ ALTER TABLE ONLY public.surveys
 --
 
 ALTER TABLE ONLY public.systems
-    ADD CONSTRAINT systems_pkey PRIMARY KEY (system_symbol);
+    ADD CONSTRAINT systems_pkey PRIMARY KEY (symbol);
 
 
 --
@@ -1165,8 +1188,8 @@ ALTER TABLE ONLY public.systems
 -- Name: market_tradegood_listing tradegoods_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
-ALTER TABLE ONLY public.market_tradegood_listings
-    ADD CONSTRAINT tradegoods_pkey PRIMARY KEY (market_symbol, trade_symbol);
+ALTER TABLE ONLY public.market_tradegood_listing
+    ADD CONSTRAINT tradegoods_pkey PRIMARY KEY (market_symbol, symbol);
 
 
 --
@@ -1193,16 +1216,16 @@ ALTER TABLE ONLY public.waypoint_charts
 --
 
 ALTER TABLE ONLY public.waypoints
-    ADD CONSTRAINT waypoint_pkey PRIMARY KEY (waypoint_symbol);
+    ADD CONSTRAINT waypoint_pkey PRIMARY KEY (symbol);
 
 
 --
 -- TOC entry 3097 (class 2606 OID 16685)
--- Name: waypoint_traits wateaypoint_traits_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
+-- Name: waypoint_traits waypoint_traits_pkey; Type: CONSTRAINT; Schema: public; Owner: spacetraders
 --
 
 ALTER TABLE ONLY public.waypoint_traits
-    ADD CONSTRAINT waypoint_traits_pkey PRIMARY KEY (waypoint_symbol, trait_symbol);
+    ADD CONSTRAINT waypoint_traits_pkey PRIMARY KEY (waypoint, symbol);
 
 
 --
@@ -1212,17 +1235,32 @@ ALTER TABLE ONLY public.waypoint_traits
 
 CREATE OR REPLACE VIEW public.survey_average_values AS
  SELECT s.signature,
-    s.waypoint_symbol,
+    s.waypoint,
     s.expiration,
     s.size,
     sum((mp.sell_price * (sd.count)::numeric)) AS survey_value
-   FROM ((public.surveys s
-     JOIN public.survey_deposits sd ON ((s.signature = sd.signature)))
-     JOIN public.market_prices mp ON ((mp.trade_symbol = sd.trade_symbol)))
+   FROM ((public.survey s
+     JOIN public.survey_deposit sd ON ((s.signature = sd.signature)))
+     JOIN public.market_prices mp ON ((mp.symbol = sd.symbol)))
   WHERE (s.expiration >= timezone('utc'::text, now()))
-  GROUP BY s.signature, s.waypoint_symbol, s.expiration
+  GROUP BY s.signature, s.waypoint, s.expiration
   ORDER BY (sum((mp.sell_price * (sd.count)::numeric))) DESC;
 
+
+--
+-- TOC entry 3128 (class 2620 OID 16686)
+-- Name: ship update_a_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
+--
+
+CREATE TRIGGER update_a_last_updated AFTER UPDATE ON public.ship FOR EACH ROW EXECUTE FUNCTION public.update_last_updated();
+
+
+--
+-- TOC entry 3129 (class 2620 OID 16687)
+-- Name: ship update_ship_last_updated; Type: TRIGGER; Schema: public; Owner: spacetraders
+--
+
+CREATE TRIGGER update_ship_last_updated AFTER UPDATE ON public.ship FOR EACH ROW EXECUTE FUNCTION public.update_last_updated();
 
 
 --
