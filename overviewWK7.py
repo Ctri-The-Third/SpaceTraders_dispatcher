@@ -109,7 +109,9 @@ def ship_overview():
 , cargo_in_use
 , cargo_capacity
 , behaviour_id
-, last_updated from ship_overview
+, last_updated 
+, cooldown_nav
+from ship_overview
 where locked_until > now() at time zone 'utc'
 order by ship_symbol
     """
@@ -117,10 +119,11 @@ order by ship_symbol
     rows = try_execute_select(connection, sql, ())
     response = ""
     if len(rows) > 0:
-        response = "| ship | role/ frame | waypoint | cargo/ | capacity | behaviour | locked_until |\n"
-        response += "| --- | ---  --- | --- | --- | --- | --- | --- |\n"
+        response = "| ship | role/ frame | waypoint | cargo/ | capacity | behaviour | Locked? | locked_until |\n"
+        response += "| --- | ---  --- | --- | --- | --- | --- | --- | --- |\n"
     for row in rows:
-        response += f"| {row[0]} | {row[1]}_{row[2][5:]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {row[7]} | \n"
+        busy_emoji = "🔒🚀✅" if row[8] else "🔓😴❌"
+        response += f"| {row[0]} | {row[1]}_{row[2][5:]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {busy_emoji} | {row[7]} | \n"
     return response
 
 
@@ -152,7 +155,7 @@ setTimeout(function(){
 
 def out_to_file(str, filename):
     str = markdown.markdown(str, extensions=["tables", "md_in_html"])
-    file = open(filename, "w+")
+    file = open(filename, "w+", encoding="utf-8")
     file.write(str)
     file.close()
 

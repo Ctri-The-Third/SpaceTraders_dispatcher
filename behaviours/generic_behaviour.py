@@ -154,6 +154,8 @@ class Behaviour:
             if ship.seconds_until_cooldown > 0:  # we're coming into this already on CD
                 sleep(ship.seconds_until_cooldown)
             resp = st.ship_extract(ship, survey)
+            if ship.cargo_units_used == ship.cargo_capacity:
+                return
             if not resp:
                 sleep(30)
                 return
