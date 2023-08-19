@@ -5,11 +5,17 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
 import time
+from straders_sdk.utils import set_logging
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL"
 
 
 class ExtractAndTransferOrSell_4(Behaviour):
+    """Expects the following behaviour_params
+
+    Optional:
+    asteroid_wp: waypoint symbol to extract from"""
+
     def __init__(
         self,
         agent_name,
@@ -19,9 +25,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
     ) -> None:
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
-        self.logger.info("initialising...")
 
     def run(self):
+        super().run()
+        starting_credts = self.st.view_my_self().credits
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
@@ -40,7 +47,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         #
         try:
             target_wp_sym = self.behaviour_params.get(
-                "extract_waypoint",
+                "asteroid_wp",
                 st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,
@@ -95,9 +102,9 @@ class ExtractAndTransferOrSell_4(Behaviour):
                         )
 
         #
-        # sell all remaining cargo now we're full.
+        # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
         #
-        self.sell_all_cargo(cargo_to_transfer)
+        self.sell_all_cargo()
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
             time.sleep(300)
@@ -106,6 +113,11 @@ class ExtractAndTransferOrSell_4(Behaviour):
         # end of script.
         #
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        self.logger.info(
+            "Completed. Credits: %s, change = %s",
+            agent.credits,
+            agent.credits - starting_credts,
+        )
 
     def find_hauler(self, waypoint_symbol, valid_agents: list):
         st = self.st
@@ -126,7 +138,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI"
-    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-6"
-    bhvr = ExtractAndTransferOrSell_4(agent, ship)
-    bhvr.run()
+    set_logging(level=logging.DEBUG)
+    agent_symbol = "CTRI-LWK5-"
+    ship_suffix = "1"
+    params = None
+    ExtractAndTransferOrSell_4(
+        agent_symbol, f"{agent_symbol}-{ship_suffix}", params
+    ).run()

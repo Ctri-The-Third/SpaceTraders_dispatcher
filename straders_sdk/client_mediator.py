@@ -77,6 +77,13 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.logger.warning(
                 "Couldn't enable DB client, missing info, no logs will be taken"
             )
+            self.logger.debug(
+                "passed in values were: %s, %s, %s, %s",
+                db_host,
+                db_name,
+                db_user,
+                db_pass,
+            )
         self.api_client = SpaceTradersApiClient(
             token=token, base_url=base_url, version=version
         )
@@ -230,15 +237,19 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         Returns:
             Either a dict of Contract objects or a SpaceTradersResponse object on failure.
         """
-        if self.contracts and not force:
-            return self.contracts
-        url = _url("my/contracts")
-        resp = get_and_validate(url, headers=self._headers())  #
-        if not resp:
-            return resp
+        if not force:
+            resp = self.db_client.view_my_contracts()
+            if resp:
+                self.contracts = self.contracts | {c.contract: c for c in resp}
+                return resp
 
-        self.contracts = self.contracts | {c["id"]: Contract(c) for c in resp.data}
-        return self.contracts
+        resp = self.api_client.view_my_contracts()
+        self.logging_client.view_my_contracts(resp)
+        if resp or len(resp) == 0:
+            for c in resp:
+                self.update(c)
+            self.contracts = self.contracts | {c.id: c for c in resp}
+            return {c.id: c for c in resp}
 
     def contract_accept(self, contract_id) -> Contract or SpaceTradersResponse:
         """accept a contract
@@ -253,7 +264,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
 
         if not resp:
             return resp
-        new_contract = Contract(resp.data["contract"])
+        new_contract = Contract.from_json(resp.data["contract"])
         self.contracts[new_contract.id] = new_contract
         return new_contract
 
@@ -268,25 +279,24 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             if "agent" in json_data:
                 if self.current_agent is not None:
                     self.current_agent.update(json_data)
+                    self.update(self.current_agent)
                 else:
                     self.current_agent = Agent.from_json(json_data["agent"])
             if "surveys" in json_data:
                 for survey in json_data["surveys"]:
-                    self.surveys[survey["signature"]] = Survey.from_json(survey)
+                    surv = Survey.from_json(survey)
+                    self.update(surv)
             if "contract" in json_data:
-                self.contracts[json_data["contract"]["id"]] = Contract(
-                    json_data["contract"]
-                )
+                contract = Contract.from_json(json_data["contract"])
+                self.contracts[json_data["contract"]["id"]] = contract
+                self.update(contract)
             if "nav" in json_data:
-                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+                pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead, then do self.update(ship)
             if "cooldown" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
         if isinstance(json_data, Survey):
             self.surveys[json_data.signature] = json_data
             self.db_client.update(json_data)
-        if isinstance(json_data, list):
-            for contract in json_data:
-                self.contracts[contract["id"]] = Contract(contract)
         if isinstance(json_data, Ship):
             self.ships[json_data.name] = json_data
             self.db_client.update(json_data)
@@ -294,6 +304,12 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.waypoints[json_data.symbol] = json_data
         if isinstance(json_data, Agent):
             self.current_agent = json_data
+            self.db_client.update(json_data)
+        if isinstance(json_data, Survey):
+            self.surveys[json_data.signature] = json_data
+            self.db_client.update(json_data)
+        if isinstance(json_data, Contract):
+            self.contracts[json_data.id] = json_data
             self.db_client.update(json_data)
 
     def waypoints_view_one(
@@ -304,10 +320,11 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             return self.waypoints[waypoint_symbol]
 
         # check db
-        wayp = self.db_client.waypoints_view_one(system_symbol, waypoint_symbol)
-        if wayp:
-            self.update(wayp)
-            return wayp
+        if not force:
+            wayp = self.db_client.waypoints_view_one(system_symbol, waypoint_symbol)
+            if wayp:
+                self.update(wayp)
+                return wayp
         # check api
         wayp = self.api_client.waypoints_view_one(system_symbol, waypoint_symbol)
         self.logging_client.waypoints_view_one(system_symbol, waypoint_symbol, wayp)
@@ -370,6 +387,22 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.ships[ship_id] = ship
         return ship
 
+    def systems_view_twenty(
+        self, page_number, force=False
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        """View 20 systems at a time. No caching available for this method, as we can't guarantee a syncing between the order of the DB and the API."""
+
+        resp = self.api_client.systems_view_twenty(page_number)
+        self.logging_client.systems_view_twenty(resp)
+
+        if not resp:
+            return resp
+        if resp:
+            for syst in resp:
+                syst: System
+                self.db_client.update(syst)
+        return resp
+
     def systems_view_all(
         self, force=False
     ) -> dict[str:"System"] or SpaceTradersResponse:
@@ -384,7 +417,6 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             for syst in resp:
                 syst: System
-                print(f"{syst.symbol} {syst.x},{syst.y}")
                 self.db_client.update(syst)
             return {d.symbol: d for d in resp}
 
@@ -516,10 +548,22 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             A Survey object that has the best chance of giving the material. If no matching survey is found, None is returned.
         """
 
-        surveys = self.db_client.find_survey_best_deposit(
+        survey = self.db_client.find_survey_best_deposit(
             waypoint_symbol, deposit_symbol
         )
-        return surveys
+        return survey
+
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        """find the survey with the best chance of giving a specific material.
+
+        Args:
+            `waypoint_symbol` (str): Optional - The symbol of the waypoint to filter by.
+
+        REturns:
+            A Survey object that has the best chance of giving the material. If no matching survey is found, None is returned.
+        """
+        survey = self.db_client.find_survey_best(waypoint_symbol)
+        return survey
 
     def find_waypoint_by_coords(self, system: str, x: int, y: int) -> Waypoint or None:
         """find a waypoint by its coordinates. Only searches cached values.
@@ -650,12 +694,12 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return
 
-    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str):
         """my/ships/:shipSymbol/course"""
-        resp = self.api_client.ship_patch_nav(ship, dest_waypoint_symbol)
-        self.logging_client.ship_patch_nav(ship, resp)
+        resp = self.api_client.ship_patch_nav(ship, flight_mode)
+        self.logging_client.ship_patch_nav(ship, flight_mode, resp)
         if resp:
-            ship.update(resp)
+            ship.update({"nav": resp.data})
             self.update(ship)
 
         return resp
@@ -683,7 +727,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.logging_client.ship_jump(ship, dest_system_symbol, resp)
         if resp:
             ship.update(resp.data)
-            self.db_client.update(ship)
+            self.update(ship)
             self.ships[ship.name] = ship
         return resp
 
@@ -747,8 +791,18 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.logging_client.ship_sell(ship, symbol, quantity, resp)
         if resp:
             ship.update(resp.data)
-            self.db_client.update(resp)
+            self.update(ship)
             self.update(resp.data)
+        return resp
+
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        resp = self.api_client.ship_purchase_cargo(ship, symbol, quantity)
+        self.logging_client.ship_purchase_cargo(ship, symbol, quantity, resp)
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
         return resp
 
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
@@ -761,6 +815,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 self.db_client.update(survey)
             self.update(resp.data)
             ship.update(resp.data)
+            self.update(ship)
 
         elif resp.data is not None:
             self.update(resp.data)
@@ -779,13 +834,19 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.db_client.update(ship)
         return resp
 
-    def ship_cooldown(self, ship: "Ship") -> SpaceTradersResponse:
+    def ship_cooldown(self, ship: "Ship", force=False) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/cooldown"""
+        if not force:
+            resp = self.db_client.ship_cooldown(ship)
+            if resp:
+                ship.update(resp.data)
+                self.update(ship)
+                return resp
         resp = self.api_client.ship_cooldown(ship)
-        self.logging_client.ship_cooldown(resp)
+        self.logging_client.ship_cooldown(ship, resp)
         if resp:
             ship.update(resp.data)
-            self.db_client.update(ship)
+            self.update(ship)
         return resp
 
     def contracts_deliver(

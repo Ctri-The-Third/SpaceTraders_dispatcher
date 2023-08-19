@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 
 from .utils import DATE_FORMAT
@@ -330,6 +330,12 @@ class Waypoint(SymbolClass):
         return return_obj
 
     @property
+    def is_charted(self) -> bool:
+        return len(self.traits) > 1 and (
+            "UNCHARTED" not in [t.symbol for t in self.traits]
+        )
+
+    @property
     def has_shipyard(self) -> bool:
         return "SHIPYARD" in [t.symbol for t in self.traits]
 
@@ -342,6 +348,14 @@ class Waypoint(SymbolClass):
 
     def __str__(self):
         return self.symbol
+
+    def __hash__(self) -> int:
+        return self.symbol.__hash__()
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, Waypoint):
+            return self.symbol == o.symbol
+        return False
 
 
 class JumpGate:
@@ -391,6 +405,14 @@ class System(SymbolClass):
             wayps,
         )
 
+    def __hash__(self) -> int:
+        return self.symbol.__hash__()
+
+    def __eq__(self, o: object) -> bool:
+        if isinstance(o, System):
+            return self.symbol == o.symbol
+        return False
+
 
 @dataclass
 class JumpGateConnection(SymbolClass):
@@ -417,29 +439,51 @@ class JumpGateConnection(SymbolClass):
 
 
 class ShipyardShip:
-    def __init__(self, json_data: dict) -> None:
-        self.frame = ShipFrame.from_json(json_data["frame"])
-        self.reactor = ShipReactor.from_json(json_data["reactor"])
-        self.engine = ShipEngine.from_json(json_data["engine"])
-        self.name = json_data["name"]
-        self.description = json_data["description"]
-        self.type = json_data["type"]
-        self.purchase_price = json_data["purchasePrice"]
-        # ------------------
-        # ---- CREW INFO ----
-
-        # needs expanded out into a class probably
-
-        # ----  REACTOR INFO ----
-
-        # todo: modules and mounts
-        self.modules = [ShipModule(d) for d in json_data["modules"]]
-        self.mounts = [ShipMount(d) for d in json_data["mounts"]]
-        pass
+    def __init__(
+        self,
+        frame: ShipFrame,
+        reactor: ShipReactor,
+        engine: ShipEngine,
+        name,
+        description,
+        ship_type,
+        purchase_price,
+        modules,
+        mounts,
+    ):
+        self.frame = frame
+        self.reactor = reactor
+        self.engine = engine
+        self.name = name
+        self.description = description
+        self.ship_type = ship_type
+        self.purchase_price = purchase_price
+        self.modules = modules
+        self.mounts = mounts
 
     @classmethod
     def from_json(cls, json_data: dict):
-        return cls(json_data)
+        frame = ShipFrame.from_json(json_data["frame"])
+        reactor = ShipReactor.from_json(json_data["reactor"])
+        engine = ShipEngine.from_json(json_data["engine"])
+        name = json_data["name"]
+        description = json_data["description"]
+        ship_type = json_data["type"]
+        purchase_price = json_data["purchasePrice"]
+
+        modules = [ShipModule(d) for d in json_data["modules"]]
+        mounts = [ShipMount(d) for d in json_data["mounts"]]
+        return cls(
+            frame,
+            reactor,
+            engine,
+            name,
+            description,
+            ship_type,
+            purchase_price,
+            modules,
+            mounts,
+        )
 
 
 @dataclass
@@ -452,7 +496,8 @@ class Shipyard:
     def from_json(cls, json_data: dict):
         types = [type_["type"] for type_ in json_data["shipTypes"]]
         ships = {
-            ship["type"]: ShipyardShip(ship) for ship in json_data.get("ships", [])
+            ship["type"]: ShipyardShip.from_json(ship)
+            for ship in json_data.get("ships", [])
         }
 
         return cls(json_data["symbol"], types, ships)
@@ -503,6 +548,7 @@ class MarketTradeGoodListing:
     supply: str
     purchase: int
     sell_price: int
+    recorded_ts: datetime = datetime.now()
 
 
 @dataclass
@@ -525,11 +571,21 @@ class Market:
         exports = [MarketTradeGood(**export) for export in json_data["exports"]]
         imports = [MarketTradeGood(**import_) for import_ in json_data["imports"]]
         exchange = [MarketTradeGood(**listing) for listing in json_data["exchange"]]
+        listings = []
         if "tradeGoods" in json_data:
-            listings = [
-                MarketTradeGoodListing(*listing.values())
-                for listing in json_data["tradeGoods"]
-            ]
+            for listing in json_data["tradeGoods"]:
+                mtgl = MarketTradeGoodListing(*listing.values())
+                listings.append(mtgl)
         else:
             listings = []
         return cls(json_data["symbol"], exports, imports, exchange, listings)
+
+    def is_stale(self, age: int = 60):
+        if not self.listings:
+            return True
+
+        target_time = datetime.now() - timedelta(minutes=age)
+        for listing in self.listings:
+            if listing.recorded_ts < target_time:
+                return True
+        return False

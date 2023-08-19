@@ -5,7 +5,7 @@ sys.path.append(".")
 import json
 from straders_sdk import SpaceTraders
 from straders_sdk.ship import Ship
-from straders_sdk.utils import set_logging
+from straders_sdk.utils import set_logging, waypoint_slicer
 import logging
 from behaviours.generic_behaviour import Behaviour
 
@@ -19,10 +19,11 @@ class ExtractAndSell(Behaviour):
         config_file_name="user.json",
     ) -> None:
         super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+
         self.logger = logging.getLogger("bhvr_extract_and_sell")
-        self.logger.info("initialising...")
 
     def run(self):
+        super().run()
         # all  threads should have this.
         self.logger.info("Beginning...")
         starting_credts = self.agent.credits
@@ -36,7 +37,7 @@ class ExtractAndSell(Behaviour):
 
         try:
             target_wp_sym = self.behaviour_params.get(
-                "extract_waypoint",
+                "asteroid_wp",
                 st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,
@@ -51,6 +52,8 @@ class ExtractAndSell(Behaviour):
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
+        # in a circumstance where the ship isn't in the specified system, it will go.
+        self.ship_extrasolar(waypoint_slicer(target_wp_sym))
         self.ship_intrasolar(target_wp_sym)
         self.extract_till_full([])
         self.ship_intrasolar(market_wp_sym)

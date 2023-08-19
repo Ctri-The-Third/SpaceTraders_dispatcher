@@ -6,8 +6,10 @@ from .utils import (
     ApiConfig,
     _url,
     get_and_validate,
+    patch_and_validate,
     post_and_validate,
     get_and_validate_paginated,
+    get_and_validate_page,
 )
 from .local_response import LocalSpaceTradersRespose
 from .models import (
@@ -55,6 +57,13 @@ class SpaceTradersApiClient(SpaceTradersClient):
         return resp
         pass
 
+    def view_my_contracts(self) -> list["Contract"] or SpaceTradersResponse:
+        url = _url("my/contracts")
+        resp = get_and_validate(url, headers=self._headers())
+        if resp:
+            return [Contract.from_json(d) for d in resp.data]
+        return resp
+
     def waypoints_view_one(
         self, system_symbol, waypoint_symbol, force=False
     ) -> Waypoint or SpaceTradersResponse:
@@ -62,10 +71,11 @@ class SpaceTradersApiClient(SpaceTradersClient):
             raise ValueError("waypoint_symbol cannot be empty")
         url = _url(f"systems/{system_symbol}/waypoints/{waypoint_symbol}")
         resp = get_and_validate(url, headers=self._headers())
-        wayp = Waypoint.from_json(resp.data)
         if not resp:
             print(resp.error)
             return resp
+        wayp = Waypoint.from_json(resp.data)
+
         return wayp
 
     def waypoints_view(
@@ -115,10 +125,10 @@ class SpaceTradersApiClient(SpaceTradersClient):
         return resp
 
     def ship_patch_nav(self, ship: Ship, flight_mode: str):
-        "my/ships/:shipSymbol/course"
-        url = _url(f"my/ships/{ship.name}/navigate")
+        "my/ships/:shipSymbol/nav"
+        url = _url(f"my/ships/{ship.name}/nav")
         data = {"flightMode": flight_mode}
-        resp = post_and_validate(url, data, headers=self._headers())
+        resp = patch_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
         return resp
@@ -199,11 +209,26 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
     def ship_sell(self, ship: Ship, symbol: str, quantity: int):
         """/my/ships/{shipSymbol}/sell"""
+        url = _url(f"my/ships/{ship.name}/sell")
 
         if ship.nav.status != "DOCKED":
-            self.ship_dock(ship)
+            return LocalSpaceTradersRespose(
+                "Ship must be docked to sell", 0, 0, url=url
+            )
 
-        url = _url(f"my/ships/{ship.name}/sell")
+        data = {"symbol": symbol, "units": quantity}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
+        return resp
+
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/purchase"""
+
+        url = _url(f"my/ships/{ship.name}/purchase")
         data = {"symbol": symbol, "units": quantity}
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
@@ -266,6 +291,19 @@ class SpaceTradersApiClient(SpaceTradersClient):
     ) -> Survey or SpaceTradersResponse:
         return dummy_response(__class__.__name__, "find_survey_best_deposit")
 
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        return dummy_response(__class__.__name__, "find_survey_best_deposit")
+
+    def systems_view_twenty(
+        self, page_number: int, force=False
+    ) -> list["System"] or SpaceTradersResponse:
+        url = _url("systems")
+        resp = get_and_validate_page(url, page_number, headers=self._headers())
+
+        if resp:
+            resp = [System.from_json(system) for system in resp.data]
+        return resp
+
     def systems_view_all(self) -> list[System] or SpaceTradersResponse:
         url = _url("systems")
         resp = get_and_validate_paginated(
@@ -326,7 +364,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if resp and "expiration" in resp.data:
             ship.update({"cooldown": resp.data})
         else:
-            ship._cooldown = datetime.utcnow()
+            ship._cooldown_expiration = datetime.utcnow()
         pass
         return resp
 

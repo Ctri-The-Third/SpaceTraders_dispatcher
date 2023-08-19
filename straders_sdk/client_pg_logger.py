@@ -2,8 +2,9 @@ from typing import Protocol, runtime_checkable
 from .models import Waypoint, Survey, Market, Shipyard, Agent
 from .ship import Ship
 from .client_interface import SpaceTradersClient
-
+import straders_sdk.utils as utils
 from .responses import SpaceTradersResponse
+from .pg_pieces.transactions import _upsert_transaction
 import psycopg2
 import uuid
 import json
@@ -26,6 +27,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.session_id = str(uuid.uuid4())
         self.connection.autocommit = True
         self.current_agent_name = ""
+        utils.st_log_client = self
 
     pass
 
@@ -46,7 +48,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     def log_custom_event(
         self, event_name, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
     ):
-        sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
+        sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
         values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
         cursor = self.connection.cursor()
         cursor.execute(
@@ -93,7 +95,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         if isinstance(ship_name, Ship):
             ship_name = ship_name.name
         sql = """INSERT INTO public.logging(
-	event_name, event_timestamp, agent_name, ship_name, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
+	event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
 	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
 
         cursor = self.connection.cursor()
@@ -114,6 +116,13 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
+        if isinstance(update_obj, SpaceTradersResponse):
+            update_obj = update_obj.data
+        if isinstance(update_obj, dict):
+            if "transaction" in update_obj:
+                _upsert_transaction(
+                    self.connection, update_obj["transaction"], self.session_id
+                )
         return
 
     def register(
@@ -132,6 +141,18 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     def view_my_self(self, response=None) -> "Agent" or SpaceTradersResponse:
         url = _url("my/agent")
         self.log_event("view_my_self", "GLOBAL", url, response)
+
+    def view_my_contracts(
+        self, response=None
+    ) -> list["Contract"] or SpaceTradersResponse:
+        url = _url("my/contracts")
+        self.log_event("view_my_contracts", "GLOBAL", url, response)
+
+    def systems_view_twenty(
+        self, page_number, force=False, response=None
+    ) -> dict[str:"System"] or SpaceTradersResponse:
+        url = _url("systems")
+        self.log_event("systems_view_twenty", "GLOBAL", url, response)
 
     def waypoints_view(
         self, system_symbol: str, response=None
@@ -197,15 +218,22 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         # don't log anything, not an API call
         pass
 
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        # don't log anything, not an API call
+        pass
+
     def ship_orbit(self, ship, response=None) -> SpaceTradersResponse:
         url = _url(f"my/ships/:ship_name/orbit")
         self.log_event("ship_orbit", ship.name, url, response)
         pass
 
-    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str, response=None):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str, response=None):
         """my/ships/:shipSymbol/course"""
         url = _url(f"my/ships/:ship_name/navigate")
-        self.log_event("ship_change_course", ship.name, url, response)
+        event_params = {"flight_mode": flight_mode}
+        self.log_event(
+            "ship_change_flight_mode", ship.name, url, response, event_params
+        )
         pass
 
     def ship_move(
@@ -213,7 +241,8 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/navigate"""
         url = _url(f"my/ships/:ship_name/navigate")
-        self.log_event("ship_move", ship.name, url, response)
+        event_params = {"dest_waypoint_symbol": dest_waypoint_symbol}
+        self.log_event("ship_move", ship.name, url, response, event_params)
 
         pass
 
@@ -222,7 +251,8 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         """my/ships/:shipSymbol/jump"""
         url = _url(f"my/ships/:ship_name/jump")
-        self.log_event("ship_jump", ship.name, url, response)
+        event_params = {"dest_waypoint_symbol": dest_waypoint_symbol}
+        self.log_event("ship_jump", ship.name, url, response, event_params)
 
         pass
 
@@ -257,8 +287,15 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         url = _url(f"my/ships/:ship_name/sell")
         self.log_event("ship_sell", ship.name, url, response)
+        self.update(response)
 
         pass
+
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity, response=None
+    ) -> SpaceTradersResponse:
+        url = _url(f"my/ships/:ship_name/purchase")
+        self.log_event("ship_purchase_cargo", ship.name, url, response)
 
     def ship_survey(
         self, ship: "ship", response=None
@@ -297,14 +334,14 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     def systems_view_one(
         self, system_symbol: str, response
     ) -> "System" or SpaceTradersResponse:
-        url = _url(f"/systems/{system_symbol}")
+        url = _url(f"/systems/:system_symbol")
         self.log_event("systems_view_one", "GLOBAL", url, response)
 
     def system_shipyard(
         self, waypoint: Waypoint, response=None
     ) -> Shipyard or SpaceTradersResponse:
         """/game/locations/{symbol}/shipyard"""
-        url = _url(f"game/locations/{waypoint.symbol}/shipyard")
+        url = _url(f"game/locations/:waypoint_symbol/shipyard")
         self.log_event("system_shipyard", "GLOBAL", url, response)
 
         pass
@@ -313,7 +350,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self, wp: Waypoint, force_update=False
     ) -> "JumpGate" or SpaceTradersResponse:
         """/game/systems/{symbol}/jumpgate"""
-        url = _url(f"game/systems/{wp.system_symbol}/jumpgate")
+        url = _url(f"game/systems/:waypoint_symbol/jumpgate")
         self.log_event("system_jumpgate", "GLOBAL", url, None)
         pass
 
@@ -371,6 +408,9 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         url = _url(f"my/contracts/:contract_id/fulfill")
         self.log_event("contracts_fulfill", "GLOBAL", url, response)
         pass
+
+    def log_429(self, url, response: SpaceTradersResponse):
+        self.log_event("429", "GLOBAL", url, response)
 
 
 def _url(endpoint: str) -> str:

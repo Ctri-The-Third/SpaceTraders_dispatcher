@@ -2,6 +2,7 @@ from ..models import Waypoint, JumpGate, JumpGateConnection
 import logging
 from datetime import datetime
 from ..local_response import LocalSpaceTradersRespose
+from ..utils import try_execute_select, try_execute_upsert
 
 
 def _upsert_jump_gate(connect, jump_gate: JumpGate):
@@ -60,28 +61,3 @@ where source_waypoint = %s"""
             )
             resp_obj.connected_waypoints.append(lr)
     return resp_obj
-
-
-def try_execute_upsert(connection, sql, params) -> LocalSpaceTradersRespose:
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, params)
-        return LocalSpaceTradersRespose(
-            None, None, None, url=f"{__name__}.try_execute_upsert"
-        )
-    except Exception as err:
-        return LocalSpaceTradersRespose(
-            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_upsert"
-        )
-
-
-def try_execute_select(connection, sql, params) -> list:
-    try:
-        cur = connection.cursor()
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-        return rows
-    except Exception as err:
-        return LocalSpaceTradersRespose(
-            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
-        )

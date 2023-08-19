@@ -8,8 +8,8 @@ from datetime import datetime
 import random
 import time
 from .local_response import LocalSpaceTradersRespose
-from time import sleep
 
+st_log_client: "SpaceTradersClient" = None
 ST_LOGGER = logging.getLogger("API-Client")
 
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -36,6 +36,15 @@ class ApiConfig:
             self.base_url = base_url
         if version:
             self.version = version
+
+
+def get_and_validate_page(
+    url, page_number, params=None, headers=None
+) -> SpaceTradersResponse or None:
+    params = params or {}
+    params["page"] = page_number
+    params["limit"] = 20
+    return get_and_validate(url, params=params, headers=headers)
 
 
 def get_and_validate_paginated(
@@ -83,6 +92,8 @@ def get_and_validate(
             logging.error("Error: %s, %s", url, err)
         _log_response(response)
         if response.status_code == 429:
+            if st_log_client:
+                st_log_client.log_429(url, RemoteSpaceTradersRespose(response))
             logging.debug("Rate limited. Waiting %s seconds", i)
             time.sleep(i * (i + random.random()))
             continue
@@ -96,6 +107,17 @@ def get_and_validate(
 def rate_limit_check(response: requests.Response):
     if response.status_code != 429:
         return
+
+
+def request_and_validate(method, url, data=None, json=None, headers=None):
+    if method == "GET":
+        return get_and_validate(url, params=data, headers=headers)
+    elif method == "POST":
+        return post_and_validate(url, data=data, json=json, headers=headers)
+    elif method == "PATCH":
+        return patch_and_validate(url, data=data, json=json, headers=headers)
+    else:
+        return LocalSpaceTradersRespose("Method %s not supported", 0, 0, url)
 
 
 def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
@@ -173,12 +195,25 @@ def set_logging(filename: str = None, level=logging.INFO):
         level=level,
         format=format,
     )
+    logging.getLogger("client_mediator").setLevel(logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    ST_LOGGER.setLevel(logging.DEBUG)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
-    ts = datetime.strptime(timestamp, DATE_FORMAT)
+    ts = None
+    try:
+        ts = datetime.fromisoformat(timestamp)
+        return ts
+    except:
+        pass
+    for timestamp_format in [DATE_FORMAT, "%Y-%m-%dT%H:%M:%SZ"]:
+        try:
+            ts = datetime.strptime(timestamp, DATE_FORMAT)
+            return ts
+        except:
+            pass
+    if not ts:
+        logging.error("Could not parse timestamp: %s", timestamp)
     return ts
 
 
@@ -194,5 +229,52 @@ def sleep_until_ready(ship: "Ship"):
 
 def waypoint_slicer(waypoint_symbol: str) -> str:
     "returns the system symbol from a waypoint symbol"
+    if not waypoint_symbol:
+        return None
     pieces = waypoint_symbol.split("-")
     return f"{pieces[0]}-{pieces[1]}"
+
+
+def try_execute_upsert(connection, sql, params) -> LocalSpaceTradersRespose:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        return LocalSpaceTradersRespose(
+            None, None, None, url=f"{__name__}.try_execute_upsert"
+        )
+    except Exception as err:
+        logging.error("Couldn't execute upsert: %s", err)
+        logging.debug("SQL: %s", sql)
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_upsert"
+        )
+
+
+def try_execute_select(connection, sql, params) -> list:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        return rows
+    except Exception as err:
+        logging.error("Couldn't execute select: %s", err)
+        logging.debug("SQL: %s", sql)
+        return LocalSpaceTradersRespose(
+            error=err, status_code=0, error_code=0, url=f"{__name__}.try_execute_select"
+        )
+
+
+def try_execute_no_results(connection, sql, params) -> LocalSpaceTradersRespose:
+    try:
+        cur = connection.cursor()
+        cur.execute(sql, params)
+        return LocalSpaceTradersRespose(
+            None, None, None, url=f"{__name__}.try_execute_no_results"
+        )
+    except Exception as err:
+        return LocalSpaceTradersRespose(
+            error=err,
+            status_code=0,
+            error_code=0,
+            url=f"{__name__}.try_execute_no_results",
+        )

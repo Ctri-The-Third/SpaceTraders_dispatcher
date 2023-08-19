@@ -6,6 +6,7 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
 import time
+from straders_sdk.utils import set_logging
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_HIGHEST"
 
@@ -25,6 +26,7 @@ class ExtractAndTransferHeighest_1(Behaviour):
         )
 
     def run(self):
+        super().run()
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
@@ -87,3 +89,11 @@ class ExtractAndTransferHeighest_1(Behaviour):
             )
             time.sleep(70)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+
+
+if __name__ == "__main__":
+    agent = sys.argv[1] if len(sys.argv) >= 3 else "CTRI"
+    ship = sys.argv[2] if len(sys.argv) >= 3 else "CTRI-3"
+    set_logging()
+    bhvr = ExtractAndSell(agent, ship)
+    bhvr.run()

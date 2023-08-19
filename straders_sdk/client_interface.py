@@ -42,6 +42,10 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def view_my_contracts(self) -> list["Contract"] or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def waypoints_view(
         self, system_symbol: str
     ) -> dict[str:list] or SpaceTradersResponse:
@@ -101,6 +105,10 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def find_survey_best(self, waypoint_symbol: str) -> Survey or SpaceTradersResponse:
+        pass
+
+    @abstractmethod
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
         pass
@@ -154,6 +162,13 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def ship_purchase_cargo(
+        self, ship: "Ship", symbol: str, quantity
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/purchase"""
+        pass
+
+    @abstractmethod
     def ship_survey(self, ship: "Ship") -> list[Survey] or SpaceTradersResponse:
         """/my/ships/{shipSymbol}/survey"""
 
@@ -174,6 +189,12 @@ class SpaceTradersClient(Protocol):
     @abstractmethod
     def system_jumpgate(self, wp: Waypoint) -> JumpGate or SpaceTradersResponse:
         """/systems/{systemSymbol}/waypoints/{waypointSymbol}/jump-gate"""
+        pass
+
+    @abstractmethod
+    def systems_view_twenty(
+        self, page_number: int, force=False
+    ) -> dict[str:"System"] or SpaceTradersResponse:
         pass
 
     @abstractmethod

@@ -16,7 +16,7 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
     except:
         return
     owner_faction = "" if not owner else owner.starting_faction
-    sql = """INSERT into ship (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity
+    sql = """INSERT into ships (ship_symbol, agent_name, faction_symbol, ship_role, cargo_capacity
     , cargo_in_use, fuel_capacity, fuel_current, last_updated)
         values (%s, %s, %s, %s, %s, %s, %s, %s, NOW() at time zone 'utc')
         ON CONFLICT (ship_symbol) DO UPDATE
@@ -58,31 +58,25 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
     if not resp:
         return resp
 
+    resp = _upsert_ship_cooldown(connection, ship)
+
 
 def _upsert_ship_nav(connection, ship: Ship):
     # we need to add offsets to the ship times to get them to UTC.
     sql = """INSERT into ship_nav
-        (Ship_symbol, system_symbol, waypoint_symbol, departure_time, arrival_time, origin_waypoint, destination_waypoint, flight_status, flight_mode)
+        (Ship_symbol, system_symbol, waypoint_symbol, departure_time, arrival_time, o_waypoint_symbol, d_waypoint_symbol, flight_status, flight_mode)
         values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (ship_symbol) DO UPDATE
-        SET system_symbol = %s,
-            waypoint_symbol = %s,
-            departure_time = %s,
-            arrival_time = %s,
-            origin_waypoint = %s,
-            destination_waypoint = %s,
-            flight_status = %s,
-            flight_mode = %s;"""
+        SET system_symbol = EXCLUDED.system_symbol,
+            waypoint_symbol = EXCLUDED.waypoint_symbol,
+            departure_time = EXCLUDED.departure_time,
+            arrival_time = EXCLUDED.arrival_time,
+            o_waypoint_symbol = EXCLUDED.o_waypoint_symbol,
+            d_waypoint_symbol = EXCLUDED.d_waypoint_symbol,
+            flight_status = EXCLUDED.flight_status,
+            flight_mode = EXCLUDED.flight_mode;"""
     values = (
         ship.name,
-        ship.nav.system_symbol,
-        ship.nav.waypoint_symbol,
-        ship.nav.departure_time,
-        ship.nav.arrival_time,
-        ship.nav.origin.symbol,
-        ship.nav.destination.symbol,
-        ship.nav.status,
-        ship.nav.flight_mode,
         ship.nav.system_symbol,
         ship.nav.waypoint_symbol,
         ship.nav.departure_time,
@@ -129,6 +123,18 @@ def _upsert_ship_frame(connection, ship: Ship):
     VALUES (%s, %s, %s) 
     ON CONFLICT (ship_symbol, frame_symbol) DO UPDATE set condition = %s;"""
     values = (ship.name, ship.frame.symbol, ship.frame.condition, ship.frame.condition)
+    resp = try_execute_upsert(connection, sql, values)
+    return resp
+
+
+def _upsert_ship_cooldown(connection, ship: Ship):
+    if ship.seconds_until_cooldown == 0:
+        return LocalSpaceTradersRespose(
+            None, None, None, url=f"{__name__}._upsert_ship_cooldown"
+        )
+    sql = """insert into ship_cooldowns  (ship_symbol, total_seconds, expiration)
+    values (%s, %s, %s) ON CONFLICT (ship_symbol, expiration) DO NOTHING;"""
+    values = (ship.name, ship._cooldown_length, ship._cooldown_expiration)
     resp = try_execute_upsert(connection, sql, values)
     return resp
 
