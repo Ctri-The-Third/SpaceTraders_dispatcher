@@ -194,6 +194,7 @@ def stage_3(client: SpaceTraders):
     if are_surveys_weak(client, asteroid_wp.symbol):
         logger.warning("Surveys are weak, refresh behaviour not implemented")
 
+    process_contracts(client)
     #
     # SHIP SORTING
     #
