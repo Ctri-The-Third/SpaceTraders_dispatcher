@@ -53,10 +53,8 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         if ship.can_survey:
             st.ship_survey(ship)
         # we're full, prep and deploy
-        if (
-            ship.cargo_units_used >= ship.cargo_capacity - 10
-            or ship.nav.system_symbol == destination_sys.symbol
-        ):
+
+        if ship.cargo_units_used >= ship.cargo_capacity - 10:
             # are we doing a sell, or a contract?
             # check if we have a contract for the items in our inventory
             found_contracts = st.view_my_contracts()
@@ -117,8 +115,8 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-UWK5-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "12"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "6"
     ship = f"{agent}-{ship_number}"
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, {})
     bhvr.run()
