@@ -18,7 +18,7 @@ def _upsert_jump_gate(connect, jump_gate: JumpGate):
         return resp
 
     connection_sql = """INSERT INTO public.jumpgate_connections(
-	source_waypoint, destination_waypoint, distance)
+	s_waypoint_symbol, d_waypoint_symbol, distance)
 	VALUES (%s, %s, %s) on conflict do nothing;"""
 
     for connection in jump_gate.connected_waypoints:
