@@ -230,6 +230,7 @@ class Ship(SpaceTradersInteractive):
                 self._cooldown_expiration = parse_timestamp(
                     json_data["cooldown"]["expiration"]
                 )
+                self._cooldown_length = json_data["cooldown"]["totalSeconds"]
                 if self.seconds_until_cooldown > 6000:
                     self.logger.warning("Cooldown is over 100 minutes")
             if "fuel" in json_data:

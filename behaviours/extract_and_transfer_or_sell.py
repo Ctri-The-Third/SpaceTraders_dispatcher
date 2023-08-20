@@ -83,8 +83,8 @@ class ExtractAndTransferOrSell_4(Behaviour):
             "valid_agents", [agent.symbol]
         )  # which agents do we transfer quest cargo to?
 
-        hauler = self.find_hauler(ship.nav.waypoint_symbol, valid_agents)
-        if hauler:
+        haulers = self.find_haulers(ship.nav.waypoint_symbol)
+        for hauler in haulers:
             hauler: Ship
             hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
 
@@ -100,6 +100,8 @@ class ExtractAndTransferOrSell_4(Behaviour):
                             hauler.name,
                             resp.error,
                         )
+                    if resp:
+                        break
 
         #
         # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
@@ -119,7 +121,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
             agent.credits - starting_credts,
         )
 
-    def find_hauler(self, waypoint_symbol, valid_agents: list):
+    def find_haulers(self, waypoint_symbol):
         st = self.st
 
         my_ships = st.ships_view()
@@ -127,20 +129,21 @@ class ExtractAndTransferOrSell_4(Behaviour):
         haulers = [
             ship for id, ship in my_ships.items() if ship.role in ["HAULER", "COMMAND"]
         ]
-        for hauler in haulers:
-            hauler: Ship
-            if hauler.nav.waypoint_symbol == waypoint_symbol:
-                remaining_space = hauler.cargo_capacity - hauler.cargo_units_used
-                if remaining_space == 0:
-                    continue
-                return hauler
+        valid_haulers = [
+            ship
+            for ship in haulers
+            if ship.cargo_capacity - ship.cargo_units_used > 0
+            and ship.nav.waypoint_symbol == waypoint_symbol
+        ]
+        if len(valid_haulers) > 0:
+            return valid_haulers
         return None
 
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-LWK5-"
-    ship_suffix = "1"
+    agent_symbol = "CTRI-U7-"
+    ship_suffix = "7"
     params = None
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params
