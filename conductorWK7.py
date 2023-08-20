@@ -204,12 +204,22 @@ def stage_3(client: SpaceTraders):
         and len(haulers) >= len(excavators) // extractors_per_hauler
     ):
         return 4
+    behaviour_params = {}
+    cargo_to_transfer = []
 
+    contracts = client.view_my_contracts()
+    for con in contracts.values():
+        con: Contract
+        if con.accepted and not con.fulfilled:
+            for deliverable in con.deliverables:
+                cargo_to_transfer.append(deliverable.symbol)
     #
     # set behaviours. use commander until we have a freighter.
     #
+    if len(cargo_to_transfer) > 0:
+        behaviour_params["cargo_to_transfer"] = cargo_to_transfer
     if asteroid_wp:
-        behaviour_params = {"asteroid_wp": asteroid_wp.symbol}
+        behaviour_params["asteroid_wp"] = asteroid_wp.symbol
     for excavator in excavators:
         set_behaviour(excavator.name, EXTRACT_TRANSFER, behaviour_params)
     for hauler in haulers:
