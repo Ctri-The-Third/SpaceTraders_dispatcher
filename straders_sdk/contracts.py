@@ -97,4 +97,4 @@ class Contract:
         )
 
     def update(self, json_data: dict):
-        self.__init__(json_data)
+        self.from_json(json_data)

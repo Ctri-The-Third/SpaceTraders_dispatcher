@@ -39,7 +39,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 0
+    starting_stage = 3
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
@@ -177,6 +177,11 @@ def stage_2(client: SpaceTraders):
 def stage_3(client: SpaceTraders):
     # we're have 1 or 2 surveyors, and 3 or 5 excavators.
     # at this point we want to switch to surveying and extracting, not raw extracting.
+
+    #
+    # PREFLIGHT AND DATA REFRESH
+    #
+
     agent = client.view_my_self()
     hq_wp = agent.headquarters
     hq_sys = waypoint_slicer(hq_wp)
@@ -189,6 +194,9 @@ def stage_3(client: SpaceTraders):
     if are_surveys_weak(client, asteroid_wp.symbol):
         logger.warning("Surveys are weak, refresh behaviour not implemented")
 
+    #
+    # SHIP SORTING
+    #
     ships = client.ships_view()
 
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
@@ -204,26 +212,38 @@ def stage_3(client: SpaceTraders):
         and len(haulers) >= len(excavators) // extractors_per_hauler
     ):
         return 4
-    behaviour_params = {}
+
+    #
+    # SETTING PARAMETERS
+    #
+    extractor_params = {}
     cargo_to_transfer = []
 
+    fulfil_wp = None
     contracts = client.view_my_contracts()
     for con in contracts.values():
         con: Contract
         if con.accepted and not con.fulfilled:
             for deliverable in con.deliverables:
-                cargo_to_transfer.append(deliverable.symbol)
-    #
-    # set behaviours. use commander until we have a freighter.
-    #
+                if deliverable.units_fulfilled < deliverable.units_required:
+                    fulfil_wp = deliverable.destination_symbol
+                    cargo_to_transfer.append(deliverable.symbol)
+
+    hauler_params = {}
     if len(cargo_to_transfer) > 0:
-        behaviour_params["cargo_to_transfer"] = cargo_to_transfer
+        extractor_params["cargo_to_transfer"] = cargo_to_transfer
     if asteroid_wp:
-        behaviour_params["asteroid_wp"] = asteroid_wp.symbol
+        extractor_params["asteroid_wp"] = asteroid_wp.symbol
+        hauler_params["asteroid_wp"] = asteroid_wp.symbol
+    if fulfil_wp:
+        hauler_params["fulfil_wp"] = fulfil_wp
+    #
+    # APPLY BEHAVIOURS. use commander until we have a freighter.
+    #
     for excavator in excavators:
-        set_behaviour(excavator.name, EXTRACT_TRANSFER, behaviour_params)
+        set_behaviour(excavator.name, EXTRACT_TRANSFER, extractor_params)
     for hauler in haulers:
-        set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
+        set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
     for satelite in satelites:
         set_behaviour(
             satelite.name,
@@ -233,7 +253,7 @@ def stage_3(client: SpaceTraders):
     for commander in commanders:
         # if there's no hauler, do that.
         if len(haulers) == 0:
-            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, behaviour_params)
+            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, haul)
         else:
             # do the refresh behaviour
             set_behaviour(
@@ -247,7 +267,7 @@ def stage_3(client: SpaceTraders):
     if len(haulers) <= (len(excavators) / extractors_per_hauler):
         ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
         if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
+            set_behaviour(ship.name, EXTRACT_TRANSFER, extractor_params)
     elif len(excavators) <= 30:
         prices = get_ship_prices_in_hq_system(client)
         if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
@@ -258,7 +278,7 @@ def stage_3(client: SpaceTraders):
             ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
 
         if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER, behaviour_params)
+            set_behaviour(ship.name, EXTRACT_TRANSFER, extractor_params)
 
     return 3
 

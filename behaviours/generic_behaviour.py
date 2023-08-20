@@ -112,6 +112,7 @@ class Behaviour:
                 sleep_until_ready(self.ship)
                 ship.nav.status = "IN_ORBIT"
                 ship.nav.waypoint_symbol = target_wp_symbol
+                st.update(ship)
             self.logger.debug(
                 "moved to %s, time to destination %s",
                 ship.name,

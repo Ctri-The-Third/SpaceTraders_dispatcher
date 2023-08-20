@@ -35,13 +35,13 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-        fulfill_wp_s = None
+        fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
         market_wp_s = self.behaviour_params.get("market_wp", None)
 
         destination_sys = st.systems_view_one(
-            waypoint_slicer(market_wp_s or fulfill_wp_s or start_wp_s)
+            waypoint_slicer(market_wp_s or fulfil_wp_s or start_wp_s)
         )
 
         if ship.fuel_current < min(ship.fuel_capacity, 200):
@@ -72,10 +72,10 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
             st.ship_orbit(ship)
             self.ship_extrasolar(destination_sys)
-            self.ship_intrasolar(market_wp_s or fulfill_wp_s)
+            self.ship_intrasolar(market_wp_s or fulfil_wp_s)
 
             st.ship_dock(ship)
-            if fulfill_wp_s:
+            if fulfil_wp_s:
                 for contract in contracts:
                     for item in contract.deliverables:
                         if item.units_fulfilled < item.units_required:
@@ -118,5 +118,6 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "6"
     ship = f"{agent}-{ship_number}"
-    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, {})
+    behaviour_params = {"fulfil_wp": "X1-JX88-33322E", "asteroid_wp": "X1-JX88-51095C"}
+    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})
     bhvr.run()
