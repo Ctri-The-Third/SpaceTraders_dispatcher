@@ -85,7 +85,7 @@ def stage_0(client: SpaceTraders):
         contracts = client.view_my_contracts()
     for con in contracts.values():
         con: Contract
-        if not con.accepted:
+        if not con.accepted and should_we_accept_contract(con):
             client.contract_accept(con.id)
 
     if wayps:
@@ -415,6 +415,14 @@ order by {} desc, sp.ship_type """
             best_ship_to_buy = ship
             hours_to_save_for_best_ship = new_time
     return best_ship_to_buy
+
+
+def should_we_accept_contract(contract: Contract):
+    deliverable_goods = [deliverable.symbol for deliverable in contract.deliverables]
+    for dg in deliverable_goods:
+        if "ORE" in dg:
+            return True
+    return False
 
 
 def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
