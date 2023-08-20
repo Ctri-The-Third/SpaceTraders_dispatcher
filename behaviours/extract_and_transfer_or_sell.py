@@ -36,6 +36,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         #
         #  -- log beginning
         #
+
         if not ship.can_extract:
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
             return
@@ -73,6 +74,8 @@ class ExtractAndTransferOrSell_4(Behaviour):
                     if deliverable.units_fulfilled < deliverable.units_required:
                         cargo_to_transfer.append(deliverable.symbol)
 
+        if ship.can_survey:
+            st.ship_survey(ship)
         self.extract_till_full(cargo_to_transfer)
 
         #
