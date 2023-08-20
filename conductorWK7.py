@@ -422,7 +422,24 @@ def should_we_accept_contract(contract: Contract):
     for dg in deliverable_goods:
         if "ORE" in dg:
             return True
+    logging.warning.("I don't think we should accept this contract %s", contract.id)
     return False
+
+
+def process_contracts(client: SpaceTraders):
+    contracts = client.view_my_contracts()
+    for con in contracts.values():
+        con: Contract
+        should_we_complete = True
+        if con.accepted and not con.fulfilled:
+            for deliverable in con.deliverables:
+                if deliverable.units_fulfilled < deliverable.units_required:
+                    should_we_complete = False
+        if should_we_complete:
+            client.contracts_fulfill(con.id)
+        if not con.accepted and should_we_accept_contract(con):
+            client.contract_accept(con.id)
+        
 
 
 def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
