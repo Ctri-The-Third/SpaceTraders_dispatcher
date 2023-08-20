@@ -463,8 +463,8 @@ join systems s on w.system_symbol = s.system_symbol"""
 
         else:
             return graph
-        sql = """select w1.system_symbol, destination_waypoint from jumpgate_connections jc
-                join waypoints w1 on jc.source_waypoint = w1.waypoint_symbol
+        sql = """select w1.system_symbol, jc.d_waypoint_symbol from jumpgate_connections jc
+                join waypoints w1 on jc.s_waypoint_symbol = w1.waypoint_symbol
                 """
         results = try_execute_select(self.connection, sql, ())
         connections = []
