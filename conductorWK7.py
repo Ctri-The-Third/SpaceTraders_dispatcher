@@ -253,14 +253,10 @@ def stage_3(client: SpaceTraders):
     for commander in commanders:
         # if there's no hauler, do that.
         if len(haulers) == 0:
-            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, haul)
+            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
         else:
             # do the refresh behaviour
-            set_behaviour(
-                commander.name,
-                BHVR_EXPLORE_SYSTEM,
-                # {"asteroid_wp": shipyard_wp.symbol},
-            )
+            set_behaviour(commander.name, EXTRACT_TRANSFER, extractor_params)
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #

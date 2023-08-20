@@ -35,16 +35,25 @@ class ExploreSystem(Behaviour):
         # check all markets in the system
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-        time.sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+        self.sleep_until_ready()
 
         if self.behaviour_params and "target_sys" in self.behaviour_params:
             d_sys = st.systems_view_one(self.behaviour_params["target_sys"])
         else:
             tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
                     FROM public.mkt_shpyrds_systems_last_updated_jumpgates j
-                    JOIN waypoints w1 on j.symbol = w1.symbol
+                    JOIN waypoints w1 on j.waypoint_symbol = w1.waypoint_symbol
                     order by last_updated, random()"""
-            target = try_execute_select(self.connection, tar_sys_sql, ())[0]
+            resp = try_execute_select(self.connection, tar_sys_sql, ())
+
+            if not resp:
+                self.logger.error(
+                    "Couldn't find any systems with jump gates! sleeping  10 mins then exiting!"
+                )
+                time.sleep(600)
+                return
+            target = resp[0]
+            # target = try_execute_select(self.connection, tar_sys_sql, ())[0]
             self.logger.debug("Random destination selected: target %s", target[0])
             d_sys = System(target[0], "", "", target[1], target[2], [])
 
@@ -61,32 +70,9 @@ class ExploreSystem(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-RWK5-"
-    ship_suffix = "1"
-    params = None
-    systems = [
-        "X1-B55",
-        "X1-HK30",
-        "X1-PC83",
-        "X1-MC83",
-        "X1-RK61",
-        "X1-UC71",
-        "X1-GU26",
-        "X1-YD18",
-        "X1-AS94",
-        "X1-HY95",
-        "X1-AT36",
-        "X1-J81",
-        "X1-GH56",
-        "X1-HK27",
-        "X1-YF6",
-        "X1-NJ19",
-        "X1-YS39",
-        "X1-BH54",
-        "X1-Z79",
-        "X1-MQ25",
-    ]
-    for system in systems:
-        logging.info(f"==STARTING EXPLORE OF {system}==")
-        params = {"asteroid_wp": "", "target_sys": system}
-        ExploreSystem(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship = f"{agent}-{ship_number}"
+    behaviour_params = None  #
+    bhvr = ExploreSystem(agent, ship, behaviour_params or {})
+    bhvr.run()
