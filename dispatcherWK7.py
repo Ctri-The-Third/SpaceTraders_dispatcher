@@ -34,6 +34,7 @@ from behaviours.buy_and_deliver_or_sell import (
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
+from datetime import datetime, timedelta
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
@@ -147,84 +148,90 @@ WHERE ship_symbol IN (
             --EXPECT TO SEE ERRORS IF OTHER DISPATCHER STILL RUNNING, UNTIL PREV BEHAVIOURS PHASE OUT."""
         )
         ships_and_threads: dict[str : threading.Thread] = {}
-
+        check_frequency = timedelta(seconds=15)
+        last_checked = datetime.now() - check_frequency
+        unlocked_ships = []
         while True:
-            # every 15 seconds update the list of unlocked ships with a DB query.
+            #
+            # every 15 seconds update the list of unlocked ships with a DB query
+            #
+            if last_checked + check_frequency < datetime.now():
+                unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
+                last_checked = datetime.now()
+                active_ships = sum(
+                    [1 for t in ships_and_threads.values() if t.is_alive()]
+                )
 
-            unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
+                logging.info(
+                    "dispatcher %s found %d unlocked ships - %s active (%s%%)",
+                    self.lock_id,
+                    len(unlocked_ships),
+                    active_ships,
+                    round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
+                )
+                if len(unlocked_ships) > 10:
+                    set_logging(level=logging.INFO)
+                    api_logger = logging.getLogger("API-Client")
+                    api_logger.setLevel(logging.INFO)
+                    self.logger.level = logging.INFO
+                    logging.getLogger().setLevel(logging.INFO)
 
-            active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
+                # if we're running a ship and the lock has expired during execution, what do we do?
+                # do we relock the ship whilst we're running it, or terminate the thread
+                # I say terminate.
 
-            logging.info(
-                "dispatcher %s found %d unlocked ships - %s active (%s%%)",
-                self.lock_id,
-                len(unlocked_ships),
-                active_ships,
-                round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
-            )
-            if len(unlocked_ships) > 10:
-                set_logging(level=logging.INFO)
-                api_logger = logging.getLogger("API-Client")
-                api_logger.setLevel(logging.INFO)
-                self.logger.level = logging.INFO
-                logging.getLogger().setLevel(logging.INFO)
-
-            # if we're running a ship and the lock has expired during execution, what do we do?
-            # do we relock the ship whilst we're running it, or terminate the thread
-            # I say terminate.
-
-            unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
-            for ship_sym, thread in ships_and_threads.items():
-                if ship_sym not in unlocked_ship_symbols:
-                    # we're running a ship that's no longer unlocked - terminate the thread
-                    thread: threading.Thread
-                    # here's where we'd send a terminate event to the thread, but I'm not going to do this right now.
-                    del ships_and_threads[ship_sym]
-                    self.logger.warning(
-                        "lost lock for active ship %s - risk of conflict!", ship_sym
-                    )
-
-            # every second, check if we have idle ships whose behaviours we can execute.
-            for i in range(15):
-                for ship_and_behaviour in unlocked_ships:
-                    # are we already running this behaviour?
-
-                    if ship_and_behaviour["name"] in ships_and_threads:
-                        thread = ships_and_threads[ship_and_behaviour["name"]]
+                unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
+                for ship_sym, thread in ships_and_threads.items():
+                    if ship_sym not in unlocked_ship_symbols:
+                        # we're running a ship that's no longer unlocked - terminate the thread
                         thread: threading.Thread
-                        if thread.is_alive():
-                            continue
-                        else:
-                            del ships_and_threads[ship_and_behaviour["name"]]
+                        # here's where we'd send a terminate event to the thread, but I'm not going to do this right now.
+                        del ships_and_threads[ship_sym]
+                        self.logger.warning(
+                            "lost lock for active ship %s - risk of conflict!", ship_sym
+                        )
+            #
+            # every second, check if we have idle ships whose behaviours we can execute.
+            #
+            for ship_and_behaviour in unlocked_ships:
+                # are we already running this behaviour?
+
+                if ship_and_behaviour["name"] in ships_and_threads:
+                    thread = ships_and_threads[ship_and_behaviour["name"]]
+                    thread: threading.Thread
+                    if thread.is_alive():
+                        continue
                     else:
-                        # first time we've seen this ship - create a thread
-                        pass
-                    bhvr = None
-                    bhvr = self.map_behaviour_to_class(
-                        ship_and_behaviour["behaviour_id"],
-                        ship_and_behaviour["name"],
-                        ship_and_behaviour["behaviour_params"],
-                    )
-
-                    if not bhvr:
-                        continue
-
-                    lock_r = self.lock_ship(ship_and_behaviour["name"], self.lock_id)
-                    if lock_r is None:
-                        continue
-                    # we know this is behaviour, so lock it and start it.
-                    ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
-                        target=bhvr.run,
-                        name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
-                    )
-                    self.logger.info(
-                        "Starting thread for ship %s", ship_and_behaviour["name"]
-                    )
-                    ships_and_threads[ship_and_behaviour["name"]].start()
-                    time.sleep(min(10, 100 / len(ships_and_threads)))  # stagger ships
+                        del ships_and_threads[ship_and_behaviour["name"]]
+                else:
+                    # first time we've seen this ship - create a thread
                     pass
+                bhvr = None
+                bhvr = self.map_behaviour_to_class(
+                    ship_and_behaviour["behaviour_id"],
+                    ship_and_behaviour["name"],
+                    ship_and_behaviour["behaviour_params"],
+                )
 
-                time.sleep(1)
+                if not bhvr:
+                    continue
+
+                lock_r = self.lock_ship(ship_and_behaviour["name"], self.lock_id)
+                if lock_r is None:
+                    continue
+                # we know this is behaviour, so lock it and start it.
+                ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
+                    target=bhvr.run,
+                    name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
+                )
+                self.logger.info(
+                    "Starting thread for ship %s", ship_and_behaviour["name"]
+                )
+                ships_and_threads[ship_and_behaviour["name"]].start()
+                time.sleep(min(10, 100 / len(ships_and_threads)))  # stagger ships
+                pass
+
+            time.sleep(1)
 
     def map_behaviour_to_class(
         self, behaviour_id: str, ship_symbol: str, behaviour_params: dict

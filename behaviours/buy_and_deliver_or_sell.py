@@ -14,7 +14,7 @@ import math
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "BUY_AND_DELIVER_OR_SELL"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 300
 
 
 class BuyAndDeliverOrSell_6(Behaviour):
