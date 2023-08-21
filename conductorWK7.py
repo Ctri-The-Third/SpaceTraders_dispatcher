@@ -254,10 +254,11 @@ def stage_3(client: SpaceTraders):
     else:
         hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
         hauler_params = {}
+        if asteroid_wp:
+            hauler_params["asteroid_wp"] = asteroid_wp.symbol
         if len(cargo_to_transfer) > 0:
             extractor_params["cargo_to_transfer"] = cargo_to_transfer
-            if asteroid_wp:
-                hauler_params["asteroid_wp"] = asteroid_wp.symbol
+
             if fulfil_wp:
                 hauler_params["fulfil_wp"] = fulfil_wp
 
