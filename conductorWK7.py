@@ -21,6 +21,7 @@ from itertools import zip_longest
 from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
+from datetime import datetime, timedelta
 from dispatcherWK5 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
@@ -194,6 +195,8 @@ def stage_3(client: SpaceTraders):
     if are_surveys_weak(client, asteroid_wp.symbol):
         logger.warning("Surveys are weak, refresh behaviour not implemented")
 
+    if is_shipyard_stale(client, shipyard_wp):
+        client.system_shipyard(shipyard_wp, True)
     process_contracts(client)
     #
     # SHIP SORTING
@@ -270,9 +273,13 @@ def stage_3(client: SpaceTraders):
         if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
             "SHIP_MINING_DRONE", 99999999
         ) / 10:
-            ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
+            ship = maybe_buy_ship_hq_sys(
+                client, what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
+            )
         else:
-            ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
+            ship = maybe_buy_ship_hq_sys(
+                client, what_ship_should_i_buy(client, "SHIP_MINING_DRONE")
+            )
 
         if ship:
             set_behaviour(ship.name, EXTRACT_TRANSFER, extractor_params)
@@ -416,6 +423,18 @@ order by {} desc, sp.ship_type """
             best_ship_to_buy = ship
             hours_to_save_for_best_ship = new_time
     return best_ship_to_buy
+
+
+def is_shipyard_stale(client: SpaceTraders, shipyard_wp: Waypoint):
+    sql = """select last_updated from shipyard_types where shipyard_symbol = %s"""
+    resp = try_execute_select(client.db_client.connection, sql, (shipyard_wp.symbol,))
+    if not resp:
+        return True
+
+    last_updated = resp[0][0]
+    if last_updated < datetime.utcnow() - timedelta(hours=1):
+        return True
+    return False
 
 
 def should_we_accept_contract(contract: Contract):
