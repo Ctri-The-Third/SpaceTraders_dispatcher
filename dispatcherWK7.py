@@ -181,15 +181,13 @@ WHERE ship_symbol IN (
                 # I say terminate.
 
                 unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
-                for ship_sym, thread in ships_and_threads.items():
-                    if ship_sym not in unlocked_ship_symbols:
-                        # we're running a ship that's no longer unlocked - terminate the thread
-                        thread: threading.Thread
-                        # here's where we'd send a terminate event to the thread, but I'm not going to do this right now.
-                        del ships_and_threads[ship_sym]
-                        self.logger.warning(
-                            "lost lock for active ship %s - risk of conflict!", ship_sym
-                        )
+                ships_to_tidyup = [
+                    ship
+                    for ship in ships_and_threads.items()
+                    if ship not in unlocked_ship_symbols
+                ]
+                for ship_sym in ships_to_tidyup:
+                    del ships_and_threads[ship_sym]
             #
             # every second, check if we have idle ships whose behaviours we can execute.
             #
