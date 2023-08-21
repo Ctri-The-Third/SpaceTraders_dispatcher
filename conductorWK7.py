@@ -22,13 +22,14 @@ from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK5 import (
+from dispatcherWK7 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     EXTRACT_TRANSFER,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
+    BHVR_BUY_AND_DELIVER_OR_SELL,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
@@ -40,7 +41,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 0
+    starting_stage = 3
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
@@ -86,7 +87,7 @@ def stage_0(client: SpaceTraders):
         contracts = client.view_my_contracts()
     for con in contracts.values():
         con: Contract
-        if not con.accepted and should_we_accept_contract(con):
+        if not con.accepted and should_we_accept_contract(client, con):
             client.contract_accept(con.id)
 
     if wayps:
@@ -218,36 +219,59 @@ def stage_3(client: SpaceTraders):
         return 4
 
     #
-    # SETTING PARAMETERS
+    # SETTING PARAMETERS & HAULER PREPARING
     #
     extractor_params = {}
     cargo_to_transfer = []
 
     fulfil_wp = None
     contracts = client.view_my_contracts()
+    contract_type = "MINING"
+    hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
     for con in contracts.values():
         con: Contract
         if con.accepted and not con.fulfilled:
+            active_contract = con
             for deliverable in con.deliverables:
                 if deliverable.units_fulfilled < deliverable.units_required:
                     fulfil_wp = deliverable.destination_symbol
                     cargo_to_transfer.append(deliverable.symbol)
+                    if "ORE" not in cargo_to_transfer:
+                        contract_type = "DELIVERY"
 
-    hauler_params = {}
-    if len(cargo_to_transfer) > 0:
-        extractor_params["cargo_to_transfer"] = cargo_to_transfer
+    if contract_type == "DELIVERY":
+        hauler_behaviour = BHVR_BUY_AND_DELIVER_OR_SELL
+        inc_del = [
+            deliverable
+            for deliverable in active_contract.deliverables
+            if deliverable.units_fulfilled < deliverable.units_required
+        ]
+        hauler_params = {
+            "tradegood": cargo_to_transfer[0],
+            "quantity": inc_del[0].units_required - inc_del[0].units_fulfilled,
+            "fulfil_wp": fulfil_wp,
+        }
+    else:
+        hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
+        hauler_params = {}
+        if len(cargo_to_transfer) > 0:
+            extractor_params["cargo_to_transfer"] = cargo_to_transfer
+            if asteroid_wp:
+                hauler_params["asteroid_wp"] = asteroid_wp.symbol
+            if fulfil_wp:
+                hauler_params["fulfil_wp"] = fulfil_wp
+
     if asteroid_wp:
         extractor_params["asteroid_wp"] = asteroid_wp.symbol
-        hauler_params["asteroid_wp"] = asteroid_wp.symbol
-    if fulfil_wp:
-        hauler_params["fulfil_wp"] = fulfil_wp
+
     #
     # APPLY BEHAVIOURS. use commander until we have a freighter.
     #
+
     for excavator in excavators:
         set_behaviour(excavator.name, EXTRACT_TRANSFER, extractor_params)
     for hauler in haulers:
-        set_behaviour(hauler.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+        set_behaviour(hauler.name, hauler_behaviour, hauler_params)
     for satelite in satelites:
         set_behaviour(
             satelite.name,
@@ -362,6 +386,19 @@ def refresh_materialised_views(connection):
     try_execute_select(connection, sql, ())
 
 
+def refresh_uncharted_systems(connection):
+    sql = """update waypoints w
+set checked = False where 
+w.waypoint_Symbol in (
+select w.waypoint_symbol from waypoints w join waypoint_traits wt on w.waypoint_symbol = wt.waypoint_symbol
+where w.checked = True  
+group by 1
+
+having count (case when wt.trait_symbol = 'UNCHARTED' then 1 else null end ) > 0
+	)"""
+    try_execute_upsert(connection, sql, ())
+
+
 def what_ship_should_i_buy(
     client: SpaceTraders,
     default_ship_to_buy=None,
@@ -397,6 +434,9 @@ order by {} desc, sp.ship_type """
         )
         return default_ship_to_buy or "SHIP_MINING_DRONE"
     total_cph = rows[0][1]
+    if total_cph is None:
+        logger.warning("No CPH data found! Refresh the materialised views.")
+        return default_ship_to_buy or "SHIP_MINING_DRONE"
     best_ship_to_buy = default_ship_to_buy
     if default_ship_to_buy:
         found_row = None
@@ -437,28 +477,80 @@ def is_shipyard_stale(client: SpaceTraders, shipyard_wp: Waypoint):
     return False
 
 
-def should_we_accept_contract(contract: Contract):
+def should_we_accept_contract(client: SpaceTraders, contract: Contract):
     deliverable_goods = [deliverable.symbol for deliverable in contract.deliverables]
     for dg in deliverable_goods:
         if "ORE" in dg:
             return True
+
+    # get average and best price for deliverael
+    total_value = contract.payment_completion + contract.payment_upfront
+    total_cost = 0
+    for deliverable in contract.deliverables:
+        cost = get_prices_for(client, deliverable.symbol)
+        if not cost:
+            logging.warning(
+                "Couldn't find a market for %s, I don't think we should accept this contract %s ",
+                deliverable.symbol,
+                contract.id,
+            )
+            return False
+        total_cost += cost[0] * deliverable.units_required
+    if total_cost < total_value:
+        return True
+    elif total_cost < total_value * 2:
+        logging.warning(
+            "This contract is borderline, %scr to earn %scr - up to you boss [%s]",
+            total_cost,
+            total_value,
+            contract.id,
+        )
+        return False
+
     logging.warning("I don't think we should accept this contract %s", contract.id)
+
     return False
+
+
+def get_prices_for(client: SpaceTraders, tradegood: str):
+    connection = client.db_client.connection
+
+    sql = """select * from market_prices where trade_symbol = %s"""
+    rows = try_execute_select(connection, sql, (tradegood,))
+    if rows:
+        row = rows[0]
+        average_price_buy = row[1]
+        average_price_sell = row[2]
+        return [average_price_buy, average_price_sell]
+    return None
 
 
 def process_contracts(client: SpaceTraders):
     contracts = client.view_my_contracts()
+    need_to_negotiate = True
     for con in contracts.values():
         con: Contract
-        should_we_complete = True
+        should_we_complete = False
+
         if con.accepted and not con.fulfilled:
+            should_we_complete = True
+
+            need_to_negotiate = False
             for deliverable in con.deliverables:
                 if deliverable.units_fulfilled < deliverable.units_required:
                     should_we_complete = False
         if should_we_complete:
-            client.contracts_fulfill(con.id)
-        if not con.accepted and should_we_accept_contract(con):
-            client.contract_accept(con.id)
+            client.contracts_fulfill(con)
+
+        if not con.accepted:
+            need_to_negotiate = False
+            if should_we_accept_contract(client, con):
+                client.contract_accept(con.id)
+    if need_to_negotiate:
+        # get ships at the HQ, and have one do the thing
+        ships = client.ships_view()
+        satelite = [ship for ship in ships.values() if ship.role == "SATELLITE"][0]
+        client.ship_negotiate(satelite)
 
 
 def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):

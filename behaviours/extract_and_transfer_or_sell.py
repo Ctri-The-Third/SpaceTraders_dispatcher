@@ -67,12 +67,13 @@ class ExtractAndTransferOrSell_4(Behaviour):
         cargo_to_transfer = self.behaviour_params.get("cargo_to_transfer", [])
         if cargo_to_transfer == []:
             contracts = st.view_my_contracts()
-            for contract_id, contract in contracts.items():
-                if (not contract.accepted) or contract.fulfilled:
-                    continue
-                for deliverable in contract.deliverables:
-                    if deliverable.units_fulfilled < deliverable.units_required:
-                        cargo_to_transfer.append(deliverable.symbol)
+            if contracts:
+                for contract_id, contract in contracts.items():
+                    if (not contract.accepted) or contract.fulfilled:
+                        continue
+                    for deliverable in contract.deliverables:
+                        if deliverable.units_fulfilled < deliverable.units_required:
+                            cargo_to_transfer.append(deliverable.symbol)
 
         if ship.can_survey:
             st.ship_survey(ship)

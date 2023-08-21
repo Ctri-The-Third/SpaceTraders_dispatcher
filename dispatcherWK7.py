@@ -28,6 +28,10 @@ from behaviours.monitor_cheapest_price import (
     MonitorPrices,
     BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
 )
+from behaviours.buy_and_deliver_or_sell import (
+    BuyAndDeliverOrSell_6,
+    BEHAVIOUR_NAME as BHVR_BUY_AND_DELIVER_OR_SELL,
+)
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 
@@ -38,6 +42,7 @@ EXTRACT_TRANSFER = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
+
 
 logger = logging.getLogger("dispatcher")
 
@@ -247,6 +252,8 @@ WHERE ship_symbol IN (
             bhvr = ExploreSystem(aname, sname, bhvr_params)
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
             bhvr = MonitorPrices(aname, sname, bhvr_params)
+        elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
+            bhvr = BuyAndDeliverOrSell_6(aname, sname, bhvr_params)
         return bhvr
 
 

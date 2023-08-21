@@ -75,19 +75,18 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             self.ship_intrasolar(market_wp_s or fulfil_wp_s)
 
             st.ship_dock(ship)
+
+            managed_to_fulfill = False
             if fulfil_wp_s:
-                for contract in contracts:
-                    for item in contract.deliverables:
-                        if item.units_fulfilled < item.units_required:
-                            for cargo_item in ship.cargo_inventory:
-                                if item.symbol == cargo_item.symbol:
-                                    st.contracts_deliver(
-                                        contract,
-                                        ship,
-                                        cargo_item.symbol,
-                                        cargo_item.units,
-                                    )
-            else:
+                resp = self.fulfill_any_relevant()
+                if resp:  # we fulfilled something
+                    managed_to_fulfill = True
+                    # we fulfilled something, so we should be able to sell the rest
+                    st.ship_orbit(ship)
+                    self.ship_extrasolar(start_sys)
+                    self.ship_intrasolar(start_wp_s)
+            elif market_wp_s:
+                # we got to the fulfill point but something went horribly wrong
                 market = st.system_market(
                     st.waypoints_view_one(destination_sys, market_wp_s)
                 )
@@ -103,6 +102,12 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
                     # we added this in for circumstances when we've incorrect, left over cargo in the hold that needs drained. Might need a "vent all" option too.
                     self.sell_all_cargo()
+
+            if ship.cargo_units_used >= ship.cargo_capacity - 10:
+                # something's gone horribly wrong, we couldn't sell or fulfill at the destination - are our orders stale?
+                self.ship_extrasolar(start_sys)
+                self.ship_intrasolar(start_wp_s)
+
         else:
             self.ship_extrasolar(start_sys)
             self.ship_intrasolar(start_wp_s)

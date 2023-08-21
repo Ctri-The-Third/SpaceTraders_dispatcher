@@ -13,7 +13,7 @@ import math
 
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
-BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
+BEHAVIOUR_NAME = "BUY_AND_DELIVER_OR_SELL"
 SAFETY_PADDING = 60
 
 
@@ -25,7 +25,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
     optional:\n
     `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
     `transfer_ship`: if you want the ship to transfer the cargo, set which ship\n
-    `deliver_wp`: if you want the ship to deliver the cargo, set which waypoint"""
+    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint"""
 
     def __init__(
         self,
@@ -38,14 +38,16 @@ class BuyAndDeliverOrSell_6(Behaviour):
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
     def run(self):
-        ship = self.ship
+        super().run()
         st = self.st
-        agent = st.view_my_self()
+        ship = self.ship
+        agent = self.agent
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         #
         # setup initial parameters and preflight checks
         #
+
         if "tradegood" not in self.behaviour_params:
             time.sleep(SAFETY_PADDING)
             self.logger.error("No tradegood specified for ship %s", ship.name)
@@ -67,6 +69,13 @@ class BuyAndDeliverOrSell_6(Behaviour):
             )
             end_waypoint = st.waypoints_view_one(
                 end_system.symbol, self.behaviour_params["sell_wp"]
+            )
+        if "fulfil_wp" in self.behaviour_params:
+            end_system = st.systems_view_one(
+                waypoint_slicer(self.behaviour_params["fulfil_wp"])
+            )
+            end_waypoint = st.waypoints_view_one(
+                end_system.symbol, self.behaviour_params["fulfil_wp"]
             )
         if "transfer_ship" in self.behaviour_params:
             receive_ship = st.ships_view_one(self.behaviour_params["transfer_ship"])
@@ -114,26 +123,15 @@ class BuyAndDeliverOrSell_6(Behaviour):
             if ship_inventory_item.symbol == target_tradegood:
                 quantity = ship_inventory_item.units
 
-        rtb = False
-        self.ship_extrasolar(end_system)
-        self.ship_intrasolar(end_waypoint)
+        if ship.cargo_units_used > 0 and end_waypoint is not None:
+            self.deliver_half(end_system, end_waypoint, target_tradegood)
 
-        if receive_ship and quantity > 0:
-            resp = st.ship_transfer_cargo(
-                ship, target_tradegood, quantity, receive_ship.name
-            )
-            if not resp:
-                self.logger.error(
-                    "Couldn't transfer %s %s to ship %s, because %s",
-                    quantity,
-                    target_tradegood,
-                    receive_ship.name,
-                    resp.error,
-                )
+        st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        time.sleep(SAFETY_PADDING)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
-        sql = """select market_symbol from market_tradegood_listing
-where symbol = %s
+        sql = """select market_symbol from market_tradegood_listings
+where trade_symbol = %s
 order by purchase_price asc """
         wayps = try_execute_select(self.connection, sql, (tradegood_sym,))
 
@@ -176,16 +174,30 @@ order by purchase_price asc """
 
         space = ship.cargo_capacity - ship.cargo_units_used
 
-        amount = min(space, max_to_buy, math.floor(agent.credits / target_price))
+        amount = min(space, max_to_buy, math.floor(self.agent.credits / target_price))
 
         resp = st.ship_purchase_cargo(ship, target_tradegood, amount)
         if not resp:
             # couldn't buy anything.
-
+            self.logger.warning(
+                "Couldn't buy any %s, are we full? Manual intervention maybe required."
+            )
             time.sleep(SAFETY_PADDING)
             return
 
-    def return_half():
+    def deliver_half(
+        self, target_system, target_waypoint: "Waypoint", target_tradegood: str
+    ):
+        self.ship_extrasolar(target_system)
+        self.ship_intrasolar(target_waypoint)
+
+        # now that we're here, decide what to do. Options are:
+        # transfer (skip for now, throw in a warning)
+        # fulfill
+        # sell
+
+        self.fulfill_any_relevant()
+
         pass
 
 

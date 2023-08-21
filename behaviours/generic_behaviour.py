@@ -142,7 +142,6 @@ class Behaviour:
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
-        sleep(ship.seconds_until_cooldown)
         while ship.cargo_units_used < ship.cargo_capacity:
             if len(cargo_to_target) > 0:
                 survey = (
@@ -221,6 +220,35 @@ class Behaviour:
                     return resp
 
         return True
+
+    def fulfill_any_relevant(self, excpetions: list = []):
+        contracts = self.st.view_my_contracts()
+
+        items = []
+        tar_contract = None
+        for contract_id, contract in contracts.items():
+            if contract.accepted and not contract.fulfilled:
+                tar_contract = contract
+                for deliverable in contract.deliverables:
+                    if deliverable.units_fulfilled < deliverable.units_required:
+                        items.append(deliverable)
+
+        for cargo in self.ship.cargo_inventory:
+            matching_items = [item for item in items if item.symbol == cargo.symbol]
+            if not matching_items:
+                logging.warning(
+                    "ship doesn't have any items matching deliverables to deliver"
+                )
+                return LocalSpaceTradersRespose(
+                    "Cargo doesn't have any matching items.",
+                    0,
+                    0,
+                    "generic_behaviour.fulfill_any_relevant",
+                )
+            cargo_to_deliver = min(matching_items[0].units_required, cargo.units)
+            return self.st.contracts_deliver(
+                tar_contract, self.ship, cargo.symbol, cargo_to_deliver
+            )
 
     def scan_local_system(self):
         st = self.st
