@@ -226,7 +226,7 @@ WHERE ship_symbol IN (
                     "Starting thread for ship %s", ship_and_behaviour["name"]
                 )
                 ships_and_threads[ship_and_behaviour["name"]].start()
-                time.sleep(min(10, 100 / len(ships_and_threads)))  # stagger ships
+                time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
                 pass
 
             time.sleep(1)
