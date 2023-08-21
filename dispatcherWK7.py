@@ -180,17 +180,24 @@ WHERE ship_symbol IN (
                 # do we relock the ship whilst we're running it, or terminate the thread
                 # I say terminate.
 
-                unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
-                ships_to_tidyup = [
-                    ship
-                    for ship in ships_and_threads.items()
-                    if ship not in unlocked_ship_symbols
-                ]
-                for ship_sym in ships_to_tidyup:
-                    del ships_and_threads[ship_sym]
             #
-            # every second, check if we have idle ships whose behaviours we can execute.
+            # every second, tidy up ships whose threads have expired or aren't locked by us
             #
+
+            unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
+            ships_to_tidyup = []
+            for ship, thread in ships_and_threads.items():
+                if ship not in unlocked_ship_symbols:
+                    ships_to_tidyup.append(ship)
+                elif not thread.is_alive():
+                    ships_to_tidyup.append(ship)
+            for ship in ships_to_tidyup:
+                del ships_and_threads[ship]
+
+            #
+            # check if we have idle ships whose behaviours we can execute.
+            #
+
             for ship_and_behaviour in unlocked_ships:
                 # are we already running this behaviour?
 
