@@ -140,7 +140,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         ]
         if len(valid_haulers) > 0:
             return valid_haulers
-        return None
+        return []
 
 
 if __name__ == "__main__":
