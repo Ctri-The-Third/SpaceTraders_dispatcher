@@ -55,8 +55,17 @@ class FindModulesAndEquip(Behaviour):
                 ship_mounts.pop(index)
 
                 continue
-
-            destination_wp_sym = self.find_cheapest_markets_for_good(target_mount)[0]
+            #
+            # is it already in our inventory? if so, skip this step, and just try and equip it.
+            #
+            for inventory in ship.cargo_inventory:
+                if inventory.symbol == target_mount:
+                    st.ship_install_mount(ship, target_mount)
+                    continue
+            #
+            # choose the best waypoint, factoring in lost CPS
+            #
+            destination_wp_sym = self.find_cheapest_markets_for_good(target_mount)
             if not destination_wp_sym:
                 self.logger.error("Couldn't find mount %s", target_mount)
                 time.sleep(SAFETY_PADDING)
@@ -76,8 +85,13 @@ class FindModulesAndEquip(Behaviour):
 
             if ship.nav.waypoint_symbol == destination_wp_sym:
                 st.ship_dock(ship)
-                # resp = st.ship_purchase_cargo(ship, target_mount, 1)
-                resp = True
+                resp = st.ship_purchase_cargo(ship, target_mount, 1)
+
+                if not resp:
+                    time.sleep(SAFETY_PADDING)
+                    continue
+
+                resp = st.ship_install_mount(ship, target_mount)
                 if not resp:
                     time.sleep(SAFETY_PADDING)
                     continue
@@ -91,9 +105,13 @@ class FindModulesAndEquip(Behaviour):
         # setup initial parameters and preflight checks
         #
 
-    def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
-        sql = """select market_symbol from market_tradegood_listing
-where symbol = %s
+    def find_cheapest_markets_for_good(
+        self, tradegood_sym: str, opportunity_cost_cps: int = 200
+    ) -> list[str]:
+        st = self.st
+        ship = self.ship
+        sql = """select market_symbol, purchase_price from market_tradegood_listings
+where trade_symbol = %s
 order by purchase_price asc """
         wayps = try_execute_select(self.connection, sql, (tradegood_sym,))
 
@@ -101,14 +119,37 @@ order by purchase_price asc """
             self.logger.error(
                 "Couldn't find cheapest market for good %s", tradegood_sym
             )
-            return wayps
-        return [wayp[0] for wayp in wayps]
+            return None
+
+        destination_wps_and_prices = wayps
+        start_system = st.systems_view_one(ship.nav.system_symbol)
+        markets = []
+        for market in destination_wps_and_prices:
+            dest_system = st.systems_view_one(waypoint_slicer(market[0]))
+            distance = self.astar(self.graph, start_system, dest_system)
+            if not distance:
+                continue
+            obj = (market[0], market[1], len(distance))
+            markets.append(obj)
+            # if we a assume a jump is worth 4 minutes of intrasolar and 6 minutes of cooldown and a CPM of like 200, then the cost of a jump is ~2400 credits per jump + 1600 for being more than 0.
+
+        best_cost = sys.maxsize
+        destination_wp_sym = None
+        for market in markets:
+            # price = market[1]
+            # opportunity cost = 2400 * (len(distance) - 1) + 1600 if len(distance) > 1 else 0
+            cost = market[1] + (2400 * (market[2] - 1) + 1600 if market[2] > 0 else 0)
+            if cost < best_cost:
+                best_cost = cost
+                destination_wp_sym = market[0]
+
+        return destination_wp_sym
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-UWK5-"
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "-1"
-    ship = f"{agent}{ship_suffix}"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-L8-"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship = f"{agent}-{ship_suffix}"
     bhvr = FindModulesAndEquip(
         agent,
         ship,
@@ -120,5 +161,5 @@ if __name__ == "__main__":
             ]
         },
     )
-    set_logging()
+    set_logging(logging.DEBUG)
     bhvr.run()
