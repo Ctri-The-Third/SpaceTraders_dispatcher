@@ -5,7 +5,7 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.ship import ShipInventory, Ship
 import time
-from straders_sdk.utils import set_logging
+from straders_sdk.utils import set_logging, waypoint_slicer
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL"
 
@@ -53,12 +53,14 @@ class ExtractAndTransferOrSell_4(Behaviour):
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 ).symbol,
             )
+            target_sys_sym = waypoint_slicer(target_wp_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
+        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
         self.ship_intrasolar(target_wp_sym)
         #
         #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.
@@ -147,8 +149,8 @@ class ExtractAndTransferOrSell_4(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U7-"
-    ship_suffix = "7"
-    params = None
+    ship_suffix = "17"
+    params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params
     ).run()
