@@ -113,7 +113,7 @@ def ship_overview():
 , cooldown_nav
 from ship_overview
 where locked_until > now() at time zone 'utc'
-order by ship_symbol
+order by agent_name, ship_role, frame_symbol, ship_symbol
     """
 
     rows = try_execute_select(connection, sql, ())
