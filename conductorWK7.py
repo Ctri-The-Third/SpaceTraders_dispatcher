@@ -11,6 +11,7 @@ from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTrad
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
+from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.utils import (
     set_logging,
     waypoint_slicer,
@@ -295,6 +296,13 @@ def stage_3(client: SpaceTraders):
             set_behaviour(ship.name, EXTRACT_TRANSFER, extractor_params)
     elif len(excavators) <= 30:
         prices = get_ship_prices_in_hq_system(client)
+        for ship, price in prices.items():
+            if price is None:
+                logger.warning(
+                    "Couldn't get price for %s - unable to buy ne ships in stage 3, skipping",
+                    ship,
+                )
+                return 3
         if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
             "SHIP_MINING_DRONE", 99999999
         ) / 10:
@@ -614,6 +622,13 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: Shipyard, ship_symbol: str):
     for _, detail in shipyard.ships.items():
         detail: ShipyardShip
         if detail.ship_type == ship_symbol:
+            if not detail.purchase_price:
+                return LocalSpaceTradersRespose(
+                    f"We don't have price information for this shipyard. {shipyard.waypoint}",
+                    0,
+                    0,
+                    "conductorWK7.maybe_buy_ship",
+                )
             if agent.credits > detail.purchase_price:
                 resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
                 if resp:
