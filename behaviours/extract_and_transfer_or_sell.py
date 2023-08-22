@@ -47,12 +47,17 @@ class ExtractAndTransferOrSell_4(Behaviour):
         # -- navigate to target waypoint - if not set, go for nearest asteroid field
         #
         try:
-            target_wp_sym = self.behaviour_params.get(
-                "asteroid_wp",
-                st.find_waypoints_by_type_one(
+            target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
+            if not target_wp_sym:
+                target_wp = st.find_waypoints_by_type(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
-                ).symbol,
-            )
+                )
+                if target_wp_sym:
+                    target_wp_sym = target_wp[0].symbol
+            if not target_wp_sym:
+                raise AttributeError(
+                    "Asteroid WP not set, no fallback asteroid fields found in current system"
+                )
             target_sys_sym = waypoint_slicer(target_wp_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
