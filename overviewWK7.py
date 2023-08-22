@@ -9,6 +9,8 @@ import psycopg2
 from time import sleep
 import json
 from straders_sdk.utils import try_execute_select
+from flask import Flask
+
 
 config_file_name = "user.json"
 saved_data = json.load(open(config_file_name, "r+"))
@@ -148,7 +150,7 @@ javascript_refresh_blob = """
 <script>
 setTimeout(function(){
     window.location.reload(1);
-}, 5000);
+}, 15000);
 </script>
 """
 
@@ -160,8 +162,12 @@ def out_to_file(str, filename):
     file.close()
 
 
-while True:
-    out_to_file(
+app = Flask(__name__)
+
+
+@app.route("/")
+def index():
+    out_str = markdown.markdown(
         agent_str
         % (
             css_blob,
@@ -170,11 +176,26 @@ while True:
             transaction_summary(),
             javascript_refresh_blob,
         ),
-        "overview.md",
+        extensions=["tables", "md_in_html"],
     )
+    return out_str
 
-    out_to_file(
-        ship_str % (css_blob, ship_overview(), javascript_refresh_blob),
-        "overview_ships.md",
+
+@app.route("/ships/")
+def ships():
+    out_str = markdown.markdown(
+        agent_str
+        % (
+            css_blob,
+            commander_overview(),
+            scan_progress(),
+            transaction_summary(),
+            javascript_refresh_blob,
+        ),
+        extensions=["tables", "md_in_html"],
     )
-    sleep(30)
+    return out_str
+
+
+if __name__ == "__main__":
+    app.run(port=4000)

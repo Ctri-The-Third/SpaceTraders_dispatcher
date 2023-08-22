@@ -293,7 +293,7 @@ def stage_3(client: SpaceTraders):
     if len(haulers) <= (len(excavators) / extractors_per_hauler):
         ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
         if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER, extractor_params)
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
     elif len(excavators) <= 30:
         prices = get_ship_prices_in_hq_system(client)
         for ship, price in prices.items():
@@ -364,10 +364,7 @@ def stage_4(client: SpaceTraders):
     if len(satelites) < len(ships_we_might_buy):
         maybe_buy_ship_hq_sys(client, "SHIP_PROBE")
 
-    if (
-        len(haulers)
-        <= min(len(excavators) + len(hounds), target_hounds) / extractors_per_hauler
-    ):
+    if len(haulers) <= min(len(excavators), target_hounds) / extractors_per_hauler:
         ship = maybe_buy_ship(
             client,
             connection,

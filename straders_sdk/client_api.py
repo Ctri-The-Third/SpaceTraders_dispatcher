@@ -267,6 +267,17 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         return resp
 
+    def ship_install_mount(self, ship: Ship, mount_symbol: str) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/mounts/install"""
+
+        url = _url(f"my/ships/{ship.name}/mounts/install")
+        data = {"symbol": mount_symbol}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
+        return resp
+
     # find_waypoint_by_coords, find_waypoint_by_type, find_waypoints_by_trait, find_waypoints_by_trait_one, system_market_view
 
     def find_waypoints_by_trait(self, system_symbol: str, trait: str) -> list[Waypoint]:

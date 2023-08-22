@@ -4,10 +4,7 @@ import logging
 
 
 def _upsert_shipyard(connection, shipyard: Shipyard):
-    prices = [
-        st_type.price for st_type in shipyard.ship_types if st_type.price is not None
-    ]
-    if len(prices) > 0:
+    if len(shipyard.ships) > 0:
         try:
             sql = """INSERT INTO public.shipyard_types(
         shipyard_symbol, ship_type, ship_cost, last_updated)

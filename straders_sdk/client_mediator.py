@@ -761,6 +761,17 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             )
         return resp
 
+    def ship_install_mount(
+        self, ship: "Ship", mount_symbol: str
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/install"""
+        resp = self.api_client.ship_install_mount(ship, mount_symbol)
+        self.logging_client.ship_install_mount(ship, mount_symbol, resp)
+        if resp:
+            ship.update(resp.data)
+            self.update(ship)
+        return resp
+
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
         self.db_client.surveys_remove_one(survey_signature)
