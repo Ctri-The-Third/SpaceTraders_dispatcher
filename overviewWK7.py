@@ -184,12 +184,10 @@ def index():
 @app.route("/ships/")
 def ships():
     out_str = markdown.markdown(
-        agent_str
+        ship_str
         % (
             css_blob,
-            commander_overview(),
-            scan_progress(),
-            transaction_summary(),
+            ship_overview(),
             javascript_refresh_blob,
         ),
         extensions=["tables", "md_in_html"],
