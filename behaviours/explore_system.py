@@ -17,6 +17,12 @@ BEHAVIOUR_NAME = "EXPLORE_ONE_SYSTEM"
 
 
 class ExploreSystem(Behaviour):
+    """This behaviour will explore a single system, scanning all the markets and then returning to the original system.
+
+    Expects behaviour_params with the following keys:
+    - `target_sys`: the system to explore
+    """
+
     def __init__(
         self,
         agent_name,
