@@ -31,14 +31,19 @@ def run(client: SpaceTraders):
 
     ships = client.ships_view()
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    drones = [ship for ship in ships.values() if ship.frame == "FRAME_DRONE"]
-    hounds = [ship for ship in ships.values() if ship.frame == "FRAME_MINER"]
+    drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     refiners = [
         ship
         for ship in ships.values()
         if ship.frame.symbol == "SHIP_REFINING_FREIGHTER"
     ]
+
+    target_miners = 
+    drones_padding = target_miners - len(hounds)
+    drones = drones[0:drones_padding]  # limit ourselves to 50 extractors
+    spare_drones = drones[drones_padding:]  # switch these ones off.
 
     asteroid_wp = client.find_waypoints_by_type(hq_sys_sym, "ASTEROID_FIELD")[0]
     survey = client.find_survey_best(asteroid_wp.symbol)
@@ -85,6 +90,8 @@ def run(client: SpaceTraders):
                 BHVR_EXTRACT_AND_SELL,
                 other_extraction_params,
             )
+        for excavator in spare_drones:
+            set_behaviour(connection, excavator.name, BHVR_EXPLORE_SYSTEM)
 
 
 def get_price_per_distance_for_survey(

@@ -118,14 +118,26 @@ where locked_until > now() at time zone 'utc'
 order by agent_name, ship_role, frame_symbol, ship_symbol
     """
 
+    frames = {
+        "FRAME_DRONE": "⛵",
+        "FRAME_PROBE": "⛵",
+        "FRAME_MINER": "🚤",
+        "FRAME_LIGHT_FREIGHTER": "🚤",
+        "FRAME_FRIGATE": "🚤",
+    }
+
+    roles = {"COMMAND": "👑", "EXCAVATOR": "⛏️", "HAULER": "🚛", "SATELLITE":"🛰️"}
+
     rows = try_execute_select(connection, sql, ())
     response = ""
     if len(rows) > 0:
-        response = "| ship | role/ frame | waypoint | cargo/ | capacity | behaviour | Locked? | locked_until |\n"
+        response = "| ship | what | waypoint | cargo/ | capacity | behaviour | Locked? | locked_until |\n"
         response += "| --- | ---  --- | --- | --- | --- | --- | --- | --- |\n"
     for row in rows:
-        busy_emoji = "🔒🚀✅" if row[8] else "🔓😴❌"
-        response += f"| {row[0]} | {row[1]}_{row[2][5:]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {busy_emoji} | {row[7]} | \n"
+        busy_emoji = "✅" if row[8] else "❌"
+        frame_emoji = frames.get(row[2], row[2])
+        role_emoji = roles.get(row[1], row[1])
+        response += f"| {row[0]} | {role_emoji}{frame_emoji} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {busy_emoji} | {row[7]} | \n"
     return response
 
 
