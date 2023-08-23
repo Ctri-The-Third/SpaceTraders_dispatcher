@@ -131,7 +131,7 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
     rows = try_execute_select(connection, sql, ())
     response = ""
     if len(rows) > 0:
-        response = "| ship | what | waypoint | cargo/ | capacity | behaviour | Locked? | locked_until |\n"
+        response = "| ship | what | waypoint | 📥 | 📦 | behaviour | Locked? | locked_until |\n"
         response += "| --- | ---  --- | --- | --- | --- | --- | --- | --- |\n"
     for row in rows:
         busy_emoji = "✅" if row[8] else "❌"
