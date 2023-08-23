@@ -181,6 +181,14 @@ class SpaceTradersClient(Protocol):
         """/my/ships/{shipSymbol}/transfer"""
 
     @abstractmethod
+    def ship_install_mount(
+        self, ship: "Ship", mount_symbol: str
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/equip"""
+
+        pass
+
+    @abstractmethod
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
 

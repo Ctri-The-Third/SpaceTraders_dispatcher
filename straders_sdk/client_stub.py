@@ -117,6 +117,13 @@ class SpaceTradersStubClient:
 
         pass
 
+    def ship_install_mount(
+        self, ship: "Ship", mount_symbol: str
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/equip"""
+
+        pass
+
     def system_market(
         self, system_symbol: str, waypoint_symbol: str
     ) -> Market or SpaceTradersResponse:
