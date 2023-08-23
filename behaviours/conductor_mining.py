@@ -53,14 +53,16 @@ def run(client: SpaceTraders):
     if values:
         target_info = values[0]
         target_market = target_info[0]
+        other_extraction_params = {"asteroid_wp": asteroid_wp.symbol}
         extraction_params = {
+            "asteroid_wp": asteroid_wp.symbol,
             "cargo_to_transfer": [
                 target_info[1],
-            ]
+            ],
         }
         transfer_params = {
             "asteroid_wp": asteroid_wp.symbol,
-            "market_wp": target_info[0],
+            "market_wp": target_market,
         }
         extractors_per_hauler = 2
         hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
@@ -77,21 +79,26 @@ def run(client: SpaceTraders):
                 transfer_params,
             )
         for excavator in other_extractors:
-            set_behaviour(connection, excavator.name, BHVR_EXTRACT_AND_SELL)
+            set_behaviour(
+                connection,
+                excavator.name,
+                BHVR_EXTRACT_AND_SELL,
+                other_extraction_params,
+            )
 
 
 def get_price_per_distance_for_survey(
     connection, survey_signature: str, source_system: System
 ) -> list:
-    sql = """select mtl.market_symbol, mtl.symbol, mtl.purchase_price, mtl.sell_price, s.x,s.y, sd.signature
+    sql = """select mtl.market_symbol, mtl.trade_symbol, mtl.purchase_price, mtl.sell_price, s.x,s.y, sd.signature
 , SQRT(POWER((s.x - %s), 2) + POWER((s.y - %s), 2)) as distance
 , mtl.sell_price / (SQRT(POWER((s.x - -9380), 2) + POWER((s.y - -10447), 2))+0.01) as value_per_distance
-from market_tradegood_listing mtl
-join survey_deposit sd on sd.symbol = mtl.symbol
-join waypoints w on mtl.market_symbol = w.symbol
-join systems s on w.system_Symbol = s.symbol
+from market_tradegood_listings mtl
+join survey_deposits sd on sd.trade_symbol = mtl.trade_symbol
+join waypoints w on mtl.market_symbol = w.waypoint_symbol
+join systems s on w.system_Symbol = s.system_symbol
 where sd.signature = %s
-and s.symbol != %s
+and s.system_symbol != %s
 order by value_per_distance desc """
     results = try_execute_select(
         connection,
@@ -130,9 +137,9 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-UWK5-"
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "-1"
-    ship = f"{agent}{ship_suffix}"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship = f"{agent}-{ship_suffix}"
 
     set_logging()
     user = json.load(open("user.json"))

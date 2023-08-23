@@ -328,6 +328,9 @@ def stage_4(client: SpaceTraders):
     # hq_sys_sym = waypoint_slicer(agent.headquarters)
     connection = client.db_client.connection
     ships = client.ships_view()
+    asteroid_wp = client.find_waypoints_by_type(
+        waypoint_slicer(agent.headquarters), "ASTEROID_FIELD"
+    )[0]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
@@ -365,22 +368,25 @@ def stage_4(client: SpaceTraders):
         maybe_buy_ship_hq_sys(client, "SHIP_PROBE")
 
     if len(haulers) <= min(len(excavators), target_hounds) / extractors_per_hauler:
+        hauler_params = {"asteroid_wp": asteroid_wp.symbol}
         ship = maybe_buy_ship(
             client,
             connection,
             "SHIP_LIGHT_HAULER",
         )
         if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
     # then either buy a refining freighter, or an ore hound
-    # if len(refiners) < target_refiners:
-    #    ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
-    #    if ship:
-    #        set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
-    if len(hounds) <= target_hounds:
+    if len(refiners) < target_refiners:
+        ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+    elif len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
         if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER)
+            set_behaviour(
+                ship.name, EXTRACT_TRANSFER, {"asteroid_wp": asteroid_wp.symbol}
+            )
 
     return 4
     # switch off mining drones.

@@ -14,7 +14,8 @@ class ExtractAndTransferOrSell_4(Behaviour):
     """Expects the following behaviour_params
 
     Optional:
-    asteroid_wp: waypoint symbol to extract from"""
+    asteroid_wp: waypoint symbol to extract from
+    cargo_to_transfer: list of cargo symbols to transfer to hauler"""
 
     def __init__(
         self,
