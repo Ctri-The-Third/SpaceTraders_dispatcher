@@ -85,6 +85,7 @@ class FindModulesAndEquip(Behaviour):
 
             if ship.nav.waypoint_symbol == destination_wp_sym:
                 st.ship_dock(ship)
+
                 resp = st.ship_purchase_cargo(ship, target_mount, 1)
 
                 if not resp:
@@ -147,7 +148,7 @@ order by purchase_price asc """
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-L8-"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_suffix}"
     bhvr = FindModulesAndEquip(

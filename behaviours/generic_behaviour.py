@@ -250,6 +250,61 @@ class Behaviour:
                 tar_contract, self.ship, cargo.symbol, cargo_to_deliver
             )
 
+    def buy_cargo(self, cargo_symbol: str, quantity: int):
+        # check the waypoint we're at has a market
+        # check the market has the cargo symbol we're seeking
+        # check the market_depth is sufficient, buy until quantity hit.
+
+        ship = self.ship
+        st = self.st
+        current_waypoint = st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
+        if "MARKETPLACE" not in [trait.symbol for trait in current_waypoint.traits]:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} is not a marketplace",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+
+        if ship.nav.status != "DOCKED":
+            st.ship_dock(ship)
+
+        current_market = st.system_market(current_waypoint)
+        if len(current_market.listings) == 0:
+            current_market = st.system_market(current_waypoint, True)
+
+        found_listing = None
+        for listing in current_market.listings:
+            if listing.symbol == cargo_symbol:
+                found_listing = listing
+
+        if not found_listing:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} does not have a listing for {cargo_symbol}",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+        amount_to_buy = ship.cargo_capacity - ship.cargo_units_used
+        if amount_to_buy == 0:
+            return LocalSpaceTradersRespose(
+                f"Ship {ship.name} has no cargo capacity remaining",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+
+        times_to_buy = math.ceil(quantity / found_listing.trade_volume)
+        for i in range(0, times_to_buy):
+            resp = st.ship_purchase_cargo(
+                ship, cargo_symbol, found_listing.trade_volume
+            )
+            if not resp:
+                return resp
+        return True
+
     def scan_local_system(self):
         st = self.st
         ship = self.ship
