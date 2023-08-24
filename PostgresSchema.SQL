@@ -2,6 +2,12 @@
 
 set search_path = public;
 
+
+-- DON'T FORGET THE SHIPYARD TYPE TO SHIP LINK THING
+/* SELECT unnest(ARRAY['SATELLITEFRAME_PROBE'::text,'HAULERFRAME_LIGHT_FREIGHTER'::text, 'EXCAVATORFRAME_MINER'::text, 'COMMANDFRAME_FRIGATE'::text, 'EXCAVATORFRAME_DRONE'::text, 'SATELLITEFRAME_PROBE'::text, 'REFINERYFRAME_HEAVY_FREIGHTER'::text]) AS ship_roleframe,
+    unnest(ARRAY['SHIP_PROBE'::text,'SHIP_LIGHT_FREIGHTER'::text, 'SHIP_ORE_HOUND'::text, 'SHIP_COMMAND_FRIGATE'::text, 'SHIP_MINING_DRONE'::text, 'SHIP_PROBE'::text, 'SHIP_REFINING_FREIGHTER'::text ]) AS shipyard_type
+  WITH DATA;
+*/
 -------------------------------------------
 --
 -- PostgreSQL database dump
@@ -551,8 +557,8 @@ ALTER TABLE public.market_tradegood OWNER TO spacetraders;
 --
 
 CREATE MATERIALIZED VIEW public.mat_shipyardtypes_to_ship AS
- SELECT unnest(ARRAY['SATELLITEFRAME_PROBE'::text,'HAULERFRAME_LIGHT_FREIGHTER'::text, 'EXCAVATORFRAME_MINER'::text, 'COMMANDFRAME_FRIGATE'::text, 'EXCAVATORFRAME_DRONE'::text]) AS ship_roleframe,
-    unnest(ARRAY['SHIP_PROBE'::text,'SHIP_LIGHT_FREIGHTER'::text, 'SHIP_ORE_HOUND'::text, 'SHIP_COMMAND_FRIGATE'::text, 'SHIP_MINING_DRONE'::text]) AS shipyard_type
+ SELECT unnest(ARRAY['SATELLITEFRAME_PROBE'::text,'HAULERFRAME_LIGHT_FREIGHTER'::text, 'EXCAVATORFRAME_MINER'::text, 'COMMANDFRAME_FRIGATE'::text, 'EXCAVATORFRAME_DRONE'::text, 'SATELLITEFRAME_PROBE'::text, 'REFINERYFRAME_HEAVY_FREIGHTER'::text]) AS ship_roleframe,
+    unnest(ARRAY['SHIP_PROBE'::text,'SHIP_LIGHT_FREIGHTER'::text, 'SHIP_ORE_HOUND'::text, 'SHIP_COMMAND_FRIGATE'::text, 'SHIP_MINING_DRONE'::text, 'SHIP_PROBE'::text, 'SHIP_REFINING_FREIGHTER'::text ]) AS shipyard_type
   WITH DATA;
 
 
