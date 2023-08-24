@@ -79,6 +79,6 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = None  #
+    behaviour_params = {"target_sys": "X1-JX88"}
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
     bhvr.run()
