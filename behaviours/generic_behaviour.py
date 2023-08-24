@@ -411,11 +411,14 @@ class Behaviour:
         route.pop(0)
         for next_sys in route:
             next_sys: System
-            st.ship_jump(ship, next_sys.symbol)
+            sleep(ship.seconds_until_cooldown)
+            resp = st.ship_jump(ship, next_sys.symbol)
+            if not resp:
+                return resp
             if next_sys.symbol == destination_system.symbol:
                 # we've arrived, no need to sleepx
                 break
-            sleep(ship.seconds_until_cooldown)
+
         # Then, hit it.care
         return True
 
