@@ -3,7 +3,7 @@ import sys
 sys.path.append(".")
 
 import json, sys
-import psycopg2
+
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
@@ -34,13 +34,9 @@ def run(client: SpaceTraders):
     drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
-    refiners = [
-        ship
-        for ship in ships.values()
-        if ship.frame.symbol == "SHIP_REFINING_FREIGHTER"
-    ]
+    refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
 
-    target_miners = 
+    target_miners = 50
     drones_padding = target_miners - len(hounds)
     drones = drones[0:drones_padding]  # limit ourselves to 50 extractors
     spare_drones = drones[drones_padding:]  # switch these ones off.
@@ -82,6 +78,13 @@ def run(client: SpaceTraders):
                 hauler.name,
                 BHVR_RECEIVE_AND_FULFILL_OR_SELL,
                 transfer_params,
+            )
+        for refiner in refiners:
+            set_behaviour(
+                connection,
+                refiner.name,
+                BHVR_RECEIVE_AND_FULFILL_OR_SELL,
+                extraction_params,
             )
         for excavator in other_extractors:
             set_behaviour(
