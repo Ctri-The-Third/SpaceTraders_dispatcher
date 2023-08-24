@@ -8,7 +8,7 @@ Now (Sunday night) ore hounds are up to 400k and we need to go exploring to find
 ALSO - there are gates in uncharted systems. We need a pathfind behaviour that will periodically refresh those waypoints, and visit the unexplored edges of the jump-gate network. This is critical.
 
 We've achieved handling of buy & sell contracts. presently there are two bottlenecks I'm seeing regularly.
-* restarting threads isn't immediate (which is a flood protection) - this is solved by our theoretical request prioritor
+* ✅ restarting threads isn't immediate (which is a flood protection) - this is solved by our theoretical request prioritor
 * Things are expensive because we haven't got remote data yet. Both of these are big projects, but the request pooler has a greater risk of messing things up and an enthusiasm stall. It should have its own branch.
 
 We manually moved a satelite after discovering a place we could get cheaper ore hounds (idek how), and that messed up our core conductor expectations. Recon data is a must. It'll sort itself out in stage 4 but for now it's still a bit of a pain.
@@ -27,13 +27,27 @@ Earlier though, we had an hour with 21.7 CPR and a ratio of 5.7 requests to 6.8 
  * To decide what to do next, I need better analytics.
  * Optimise what I have before
 
+
+On a whim (And with discussion with other spacetraders players) I implemented a request throttling system that has now gone into effect. Rather than using a producer/ consumer queue, it uses a very straightforward class that manages a mutex protected pair of timestamps.
+When queried, it returns a number of seconds until the queryer can safely execute the request, and increments that time. 
+Additionally, there is staggering built in so that VIP requests (those are trigger cooldowns on the ships) can be processed faster. 33% of requests are reserved for VIP requests, and 66% for everything else.
+As I watch the system, during spike activity it's still getting rate limits (so something isn't working properly) - with groups of ships all being told to sleep for a _far too similar_ amount of time :( 
+
+We're going to assess.
+At the time of writing, the last 4 hours of session performance have seen delays of between 1578, 1704, 2973, and 2788. 
+Additionall,y we're seeing a CPH of around 350 on extract_and_transfer at present. If this throttler causes substantial delays, expect to see that be lower (though market prices could also be a factor).
+We didn't get to play with refineries or properly fix the freighters, but hopefully we will see fewer delayed requests come the morning.
+
+I've noticed that the VIP requests are at most coming in 0.333 seconds before non VIP ones, which means something is amiss there.
+
 ## Goals
 * ✅ get ship mounts able to be installed.
 * Implement the recon conductor and dispatcher.
 * Market Prices needs refactored to be considered of IMPORT/EXPORT/EXCHANGE state.
 * Better analytics for dynamic scaling.
 
-NOTE TO SELF IT IS 09:24 UK TIME, I HAVE JUST SET MY FREIGHTERS TO GO BUY MACHINERY - SEE HOW THEY SWITCH FROM SELLING MINING STUFF TO CONTRACTS STUFF. DID THEY GET STUCK WITH FULL BELLIES?
+NOTE TO SELF IT IS 09:24 UK TIME, I HAVE JUST SET MY FREIGHTERS TO GO BUY MACHINERY - SEE HOW THEY SWITCH FROM SELLING MINING STUFF TO CONTRACTS STUFF. DID THEY GET STUCK WITH FULL BELLIES? <- yes, very much so.
+
 
 # Scaling analytics test.
 
