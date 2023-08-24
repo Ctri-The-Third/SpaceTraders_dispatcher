@@ -28,7 +28,7 @@ cursor = connection.cursor()
 
 agent_str = """
 <title> Agents overview </title>
-%s
+%s\n%s
 
 # Commanders & contracts
 
@@ -42,11 +42,74 @@ agent_str = """
 
 ship_str = """
 <title> Ships overview</title>
-%s
+%s\n%s
 # Ships & behaviours
 %s
 
 %s"""
+
+analytics_str = """
+<title> Analytics </title>
+%s\n%s
+# Analytics
+%s
+
+%s
+
+%s
+
+%s"""
+
+
+def perf_behaviour():
+    sql = """select activity_window, behaviour_id, sessions, earnings, requests, cpr, bhvr_cph from behaviour_performance;"""
+    rows = try_execute_select(connection, sql, ())
+    if not rows:
+        return ""
+
+    out_str = """
+## Behaviour performance  \n
+| activity_window | behaviour_id | sessions | earnings | requests | cpr | bhvr_cph |
+| --- | --- | --- | --- | --- | --- | --- |\n"""
+    for row in rows:
+        out_str += f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} |\n"
+    return out_str
+
+
+def perf_sessions():
+    sql = """select activity_time, agent_name, earnings, requests, delayed_requests, cpr from session_stats_per_hour
+order by agent_name;
+"""
+    rows = try_execute_select(connection, sql, ())
+    if not rows:
+        return ""
+
+    out_str = """## Session performance  \n
+| activity_time | agent_name | earnings | requests | delayed_requests | cpr |
+| --- | --- | --- | --- | --- | --- |"""
+    for row in rows:
+        out_str += (
+            f"\n| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} |  "
+        )
+    return out_str
+
+
+def perf_shipy_types():
+    sql = """
+select agent_name, shipyard_type, best_price, count_of_ships
+, earnings, requests, sessions
+, round(cph,2) as cph_per_ship, round(cpr,2) as total_cpr
+from shipyard_type_performance
+order by agent_name, cph desc"""
+    rows = try_execute_select(connection, sql, ())
+    if not rows:
+        return ""
+    out_str = """## Shipyard performance  \n
+| agent_name | shipyard_type | best_price | count_of_ships | earnings | requests | sessions | cph_per_ship | total_cpr |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"""
+    for row in rows:
+        out_str += f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {row[7]} | {row[8]} |\n"
+    return out_str
 
 
 def transaction_summary():
@@ -62,6 +125,13 @@ def transaction_summary():
     )
     out_str = pivot_df.to_markdown()
     return out_str
+
+
+link_pieces = """<table><tr>
+     <td> <a href = "/"> agents </a> </td>
+     <td> <a href = "/ships"> ships </a> </td>
+     <td> <a href = "/sessions"> sessions </a> </td>
+    </tr></table>"""
 
 
 def scan_progress():
@@ -124,14 +194,17 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
         "FRAME_MINER": "🚤",
         "FRAME_LIGHT_FREIGHTER": "🚤",
         "FRAME_FRIGATE": "🚤",
+        "FRAME_HEAVY_FREIGHTER":"⛴️"
     }
 
-    roles = {"COMMAND": "👑", "EXCAVATOR": "⛏️", "HAULER": "🚛", "SATELLITE":"🛰️"}
+    roles = {"COMMAND": "👑", "EXCAVATOR": "⛏️", "HAULER": "🚛", "SATELLITE": "🛰️", "REFINERY":"⚙️"}
 
     rows = try_execute_select(connection, sql, ())
     response = ""
     if len(rows) > 0:
-        response = "| ship | what | waypoint | 📥 | 📦 | behaviour | Locked? | locked_until |\n"
+        response = (
+            "| ship | what | waypoint | 📥 | 📦 | behaviour | Locked? | locked_until |\n"
+        )
         response += "| --- | ---  --- | --- | --- | --- | --- | --- | --- |\n"
     for row in rows:
         busy_emoji = "✅" if row[8] else "❌"
@@ -183,6 +256,7 @@ def index():
         agent_str
         % (
             css_blob,
+            link_pieces,
             commander_overview(),
             scan_progress(),
             transaction_summary(),
@@ -199,9 +273,27 @@ def ships():
         ship_str
         % (
             css_blob,
+            link_pieces,
             ship_overview(),
             javascript_refresh_blob,
         ),
+        extensions=["tables", "md_in_html"],
+    )
+    return out_str
+
+
+@app.route("/sessions/")
+def analytics():
+    formatted_analytics = analytics_str % (
+        css_blob,
+        link_pieces,
+        perf_sessions(),
+        perf_shipy_types(),
+        perf_behaviour(),
+        "",  # javascript_refresh_blob,
+    )
+    out_str = markdown.markdown(
+        formatted_analytics,
         extensions=["tables", "md_in_html"],
     )
     return out_str
