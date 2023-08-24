@@ -119,6 +119,7 @@ class Behaviour:
                 ship.nav.travel_time_remaining,
             )
             return resp
+        return True
 
     def extract_till_full(self, cargo_to_target: list = None):
         # need to validate that the ship'  s current WP is a valid location
@@ -235,20 +236,20 @@ class Behaviour:
 
         for cargo in self.ship.cargo_inventory:
             matching_items = [item for item in items if item.symbol == cargo.symbol]
-            if not matching_items:
-                logging.warning(
-                    "ship doesn't have any items matching deliverables to deliver"
-                )
-                return LocalSpaceTradersRespose(
-                    "Cargo doesn't have any matching items.",
-                    0,
-                    0,
-                    "generic_behaviour.fulfill_any_relevant",
-                )
-            cargo_to_deliver = min(matching_items[0].units_required, cargo.units)
-            return self.st.contracts_deliver(
-                tar_contract, self.ship, cargo.symbol, cargo_to_deliver
+        if not matching_items:
+            logging.warning(
+                "ship doesn't have any items matching deliverables to deliver"
             )
+            return LocalSpaceTradersRespose(
+                "Cargo doesn't have any matching items.",
+                0,
+                0,
+                "generic_behaviour.fulfill_any_relevant",
+            )
+        cargo_to_deliver = min(matching_items[0].units_required, cargo.units)
+        return self.st.contracts_deliver(
+            tar_contract, self.ship, cargo.symbol, cargo_to_deliver
+        )
 
     def buy_cargo(self, cargo_symbol: str, quantity: int):
         # check the waypoint we're at has a market

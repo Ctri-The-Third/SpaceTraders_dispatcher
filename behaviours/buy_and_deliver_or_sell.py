@@ -129,7 +129,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
             if ship_inventory_item.symbol == target_tradegood:
                 quantity = ship_inventory_item.units
 
-        if ship.cargo_units_used > 0 and end_waypoint is not None:
+        if quantity > 0 and end_waypoint is not None:
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
             if resp:
                 # jetison spare stuff
@@ -175,6 +175,9 @@ order by purchase_price asc """
             )
             time.sleep(SAFETY_PADDING)
             return
+
+        # empty anything that's not the goal.
+        self.sell_all_cargo([target_tradegood], current_market)
         target_price = 1
         for listing in current_market.listings:
             if listing.symbol == target_tradegood:
@@ -217,7 +220,7 @@ order by purchase_price asc """
         # transfer (skip for now, throw in a warning)
         # fulfill
         # sell
-
+        self.st.ship_dock(self.ship)
         resp = self.fulfill_any_relevant()
         return resp
         pass
