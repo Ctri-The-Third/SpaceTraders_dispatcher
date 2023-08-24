@@ -4,16 +4,14 @@ import urllib.parse
 from dataclasses import dataclass
 from logging import FileHandler, StreamHandler
 from sys import stdout
-from datetime import datetime, timedelta
+from datetime import datetime
 import random
 import time
 from .local_response import LocalSpaceTradersRespose
-import threading
-import copy
 
 st_log_client: "SpaceTradersClient" = None
 ST_LOGGER = logging.getLogger("API-Client")
-SEND_FREQUENCY = 1 / 3  # 3 requests per second
+SEND_FREQUENCY = 0.33  # 3 requests per second
 SEND_FREQUENCY_VIP = 3  # for every X requests, 1 is a VIP.  to decrease the number of VIP allocations, increase this number.
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -73,16 +71,17 @@ def get_and_validate_paginated(
 
 
 def get_and_validate(
-    url, params=None, headers=None, pages=None, per_page=None, vip=False
+    url, params=None, headers=None, pages=None, per_page=None
 ) -> SpaceTradersResponse or None:
     "wraps the requests.get function to make it easier to use"
     resp = False
     while not resp:
-        time_until_next_slot = (
-            datetime.now()
-            - singleton_next_available_request.get_instance().get_next_slot(vip)
+        time.sleep(
+            max(
+                singleton_next_available_request.get_instance().seconds_until_slot(vip),
+                0,
+            )
         )
-        time.sleep(max(time_until_next_slot.total_seconds(), 0))
 
         try:
             response = requests.get(url, params=params, headers=headers, timeout=5)
@@ -94,26 +93,23 @@ def get_and_validate(
             requests.ReadTimeout,
         ) as err:
             logging.error("ConnectionError: %s, %s", url, err)
-            sleep(5)
-            continue
+            return LocalSpaceTradersRespose(
+                "Could not connect!! network issue?", 404, 0, url
+            )
 
         except Exception as err:
             logging.error("Error: %s, %s", url, err)
-            sleep(5)
-            continue
         _log_response(response)
         if response.status_code == 429:
             if st_log_client:
                 st_log_client.log_429(url, RemoteSpaceTradersRespose(response))
-            logging.debug("Rate limited retrying!")
+            logging.warning("Rate limited retrying!")
 
             continue
         if response.status_code >= 500 and response.status_code < 600:
             logging.error(
                 "SpaceTraders Server error: %s, %s", url, response.status_code
             )
-            sleep(30)
-
         return RemoteSpaceTradersRespose(response)
 
 
@@ -133,18 +129,18 @@ def request_and_validate(method, url, data=None, json=None, headers=None):
         return LocalSpaceTradersRespose("Method %s not supported", 0, 0, url)
 
 
-def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
+def post_and_validate(
+    url, data=None, json=None, headers=None, vip=False
+) -> SpaceTradersResponse:
     "wraps the requests.post function to make it easier to use"
 
     # repeat 5 times with staggered wait
     # if still 429, skip
     resp = False
     while not resp:
-        time_until_next_slot = (
-            datetime.now()
-            - singleton_next_available_request.get_instance().get_next_slot()
+        time.sleep(
+            singleton_next_available_request.get_instance().seconds_until_slot(vip)
         )
-        time.sleep(time_until_next_slot.total_seconds())
         try:
             response = requests.post(
                 url, data=data, json=json, headers=headers, timeout=5
@@ -160,10 +156,13 @@ def post_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersRe
             return LocalSpaceTradersRespose(f"Could not connect!! {err}", 404, 0, url)
         _log_response(response)
         if response.status_code == 429:
-            logging.debug("Rate limited. Waiting %s seconds", i)
+            logging.debug("Rate limited")
             continue
         else:
             return RemoteSpaceTradersRespose(response)
+    return LocalSpaceTradersRespose(
+        "Unable to do the rate limiting thing, command aborted", 0, 0, url
+    )
 
 
 def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersResponse:
@@ -171,9 +170,9 @@ def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersR
     while not resp:
         time_until_next_slot = (
             datetime.now()
-            - singleton_next_available_request.get_instance().get_next_slot()
+            - singleton_next_available_request.get_instance().seconds_until_slot()
         )
-        time.sleep(time_until_next_slot.total_seconds())
+        time.sleep(max(0, time_until_next_slot.total_seconds()))
         try:
             response = requests.patch(
                 url, data=data, json=json, headers=headers, timeout=5
@@ -185,8 +184,7 @@ def patch_and_validate(url, data=None, json=None, headers=None) -> SpaceTradersR
             logging.error("Error: %s, %s", url, err)
         _log_response(response)
         if response.status_code == 429:
-            logging.debug("Rate limited. Waiting %s seconds", i)
-            time.sleep(i * i)
+            logging.warning("Rate limited")
         else:
             return RemoteSpaceTradersRespose(response)
 
@@ -218,7 +216,6 @@ def set_logging(level=logging.INFO, filename=None):
     )
     logging.getLogger("client_mediator").setLevel(logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("next_available_request").setLevel(logging.DEBUG)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
@@ -324,9 +321,9 @@ class singleton_next_available_request:
             datetime.now().timestamp() * 1000 / SEND_FREQUENCY
         )
         self._next_slot = datetime.now()
-        self._lesser_slot = datetime.now()
+        self._next_vip_slot = datetime.now()
 
-    def get_next_slot(self, vip=False):
+    def seconds_until_slot(self, vip=False):
         with self._lock:
             # find the slot number - which is the system time in ms divided by the send frequency, which is an ms value
 
@@ -336,41 +333,44 @@ class singleton_next_available_request:
             # lesser slots only:
             # handle slots in the past
             if not vip:
-                return self.increment_normal_slot()
+                return max(self.time_until_normal_slot(), 0)
             if vip:
-                pass
+                return max(self.time_until_vip_slot(), 0)
 
-    def increment_normal_slot(self):
+    def time_until_normal_slot(self) -> float:
         _next_slot_ts = max(self._next_slot, datetime.now())
-        _next_slot_count = int(_next_slot_ts.timestamp() * 1000 / SEND_FREQUENCY)
+        slot_count = int(_next_slot_ts.timestamp() / SEND_FREQUENCY)
 
-        return_value = copy.copy(_next_slot_ts)
+        _next_slot_count = copy.copy(_next_slot_ts)
         # return value is = _next_slot_ts
-        _next_slot_count += 1
+        _next_slot_count = slot_count + 1
         if _next_slot_count % SEND_FREQUENCY_VIP == 0:  # it's a VIP slot, next
             _next_slot_count += 1
-        self._next_slot = datetime.fromtimestamp(
-            (_next_slot_count * SEND_FREQUENCY) / 1000
-        )
-        self.logger.debug("NEXT SLOT IS %s", return_value)
-        return return_value
+        self._next_slot = datetime.fromtimestamp((_next_slot_count * SEND_FREQUENCY))
+        # self.logger.debug(
+        #    "should be sleeping %s seconds",
+        #    (self._next_slot - datetime.now()).total_seconds(),
+        # )
+        return (self._next_slot - datetime.now()).total_seconds()
 
-    def increment_vip_slot(self):
-        _next_vip_slot = min(self._next_slot, self._next_vip_slot)
-        _next_slot_ts = max(_next_vip_slot, datetime.now())
-        _next_slot_count = int(_next_slot_ts.timestamp() * 1000 / SEND_FREQUENCY)
-
-        return_value = copy.copy(_next_slot_ts)
+    def time_until_vip_slot(self) -> float:
+        if self._next_slot < self._next_vip_slot:
+            return self.time_until_normal_slot()
+        _next_slot_ts = max(self._next_vip_slot, datetime.now())
+        _next_slot_count = int(_next_slot_ts.timestamp() / SEND_FREQUENCY)
 
         _next_slot_count += 1
         while _next_slot_count % SEND_FREQUENCY_VIP != 0:
             _next_slot_count += 1
         self._next_vip_slot = datetime.fromtimestamp(
-            (_next_slot_count * SEND_FREQUENCY) / 1000
+            (_next_slot_count * SEND_FREQUENCY)
         )
-        self.logger.debug("NEXT VIP SLOT IS %s", return_value)
+        # self.logger.debug(
+        #    "should be sleeping %s seconds VIP",
+        #    (self._next_slot - datetime.now()).total_seconds(),
+        # )
 
-        return return_value
+        return (self._next_slot - datetime.now()).total_seconds()
         # if the slot is in the past - send now.
         # if the request is VIP slot is in the future, copy value, increment local value, return copy.
 
