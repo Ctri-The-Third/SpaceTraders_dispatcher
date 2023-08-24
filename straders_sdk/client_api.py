@@ -141,7 +141,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
             self.ship_orbit(ship)
         url = _url(f"my/ships/{ship.name}/navigate")
         data = {"waypointSymbol": dest_waypoint_symbol}
-        resp = post_and_validate(url, data, headers=self._headers())
+        resp = post_and_validate(url, data, headers=self._headers(), vip=True)
         if resp:
             self.update(resp.data)
         return resp
@@ -150,7 +150,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         "my/ships/:shipSymbol/jump"
         url = _url(f"my/ships/{ship.name}/jump")
         data = {"systemSymbol": dest_system_symbol}
-        resp = post_and_validate(url, data, headers=self._headers())
+        resp = post_and_validate(url, data, headers=self._headers(), vip=True)
         if resp:
             self.update(resp.data)
         return resp
@@ -175,7 +175,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         data = {"survey": survey.to_json()} if survey is not None else None
 
-        resp = post_and_validate(url, json=data, headers=self._headers())
+        resp = post_and_validate(url, json=data, headers=self._headers(), vip=True)
         if resp:
             self.update(resp.data)
             ship.update(resp.data)
@@ -246,7 +246,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         if ship.seconds_until_cooldown > 0:
             return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4000)
         url = _url(f"my/ships/{ship.name}/survey")
-        resp = post_and_validate(url, headers=self._headers())
+        resp = post_and_validate(url, headers=self._headers(), vip=True)
 
         self.update(resp.data)
 

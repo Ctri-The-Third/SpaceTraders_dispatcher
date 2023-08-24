@@ -140,7 +140,6 @@ WHERE ship_symbol IN (
 	SELECT ship_symbol FROM ship_behaviours
 	WHERE ship_symbol ILIKE '{self.current_agent.symbol}%'
 	AND locked_by != '{self.lock_id}'
-	LIMIT 10
 )"""
         )
         print(
@@ -233,7 +232,7 @@ WHERE ship_symbol IN (
                     "Starting thread for ship %s", ship_and_behaviour["name"]
                 )
                 ships_and_threads[ship_and_behaviour["name"]].start()
-                time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
+                # time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
                 pass
 
             time.sleep(1)
