@@ -218,6 +218,7 @@ def set_logging(level=logging.INFO, filename=None):
     )
     logging.getLogger("client_mediator").setLevel(logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("next_available_request").setLevel(logging.DEBUG)
 
 
 def parse_timestamp(timestamp: str) -> datetime:
@@ -307,6 +308,7 @@ class singleton_next_available_request:
     _next_slot = None
     _next_vip_slot = None
     _starting_slot_count = 0
+    logger = logging.getLogger("next_available_request")
 
     @classmethod
     def get_instance(cls):
@@ -350,7 +352,7 @@ class singleton_next_available_request:
         self._next_slot = datetime.fromtimestamp(
             (_next_slot_count * SEND_FREQUENCY) / 1000
         )
-        logging.debug("NEXT SLOT IS %s", return_value)
+        self.logger.debug("NEXT SLOT IS %s", return_value)
         return return_value
 
     def increment_vip_slot(self):
@@ -366,7 +368,7 @@ class singleton_next_available_request:
         self._next_vip_slot = datetime.fromtimestamp(
             (_next_slot_count * SEND_FREQUENCY) / 1000
         )
-        logging.debug("NEXT VIP SLOT IS %s", return_value)
+        self.logger.debug("NEXT VIP SLOT IS %s", return_value)
 
         return return_value
         # if the slot is in the past - send now.
