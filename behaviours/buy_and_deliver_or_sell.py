@@ -103,9 +103,15 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 "No jump gate route found to any of the markets that stock %s",
                 target_tradegood,
             )
-        # we're definitely in a jump gate system or we wouldn't have been able to do the astar routing.
+        if len(start_system.waypoints) == 0:
+            start_system = st.systems_view_one(start_system.symbol, True)
 
-        local_jumpgate = st.find_waypoints_by_type(start_system, "JUMP_GATE")[0]
+        resp = st.find_waypoints_by_type(start_system.symbol, "JUMP_GATE")
+        if not resp:
+            self.logger.error("No jump gate found in system %s", start_system.symbol)
+            time.sleep(SAFETY_PADDING)
+            return
+        local_jumpgate = resp[0]
         #
         # we know where we're going, we know what we're getting. Deployment.
         #
@@ -124,7 +130,10 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 quantity = ship_inventory_item.units
 
         if ship.cargo_units_used > 0 and end_waypoint is not None:
-            self.deliver_half(end_system, end_waypoint, target_tradegood)
+            resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
+            if resp:
+                # jetison spare stuff
+                self.sell_all_cargo()
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         time.sleep(SAFETY_PADDING)
@@ -170,49 +179,62 @@ order by purchase_price asc """
         for listing in current_market.listings:
             if listing.symbol == target_tradegood:
                 target_price = listing.purchase
+                trade_volume = listing.trade_volume
                 break
 
         space = ship.cargo_capacity - ship.cargo_units_used
 
-        amount = min(space, max_to_buy, math.floor(self.agent.credits / target_price))
+        amount = min(
+            space,
+            max_to_buy,
+            math.floor(self.agent.credits / target_price),
+        )
+        # do this X times where X is the amount to buy divided by the trade volume
+        for i in range(math.floor(amount / trade_volume)):
+            resp = st.ship_purchase_cargo(ship, target_tradegood, trade_volume)
 
-        resp = st.ship_purchase_cargo(ship, target_tradegood, amount)
-        if not resp:
-            # couldn't buy anything.
-            self.logger.warning(
-                "Couldn't buy any %s, are we full? Manual intervention maybe required."
-            )
-            time.sleep(SAFETY_PADDING)
-            return
+            if not resp:
+                # couldn't buy anything.
+                if resp.error_code == 4604:  # our info about tradevolume is out of date
+                    st.system_market(target_waypoint, True)
+
+                self.logger.warning(
+                    "Couldn't buy any %s, are we full? Is our market data out of date? I've done a refresh.  Manual intervention maybe required."
+                )
+                time.sleep(SAFETY_PADDING)
+                return
 
     def deliver_half(
         self, target_system, target_waypoint: "Waypoint", target_tradegood: str
     ):
-        self.ship_extrasolar(target_system)
-        self.ship_intrasolar(target_waypoint)
-
+        resp = self.ship_extrasolar(target_system)
+        if not resp:
+            return False
+        resp = self.ship_intrasolar(target_waypoint)
+        if not resp:
+            return False
         # now that we're here, decide what to do. Options are:
         # transfer (skip for now, throw in a warning)
         # fulfill
         # sell
 
-        self.fulfill_any_relevant()
-
+        resp = self.fulfill_any_relevant()
+        return resp
         pass
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-VWK6A-"
-    ship = sys.argv[2] if len(sys.argv) > 2 else "CTRI-VWK6A--1"
-
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "25"
+    ship = f"{agent}-{suffix}"
     bhvr = BuyAndDeliverOrSell_6(
         agent,
         ship,
         behaviour_params={
-            "tradegood": "MODULE_ORE_REFINERY_I",
-            "quantity": 1,
-            "transfer_ship": "CTRI-UWK5--12",
+            "quantity": 1300,
+            "fulfil_wp": "X1-JX88-42150B",
+            "tradegood": "MACHINERY",
         },
     )
-    set_logging()
+    set_logging(logging.DEBUG)
     bhvr.run()
