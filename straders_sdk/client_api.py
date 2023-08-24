@@ -92,7 +92,7 @@ class SpaceTradersApiClient(SpaceTradersClient):
         pass
 
         url = _url(f"systems/{system_symbol}/waypoints")
-        resp = get_and_validate(url, headers=self._headers())
+        resp = get_and_validate_paginated(url, 20, 50, headers=self._headers())
         if resp:
             new_wayps = {d["symbol"]: Waypoint.from_json(d) for d in resp.data}
             return new_wayps
