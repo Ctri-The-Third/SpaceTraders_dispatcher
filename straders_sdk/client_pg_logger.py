@@ -165,7 +165,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         Returns:
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
-        endpoint = f"systems/{system_symbol}/waypoints/"
+        endpoint = f"systems/:system_symbol/waypoints/"
         self.log_event("waypoints_view", "GLOBAL", endpoint, response)
 
     def waypoints_view_one(
@@ -181,7 +181,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         Returns:
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
 
-        endpoint = f"systems/{system_symbol}/waypoints/{waypoint_symbol}"
+        endpoint = f"systems/:system_symbol/waypoints/{waypoint_symbol}"
         self.log_event("waypoints_view", "GLOBAL", endpoint)
 
         pass
@@ -327,7 +327,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self, wp: Waypoint, response=None
     ) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
-        url = _url(f"game/systems/{wp.system_symbol}/marketplace")
+        url = _url(f"game/systems/:system_symbol/marketplace")
         self.log_event("system_market", "GLOBAL", url, response)
         pass
 
