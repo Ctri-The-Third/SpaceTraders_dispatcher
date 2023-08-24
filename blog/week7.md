@@ -13,11 +13,28 @@ We've achieved handling of buy & sell contracts. presently there are two bottlen
 
 We manually moved a satelite after discovering a place we could get cheaper ore hounds (idek how), and that messed up our core conductor expectations. Recon data is a must. It'll sort itself out in stage 4 but for now it's still a bit of a pain.
 
+By Wednesday we've reached saturation at about 56 ships. An hour ago, we had 5.8k requests and 1.1k delays. Note that each delay is an exponential amount up to I think 25 seconds at the moment, with some jitter.
+Earlier though, we had an hour with 21.7 CPR and a ratio of 5.7 requests to 6.8 delays. That's unacceptably high, and we need some sort of feedback loop to scale down from high CPH to high CPR until this stops. 
+
+* If we're saturated, we need to look at look at the session stats, switch the earning ships with the lowest CPR and switching them off until the requests ratio is down less than 0.1 delays per request. 
+* Current analytics look at ship-type performance, behaviour-performance, and overall session performance
+ * We need a more granular assessment of ship-type/ behaviour performance. 
+ * I can see that freighters are earning 4153 CPH and 29 CPR for CTRI-U7-
+ * But if I look at the behaviour performance, I see the per-ship CPH at 220, or 36.43 for RECEIVE_AND_FULFILL
+ * So something is amiss with our analytics, a lack of standardisation. 
+ * So I need my mat_session_stats to have the ship_symbol, the shipyard_type, the session_id, the behaviour_id, and the CPR and the pro-rata CPH.
+ *  also my mat_session_stats are aggregating incorrectly, seeing ship symbols sharing a sessoin ID? impossible.
+ * To decide what to do next, I need better analytics.
+ * Optimise what I have before
 
 ## Goals
-* get ship mounts able to be installed.
+* ✅ get ship mounts able to be installed.
 * Implement the recon conductor and dispatcher.
 * Market Prices needs refactored to be considered of IMPORT/EXPORT/EXCHANGE state.
+* Better analytics for dynamic scaling.
+
+NOTE TO SELF IT IS 09:24 UK TIME, I HAVE JUST SET MY FREIGHTERS TO GO BUY MACHINERY - SEE HOW THEY SWITCH FROM SELLING MINING STUFF TO CONTRACTS STUFF. DID THEY GET STUCK WITH FULL BELLIES?
+
 # Scaling analytics test.
 
 
