@@ -29,7 +29,7 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-DROP DATABASE spacetraders with (force);
+--DROP DATABASE spacetraders with (force);
 --
 -- TOC entry 3277 (class 1262 OID 37002)
 -- Name: spacetraders; Type: DATABASE; Schema: -; Owner: postgres
