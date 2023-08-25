@@ -8,8 +8,10 @@ from ..utils import try_execute_upsert
 def _upsert_waypoint(connection, waypoint: Waypoint):
     try:
         checked = (
-            len(waypoint.traits) > 0
-        )  # a system waypoint will not return any traits.
+            len(waypoint.traits) > 0 or waypoint.is_charted
+        )  # a system waypoint will not return any traits. Even if it's uncharted, we've checked it.
+        # a waypoint with exactly zero traits that has been checked is a jump gate, and will have a chart
+        # if it'snot been charted, then it's UNCHARTED and the first condition gets it.
         sql = """INSERT INTO waypoints (waypoint_symbol, type, system_symbol, x, y, checked)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (waypoint_symbol) DO UPDATE

@@ -29,16 +29,16 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---DROP DATABASE spacetraders with (force);
+DROP DATABASE spacetraders with (force);
 --
 -- TOC entry 3277 (class 1262 OID 37002)
 -- Name: spacetraders; Type: DATABASE; Schema: -; Owner: postgres
 --
 
---CREATE DATABASE SpaceTraders WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8';
+CREATE DATABASE SpaceTraders WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8';
 
 
-ALTER DATABASE spacetraders OWNER TO spacetraders;
+ALTER DATABASE spacetraders owner to spacetraders;
 
 \connect spacetraders
 
@@ -61,7 +61,7 @@ SET row_security = off;
 -- *not* creating schema, since initdb creates it
 
 
-ALTER SCHEMA public OWNER TO spacetraders;
+ALTER SCHEMA public owner to spacetraders;
 
 SET default_tablespace = '';
 

@@ -11,12 +11,13 @@ from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
 import logging
 import time
-from dispatcherWK5 import (
+from dispatcherWK7 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
-    EXTRACT_TRANSFER,
+    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
+    BHVR_BUY_AND_DELIVER_OR_SELL,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = BHVR_RECEIVE_AND_FULFILL
@@ -30,71 +31,48 @@ def run(client: SpaceTraders):
     hq_sys_sym = waypoint_slicer(agent.headquarters)
 
     ships = client.ships_view()
-    excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
-    drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
-    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
-    refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
-
-    target_miners = 50
-    drones_padding = target_miners - len(hounds)
-    drones = drones[0:drones_padding]  # limit ourselves to 50 extractors
-    spare_drones = drones[drones_padding:]  # switch these ones off.
 
     asteroid_wp = client.find_waypoints_by_type(hq_sys_sym, "ASTEROID_FIELD")[0]
-    survey = client.find_survey_best(asteroid_wp.symbol)
-    values = None
-    extraction_params = None
-    delivery_params = None
-    if survey:
-        survey: Survey
-        values = get_price_per_distance_for_survey(
-            connection, survey.signature, client.systems_view_one(hq_sys_sym)
-        )
-    if values:
-        target_info = values[0]
-        target_market = target_info[0]
-        other_extraction_params = {"asteroid_wp": asteroid_wp.symbol}
-        extraction_params = {
-            "asteroid_wp": asteroid_wp.symbol,
-            "cargo_to_transfer": [
-                target_info[1],
-            ],
+    cargo_to_transfer = []
+
+    fulfil_wp = None
+    contracts = client.view_my_contracts()
+    contract_type = "MINING"
+    hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
+    for con in contracts.values():
+        con: Contract
+        if con.accepted and not con.fulfilled:
+            active_contract = con
+            for deliverable in con.deliverables:
+                if deliverable.units_fulfilled < deliverable.units_required:
+                    fulfil_wp = deliverable.destination_symbol
+                    cargo_to_transfer.append(deliverable.symbol)
+                    if "ORE" not in cargo_to_transfer:
+                        contract_type = "DELIVERY"
+
+    if contract_type == "DELIVERY":
+        hauler_behaviour = BHVR_BUY_AND_DELIVER_OR_SELL
+        inc_del = [
+            deliverable
+            for deliverable in active_contract.deliverables
+            if deliverable.units_fulfilled < deliverable.units_required
+        ]
+        hauler_params = {
+            "tradegood": cargo_to_transfer[0],
+            "quantity": inc_del[0].units_required - inc_del[0].units_fulfilled,
+            "fulfil_wp": fulfil_wp,
         }
-        transfer_params = {
-            "asteroid_wp": asteroid_wp.symbol,
-            "market_wp": target_market,
-        }
-        extractors_per_hauler = 2
-        hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
-        other_extractors = excavators[len(haulers) * extractors_per_hauler :]
-        for excavator in hauler_extractors:
-            set_behaviour(
-                connection, excavator.name, EXTRACT_TRANSFER, extraction_params
-            )
-        for hauler in haulers:
-            set_behaviour(
-                connection,
-                hauler.name,
-                BHVR_RECEIVE_AND_FULFILL_OR_SELL,
-                transfer_params,
-            )
-        for refiner in refiners:
-            set_behaviour(
-                connection,
-                refiner.name,
-                BHVR_RECEIVE_AND_FULFILL_OR_SELL,
-                extraction_params,
-            )
-        for excavator in other_extractors:
-            set_behaviour(
-                connection,
-                excavator.name,
-                BHVR_EXTRACT_AND_SELL,
-                other_extraction_params,
-            )
-        for excavator in spare_drones:
-            set_behaviour(connection, excavator.name, BHVR_EXPLORE_SYSTEM)
+    else:
+        hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
+        hauler_params = {}
+        if asteroid_wp:
+            hauler_params["asteroid_wp"] = asteroid_wp.symbol
+            if fulfil_wp:
+                hauler_params["fulfil_wp"] = fulfil_wp
+
+    for hauler in haulers:
+        set_behaviour(connection, hauler.name, hauler_behaviour, hauler_params)
 
 
 def get_price_per_distance_for_survey(

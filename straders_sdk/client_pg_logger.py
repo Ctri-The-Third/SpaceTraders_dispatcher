@@ -165,7 +165,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         Returns:
             Either a dict of Waypoint objects or a SpaceTradersResponse object on failure.
         """
-        endpoint = f"systems/{system_symbol}/waypoints/"
+        endpoint = f"systems/:system_symbol/waypoints/"
         self.log_event("waypoints_view", "GLOBAL", endpoint, response)
 
     def waypoints_view_one(
@@ -181,7 +181,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         Returns:
             Either a Waypoint object or a SpaceTradersResponse object on failure."""
 
-        endpoint = f"systems/{system_symbol}/waypoints/{waypoint_symbol}"
+        endpoint = f"systems/:system_symbol/waypoints/{waypoint_symbol}"
         self.log_event("waypoints_view", "GLOBAL", endpoint)
 
         pass
@@ -296,6 +296,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         url = _url(f"my/ships/:ship_name/purchase")
         self.log_event("ship_purchase_cargo", ship.name, url, response)
+        self.update(response)
 
     def ship_survey(
         self, ship: "ship", response=None
@@ -315,11 +316,27 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         pass
 
+    def ship_install_mount(
+        self, ship: "Ship", mount_symbol: str, response=None
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/equip"""
+        url = _url(f"my/ships/:ship_name/equip")
+        self.log_event("ship_install_mount", ship.name, url, response)
+        pass
+
+    def ship_jettison_cargo(
+        self, ship: "Ship", trade_symbol: str, units: int, response=None
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/jettison"""
+        url = _url(f"my/ships/:ship_symbol/jettison")
+        self.log_event("ship_jettison_cargo", ship.name, url, response)
+        pass
+
     def system_market(
         self, wp: Waypoint, response=None
     ) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
-        url = _url(f"game/systems/{wp.system_symbol}/marketplace")
+        url = _url(f"game/systems/:system_symbol/marketplace")
         self.log_event("system_market", "GLOBAL", url, response)
         pass
 

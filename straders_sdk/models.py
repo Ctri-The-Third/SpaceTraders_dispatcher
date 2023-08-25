@@ -331,8 +331,10 @@ class Waypoint(SymbolClass):
 
     @property
     def is_charted(self) -> bool:
-        return len(self.traits) > 1 and (
-            "UNCHARTED" not in [t.symbol for t in self.traits]
+        charted = self.chart is not None and len(self.chart) > 0
+        return charted or (
+            len(self.traits) > 1
+            and ("UNCHARTED" not in [t.symbol for t in self.traits])
         )
 
     @property

@@ -22,8 +22,11 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         ship_name,
         behaviour_params: dict = ...,
         config_file_name="user.json",
+        session=None,
     ) -> None:
-        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+        super().__init__(
+            agent_name, ship_name, behaviour_params, config_file_name, session
+        )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
     def run(self):
@@ -35,13 +38,13 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-        fulfill_wp_s = None
+        fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
         market_wp_s = self.behaviour_params.get("market_wp", None)
 
         destination_sys = st.systems_view_one(
-            waypoint_slicer(market_wp_s or fulfill_wp_s or start_wp_s)
+            waypoint_slicer(market_wp_s or fulfil_wp_s or start_wp_s)
         )
 
         if ship.fuel_current < min(ship.fuel_capacity, 200):
@@ -53,10 +56,8 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         if ship.can_survey:
             st.ship_survey(ship)
         # we're full, prep and deploy
-        if (
-            ship.cargo_units_used >= ship.cargo_capacity - 10
-            or ship.nav.system_symbol == destination_sys.symbol
-        ):
+
+        if ship.cargo_units_used >= ship.cargo_capacity - 10:
             # are we doing a sell, or a contract?
             # check if we have a contract for the items in our inventory
             found_contracts = st.view_my_contracts()
@@ -74,22 +75,21 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
             st.ship_orbit(ship)
             self.ship_extrasolar(destination_sys)
-            self.ship_intrasolar(market_wp_s or fulfill_wp_s)
+            self.ship_intrasolar(market_wp_s or fulfil_wp_s)
 
             st.ship_dock(ship)
-            if fulfill_wp_s:
-                for contract in contracts:
-                    for item in contract.deliverables:
-                        if item.units_fulfilled < item.units_required:
-                            for cargo_item in ship.cargo_inventory:
-                                if item.symbol == cargo_item.symbol:
-                                    st.contracts_deliver(
-                                        contract,
-                                        ship,
-                                        cargo_item.symbol,
-                                        cargo_item.units,
-                                    )
-            else:
+
+            managed_to_fulfill = False
+            if fulfil_wp_s:
+                resp = self.fulfill_any_relevant()
+                if resp:  # we fulfilled something
+                    managed_to_fulfill = True
+                    # we fulfilled something, so we should be able to sell the rest
+                    st.ship_orbit(ship)
+                    self.ship_extrasolar(start_sys)
+                    self.ship_intrasolar(start_wp_s)
+            elif market_wp_s:
+                # we got to the fulfill point but something went horribly wrong
                 market = st.system_market(
                     st.waypoints_view_one(destination_sys, market_wp_s)
                 )
@@ -105,6 +105,12 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
                     # we added this in for circumstances when we've incorrect, left over cargo in the hold that needs drained. Might need a "vent all" option too.
                     self.sell_all_cargo()
+
+            if ship.cargo_units_used >= ship.cargo_capacity - 10:
+                # something's gone horribly wrong, we couldn't sell or fulfill at the destination - are our orders stale?
+                self.ship_extrasolar(start_sys)
+                self.ship_intrasolar(start_wp_s)
+
         else:
             self.ship_extrasolar(start_sys)
             self.ship_intrasolar(start_wp_s)
@@ -117,8 +123,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-UWK5-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "12"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "6"
     ship = f"{agent}-{ship_number}"
-    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, {})
+    behaviour_params = {"fulfil_wp": "X1-JX88-33322E", "asteroid_wp": "X1-JX88-51095C"}
+    bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})
     bhvr.run()

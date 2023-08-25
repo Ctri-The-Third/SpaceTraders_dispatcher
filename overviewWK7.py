@@ -9,6 +9,8 @@ import psycopg2
 from time import sleep
 import json
 from straders_sdk.utils import try_execute_select
+from flask import Flask
+
 
 config_file_name = "user.json"
 saved_data = json.load(open(config_file_name, "r+"))
@@ -26,7 +28,7 @@ cursor = connection.cursor()
 
 agent_str = """
 <title> Agents overview </title>
-%s
+%s\n%s
 
 # Commanders & contracts
 
@@ -40,11 +42,74 @@ agent_str = """
 
 ship_str = """
 <title> Ships overview</title>
-%s
+%s\n%s
 # Ships & behaviours
 %s
 
 %s"""
+
+analytics_str = """
+<title> Analytics </title>
+%s\n%s
+# Analytics
+%s
+
+%s
+
+%s
+
+%s"""
+
+
+def perf_behaviour():
+    sql = """select activity_window, behaviour_id, sessions, earnings, requests, cpr, bhvr_cph from behaviour_performance;"""
+    rows = try_execute_select(connection, sql, ())
+    if not rows:
+        return ""
+
+    out_str = """
+## Behaviour performance  \n
+| activity_window | behaviour_id | sessions | earnings | requests | cpr | bhvr_cph |
+| --- | --- | --- | --- | --- | --- | --- |\n"""
+    for row in rows:
+        out_str += f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} |\n"
+    return out_str
+
+
+def perf_sessions():
+    sql = """select activity_time, agent_name, earnings, requests, delayed_requests, cpr from session_stats_per_hour
+order by agent_name;
+"""
+    rows = try_execute_select(connection, sql, ())
+    if not rows:
+        return ""
+
+    out_str = """## Session performance  \n
+| activity_time | agent_name | earnings | requests | delayed_requests | cpr |
+| --- | --- | --- | --- | --- | --- |"""
+    for row in rows:
+        out_str += (
+            f"\n| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} |  "
+        )
+    return out_str
+
+
+def perf_shipy_types():
+    sql = """
+select agent_name, shipyard_type, best_price, count_of_ships
+, earnings, requests, sessions
+, round(cph,2) as cph_per_ship, round(cpr,2) as total_cpr
+from shipyard_type_performance
+order by agent_name, cph desc"""
+    rows = try_execute_select(connection, sql, ())
+    if not rows:
+        return ""
+    out_str = """## Shipyard performance  \n
+| agent_name | shipyard_type | best_price | count_of_ships | earnings | requests | sessions | cph_per_ship | total_cpr |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"""
+    for row in rows:
+        out_str += f"| {row[0]} | {row[1]} | {row[2]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {row[7]} | {row[8]} |\n"
+    return out_str
 
 
 def transaction_summary():
@@ -60,6 +125,13 @@ def transaction_summary():
     )
     out_str = pivot_df.to_markdown()
     return out_str
+
+
+link_pieces = """<table><tr>
+     <td> <a href = "/"> agents </a> </td>
+     <td> <a href = "/ships"> ships </a> </td>
+     <td> <a href = "/sessions"> sessions </a> </td>
+    </tr></table>"""
 
 
 def scan_progress():
@@ -109,18 +181,36 @@ def ship_overview():
 , cargo_in_use
 , cargo_capacity
 , behaviour_id
-, last_updated from ship_overview
+, last_updated 
+, cooldown_nav
+from ship_overview
 where locked_until > now() at time zone 'utc'
-order by ship_symbol
+order by agent_name, ship_role, frame_symbol, ship_symbol
     """
+
+    frames = {
+        "FRAME_DRONE": "⛵",
+        "FRAME_PROBE": "⛵",
+        "FRAME_MINER": "🚤",
+        "FRAME_LIGHT_FREIGHTER": "🚤",
+        "FRAME_FRIGATE": "🚤",
+        "FRAME_HEAVY_FREIGHTER":"⛴️"
+    }
+
+    roles = {"COMMAND": "👑", "EXCAVATOR": "⛏️", "HAULER": "🚛", "SATELLITE": "🛰️", "REFINERY":"⚙️"}
 
     rows = try_execute_select(connection, sql, ())
     response = ""
     if len(rows) > 0:
-        response = "| ship | role/ frame | waypoint | cargo/ | capacity | behaviour | locked_until |\n"
-        response += "| --- | ---  --- | --- | --- | --- | --- | --- |\n"
+        response = (
+            "| ship | what | waypoint | 📥 | 📦 | behaviour | Locked? | locked_until |\n"
+        )
+        response += "| --- | ---  --- | --- | --- | --- | --- | --- | --- |\n"
     for row in rows:
-        response += f"| {row[0]} | {row[1]}_{row[2][5:]} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {row[7]} | \n"
+        busy_emoji = "✅" if row[8] else "❌"
+        frame_emoji = frames.get(row[2], row[2])
+        role_emoji = roles.get(row[1], row[1])
+        response += f"| {row[0]} | {role_emoji}{frame_emoji} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {busy_emoji} | {row[7]} | \n"
     return response
 
 
@@ -145,33 +235,69 @@ javascript_refresh_blob = """
 <script>
 setTimeout(function(){
     window.location.reload(1);
-}, 5000);
+}, 15000);
 </script>
 """
 
 
 def out_to_file(str, filename):
     str = markdown.markdown(str, extensions=["tables", "md_in_html"])
-    file = open(filename, "w+")
+    file = open(filename, "w+", encoding="utf-8")
     file.write(str)
     file.close()
 
 
-while True:
-    out_to_file(
+app = Flask(__name__)
+
+
+@app.route("/")
+def index():
+    out_str = markdown.markdown(
         agent_str
         % (
             css_blob,
+            link_pieces,
             commander_overview(),
             scan_progress(),
             transaction_summary(),
             javascript_refresh_blob,
         ),
-        "overview.md",
+        extensions=["tables", "md_in_html"],
     )
+    return out_str
 
-    out_to_file(
-        ship_str % (css_blob, ship_overview(), javascript_refresh_blob),
-        "overview_ships.md",
+
+@app.route("/ships/")
+def ships():
+    out_str = markdown.markdown(
+        ship_str
+        % (
+            css_blob,
+            link_pieces,
+            ship_overview(),
+            javascript_refresh_blob,
+        ),
+        extensions=["tables", "md_in_html"],
     )
-    sleep(30)
+    return out_str
+
+
+@app.route("/sessions/")
+def analytics():
+    formatted_analytics = analytics_str % (
+        css_blob,
+        link_pieces,
+        perf_sessions(),
+        perf_shipy_types(),
+        perf_behaviour(),
+        "",  # javascript_refresh_blob,
+    )
+    out_str = markdown.markdown(
+        formatted_analytics,
+        extensions=["tables", "md_in_html"],
+    )
+    return out_str
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=4000)

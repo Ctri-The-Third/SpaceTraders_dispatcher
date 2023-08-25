@@ -4,18 +4,22 @@ import json
 import logging
 import psycopg2
 import sys, threading, os, uuid, time
-
+from requests_ratelimiter import LimiterSession
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging
-from behaviours.extract_and_sell_wk5 import ExtractAndSell_old
+from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.generic_behaviour import Behaviour
 import random
-from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
+from pyrate_limiter import Limiter, Duration, RequestRate
+from behaviours.extract_and_transfer_or_sell import (
+    ExtractAndTransferOrSell_4,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+)
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
     BEHAVIOUR_NAME as BHVR_REMOTE_SCAN_AND_SURV,
@@ -28,16 +32,21 @@ from behaviours.monitor_cheapest_price import (
     MonitorPrices,
     BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
 )
+from behaviours.buy_and_deliver_or_sell import (
+    BuyAndDeliverOrSell_6,
+    BEHAVIOUR_NAME as BHVR_BUY_AND_DELIVER_OR_SELL,
+)
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
+from datetime import datetime, timedelta
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-EXTRACT_TRANSFER = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
+
 
 logger = logging.getLogger("dispatcher")
 
@@ -73,6 +82,8 @@ class dispatcher(SpaceTraders):
         self.agent = self.view_my_self()
         self.ships = self.ships_view()
 
+        self.session = LimiterSession(per_second=2)
+
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
     from ships s 
@@ -88,17 +99,6 @@ class dispatcher(SpaceTraders):
             {"name": row[0], "behaviour_id": row[1], "behaviour_params": row[4]}
             for row in rows
         ]
-
-    def lock_ship(self, ship_symbol, lock_id, duration=60):
-        sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
-    VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
-    ON CONFLICT (ship_symbol) DO UPDATE SET
-        locked_by = %s,
-        locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
-
-        return try_execute_upsert(
-            self.connection, sql, (ship_symbol, lock_id, duration, lock_id, duration)
-        )
 
     def unlock_ship(self, connect, ship_symbol, lock_id):
         sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
@@ -134,7 +134,6 @@ WHERE ship_symbol IN (
 	SELECT ship_symbol FROM ship_behaviours
 	WHERE ship_symbol ILIKE '{self.current_agent.symbol}%'
 	AND locked_by != '{self.lock_id}'
-	LIMIT 10
 )"""
         )
         print(
@@ -142,84 +141,97 @@ WHERE ship_symbol IN (
             --EXPECT TO SEE ERRORS IF OTHER DISPATCHER STILL RUNNING, UNTIL PREV BEHAVIOURS PHASE OUT."""
         )
         ships_and_threads: dict[str : threading.Thread] = {}
-
+        check_frequency = timedelta(seconds=15)
+        last_checked = datetime.now() - check_frequency
+        unlocked_ships = []
         while True:
-            # every 15 seconds update the list of unlocked ships with a DB query.
+            #
+            # every 15 seconds update the list of unlocked ships with a DB query
+            #
+            if last_checked + check_frequency < datetime.now():
+                unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
+                last_checked = datetime.now()
+                active_ships = sum(
+                    [1 for t in ships_and_threads.values() if t.is_alive()]
+                )
 
-            unlocked_ships = self.get_unlocked_ships(self.agent.symbol)
+                logging.info(
+                    "dispatcher %s found %d unlocked ships - %s active (%s%%)",
+                    self.lock_id,
+                    len(unlocked_ships),
+                    active_ships,
+                    round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
+                )
+                if len(unlocked_ships) > 10:
+                    # set_logging(level=logging.INFO)
+                    # api_logger = logging.getLogger("API-Client")
+                    # api_logger.setLevel(logging.INFO)
+                    # self.logger.level = logging.INFO
+                    # logging.getLogger().setLevel(logging.INFO)
+                    pass
+                # if we're running a ship and the lock has expired during execution, what do we do?
+                # do we relock the ship whilst we're running it, or terminate the thread
+                # I say terminate.
 
-            active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
-
-            logging.info(
-                "dispatcher %s found %d unlocked ships - %s active (%s%%)",
-                self.lock_id,
-                len(unlocked_ships),
-                active_ships,
-                round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
-            )
-            if len(unlocked_ships) > 10:
-                set_logging(level=logging.INFO)
-                api_logger = logging.getLogger("API-Client")
-                api_logger.setLevel(logging.INFO)
-                self.logger.level = logging.INFO
-                logging.getLogger().setLevel(logging.INFO)
-
-            # if we're running a ship and the lock has expired during execution, what do we do?
-            # do we relock the ship whilst we're running it, or terminate the thread
-            # I say terminate.
+            #
+            # every second, tidy up ships whose threads have expired or aren't locked by us
+            #
 
             unlocked_ship_symbols = [ship["name"] for ship in unlocked_ships]
-            for ship_sym, thread in ships_and_threads.items():
-                if ship_sym not in unlocked_ship_symbols:
-                    # we're running a ship that's no longer unlocked - terminate the thread
+            ships_to_tidyup = []
+            for ship, thread in ships_and_threads.items():
+                if ship not in unlocked_ship_symbols:
+                    ships_to_tidyup.append(ship)
+                elif not thread.is_alive():
+                    ships_to_tidyup.append(ship)
+            for ship in ships_to_tidyup:
+                del ships_and_threads[ship]
+
+            #
+            # check if we have idle ships whose behaviours we can execute.
+            #
+
+            for ship_and_behaviour in unlocked_ships:
+                # are we already running this behaviour?
+
+                if ship_and_behaviour["name"] in ships_and_threads:
+                    thread = ships_and_threads[ship_and_behaviour["name"]]
                     thread: threading.Thread
-                    # here's where we'd send a terminate event to the thread, but I'm not going to do this right now.
-                    del ships_and_threads[ship_sym]
-                    self.logger.warning(
-                        "lost lock for active ship %s - risk of conflict!", ship_sym
-                    )
-
-            # every second, check if we have idle ships whose behaviours we can execute.
-            for i in range(15):
-                for ship_and_behaviour in unlocked_ships:
-                    # are we already running this behaviour?
-
-                    if ship_and_behaviour["name"] in ships_and_threads:
-                        thread = ships_and_threads[ship_and_behaviour["name"]]
-                        thread: threading.Thread
-                        if thread.is_alive():
-                            continue
-                        else:
-                            del ships_and_threads[ship_and_behaviour["name"]]
+                    if thread.is_alive():
+                        continue
                     else:
-                        # first time we've seen this ship - create a thread
-                        pass
-                    bhvr = None
-                    bhvr = self.map_behaviour_to_class(
-                        ship_and_behaviour["behaviour_id"],
-                        ship_and_behaviour["name"],
-                        ship_and_behaviour["behaviour_params"],
-                    )
-
-                    if not bhvr:
-                        continue
-
-                    lock_r = self.lock_ship(ship_and_behaviour["name"], self.lock_id)
-                    if lock_r is None:
-                        continue
-                    # we know this is behaviour, so lock it and start it.
-                    ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
-                        target=bhvr.run,
-                        name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
-                    )
-                    self.logger.info(
-                        "Starting thread for ship %s", ship_and_behaviour["name"]
-                    )
-                    ships_and_threads[ship_and_behaviour["name"]].start()
-                    time.sleep(min(10, 100 / len(ships_and_threads)))  # stagger ships
+                        del ships_and_threads[ship_and_behaviour["name"]]
+                else:
+                    # first time we've seen this ship - create a thread
                     pass
+                bhvr = None
+                bhvr = self.map_behaviour_to_class(
+                    ship_and_behaviour["behaviour_id"],
+                    ship_and_behaviour["name"],
+                    ship_and_behaviour["behaviour_params"],
+                )
 
-                time.sleep(1)
+                if not bhvr:
+                    continue
+
+                lock_r = lock_ship(
+                    ship_and_behaviour["name"], self.lock_id, self.connection
+                )
+                if lock_r is None:
+                    continue
+                # we know this is behaviour, so lock it and start it.
+                ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
+                    target=bhvr.run,
+                    name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
+                )
+                self.logger.info(
+                    "Starting thread for ship %s", ship_and_behaviour["name"]
+                )
+                ships_and_threads[ship_and_behaviour["name"]].start()
+                # time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
+                pass
+
+            time.sleep(1)
 
     def map_behaviour_to_class(
         self, behaviour_id: str, ship_symbol: str, behaviour_params: dict
@@ -230,23 +242,31 @@ WHERE ship_symbol IN (
         bhvr_params = behaviour_params
         bhvr = None
         if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell_old(aname, sname, bhvr_params)
+            bhvr = ExtractAndSell(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXTRACT_AND_TRANSFER_HIGHEST:
-            bhvr = ExtractAndTransferHeighest_1(aname, sname, bhvr_params)
+            bhvr = ExtractAndTransferHeighest_1(
+                aname, sname, bhvr_params, session=self.session
+            )
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
-                aname,
-                sname,
-                behaviour_params,
+                aname, sname, behaviour_params, session=self.session
             )
-        elif id == EXTRACT_TRANSFER:
-            bhvr = ExtractAndTransferOrSell_4(aname, sname, bhvr_params)
+        elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
+            bhvr = ExtractAndTransferOrSell_4(
+                aname, sname, bhvr_params, session=self.session
+            )
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
-            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params)
+            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXPLORE_SYSTEM:
-            bhvr = ExploreSystem(aname, sname, bhvr_params)
+            bhvr = ExploreSystem(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
-            bhvr = MonitorPrices(aname, sname, bhvr_params)
+            bhvr = MonitorPrices(aname, sname, bhvr_params, session=self.session)
+        elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
+            bhvr = BuyAndDeliverOrSell_6(
+                aname, sname, bhvr_params, session=self.session
+            )
+        else:
+            pass
         return bhvr
 
 
@@ -331,6 +351,18 @@ def load_user(username):
         return load_user(username)
 
     logging.error("Could neither load nor register user %s", username)
+
+
+def lock_ship(ship_symbol, lock_id, connection, duration=60):
+    sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
+    VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
+    ON CONFLICT (ship_symbol) DO UPDATE SET
+        locked_by = %s,
+        locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
+
+    return try_execute_upsert(
+        connection, sql, (ship_symbol, lock_id, duration, lock_id, duration)
+    )
 
 
 if __name__ == "__main__":

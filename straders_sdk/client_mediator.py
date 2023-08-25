@@ -49,6 +49,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_pass=None,
         db_port=None,
         current_agent_symbol=None,
+        session=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_pass,
             )
         self.api_client = SpaceTradersApiClient(
-            token=token, base_url=base_url, version=version
+            token=token, base_url=base_url, version=version, session=session
         )
         self.config = ApiConfig(
             base_url=base_url, version=version
@@ -761,6 +762,17 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             )
         return resp
 
+    def ship_install_mount(
+        self, ship: "Ship", mount_symbol: str
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/install"""
+        resp = self.api_client.ship_install_mount(ship, mount_symbol)
+        self.logging_client.ship_install_mount(ship, mount_symbol, resp)
+        if resp:
+            ship.update(resp.data)
+            self.update(ship)
+        return resp
+
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
         self.db_client.surveys_remove_one(survey_signature)
@@ -849,6 +861,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             self.update(ship)
         return resp
 
+    def ship_jettison_cargo(
+        self, ship: Ship, trade_symbol: str, quantity: int
+    ) -> SpaceTradersResponse:
+        resp = self.api_client.ship_jettison_cargo(ship, trade_symbol, quantity)
+        self.logging_client.ship_jettison_cargo(ship, trade_symbol, quantity, resp)
+        if resp:
+            ship.update(resp.data)
+            self.update(ship)
+        return resp
+
     def contracts_deliver(
         self, contract: Contract, ship: Ship, trade_symbol: str, units: int
     ) -> SpaceTradersResponse:
@@ -859,6 +881,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             contract.update(resp.data.get("contract", {}))
             ship.update(resp.data)
             self.db_client.update(ship)
+        return resp
 
     def contracts_fulfill(self, contract: "Contract") -> SpaceTradersResponse:
         """/my/contracts/{contractId}/fulfill"""

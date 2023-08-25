@@ -282,7 +282,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 """
 
         deposits_sql = (
-            """select trade_symbol, count from survey_deposit where signature = %s """
+            """select trade_symbol, count from survey_deposits where signature = %s """
         )
         resp = try_execute_select(self.connection, sql, (waypoint_symbol,))
         if not resp:
@@ -326,11 +326,11 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
 
     def surveys_remove_one(self, survey_signature) -> None:
         """Removes a survey from any caching - called after an invalid survey response."""
-        sql = """update survey s
+        sql = """update surveys s 
         set expiration = (now() at time zone 'utc')
         where signature = %s
         """
-        resp = try_execute_no_results(self.connection, sql, (survey_signature,))
+        resp = try_execute_upsert(self.connection, sql, (survey_signature,))
         return resp
 
     def ship_orbit(self, ship: "Ship") -> SpaceTradersResponse:
@@ -338,7 +338,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, "ship_orbit")
         pass
 
-    def ship_patch_nav(self, ship: "Ship", dest_waypoint_symbol: str):
+    def ship_patch_nav(self, ship: "Ship", flight_mode: str):
         """my/ships/:shipSymbol/course"""
         return dummy_response(__class__.__name__, "ship_patch_nav")
         pass
@@ -403,10 +403,24 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, "ship_transfer_cargo")
         pass
 
+    def ship_install_mount(
+        self, ship: "Ship", mount_symbol: str
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/install"""
+        return dummy_response(__class__.__name__, "ship_install_mount")
+        pass
+
+    def ship_jettison_cargo(
+        self, ship: "Ship", trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/jettison"""
+
+        pass
+
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
         try:
-            sql = """SELECT mt.trade_symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
+            sql = """SELECT mt.symbol, mt.name, mt.description FROM market_tradegood mt where mt.market_waypoint =  %s"""
             rows = try_execute_select(self.connection, sql, (wp.symbol,))
             if not rows:
                 return LocalSpaceTradersRespose(
@@ -416,8 +430,8 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
             exports = [MarketTradeGood(*row) for row in rows if row[2] == "sell"]
             exchanges = [MarketTradeGood(*row) for row in rows if row[2] == "exchange"]
 
-            listings_sql = """select trade_symbol, coalesce(trade_volume,999) , supply, purchase_price, sell_price, last_updated
-                            from market_tradegood_listing mtl
+            listings_sql = """select trade_symbol, market_depth , supply, purchase_price, sell_price, last_updated
+                            from market_tradegood_listings mtl
                             where market_symbol = %s"""
             rows = try_execute_select(self.connection, listings_sql, (wp.symbol,))
             listings = [MarketTradeGoodListing(*row) for row in rows]

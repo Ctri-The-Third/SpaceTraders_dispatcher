@@ -12,7 +12,7 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK6.py",
+            "program": "conductorWK7.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -24,19 +24,27 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-LWK5-"
+                "CTRI-L8-"
             ]
         },
         {
-            "name": "dispatcher -CTRI-UWK5-",
+            "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK5.py",
+            "program": "dispatcherWK7.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-UWK5-"
+                "CTRI-U7-"
             ]
+        },
+        {
+            "name": "Python: overview ",
+            "type": "python",
+            "request": "launch",
+            "program": "overviewWK7.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         },
         {
             "name": "Python: explore-and-get-data ",

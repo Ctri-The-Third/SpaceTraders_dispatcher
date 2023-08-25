@@ -21,6 +21,7 @@ class Behaviour:
         ship_name,
         behaviour_params: dict = {},
         config_file_name="user.json",
+        session=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
@@ -47,6 +48,7 @@ class Behaviour:
             db_user=db_user,
             db_pass=db_pass,
             current_agent_symbol=agent_name,
+            session=session,
         )
         self._connection = None
         self.graph = None
@@ -100,7 +102,7 @@ class Behaviour:
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
 
-            self.refuel_if_low()
+            self.go_and_refuel()
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
@@ -112,12 +114,14 @@ class Behaviour:
                 sleep_until_ready(self.ship)
                 ship.nav.status = "IN_ORBIT"
                 ship.nav.waypoint_symbol = target_wp_symbol
+                st.update(ship)
             self.logger.debug(
                 "moved to %s, time to destination %s",
                 ship.name,
                 ship.nav.travel_time_remaining,
             )
             return resp
+        return True
 
     def extract_till_full(self, cargo_to_target: list = None):
         # need to validate that the ship'  s current WP is a valid location
@@ -150,8 +154,11 @@ class Behaviour:
                 )
             else:
                 survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
-
+            if ship.seconds_until_cooldown > 0:  # we're coming into this already on CD
+                sleep(ship.seconds_until_cooldown)
             resp = st.ship_extract(ship, survey)
+            if ship.cargo_units_used == ship.cargo_capacity:
+                return
             if not resp:
                 sleep(30)
                 return
@@ -159,7 +166,7 @@ class Behaviour:
             else:
                 sleep_until_ready(self.ship)
 
-    def refuel_if_low(self):
+    def go_and_refuel(self):
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
@@ -193,7 +200,12 @@ class Behaviour:
         ship = self.ship
         st = self.st
         listings = {}
-        if market is not None:
+        if not market:
+            market = self.st.system_market(
+                st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol),
+                True,
+            )
+        if market:
             listings = {listing.symbol: listing for listing in market.listings}
         if ship.nav.status != "DOCKED":
             st.ship_dock(ship)
@@ -205,11 +217,107 @@ class Behaviour:
             trade_volume = cargo.units
             if listing:
                 trade_volume = listing.trade_volume
-            for i in range(0, cargo.units // trade_volume + 1):
+            for i in range(0, math.ceil(cargo.units / trade_volume)):
                 resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
                 if not resp:
                     return resp
 
+        return True
+
+    def jettison_all_cargo(self, exceptions: list = []):
+        ship = self.ship
+        st = self.st
+
+        for cargo in ship.cargo_inventory:
+            if cargo.symbol in exceptions:
+                continue
+            resp = st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
+            if not resp:
+                return resp
+        return True
+
+    def fulfill_any_relevant(self, excpetions: list = []):
+        contracts = self.st.view_my_contracts()
+
+        items = []
+        tar_contract = None
+        for contract_id, contract in contracts.items():
+            if contract.accepted and not contract.fulfilled:
+                tar_contract = contract
+                for deliverable in contract.deliverables:
+                    if deliverable.units_fulfilled < deliverable.units_required:
+                        items.append(deliverable)
+
+        for cargo in self.ship.cargo_inventory:
+            matching_items = [item for item in items if item.symbol == cargo.symbol]
+        if not matching_items:
+            logging.warning(
+                "ship doesn't have any items matching deliverables to deliver"
+            )
+            return LocalSpaceTradersRespose(
+                "Cargo doesn't have any matching items.",
+                0,
+                0,
+                "generic_behaviour.fulfill_any_relevant",
+            )
+        cargo_to_deliver = min(matching_items[0].units_required, cargo.units)
+        return self.st.contracts_deliver(
+            tar_contract, self.ship, cargo.symbol, cargo_to_deliver
+        )
+
+    def buy_cargo(self, cargo_symbol: str, quantity: int):
+        # check the waypoint we're at has a market
+        # check the market has the cargo symbol we're seeking
+        # check the market_depth is sufficient, buy until quantity hit.
+
+        ship = self.ship
+        st = self.st
+        current_waypoint = st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
+        if "MARKETPLACE" not in [trait.symbol for trait in current_waypoint.traits]:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} is not a marketplace",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+
+        if ship.nav.status != "DOCKED":
+            st.ship_dock(ship)
+
+        current_market = st.system_market(current_waypoint)
+        if len(current_market.listings) == 0:
+            current_market = st.system_market(current_waypoint, True)
+
+        found_listing = None
+        for listing in current_market.listings:
+            if listing.symbol == cargo_symbol:
+                found_listing = listing
+
+        if not found_listing:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} does not have a listing for {cargo_symbol}",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+        amount_to_buy = ship.cargo_capacity - ship.cargo_units_used
+        if amount_to_buy == 0:
+            return LocalSpaceTradersRespose(
+                f"Ship {ship.name} has no cargo capacity remaining",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+
+        times_to_buy = math.ceil(quantity / found_listing.trade_volume)
+        for i in range(0, times_to_buy):
+            resp = st.ship_purchase_cargo(
+                ship, cargo_symbol, found_listing.trade_volume
+            )
+            if not resp:
+                return resp
         return True
 
     def scan_local_system(self):
@@ -318,11 +426,14 @@ class Behaviour:
         route.pop(0)
         for next_sys in route:
             next_sys: System
-            st.ship_jump(ship, next_sys.symbol)
+            sleep(ship.seconds_until_cooldown)
+            resp = st.ship_jump(ship, next_sys.symbol)
+            if not resp:
+                return resp
             if next_sys.symbol == destination_system.symbol:
                 # we've arrived, no need to sleepx
                 break
-            sleep(ship.seconds_until_cooldown)
+
         # Then, hit it.care
         return True
 
@@ -453,8 +564,8 @@ join systems s on w.system_symbol = s.system_symbol"""
 
         else:
             return graph
-        sql = """select w1.system_symbol, destination_waypoint from jumpgate_connections jc
-                join waypoints w1 on jc.source_waypoint = w1.waypoint_symbol
+        sql = """select w1.system_symbol, jc.d_waypoint_symbol from jumpgate_connections jc
+                join waypoints w1 on jc.s_waypoint_symbol = w1.waypoint_symbol
                 """
         results = try_execute_select(self.connection, sql, ())
         connections = []
