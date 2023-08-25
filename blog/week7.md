@@ -47,14 +47,14 @@ I've noticed that the VIP requests are at most coming in 0.333 seconds before no
 **Architecture/ design**
 * ☑️ Rate limiting (throttled to 2/sec, issues with 3)
 * Market Prices needs refactored to be considered of IMPORT/EXPORT/EXCHANGE state.
-* Better analytics for dynamic scaling.
+* Better analytics for dynamic scaling, hourly events.
+* Implement the recon conductor and dispatcher.
 
 
 **Behaviour**
 * ✅ get ship mounts able to be installed.
 * ☑️ get ship upgrades working 
 * Add upgrade behaviour into the conductor
-* Implement the recon conductor and dispatcher.
 
 ## Recon architecture
 
@@ -76,3 +76,17 @@ Difficulty Broadly:
 We tried having a slots based system, this didn't work.  
 We spoke with a colleague who suggested something fancy involving lambda and a single consumer  
 We found the `requests-ratelimiter` python package which enabled a very easy basic implementation that is now live.  
+
+## End of week stats 
+
+| stat             | Week 6    | Week 7     |
+| ---              | ---       | ---        |
+| fleet size       | 14        | 63         | 
+| missions complete| 0         | 2          |
+| credits earned   | 4,156,300 | 18,145,200 |
+| requests         | 330,259   | 462,995    |
+| uptime           | 6d 3h 52m | 6d 3h 56m  | 
+| CPH              | 28,107.79 | 122,657.95 |
+| CPR              | 12.58     | 39.19      |
+
+Week 7 shows clear superiority over week 6, and will be used going forwards.
