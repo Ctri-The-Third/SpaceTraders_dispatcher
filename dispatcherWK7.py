@@ -15,6 +15,7 @@ from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.generic_behaviour import Behaviour
 import random
+from pyrate_limiter import Limiter, Duration, RequestRate
 from behaviours.extract_and_transfer_or_sell import (
     ExtractAndTransferOrSell_4,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -80,7 +81,8 @@ class dispatcher(SpaceTraders):
 
         self.agent = self.view_my_self()
         self.ships = self.ships_view()
-        self.session = LimiterSession(per_second=2.8)
+
+        self.session = LimiterSession(per_second=2)
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
