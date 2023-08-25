@@ -198,7 +198,10 @@ order by purchase_price asc """
 
             if not resp:
                 # couldn't buy anything.
-                if resp.error_code == 4604:  # our info about tradevolume is out of date
+                if resp.error_code in (
+                    4604,
+                    4600,
+                ):  # our info about tradevolume is out of date
                     st.system_market(target_waypoint, True)
 
                 self.logger.warning(
@@ -206,6 +209,7 @@ order by purchase_price asc """
                 )
                 time.sleep(SAFETY_PADDING)
                 return
+        self.st.system_market(target_waypoint, True)
 
     def deliver_half(
         self, target_system, target_waypoint: "Waypoint", target_tradegood: str
@@ -228,7 +232,7 @@ order by purchase_price asc """
 
 if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "25"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "3B"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndDeliverOrSell_6(
         agent,
