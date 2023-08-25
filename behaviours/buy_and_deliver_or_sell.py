@@ -112,6 +112,11 @@ class BuyAndDeliverOrSell_6(Behaviour):
             time.sleep(SAFETY_PADDING)
             return
         local_jumpgate = resp[0]
+
+        # vent any spare stuff before deploying.
+        self.sell_all_cargo()
+        self.jettison_all_cargo([target_tradegood])
+
         #
         # we know where we're going, we know what we're getting. Deployment.
         #
@@ -131,9 +136,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
 
         if quantity > 0 and end_waypoint is not None:
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
-            if resp:
-                # jetison spare stuff
-                self.sell_all_cargo()
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         time.sleep(SAFETY_PADDING)
@@ -231,8 +233,10 @@ order by purchase_price asc """
 
 
 if __name__ == "__main__":
+    from dispatcherWK7 import lock_ship
+
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "3B"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "E"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndDeliverOrSell_6(
         agent,
@@ -243,5 +247,6 @@ if __name__ == "__main__":
             "tradegood": "MACHINERY",
         },
     )
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection)
     set_logging(logging.DEBUG)
     bhvr.run()
