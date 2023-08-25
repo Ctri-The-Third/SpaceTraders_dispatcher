@@ -7,7 +7,7 @@ from straders_sdk.ship import ShipInventory, Ship
 import time
 from straders_sdk.utils import set_logging, waypoint_slicer
 
-BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL"
+BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL_4"
 
 
 class ExtractAndTransferOrSell_4(Behaviour):
@@ -23,8 +23,11 @@ class ExtractAndTransferOrSell_4(Behaviour):
         ship_name,
         behaviour_params: dict = {},
         config_file_name="user.json",
+        session=None,
     ) -> None:
-        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+        super().__init__(
+            agent_name, ship_name, behaviour_params, config_file_name, session
+        )
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
 
     def run(self):

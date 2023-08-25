@@ -28,8 +28,11 @@ class FindModulesAndEquip(Behaviour):
         ship_name,
         behaviour_params: dict = ...,
         config_file_name="user.json",
+        session=None,
     ) -> None:
-        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+        super().__init__(
+            agent_name, ship_name, behaviour_params, config_file_name, session
+        )
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
     def run(self):

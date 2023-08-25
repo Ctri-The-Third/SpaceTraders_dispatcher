@@ -4,7 +4,7 @@ import json
 import logging
 import psycopg2
 import sys, threading, os, uuid, time
-
+from requests_ratelimiter import LimiterSession
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
@@ -15,7 +15,10 @@ from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.generic_behaviour import Behaviour
 import random
-from behaviours.extract_and_transfer_or_sell import ExtractAndTransferOrSell_4
+from behaviours.extract_and_transfer_or_sell import (
+    ExtractAndTransferOrSell_4,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+)
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
     BEHAVIOUR_NAME as BHVR_REMOTE_SCAN_AND_SURV,
@@ -39,7 +42,6 @@ from datetime import datetime, timedelta
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-EXTRACT_TRANSFER = "EXTRACT_AND_TRANSFER_DELIVERABLES"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
@@ -78,6 +80,7 @@ class dispatcher(SpaceTraders):
 
         self.agent = self.view_my_self()
         self.ships = self.ships_view()
+        self.session = LimiterSession(per_second=2.8)
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
@@ -158,12 +161,12 @@ WHERE ship_symbol IN (
                     round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
                 )
                 if len(unlocked_ships) > 10:
-                    set_logging(level=logging.INFO)
-                    api_logger = logging.getLogger("API-Client")
-                    api_logger.setLevel(logging.INFO)
-                    self.logger.level = logging.INFO
-                    logging.getLogger().setLevel(logging.INFO)
-
+                    # set_logging(level=logging.INFO)
+                    # api_logger = logging.getLogger("API-Client")
+                    # api_logger.setLevel(logging.INFO)
+                    # self.logger.level = logging.INFO
+                    # logging.getLogger().setLevel(logging.INFO)
+                    pass
                 # if we're running a ship and the lock has expired during execution, what do we do?
                 # do we relock the ship whilst we're running it, or terminate the thread
                 # I say terminate.
@@ -237,25 +240,31 @@ WHERE ship_symbol IN (
         bhvr_params = behaviour_params
         bhvr = None
         if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(aname, sname, bhvr_params)
+            bhvr = ExtractAndSell(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXTRACT_AND_TRANSFER_HIGHEST:
-            bhvr = ExtractAndTransferHeighest_1(aname, sname, bhvr_params)
+            bhvr = ExtractAndTransferHeighest_1(
+                aname, sname, bhvr_params, session=self.session
+            )
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
-                aname,
-                sname,
-                behaviour_params,
+                aname, sname, behaviour_params, session=self.session
             )
-        elif id == EXTRACT_TRANSFER:
-            bhvr = ExtractAndTransferOrSell_4(aname, sname, bhvr_params)
+        elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
+            bhvr = ExtractAndTransferOrSell_4(
+                aname, sname, bhvr_params, session=self.session
+            )
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
-            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params)
+            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXPLORE_SYSTEM:
-            bhvr = ExploreSystem(aname, sname, bhvr_params)
+            bhvr = ExploreSystem(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
-            bhvr = MonitorPrices(aname, sname, bhvr_params)
+            bhvr = MonitorPrices(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
-            bhvr = BuyAndDeliverOrSell_6(aname, sname, bhvr_params)
+            bhvr = BuyAndDeliverOrSell_6(
+                aname, sname, bhvr_params, session=self.session
+            )
+        else:
+            pass
         return bhvr
 
 

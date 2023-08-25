@@ -111,6 +111,7 @@ def get_and_validate(
         if st_log_client:
             st_log_client.log_429(url, RemoteSpaceTradersRespose(response))
         logging.warning("Rate limited retrying!")
+        return get_and_validate(url, params=params, headers=headers, session=session)
 
     if response.status_code >= 500 and response.status_code < 600:
         logging.error("SpaceTraders Server error: %s, %s", url, response.status_code)
@@ -170,11 +171,11 @@ def post_and_validate(
         logging.debug("Rate limited")
         if st_log_client:
             st_log_client.log_429(url, RemoteSpaceTradersRespose(response))
+        return post_and_validate(
+            url, data=data, json=json, headers=headers, session=session
+        )
     else:
         return RemoteSpaceTradersRespose(response)
-    return LocalSpaceTradersRespose(
-        "Unable to do the rate limiting thing, command aborted", 0, 0, url
-    )
 
 
 def patch_and_validate(
@@ -196,6 +197,7 @@ def patch_and_validate(
     _log_response(response)
     if response.status_code == 429:
         logging.warning("Rate limited")
+        return patch_and_validate(url, data=data, json=json, headers=headers)
     else:
         return RemoteSpaceTradersRespose(response)
 

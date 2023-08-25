@@ -21,6 +21,7 @@ class Behaviour:
         ship_name,
         behaviour_params: dict = {},
         config_file_name="user.json",
+        session=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
@@ -47,6 +48,7 @@ class Behaviour:
             db_user=db_user,
             db_pass=db_pass,
             current_agent_symbol=agent_name,
+            session=session,
         )
         self._connection = None
         self.graph = None

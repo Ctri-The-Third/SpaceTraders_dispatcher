@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from dispatcherWK7 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
-    EXTRACT_TRANSFER,
+    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
@@ -271,7 +271,9 @@ def stage_3(client: SpaceTraders):
     #
 
     for excavator in excavators:
-        set_behaviour(excavator.name, EXTRACT_TRANSFER, extractor_params)
+        set_behaviour(
+            excavator.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
+        )
     for hauler in haulers:
         set_behaviour(hauler.name, hauler_behaviour, hauler_params)
     for satelite in satelites:
@@ -286,7 +288,9 @@ def stage_3(client: SpaceTraders):
             set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
         else:
             # do the refresh behaviour
-            set_behaviour(commander.name, EXTRACT_TRANSFER, extractor_params)
+            set_behaviour(
+                commander.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
+            )
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
@@ -315,7 +319,9 @@ def stage_3(client: SpaceTraders):
             )
 
         if ship:
-            set_behaviour(ship.name, EXTRACT_TRANSFER, extractor_params)
+            set_behaviour(
+                ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
+            )
 
     return 3
 
@@ -385,7 +391,9 @@ def stage_4(client: SpaceTraders):
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
         if ship:
             set_behaviour(
-                ship.name, EXTRACT_TRANSFER, {"asteroid_wp": asteroid_wp.symbol}
+                ship.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                {"asteroid_wp": asteroid_wp.symbol},
             )
 
     return 4

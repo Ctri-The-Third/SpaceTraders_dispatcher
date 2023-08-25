@@ -18,9 +18,12 @@ class MonitorPrices(Behaviour):
         ship_name,
         behaviour_params: dict = ...,
         config_file_name="user.json",
+        session=None,
     ) -> None:
         self.graph = None
-        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+        super().__init__(
+            agent_name, ship_name, behaviour_params, config_file_name, session
+        )
 
     def run(self):
         super().run()
