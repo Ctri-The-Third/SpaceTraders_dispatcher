@@ -1,5 +1,6 @@
 pytest
 requests
+requests-ratelimiter
 psycopg2-binary
 networkx
 markdown
