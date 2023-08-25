@@ -35,7 +35,7 @@ SET row_security = off;
 -- Name: spacetraders; Type: DATABASE; Schema: -; Owner: postgres
 --
 
-CREATE DATABASE SpaceTraders WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8';
+--CREATE DATABASE SpaceTraders WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_GB.UTF-8' LC_CTYPE = 'en_GB.UTF-8';
 
 
 ALTER DATABASE spacetraders OWNER TO spacetraders;
