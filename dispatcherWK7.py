@@ -95,17 +95,6 @@ class dispatcher(SpaceTraders):
             for row in rows
         ]
 
-    def lock_ship(self, ship_symbol, lock_id, duration=60):
-        sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
-    VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
-    ON CONFLICT (ship_symbol) DO UPDATE SET
-        locked_by = %s,
-        locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
-
-        return try_execute_upsert(
-            self.connection, sql, (ship_symbol, lock_id, duration, lock_id, duration)
-        )
-
     def unlock_ship(self, connect, ship_symbol, lock_id):
         sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
                 WHERE ship_symbol = %s and locked_by = %s"""
@@ -221,7 +210,9 @@ WHERE ship_symbol IN (
                 if not bhvr:
                     continue
 
-                lock_r = self.lock_ship(ship_and_behaviour["name"], self.lock_id)
+                lock_r = lock_ship(
+                    ship_and_behaviour["name"], self.lock_id, self.connection
+                )
                 if lock_r is None:
                     continue
                 # we know this is behaviour, so lock it and start it.
@@ -350,6 +341,18 @@ def load_user(username):
         return load_user(username)
 
     logging.error("Could neither load nor register user %s", username)
+
+
+def lock_ship(ship_symbol, lock_id, connection, duration=60):
+    sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
+    VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
+    ON CONFLICT (ship_symbol) DO UPDATE SET
+        locked_by = %s,
+        locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
+
+    return try_execute_upsert(
+        connection, sql, (ship_symbol, lock_id, duration, lock_id, duration)
+    )
 
 
 if __name__ == "__main__":
