@@ -410,6 +410,13 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, "ship_install_mount")
         pass
 
+    def ship_jettison_cargo(
+        self, ship: "Ship", trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/jettison"""
+
+        pass
+
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
         try:

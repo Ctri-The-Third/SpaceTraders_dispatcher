@@ -189,6 +189,14 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def ship_jettison_cargo(
+        self, ship: "Ship", trade_symbol: str, units: int
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/jettison"""
+
+        pass
+
+    @abstractmethod
     def system_market(self, wp: Waypoint) -> Market or SpaceTradersResponse:
         """/game/systems/{symbol}/marketplace"""
 

@@ -222,6 +222,18 @@ class Behaviour:
 
         return True
 
+    def jettison_all_cargo(self, exceptions: list = []):
+        ship = self.ship
+        st = self.st
+
+        for cargo in ship.cargo_inventory:
+            if cargo.symbol in exceptions:
+                continue
+            resp = st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
+            if not resp:
+                return resp
+        return True
+
     def fulfill_any_relevant(self, excpetions: list = []):
         contracts = self.st.view_my_contracts()
 

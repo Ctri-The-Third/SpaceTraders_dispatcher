@@ -275,6 +275,18 @@ class SpaceTradersApiClient(SpaceTradersClient):
         resp = post_and_validate(url, data, headers=self._headers())
         if resp:
             self.update(resp.data)
+
+            ship.update(resp.data)
+            self.update(ship)
+        return resp
+
+    def ship_jettison_cargo(
+        self, ship: Ship, trade_symbol: str, quantity: int
+    ) -> SpaceTradersResponse:
+        url = _url(f"my/ships/{ship.name}/jettison")
+        data = {"symbol": trade_symbol, "units": quantity}
+        resp = post_and_validate(url, data, headers=self._headers())
+        if resp:
             ship.update(resp.data)
         return resp
 

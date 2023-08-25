@@ -323,6 +323,14 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("ship_install_mount", ship.name, url, response)
         pass
 
+    def ship_jettison_cargo(
+        self, ship: "Ship", trade_symbol: str, units: int, response=None
+    ) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/jettison"""
+        url = _url(f"my/ships/:ship_symbol/jettison")
+        self.log_event("ship_jettison_cargo", ship.name, url, response)
+        pass
+
     def system_market(
         self, wp: Waypoint, response=None
     ) -> Market or SpaceTradersResponse:
