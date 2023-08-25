@@ -296,6 +296,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     ) -> SpaceTradersResponse:
         url = _url(f"my/ships/:ship_name/purchase")
         self.log_event("ship_purchase_cargo", ship.name, url, response)
+        self.update(response)
 
     def ship_survey(
         self, ship: "ship", response=None
