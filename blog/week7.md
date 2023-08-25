@@ -1,6 +1,7 @@
 
 # week 7 
 
+## rambling notes
 We did a major DB refactor before the maintenance, which has caused lots of issues on the week 6  behaviour on the V node. 
 Our scaling was okay, but we messed up a bit - should have purchased an ore hound to start with whilst they were cheap.
 Now (Sunday night) ore hounds are up to 400k and we need to go exploring to find a new system to buy them from - set the explorer to go to the systems with the hounds.
@@ -40,41 +41,28 @@ We didn't get to play with refineries or properly fix the freighters, but hopefu
 
 I've noticed that the VIP requests are at most coming in 0.333 seconds before non VIP ones, which means something is amiss there.
 
+
+
 ## Goals
-* ✅ get ship mounts able to be installed.
-* Implement the recon conductor and dispatcher.
+**Architecture/ design**
+* ☑️ Rate limiting (throttled to 2/sec, issues with 3)
 * Market Prices needs refactored to be considered of IMPORT/EXPORT/EXCHANGE state.
 * Better analytics for dynamic scaling.
 
-NOTE TO SELF IT IS 09:24 UK TIME, I HAVE JUST SET MY FREIGHTERS TO GO BUY MACHINERY - SEE HOW THEY SWITCH FROM SELLING MINING STUFF TO CONTRACTS STUFF. DID THEY GET STUCK WITH FULL BELLIES? <- yes, very much so.
 
+**Behaviour**
+* ✅ get ship mounts able to be installed.
+* ☑️ get ship upgrades working 
+* Add upgrade behaviour into the conductor
+* Implement the recon conductor and dispatcher.
 
-# Scaling analytics test.
-
-
-ship_ore_hound = 418590
-miing_drone = 88934
-
-Q: for sessions between 01:30 and 09:00
-
-how many times more effective was the oure hound than the mining drone?
-That should be our baseline for whether or not to buy a hound or a drone.
-
-note that we are acquiring quest items in this time, we should count those at 135cr per thing extracted?
-we don't capture extractions yet, nvm.
-
-A: about 2x effective.
-
-Some observations - others suggested that I should work on getting upgraded mounts as part of my flow. Given the current cost of the ore hound, doubling their effectiveness is a good idea. 
-We'll reach the point soon where an upraded commander is the better option over an ore hound.
-
-# Recon architecture
+## Recon architecture
 
 Conductor should be the one to instantiate agents and assign them behaviours.
 We should have a master dispatcher that can execute behaviours for all of those agents.
 
 
-Broadly:
+Difficulty Broadly:
 * C Spawn in 🟨
 * C Accept quest for upfront payment 🟩 
 * C Send to shipyard and buy ships 🟨
@@ -83,3 +71,8 @@ Broadly:
 * C Send satelites on exploration duty 🟩
 * D be on duty 🟩
 
+## Rate limiting architecture
+
+We tried having a slots based system, this didn't work.  
+We spoke with a colleague who suggested something fancy involving lambda and a single consumer  
+We found the `requests-ratelimiter` python package which enabled a very easy basic implementation that is now live.  
