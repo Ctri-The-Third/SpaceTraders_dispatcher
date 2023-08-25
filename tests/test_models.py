@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append(".")
+
 import pytest
 from datetime import datetime, timedelta
 from straders_sdk.utils import DATE_FORMAT
