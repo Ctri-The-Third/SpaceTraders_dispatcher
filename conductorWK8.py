@@ -7,6 +7,7 @@
 import sys
 import json
 import psycopg2, psycopg2.sql
+import math
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
@@ -299,7 +300,7 @@ def stage_3(client: SpaceTraders):
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
-    if len(haulers) <= (len(excavators) / extractors_per_hauler):
+    if len(haulers) <= math.floor(len(excavators) / extractors_per_hauler):
         ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
