@@ -20,11 +20,11 @@
             "name": "dispatcher -L",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK5.py",
+            "program": "dispatcherWK7.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-L8-"
+                "CTRI-L-"
             ]
         },
         {

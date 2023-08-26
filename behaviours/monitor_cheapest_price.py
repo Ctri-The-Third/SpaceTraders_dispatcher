@@ -22,7 +22,7 @@ class MonitorPrices(Behaviour):
     ) -> None:
         self.graph = None
         super().__init__(
-            agent_name, ship_name, behaviour_params, config_file_name, session
+            agent_name, ship_name, behaviour_params, config_file_name, session=None
         )
 
     def run(self):

@@ -10,9 +10,7 @@ from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
-from behaviours.extract_and_transfer_highest import ExtractAndTransferHeighest_1
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
-from behaviours.extract_and_transfer_all import ExtractAndTransferAll_2
 from behaviours.generic_behaviour import Behaviour
 import random
 from pyrate_limiter import Limiter, Duration, RequestRate
