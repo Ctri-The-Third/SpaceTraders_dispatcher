@@ -123,9 +123,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "6"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "ZTRI-25-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"fulfil_wp": "X1-JX88-33322E", "asteroid_wp": "X1-JX88-51095C"}
+    behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})
     bhvr.run()

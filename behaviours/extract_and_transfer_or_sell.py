@@ -157,9 +157,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-U7-"
-    ship_suffix = "17"
-    params = {"asteroid_wp": "X1-JX88-51095C"}
+    agent_symbol = "CTRI-U-"
+    ship_suffix = "3"
+    params = {}
+    # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params
     ).run()
