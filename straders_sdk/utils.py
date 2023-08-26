@@ -184,22 +184,20 @@ def patch_and_validate(
     resp = False
     try:
         if session:
-            session.patch(url, data=data, json=json, headers=headers, timeout=5)
+            resp = session.patch(url, data=data, json=json, headers=headers, timeout=5)
         else:
-            response = requests.patch(
-                url, data=data, json=json, headers=headers, timeout=5
-            )
+            resp = requests.patch(url, data=data, json=json, headers=headers, timeout=5)
     except (requests.exceptions.ConnectionError, TimeoutError) as err:
         logging.error("ConnectionError: %s, %s", url, err)
         return None
     except Exception as err:
         logging.error("Error: %s, %s", url, err)
-    _log_response(response)
-    if response.status_code == 429:
+    _log_response(resp)
+    if resp.status_code == 429:
         logging.warning("Rate limited")
         return patch_and_validate(url, data=data, json=json, headers=headers)
     else:
-        return RemoteSpaceTradersRespose(response)
+        return RemoteSpaceTradersRespose(resp)
 
 
 def _url(endpoint) -> str:
