@@ -9,6 +9,17 @@ We implemented a new conductor for creating and instrumenting accounts for scout
 
 The network isn't fully known yet because of all the charting that needs to happen, so for the time being they're selecting a random gate node that's not been explored yet, and going there. Very inefficient but guaranteed to minimise overlapping with other drones whilst the network is fully explored. Once it is fully explored, they should fall back to circulating all the markets and shipyards we know about.
 
+**Contracts or steady earnings?**
+Week 8 behaviour has 1 drone and 1 ore hound, and is therefore in stage 3 going for the contract with command-frigate supporting. I think
+
+Week 7 behaviour has 2 drones and is climbing for an ore hound (after which it should also skip to the contract).
+
+The first behaviour is about 66% complete of the contract, but 70k credits behind the second behaviour. Both behaviours are at aroudn 140k in total earnings since reset, so the question is which will be more profitable by the time the second contract is completed.
+
+**method of determining**
+Tomorrow evening I can find out when the fulfill endpoint was hit on behaviour two, and then look at the total earnings for both.
+It's possible that the transaction won't have made it into the DB so I will need to manually check that.
+
 **Bug in survey valuation**
 
 I've observed that currently my week 8 behaviour is performing the starting quest, where Aluminium is gathered. It's worth about 126 a unit, so if we're extracting 10 units of that we're getting 1260 credits, just not until pay off.
@@ -29,3 +40,10 @@ Having corrected that, our best survey is getting 59.42 per unit, and I'm much m
 * ✅ get ship mounts able to be installed.
 * ☑️ get ship upgrades working 
 * Add upgrade behaviour into the conductor
+
+**Analytics**
+* ✅ get the behaviour_id into the materialised view
+* new view we need a ship CPH and CPR - ship_performance
+* we need a shipyard_type  CPHPS and CPR 
+* we need a behaviour_type CPHPS and CPR
+* ✅ session_stats needs a total_cps and a CPHPS
