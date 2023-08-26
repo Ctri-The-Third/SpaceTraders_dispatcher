@@ -890,6 +890,24 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             self.update(resp)
             self.db_client.update(contract)
+            for deliverable in contract.deliverables:
+                total_price = (
+                    contract.payment_upfront - contract.payment_completion
+                ) / len(contract.deliverables)
+                transaction = {
+                    "transaction": {
+                        "waypointSymbol": deliverable.destination_symbol,
+                        "shipSymbol": "GLOBAL",
+                        "tradeSymbol": deliverable.symbol,
+                        "type": contract.type,
+                        "units": deliverable.units_fulfilled,
+                        "pricePerUnit": total_price / deliverable.units_fulfilled,
+                        "totalPrice": total_price,
+                    }
+                }
+                self.logging_client.update(transaction)
+
+            self.db_client.update(resp.data)
         return resp
 
     def _headers(self) -> dict:
