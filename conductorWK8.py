@@ -130,6 +130,7 @@ def stage_1(client: SpaceTraders):
         set_behaviour(
             ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp.symbol}
         )
+
     for ship in extractors:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
     maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
