@@ -35,7 +35,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
         config_file_name="user.json",
         session=None,
     ) -> None:
-        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+        super().__init__(
+            agent_name, ship_name, behaviour_params, config_file_name, session
+        )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
     def run(self):
