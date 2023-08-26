@@ -56,7 +56,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
                 target_wp = st.find_waypoints_by_type(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 )
-                if target_wp_sym:
+                if target_wp:
                     target_wp_sym = target_wp[0].symbol
             if not target_wp_sym:
                 raise AttributeError(
