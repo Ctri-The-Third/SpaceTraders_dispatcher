@@ -135,7 +135,7 @@ def stage_1(client: SpaceTraders):
         set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL)
 
     prices = get_ship_prices_in_hq_system(client)
-    if prices["SHIP_ORE_HOUND" < 175000]:
+    if prices["SHIP_ORE_HOUND"] < 175000:
         maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
     else:
         maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
@@ -692,6 +692,8 @@ def get_agents():
     rows = cur.fetchall()
     agents_and_tokens = {}
     for agent in user.get("agents"):
+        if "username" not in agent or "token" not in agent:
+            continue
         agents_and_tokens[agent["username"]] = agent["token"]
     for row in rows:
         token = agents_and_tokens.get(row[0], None)
