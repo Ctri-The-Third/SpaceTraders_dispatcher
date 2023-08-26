@@ -554,10 +554,11 @@ class Behaviour:
 
     def _populate_graph(self):
         graph = networkx.Graph()
-        sql = """select distinct s.system_symbol, s.sector_symbol, s.type, s.x, s.y from jumpgate_connections jc 
-join systems s on jc.d_waypoint_symbol = s.system_symbol
-order by 1 
-"""
+        sql = """
+            select s_system_symbol, sector_symbol, type, x ,y 
+            from jumpgate_connections jc 
+            join systems s on jc.s_system_symbol = s.system_symbol
+            """
 
         # the graph should be populated with Systems and Connections.
         # but note that the connections themselves need to by systems.
@@ -576,8 +577,7 @@ order by 1
 
         else:
             return graph
-        sql = """select w1.system_symbol, jc.d_waypoint_symbol from jumpgate_connections jc
-                join waypoints w1 on jc.s_waypoint_symbol = w1.waypoint_symbol
+        sql = """select s_system_symbol, d_system_symbol from jumpgate_connections 
                 """
         results = try_execute_select(self.connection, sql, ())
         connections = []
