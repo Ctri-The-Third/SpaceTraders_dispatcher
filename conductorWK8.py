@@ -132,10 +132,15 @@ def stage_1(client: SpaceTraders):
         )
 
     for ship in extractors:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
-    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL)
+
+    prices = get_ship_prices_in_hq_system(client)
+    if prices["SHIP_ORE_HOUND" < 175000]:
+        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
+    else:
+        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     if maybe_ship:
-        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
+        set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL)
     return 1
 
 
