@@ -29,7 +29,7 @@ class Behaviour:
         token = None
         self.ship_name = ship_name
         for agent in saved_data["agents"]:
-            if agent["username"] == agent_name:
+            if agent.get("username", "") == agent_name:
                 token = agent["token"]
                 break
         if not token:
@@ -324,6 +324,7 @@ class Behaviour:
         st = self.st
         ship = self.ship
         current_system_sym = self.ship.nav.system_symbol
+        flight_mode = "CRUISE" if ship.fuel_capacity > 0 else "BURN"
         # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
         # QUESTION
         st.waypoints_view(current_system_sym, True)
@@ -343,7 +344,7 @@ class Behaviour:
         for wayp_sym in path:
             waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
 
-            self.ship_intrasolar(wayp_sym)
+            self.ship_intrasolar(wayp_sym, flight_mode=flight_mode)
 
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             if "MARKETPLACE" in trait_symbols:
@@ -470,12 +471,17 @@ class Behaviour:
         return path
 
     def astar(
-        self, graph: networkx.Graph, start: Waypoint or System, goal: Waypoint or System
+        self,
+        graph: networkx.Graph,
+        start: Waypoint or System,
+        goal: Waypoint or System,
+        bypass_check: bool = False,
     ):
-        if start not in graph.nodes:
-            return None
-        if goal not in graph.nodes:
-            return None
+        if not bypass_check:
+            if start not in graph.nodes:
+                return None
+            if goal not in graph.nodes:
+                return None
         # freely admit used chatgpt to get started here.
 
         # Priority queue to store nodes based on f-score (priority = f-score)
@@ -544,9 +550,10 @@ class Behaviour:
 
     def _populate_graph(self):
         graph = networkx.Graph()
-        sql = """select s.system_symbol, s.sector_symbol, s.type, s.x, s.y from jump_gates jg 
-join waypoints w on jg.waypoint_symbol = w.waypoint_symbol
-join systems s on w.system_symbol = s.system_symbol"""
+        sql = """select distinct s.system_symbol, s.sector_symbol, s.type, s.x, s.y from jumpgate_connections jc 
+join systems s on jc.d_waypoint_symbol = s.system_symbol
+order by 1 
+"""
 
         # the graph should be populated with Systems and Connections.
         # but note that the connections themselves need to by systems.
@@ -555,6 +562,7 @@ join systems s on w.system_symbol = s.system_symbol"""
         #    syst = System(row[0], row[1], row[2], row[3], row[4], [])
 
         results = try_execute_select(self.connection, sql, ())
+
         if results:
             nodes = {
                 row[0]: System(row[0], row[1], row[2], row[3], row[4], [])

@@ -2,7 +2,7 @@ from ..models import Waypoint, JumpGate, JumpGateConnection
 import logging
 from datetime import datetime
 from ..local_response import LocalSpaceTradersRespose
-from ..utils import try_execute_select, try_execute_upsert
+from ..utils import try_execute_select, try_execute_upsert, waypoint_slicer
 
 
 def _upsert_jump_gate(connect, jump_gate: JumpGate):
@@ -18,17 +18,36 @@ def _upsert_jump_gate(connect, jump_gate: JumpGate):
         return resp
 
     connection_sql = """INSERT INTO public.jumpgate_connections(
-	s_waypoint_symbol, d_waypoint_symbol, distance)
-	VALUES (%s, %s, %s) on conflict do nothing;"""
+	s_waypoint_symbol, s_system_symbol, d_system_symbol, distance)
+	VALUES (%s, %s, %s, %s) on conflict do nothing;"""
 
     for connection in jump_gate.connected_waypoints:
         resp = try_execute_upsert(
             connect,
             connection_sql,
-            (jump_gate.waypoint_symbol, connection.symbol, connection.distance),
+            (
+                jump_gate.waypoint_symbol,
+                waypoint_slicer(jump_gate.waypoint_symbol),
+                connection.symbol,
+                connection.distance,
+            ),
         )
         if not resp:
             return resp
+
+        resp = try_execute_upsert(
+            connect,
+            connection_sql,
+            (
+                None,
+                connection.symbol,
+                waypoint_slicer(jump_gate.waypoint_symbol),
+                connection.distance,
+            ),
+        )
+        if not resp:
+            return resp
+
     return LocalSpaceTradersRespose(None, 0, 0, url=f"{__name__}._upsert_jump_gate")
 
 
@@ -39,11 +58,11 @@ def select_jump_gate_one(connection, waypoint: Waypoint):
         return resp
 
     connection_sql = """
-    select jc.destination_waypoint , s.sector_symbol, s.type, s.x, s.y, jc.distance
+    select jc.d_system_symbol , s.sector_symbol, s.type, s.x, s.y, jc.distance
 
 from jumpgate_connections jc 
-left join systems s on jc.destination_waypoint = s.symbol
-where source_waypoint = %s"""
+left join systems s on jc.d_system_symbol = s.system_symbol
+where s_waypoint_symbol = %s"""
     conn_resp = try_execute_select(connection, connection_sql, (waypoint.symbol,))
     if not conn_resp:
         return conn_resp
