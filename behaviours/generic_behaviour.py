@@ -470,6 +470,10 @@ class Behaviour:
             current = next_system
         return path
 
+    def end(self):
+        self.st.db_client.connection.close()
+        self.st.logging_client.connection.close()
+
     def astar(
         self,
         graph: networkx.Graph,
