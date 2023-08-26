@@ -12,7 +12,7 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK7.py",
+            "program": "conductorWK8.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
