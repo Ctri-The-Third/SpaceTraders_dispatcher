@@ -234,17 +234,19 @@ def set_logging(level=logging.INFO, filename=None):
 
 def parse_timestamp(timestamp: str) -> datetime:
     ts = None
-    try:
-        ts = datetime.fromisoformat(timestamp)
-        return ts
-    except:
-        pass
+
     for timestamp_format in [DATE_FORMAT, "%Y-%m-%dT%H:%M:%SZ"]:
         try:
             ts = datetime.strptime(timestamp, DATE_FORMAT)
             return ts
         except:
             pass
+
+    try:
+        ts = datetime.fromisoformat(timestamp)
+        return ts
+    except:
+        pass
     if not ts:
         logging.error("Could not parse timestamp: %s", timestamp)
     return ts
