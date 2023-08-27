@@ -662,7 +662,7 @@ def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol):
 
 
 def get_ship_prices_in_hq_system(client: SpaceTraders):
-    hq_system = list(client.ships_view().values())[1].nav.system_symbol
+    hq_system = waypoint_slicer(client.view_my_self().headquarters)
 
     shipyard_wps = client.find_waypoints_by_trait(hq_system, "SHIPYARD")
     if not shipyard_wps or len(shipyard_wps) == 0:
@@ -762,4 +762,10 @@ if __name__ == "__main__":
     connection.autocommit = True
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
-    master()
+    master(
+        user["db_host"],
+        user["db_port"],
+        user["db_name"],
+        user["db_user"],
+        user["db_pass"],
+    )
