@@ -762,10 +762,4 @@ if __name__ == "__main__":
     connection.autocommit = True
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
-    master(
-        user["db_host"],
-        user["db_port"],
-        user["db_name"],
-        user["db_user"],
-        user["db_pass"],
-    )
+    master()
