@@ -669,11 +669,12 @@ def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol):
 
 
 def get_ship_prices_in_hq_system(client: SpaceTraders):
-    hq_system = list(client.ships_view().values())[1].nav.system_symbol
+    hq_system = waypoint_slicer(client.view_my_self().headquarters)
 
     shipyard_wps = client.find_waypoints_by_trait(hq_system, "SHIPYARD")
     if not shipyard_wps or len(shipyard_wps) == 0:
-        return 2
+        client.waypoints_view_one(hq_system, client.view_my_self().headquarters, True)
+        return get_ship_prices_in_hq_system(client)
     shipyard_wp: Waypoint = shipyard_wps[0]
     shipyard = client.system_shipyard(shipyard_wp)
     if not shipyard:
