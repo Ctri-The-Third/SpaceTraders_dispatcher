@@ -43,7 +43,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 0
+    starting_stage = 4
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
@@ -626,7 +626,6 @@ def maybe_buy_ship(client: SpaceTraders, connection, ship_symbol):
         logger.error("Couldn't find ship type %s", ship_symbol)
         return False
     target_wp_sym = rows[0][1]
-    print(f"attempting to buy {ship_symbol} at price from {target_wp_sym}")
     target_wp = client.waypoints_view_one(waypoint_slicer(target_wp_sym), target_wp_sym)
     shipyard = client.system_shipyard(target_wp)
     return _maybe_buy_ship(client, shipyard, ship_symbol)
@@ -647,6 +646,12 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: Shipyard, ship_symbol: str):
                     0,
                     "conductorWK7.maybe_buy_ship",
                 )
+            logging.debug(
+                "Attempting to buy %s from %s, for %s",
+                ship_symbol,
+                shipyard.waypoint,
+                detail.purchase_price,
+            )
             if agent.credits > detail.purchase_price:
                 resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
                 if resp:
@@ -785,7 +790,7 @@ def get_connection():
 
 
 if __name__ == "__main__":
-    set_logging()
+    set_logging(logging.DEBUG)
     user = json.load(open("user.json"))
     logger.info("Starting up conductor, preparing to connect to database")
 
