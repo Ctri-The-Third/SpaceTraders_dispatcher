@@ -755,7 +755,7 @@ def are_surveys_weak(client: SpaceTraders, asteroid_waypoint_symbol: str) -> boo
 
 class db:
     _connection = None
-    _user: dict = None
+    _user: dict = {}
 
     @classmethod
     def get_connection(cls, user=None):
