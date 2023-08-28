@@ -43,7 +43,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 0
+    starting_stage = 3
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
@@ -338,7 +338,7 @@ def stage_4(client: SpaceTraders):
     # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
     agent = client.view_my_self()
     # hq_sys_sym = waypoint_slicer(agent.headquarters)
-    connection = client.db_client.connection
+    connection = get_connection()
     ships = client.ships_view()
     asteroid_wp = client.find_waypoints_by_type(
         waypoint_slicer(agent.headquarters), "ASTEROID_FIELD"
@@ -433,7 +433,7 @@ def what_ship_should_i_buy(
 ) -> str:
     # I assume this is mining but who knows.
     order_by = "cph" if speed_over_efficiency else "cpr"
-    connection.cursor()
+    connection = get_connection()
     sql = psycopg2.sql.SQL(
         """with total_cph as (select agent_name, avg(credits_earned) as avg_cph from agent_credits_per_hour acph
 where acph.event_hour >= now() at time zone 'utc' - interval '6 hours'
@@ -493,7 +493,8 @@ order by {} desc, sp.ship_type """
 
 def is_shipyard_stale(client: SpaceTraders, shipyard_wp: Waypoint):
     sql = """select last_updated from shipyard_types where shipyard_symbol = %s"""
-    resp = try_execute_select(client.db_client.connection, sql, (shipyard_wp.symbol,))
+    connection = get_connection()
+    resp = try_execute_select(connection, sql, (shipyard_wp.symbol,))
     if not resp:
         return True
 
@@ -539,7 +540,7 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
 
 
 def get_prices_for(client: SpaceTraders, tradegood: str):
-    connection = client.db_client.connection
+    connection = get_connection()
 
     sql = """select * from market_prices where trade_symbol = %s"""
     rows = try_execute_select(connection, sql, (tradegood,))
@@ -586,7 +587,7 @@ def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
         behaviour_id = %s,
         behaviour_params = %s
     """
-    cursor = connection.cursor()
+    cursor = get_connection().cursor()
     behaviour_params_s = (
         json.dumps(behaviour_params) if behaviour_params is not None else None
     )
@@ -689,7 +690,7 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
 def get_agents():
     sql = "select distinct agent_name from ships"
-    cur = connection.cursor()
+    cur = get_connection().cursor()
     cur.execute(sql)
     rows = cur.fetchall()
     agents_and_tokens = {}
@@ -721,7 +722,7 @@ def get_systems_to_explore(client: SpaceTraders, ships: list[Ship]):
     from mkt_shpyrds_systems_last_updated_jumpgates
     order by last_updated asc 
     limit %s """
-    results = try_execute_select(sql, client.db_client.connection, (len(ships),))
+    results = try_execute_select(sql, get_connection(), (len(ships),))
     return_obj = {ship.name: "" for ship in ships}
     for result in results:
         return_obj[results[0]] = (result[1], result[2])
@@ -750,6 +751,26 @@ def are_surveys_weak(client: SpaceTraders, asteroid_waypoint_symbol: str) -> boo
 
     # survey has a value per market. We should calculate and store this with an expiration date died to the staleness of the data.
     #
+
+
+def get_connection():
+    if not connection or connection.closed > 0:
+        logging.warning("Database connection closed, reconnecting")
+        connection = psycopg2.connect(
+            host=user["db_host"],
+            port=user["db_port"],
+            database=user["db_name"],
+            user=user["db_user"],
+            password=user["db_pass"],
+            connect_timeout=3,
+            keepalives=1,
+            keepalives_idle=5,
+            keepalives_interval=2,
+            keepalives_count=2,
+        )
+        connection.autocommit = True
+
+    return connection
 
 
 if __name__ == "__main__":

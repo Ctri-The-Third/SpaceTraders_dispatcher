@@ -16,9 +16,12 @@ Week 7 behaviour has 2 drones and is climbing for an ore hound (after which it s
 
 The first behaviour is about 66% complete of the contract, but 70k credits behind the second behaviour. Both behaviours are at aroudn 140k in total earnings since reset, so the question is which will be more profitable by the time the second contract is completed.
 
+
 **method of determining**
 Tomorrow evening I can find out when the fulfill endpoint was hit on behaviour two, and then look at the total earnings for both.
 It's possible that the transaction won't have made it into the DB so I will need to manually check that.
+
+Additionally, if we assume continual good survey availability thanks to the recon conductor (as appears to be the case), then the correct stage 1 behaviour is "EXTRACT & RECEIVE & FULFILL" for the commander, until we have a freighter - the lost CPH to that surveying behaviour isn't ideal.
 
 **Bug in survey valuation**
 

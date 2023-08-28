@@ -22,12 +22,14 @@ class Behaviour:
         behaviour_params: dict = {},
         config_file_name="user.json",
         session=None,
+        connection=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
         self.ship_name = ship_name
+        self._connection = connection
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
                 token = agent["token"]
@@ -49,8 +51,8 @@ class Behaviour:
             db_pass=db_pass,
             current_agent_symbol=agent_name,
             session=session,
+            connection=connection,
         )
-        self._connection = None
         self.graph = None
         self.ships = None
         self.agent = None

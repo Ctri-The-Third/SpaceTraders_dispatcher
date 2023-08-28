@@ -35,7 +35,12 @@ class SpaceTradersApiClient(SpaceTradersClient):
     "implements SpaceTradersClient Protocol. No in-memory caching, no database, just the API."
 
     def __init__(
-        self, token=None, base_url=None, version=None, session: LimiterSession = None
+        self,
+        token=None,
+        base_url=None,
+        version=None,
+        session: LimiterSession = None,
+        connection=None,
     ) -> None:
         self.token = token
         self.config = ApiConfig(base_url, version)

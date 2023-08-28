@@ -22,7 +22,7 @@ class SpaceTradersClient(Protocol):
     token: str = None
 
     @abstractmethod
-    def __init__(self, token) -> None:
+    def __init__(self, token, connection=None) -> None:
         pass
 
     @abstractmethod

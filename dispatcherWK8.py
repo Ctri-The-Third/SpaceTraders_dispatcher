@@ -209,24 +209,60 @@ class dispatcher:
         bhvr_params = behaviour_params
         bhvr = None
         if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(aname, sname, bhvr_params, session=self.session)
+            bhvr = ExtractAndSell(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
-                aname, sname, behaviour_params, session=self.session
+                aname,
+                sname,
+                behaviour_params,
+                session=self.session,
+                connection=self.connection,
             )
         elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
             bhvr = ExtractAndTransferOrSell_4(
-                aname, sname, bhvr_params, session=self.session
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
             )
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
-            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
+            bhvr = RemoteScanWaypoints(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
         elif id == BHVR_EXPLORE_SYSTEM:
-            bhvr = ExploreSystem(aname, sname, bhvr_params, session=self.session)
+            bhvr = ExploreSystem(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
-            bhvr = MonitorPrices(aname, sname, bhvr_params, session=self.session)
+            bhvr = MonitorPrices(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
         elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
             bhvr = BuyAndDeliverOrSell_6(
-                aname, sname, bhvr_params, session=self.session
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
             )
         else:
             pass

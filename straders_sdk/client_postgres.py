@@ -45,9 +45,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         db_pass,
         current_agent_symbol,
         db_port=None,
+        connection=None,
     ) -> None:
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
+        if connection:
+            self._connection = connection
         self._db_host = db_host
         self._db_name = db_name
         self._db_user = db_user

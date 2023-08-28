@@ -50,6 +50,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_port=None,
         current_agent_symbol=None,
         session=None,
+        connection=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_pass=db_pass,
                 db_port=db_port,
                 current_agent_symbol=current_agent_symbol,
+                connection=connection,
             )
             self.logging_client = SpaceTradersPostgresLoggerClient(
                 db_host=db_host,
@@ -71,6 +73,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_user=db_user,
                 db_pass=db_pass,
                 token=token,
+                connection=connection,
             )
         else:
             self.db_client = SpaceTradersStubClient()

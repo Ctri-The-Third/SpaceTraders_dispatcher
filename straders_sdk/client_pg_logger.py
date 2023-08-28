@@ -14,16 +14,27 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     token: str = None
 
     def __init__(
-        self, token, db_host, db_port, db_name, db_user, db_pass, current_agent_name=""
+        self,
+        token,
+        db_host,
+        db_port,
+        db_name,
+        db_user,
+        db_pass,
+        current_agent_name="",
+        connection=None,
     ) -> None:
         self.token = token
-        self.connection = psycopg2.connect(
-            host=db_host,
-            port=db_port,
-            database=db_name,
-            user=db_user,
-            password=db_pass,
-        )
+        self.connection = connection
+        if not self.connection:
+            self.connection = psycopg2.connect(
+                host=db_host,
+                port=db_port,
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+            )
+
         self.session_id = str(uuid.uuid4())
         self.connection.autocommit = True
         self.current_agent_name = ""
