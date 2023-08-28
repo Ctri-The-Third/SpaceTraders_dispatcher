@@ -753,44 +753,45 @@ def are_surveys_weak(client: SpaceTraders, asteroid_waypoint_symbol: str) -> boo
     #
 
 
-def get_connection():
-    if not connection or connection.closed > 0:
-        logging.warning("Database connection closed, reconnecting")
-        connection = psycopg2.connect(
-            host=user["db_host"],
-            port=user["db_port"],
-            database=user["db_name"],
-            user=user["db_user"],
-            password=user["db_pass"],
-            connect_timeout=3,
-            keepalives=1,
-            keepalives_idle=5,
-            keepalives_interval=2,
-            keepalives_count=2,
-        )
-        connection.autocommit = True
+class db:
+    _connection = None
+    _user: dict = None
 
-    return connection
+    @classmethod
+    def get_connection(cls, user=None):
+        if user:
+            cls._user = user
+        if not cls._connection or cls._connection.closed > 0:
+            logging.warning("Database connection closed, reconnecting")
+            cls._connection = psycopg2.connect(
+                host=cls._user["db_host"],
+                port=cls._user["db_port"],
+                database=cls._user["db_name"],
+                user=cls._user["db_user"],
+                password=cls._user["db_pass"],
+                connect_timeout=3,
+                keepalives=1,
+                keepalives_idle=5,
+                keepalives_interval=2,
+                keepalives_count=2,
+            )
+            cls._connection.autocommit = True
+
+        return cls._connection
+
+
+def get_connection():
+    return db.get_connection()
 
 
 if __name__ == "__main__":
     set_logging()
     user = json.load(open("user.json"))
     logger.info("Starting up conductor, preparing to connect to database")
-    connection = psycopg2.connect(
-        host=user["db_host"],
-        port=user["db_port"],
-        database=user["db_name"],
-        user=user["db_user"],
-        password=user["db_pass"],
-        connect_timeout=3,
-        keepalives=1,
-        keepalives_idle=5,
-        keepalives_interval=2,
-        keepalives_count=2,
-    )
+
+    _CONNECTION = db.get_connection(user)
     logger.info("Connected to database")
-    connection.autocommit = True
+    _CONNECTION.autocommit = True
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
     master()
