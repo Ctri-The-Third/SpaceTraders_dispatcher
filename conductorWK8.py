@@ -247,7 +247,7 @@ def stage_3(client: SpaceTraders):
                         contract_type = "DELIVERY"
 
     if contract_type == "DELIVERY":
-        hauler_behaviour = BHVR_BUY_AND_DELIVER_OR_SELL
+        hauler_behaviour = "TEMP_DISABLED"  # BHVR_BUY_AND_DELIVER_OR_SELL
         inc_del = [
             deliverable
             for deliverable in active_contract.deliverables
