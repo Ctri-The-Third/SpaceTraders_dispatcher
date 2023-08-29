@@ -28,11 +28,14 @@ The first behaviour is about 66% complete of the contract, but 70k credits behin
 
 
 
-**method of determining**
-Tomorrow evening I can find out when the fulfill endpoint was hit on behaviour two, and then look at the total earnings for both.
-It's possible that the transaction won't have made it into the DB so I will need to manually check that.
 
-Additionally, if we assume continual good survey availability thanks to the recon conductor (as appears to be the case), then the correct stage 1 behaviour is "EXTRACT & RECEIVE & FULFILL" for the commander, until we have a freighter - the lost CPH to that surveying behaviour isn't ideal.
+**Prioritisaton of refined metal and ore**
+Question for the morning - which sell-point got us the most CPH & which the most CPR, between midnight and wake time?
+We should focus on CPH. Do the traders CPH outperform the extractors CPH? Probably not. Whichever contributes the most (whether that be ore or refined metal) should be the determinator in which ore we extract from the waypoint.
+
+
+**Prioritisation of pipeline vs brute force** 
+- need to compare the extractor drone CPH / CPR of the buy and sell behaviour vs the buy and transfer deliver, over the course of last night.
 
 **Bug in survey valuation**
 
