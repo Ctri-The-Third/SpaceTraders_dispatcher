@@ -349,11 +349,7 @@ def stage_4(client: SpaceTraders):
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
-    refiners = [
-        ship
-        for ship in ships.values()
-        if ship.frame.symbol == "SHIP_REFINING_FREIGHTER"
-    ]
+    refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
     target_hounds = 50
     target_refiners = 1
     extractors_per_hauler = 10
@@ -392,7 +388,9 @@ def stage_4(client: SpaceTraders):
     if len(refiners) < target_refiners:
         ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
         if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+            set_behaviour(
+                ship.name, BHVR_RECEIVE_AND_FULFILL, {"asteroid_wp": asteroid_wp.symbol}
+            )
     elif len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
         if ship:
@@ -656,6 +654,8 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: Shipyard, ship_symbol: str):
                 resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
                 if resp:
                     return resp[0]
+            else:
+                logging.debug("Didn't have enough money, agent has %s", agent.credits)
 
 
 def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol):
