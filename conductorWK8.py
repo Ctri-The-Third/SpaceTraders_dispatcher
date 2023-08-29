@@ -43,7 +43,7 @@ logger = logging.getLogger("conductor")
 
 def master():
     agents_and_clients = get_agents()
-    starting_stage = 4
+    starting_stage = 0
     stages_per_agent = {agent: starting_stage for agent in agents_and_clients}
     # stage 0 - scout costs and such of starting system.
     ## move on once there are db listings for the appropriate system.
