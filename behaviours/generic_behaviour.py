@@ -141,6 +141,8 @@ class Behaviour:
         st = self.st
         if cargo_to_target is None:
             cargo_to_target = []
+        if isinstance(cargo_to_target, str):
+            cargo_to_target = [cargo_to_target]
         survey = None
 
         ship = self.ship
@@ -225,6 +227,23 @@ class Behaviour:
                     return resp
 
         return True
+
+    def find_adjacent_ships(self, waypoint_symbol: str, matching_roles: list):
+        st = self.st
+        if isinstance(matching_roles, str):
+            matching_roles = [matching_roles]
+        my_ships = st.ships_view()
+
+        matching_ships = [
+            ship for id, ship in my_ships.items() if ship.role in matching_roles
+        ]
+        valid_haulers = [
+            ship
+            for ship in matching_ships and ship.nav.waypoint_symbol == waypoint_symbol
+        ]
+        if len(valid_haulers) > 0:
+            return valid_haulers
+        return []
 
     def jettison_all_cargo(self, exceptions: list = []):
         ship = self.ship
