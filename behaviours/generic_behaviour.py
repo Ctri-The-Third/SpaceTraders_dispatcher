@@ -224,7 +224,8 @@ class Behaviour:
             for i in range(0, math.ceil(cargo.units / trade_volume)):
                 resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
                 if not resp:
-                    return resp
+                    pass
+                    # try the next cargo bit
 
         return True
 

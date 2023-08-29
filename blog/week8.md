@@ -13,7 +13,10 @@ Finally - we're trying to implement tasks - single instructions for ships to do 
 I considered some different places for where the decision to execute a task belongs, and decided that ultimately it belongs with the Dispatcher. 
 
 We also added some smart thinking behaviour to our receive_and_fulfill script. If it doesn't have a market/contract to supply, it will look at its cargo, take the largest quantity item (ideally we want it to be just one item per ship tbh) and based on that determine the best CPR to go to. To my delight this behaviour identified a secondary market in the starting system for iron ore and started travelling there. In the morning we'll assess how this has performed. It will be interesting to see what request count for the different trades is. I've hopes that this force muiltiplier effect will prove to a worthwhile investment when prices are this low. 
-Also refinery takes 160 seconds per compression. Will need to do some maths on how many extractors are needed per refiner, and if the cost is worth it. My money is "no" for the ore hounds and "yes" for the drones.
+Also refinery takes 160 seconds per compression. Will need to do some maths on how many extractors are needed per refiner, and if the cost is worth it. My money is "no" for the ore hounds and "yes" for the drones. The failover behaviour of dumping iron ore into haulers rather than the refiner is a smart waterfall approach. 
+
+Requests will either result in high value IRON, mid value ore being hauled away, or low value ore being sold locally.
+There's been several sales so far for 5k a pop (yay), but I don't see any IRON being sold, which is a little concerning. Perhaps the trader in question is still filling up with ore. it'll take 29.3 minutes for a light hauler to fill up entirely with IRON, so this actually makes sense.
 
 **Contracts or steady earnings?**
 Week 8 behaviour has 1 drone and 1 ore hound, and is therefore in stage 3 going for the contract with command-frigate supporting. I think
