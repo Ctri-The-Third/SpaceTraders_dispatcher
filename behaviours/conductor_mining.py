@@ -17,6 +17,7 @@ from dispatcherWK8 import (
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
+    BHVR_RECEIVE_AND_REFINE,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = BHVR_RECEIVE_AND_FULFILL
@@ -109,8 +110,8 @@ def run(client: SpaceTraders):
         set_behaviour(
             connection,
             refiner.name,
-            BHVR_RECEIVE_AND_FULFILL_OR_SELL,
-            extraction_params,
+            BHVR_RECEIVE_AND_REFINE,
+            other_extraction_params,
         )
     for excavator in other_extractors:
         set_behaviour(

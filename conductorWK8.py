@@ -24,7 +24,7 @@ from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK7 import (
+from dispatcherWK8 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -32,6 +32,7 @@ from dispatcherWK7 import (
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_BUY_AND_DELIVER_OR_SELL,
+    BHVR_RECEIVE_AND_REFINE
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (

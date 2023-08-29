@@ -50,7 +50,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
         market_wp_s = self.behaviour_params.get("market_wp", None)
 
-        if not market_wp_s and not fulfil_wp_s:
+        if not market_wp_s and not fulfil_wp_s and ship.cargo_units_used > 0:
             # sell to the best market, based on CPR
             # assume 8 base CPR, with 1 CPR per jump
             # find all relevant market systems, get their distances and value
@@ -138,7 +138,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                     self.ship_intrasolar(start_wp_s)
 
                     # we added this in for circumstances when we've incorrect, left over cargo in the hold that needs drained. Might need a "vent all" option too.
-                    self.sell_all_cargo()
+                    # self.sell_all_cargo()
 
             if ship.cargo_units_used >= ship.cargo_capacity - 10:
                 # something's gone horribly wrong, we couldn't sell or fulfill at the destination - are our orders stale?
