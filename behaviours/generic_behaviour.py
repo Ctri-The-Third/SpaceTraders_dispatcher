@@ -239,7 +239,8 @@ class Behaviour:
         ]
         valid_haulers = [
             ship
-            for ship in matching_ships and ship.nav.waypoint_symbol == waypoint_symbol
+            for ship in matching_ships
+            if ship.nav.waypoint_symbol == waypoint_symbol
         ]
         if len(valid_haulers) > 0:
             return valid_haulers

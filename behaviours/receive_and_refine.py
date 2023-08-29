@@ -11,6 +11,7 @@ import logging
 
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 from straders_sdk.utils import waypoint_slicer, set_logging
+import time
 
 BEHAVIOUR_NAME = "RECEIVE_AND_REFINE"
 
@@ -45,7 +46,6 @@ class ReceiveAndRefine(Behaviour):
         #
         # travel to target site
         #
-        safety_padding = 60
         did_something = False
 
         agent = st.view_my_self()
@@ -135,6 +135,9 @@ class ReceiveAndRefine(Behaviour):
                                 else:
                                     did_something = True
 
+        if not did_something:
+            self.logger.debug("Nothing to do, sleeping for 60s")
+            time.sleep(60)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
