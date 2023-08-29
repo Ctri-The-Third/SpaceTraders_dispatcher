@@ -223,7 +223,6 @@ def stage_3(client: SpaceTraders):
         len(excavators) >= 30
         and len(haulers) >= len(excavators) // extractors_per_hauler
     ):
-        return 4
 
     #
     # SETTING PARAMETERS & HAULER PREPARING
@@ -694,7 +693,7 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
 
 def get_agents():
-    sql = "select distinct agent_name from ships"
+    sql = "select distinct agent_symbol from agents"
     cur = get_connection().cursor()
     cur.execute(sql)
     rows = cur.fetchall()
