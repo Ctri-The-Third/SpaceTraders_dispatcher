@@ -299,7 +299,9 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         return resp
 
-    def ship_transfer_cargo(self, ship: Ship, trade_symbol, units, target_ship_name):
+    def ship_transfer_cargo(
+        self, ship: Ship, trade_symbol, units, target_ship_name: str
+    ):
         "/my/ships/{shipSymbol}/transfer"
 
         # 4217{'message': 'Failed to update ship cargo. Cannot add 6 unit(s) to ship cargo. Exceeds max limit of 60.', 'code': 4217, 'data': {'shipSymbol': 'CTRI-1', 'cargoCapacity': 60, 'cargoUnits': 60, 'unitsToAdd': 6}}

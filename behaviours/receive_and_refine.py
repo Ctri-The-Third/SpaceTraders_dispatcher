@@ -77,7 +77,7 @@ class ReceiveAndRefine(Behaviour):
                         self.logger.warning(
                             f"{ship.name} unable to refine %s because of %s",
                             cargo.symbol,
-                            resp,
+                            resp.error,
                         )
                         return
                     did_something = True
@@ -99,9 +99,9 @@ class ReceiveAndRefine(Behaviour):
                         if valid_trader.cargo_units_used == 0:
                             resp = st.ship_transfer_cargo(
                                 ship,
-                                cargo,
+                                cargo.symbol,
                                 min(cargo.units, valid_trader.cargo_capacity),
-                                valid_trader,
+                                valid_trader.name,
                             )
                             if not resp:
                                 self.logger.warning(
@@ -112,18 +112,23 @@ class ReceiveAndRefine(Behaviour):
                                 return
                             else:
                                 did_something = True
+                                break
                         else:
                             # if it's not empty, is there already some of this cargo there? (try not to mix)
+                            valid_trader = st.ships_view_one(valid_trader.name, True)
+                            self.logger.warning(
+                                "Using a request here we don't have to - DB needs to cache inventory contents"
+                            )
                             if cargo.symbol in [
                                 cargo.symbol for cargo in valid_trader.cargo_inventory
                             ]:
                                 resp = st.ship_transfer_cargo(
                                     ship,
-                                    cargo,
+                                    cargo.symbol,
                                     min(
                                         cargo.units, valid_trader.cargo_space_remaining
                                     ),
-                                    valid_trader,
+                                    valid_trader.name,
                                 )
                                 if not resp:
                                     self.logger.warning(
@@ -134,6 +139,7 @@ class ReceiveAndRefine(Behaviour):
                                     return
                                 else:
                                     did_something = True
+                                    break
 
         if not did_something:
             self.logger.debug("Nothing to do, sleeping for 60s")

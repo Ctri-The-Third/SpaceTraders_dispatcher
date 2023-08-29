@@ -36,6 +36,7 @@ def _select_some_ships(db_client: SpaceTradersClient, sql, params):
             ship.role = row[3]
             ship.cargo_capacity = row[4]
             ship.cargo_units_used = row[5]
+            ship.cargo_inventory = []
             # , 6: n.waypoint_symbol, n.departure_time, n.arrival_time, n.origin_waypoint, n.destination_waypoint, n.flight_status, n.flight_mode
 
             ship.nav = _nav_from_row(row[6:13], db_client)
