@@ -279,6 +279,12 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self.log_event("ship_extract", ship.name, url, response)
         pass
 
+    def ship_refine(self, ship: "Ship", trade_symbol, response=None):
+        """/my/ships/{shipSymbol}/refine"""
+        url = _url(f"my/ships/:ship_name/refine")
+        self.log_event("ship_refine", ship.name, url, response)
+        pass
+
     def ship_dock(self, ship: "Ship", response=None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
         url = _url(f"my/ships/:ship_name/dock")

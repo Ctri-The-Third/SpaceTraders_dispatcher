@@ -200,6 +200,28 @@ class SpaceTradersApiClient(SpaceTradersClient):
             ship.update(resp.data)
         return resp
 
+    def ship_refine(self, ship: Ship, trade_symbol: str) -> SpaceTradersResponse:
+        "/my/ships/{shipSymbol}/refine"
+
+        url = _url(f"my/ships/{ship.name}/refine")
+        if not ship.can_refine:
+            return LocalSpaceTradersRespose(
+                "Ship cannot refine - doesn't have a refinery", 0, 4239, url=url
+            )
+
+        if ship.seconds_until_cooldown > 0:
+            return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4200, url=url)
+
+        data = {"produce": trade_symbol}
+        resp = post_and_validate(
+            url, json=data, headers=self._headers(), session=self.session
+        )
+
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
+        return resp
+
     def ship_dock(self, ship: Ship):
         "/my/ships/{shipSymbol}/dock"
         url = _url(f"my/ships/{ship.name}/dock")

@@ -765,6 +765,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             )
         return resp
 
+    def ship_refine(self, ship: Ship, trade_symbol: str):
+        """/my/ships/{shipSymbol}/refine"""
+        resp = self.api_client.ship_refine(ship, trade_symbol)
+        self.logging_client.ship_refine(ship, trade_symbol, resp)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+            self.update(ship)
+        return resp
+
     def ship_install_mount(
         self, ship: "Ship", mount_symbol: str
     ) -> SpaceTradersResponse:

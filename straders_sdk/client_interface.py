@@ -144,6 +144,12 @@ class SpaceTradersClient(Protocol):
         pass
 
     @abstractmethod
+    def ship_refine(self, ship: "Ship", trade_symbol: str) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/refine"""
+
+        pass
+
+    @abstractmethod
     def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
         pass

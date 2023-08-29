@@ -370,6 +370,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         return dummy_response(__class__.__name__, "ship_extract")
         pass
 
+    def ship_refine(self, ship: "Ship", trade_symbol: str) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/refine"""
+
+        return dummy_response(__class__.__name__, "ship_refine")
+        pass
+
     def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/dock"""
         return dummy_response(__class__.__name__, "ship_dock")
