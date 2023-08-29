@@ -108,6 +108,17 @@ class Ship(SpaceTradersInteractive):
                 return True
         return False
 
+    @property
+    def can_refine(self) -> bool:
+        refineries = ["MODULE_ORE_REFINERY_I"]
+        for refinery in refineries:
+            if refinery in [d.symbol for d in self.modules]:
+                return True
+
+    @property
+    def cargo_space_remaining(self) -> int:
+        return self.cargo_capacity - self.cargo_units_used
+
     @classmethod
     def from_json(
         cls,
