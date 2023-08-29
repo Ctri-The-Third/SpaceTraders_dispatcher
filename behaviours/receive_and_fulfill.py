@@ -50,6 +50,33 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
         market_wp_s = self.behaviour_params.get("market_wp", None)
 
+        if not market_wp_s and not fulfil_wp_s:
+            # sell to the best market, based on CPR
+            # assume 8 base CPR, with 1 CPR per jump
+            # find all relevant market systems, get their distances and value
+            # for the ones with the greatest value/distance(1), get the top 5
+            item_with_highest_quantity = max(
+                ship.cargo_inventory, key=lambda item: item.units
+            )
+
+            markets = self.find_best_market_systems(item_with_highest_quantity.symbol)
+            # markets is a tuple, where the items are waypoint_s, system, price
+            paths = {
+                system[0]: self.astar(self.graph, start_sys, system[1])
+                for system in markets
+            }
+            best_cpr = 0
+            best_cpr_system = None
+            for wp_s, _, price in markets:
+                request_count = (
+                    len(paths[wp_s]) + 8
+                )  # this is my guesstimate for receive offset, undocking, navigatting, [jumps] navigating, selling, undocking
+                cpr = price / request_count
+                if cpr > best_cpr:
+                    best_cpr = cpr
+                    best_cpr_system = wp_s
+            market_wp_s = best_cpr_system  # find_market_in_system?
+
         destination_sys = st.systems_view_one(
             waypoint_slicer(market_wp_s or fulfil_wp_s or start_wp_s)
         )
@@ -82,7 +109,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
             st.ship_orbit(ship)
             self.ship_extrasolar(destination_sys)
-            self.ship_intrasolar(market_wp_s or fulfil_wp_s)
+            self.ship_intrasolar(fulfil_wp_s or market_wp_s)
 
             st.ship_dock(ship)
 
@@ -130,8 +157,8 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "ZTRI-25-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "D"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})

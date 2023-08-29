@@ -287,6 +287,22 @@ class Behaviour:
             tar_contract, self.ship, cargo.symbol, cargo_to_deliver
         )
 
+    def find_best_market_systems(self, trade_symbol: str) -> list[(str, System, int)]:
+        "returns market_waypoint, system obj, price as int"
+        sql = """select sell_price, w.waypoint_symbol, s.system_symbol, s.sector_Symbol, s.type, s.x,s.y from market_tradegood_listings mtl 
+join waypoints w on mtl.market_symbol = w.waypoint_Symbol
+join systems s on w.system_symbol = s.system_symbol
+where mtl.trade_symbol = %s
+order by 1 desc """
+        results = try_execute_select(self.connection, sql, (trade_symbol,))
+        return_obj = []
+        for row in results or []:
+            sys = System(row[2], row[3], row[4], row[5], row[6], [])
+            price = row[0]
+            waypoint_symbol = row[1]
+            return_obj.append((waypoint_symbol, sys, price))
+        return return_obj
+
     def buy_cargo(self, cargo_symbol: str, quantity: int):
         # check the waypoint we're at has a market
         # check the market has the cargo symbol we're seeking
