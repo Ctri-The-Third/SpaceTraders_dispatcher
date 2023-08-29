@@ -9,12 +9,20 @@ We implemented a new conductor for creating and instrumenting accounts for scout
 
 The network isn't fully known yet because of all the charting that needs to happen, so for the time being they're selecting a random gate node that's not been explored yet, and going there. Very inefficient but guaranteed to minimise overlapping with other drones whilst the network is fully explored. Once it is fully explored, they should fall back to circulating all the markets and shipyards we know about.
 
+Finally - we're trying to implement tasks - single instructions for ships to do rather than looping dumb behaviour, which has proven challenging.
+I considered some different places for where the decision to execute a task belongs, and decided that ultimately it belongs with the Dispatcher. 
+
+We also added some smart thinking behaviour to our receive_and_fulfill script. If it doesn't have a market/contract to supply, it will look at its cargo, take the largest quantity item (ideally we want it to be just one item per ship tbh) and based on that determine the best CPR to go to. To my delight this behaviour identified a secondary market in the starting system for iron ore and started travelling there. In the morning we'll assess how this has performed. It will be interesting to see what request count for the different trades is. I've hopes that this force muiltiplier effect will prove to a worthwhile investment when prices are this low. 
+Also refinery takes 160 seconds per compression. Will need to do some maths on how many extractors are needed per refiner, and if the cost is worth it. My money is "no" for the ore hounds and "yes" for the drones.
+
 **Contracts or steady earnings?**
 Week 8 behaviour has 1 drone and 1 ore hound, and is therefore in stage 3 going for the contract with command-frigate supporting. I think
 
 Week 7 behaviour has 2 drones and is climbing for an ore hound (after which it should also skip to the contract).
 
 The first behaviour is about 66% complete of the contract, but 70k credits behind the second behaviour. Both behaviours are at aroudn 140k in total earnings since reset, so the question is which will be more profitable by the time the second contract is completed.
+
+
 
 
 **method of determining**
