@@ -11,10 +11,10 @@ from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
 import logging
 import time
-from dispatcherWK5 import (
+from dispatcherWK8 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
-    EXTRACT_TRANSFER,
+    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
 )
@@ -27,6 +27,8 @@ logger = logging.getLogger("conductor")
 def run(client: SpaceTraders):
     connection = client.db_client.connection
     agent = client.view_my_self()
+    if agent.headquarters is None or agent.headquarters == "":
+        agent = client.view_my_self(True)
     hq_sys_sym = waypoint_slicer(agent.headquarters)
 
     ships = client.ships_view()
@@ -46,12 +48,32 @@ def run(client: SpaceTraders):
     values = None
     extraction_params = None
     delivery_params = None
+
     if survey:
         survey: Survey
         values = get_price_per_distance_for_survey(
             connection, survey.signature, client.systems_view_one(hq_sys_sym)
         )
-    if values:
+    if len(refiners) >= 0:
+        extraction_params = {
+            "asteroid_wp": asteroid_wp.symbol,
+            "cargo_to_transfer": ["IRON_ORE"],
+        }
+        other_extraction_params = {"asteroid_wp": asteroid_wp.symbol}
+
+        transfer_params = {"asteroid_wp": asteroid_wp.symbol}
+        extractors_per_refiner = 5
+        extractors_per_hauler = 2
+
+        hauler_extractors = excavators[
+            0 : len(haulers) * extractors_per_hauler
+            + len(refiners) * extractors_per_refiner
+        ]
+        other_extractors = excavators[
+            len(haulers) * extractors_per_hauler
+            + len(refiners) * extractors_per_refiner :
+        ]
+    elif values:
         target_info = values[0]
         target_market = target_info[0]
         other_extraction_params = {"asteroid_wp": asteroid_wp.symbol}
@@ -65,36 +87,40 @@ def run(client: SpaceTraders):
             "asteroid_wp": asteroid_wp.symbol,
             "market_wp": target_market,
         }
+
         extractors_per_hauler = 2
-        hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
-        other_extractors = excavators[len(haulers) * extractors_per_hauler :]
-        for excavator in hauler_extractors:
-            set_behaviour(
-                connection, excavator.name, EXTRACT_TRANSFER, extraction_params
-            )
-        for hauler in haulers:
-            set_behaviour(
-                connection,
-                hauler.name,
-                BHVR_RECEIVE_AND_FULFILL_OR_SELL,
-                transfer_params,
-            )
-        for refiner in refiners:
-            set_behaviour(
-                connection,
-                refiner.name,
-                BHVR_RECEIVE_AND_FULFILL_OR_SELL,
-                extraction_params,
-            )
-        for excavator in other_extractors:
-            set_behaviour(
-                connection,
-                excavator.name,
-                BHVR_EXTRACT_AND_SELL,
-                other_extraction_params,
-            )
-        for excavator in spare_drones:
-            set_behaviour(connection, excavator.name, BHVR_EXPLORE_SYSTEM)
+    hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
+    other_extractors = excavators[len(haulers) * extractors_per_hauler :]
+    for excavator in hauler_extractors:
+        set_behaviour(
+            connection,
+            excavator.name,
+            BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+            extraction_params,
+        )
+    for hauler in haulers:
+        set_behaviour(
+            connection,
+            hauler.name,
+            BHVR_RECEIVE_AND_FULFILL_OR_SELL,
+            transfer_params,
+        )
+    for refiner in refiners:
+        set_behaviour(
+            connection,
+            refiner.name,
+            BHVR_RECEIVE_AND_FULFILL_OR_SELL,
+            extraction_params,
+        )
+    for excavator in other_extractors:
+        set_behaviour(
+            connection,
+            excavator.name,
+            BHVR_EXTRACT_AND_SELL,
+            other_extraction_params,
+        )
+    for excavator in spare_drones:
+        set_behaviour(connection, excavator.name, BHVR_EXPLORE_SYSTEM)
 
 
 def get_price_per_distance_for_survey(
@@ -147,13 +173,16 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_suffix}"
 
     set_logging()
     user = json.load(open("user.json"))
+
     for detail in user["agents"]:
+        if not "username" in detail or not "token" in detail:
+            continue
         if detail["username"] == agent:
             token = detail["token"]
     st = SpaceTraders(
