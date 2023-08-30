@@ -32,7 +32,7 @@ from dispatcherWK8 import (
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_BUY_AND_DELIVER_OR_SELL,
-    BHVR_RECEIVE_AND_REFINE
+    BHVR_RECEIVE_AND_REFINE,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
@@ -61,6 +61,9 @@ def master():
     sleep_time = 1
     while True:
         for agent, client in agents_and_clients.items():
+            # reset our cached view of the agent
+            client.current_agent = None
+            client.view_my_self()
             logger.info(f"Agent {agent} is at stage {stages_per_agent[agent]}")
             current_stage = stages_per_agent[agent]
             try:
@@ -224,7 +227,7 @@ def stage_3(client: SpaceTraders):
         len(excavators) >= 30
         and len(haulers) >= len(excavators) // extractors_per_hauler
     ):
-
+        return 4
     #
     # SETTING PARAMETERS & HAULER PREPARING
     #
