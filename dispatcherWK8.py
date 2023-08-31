@@ -14,6 +14,7 @@ from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
 import random
 from pyrate_limiter import Limiter, Duration, RequestRate
+from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import (
     ExtractAndTransferOrSell_4,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -75,6 +76,14 @@ class dispatcher:
         self.agents = agents
 
         self.session = LimiterSession(per_second=3)
+        self.ships = {}
+        self.tasks_last_updated = datetime.min
+        self.task_refresh_period = timedelta(minutes=1)
+        self.tasks = {}
+        self.generic_behaviour = Behaviour(
+            "", "", connection=self.connection, session=self.session
+        )
+        self.client = self.generic_behaviour.st
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
@@ -165,7 +174,34 @@ class dispatcher:
                 #
 
                 for ship_and_behaviour in unlocked_ships:
-                    # are we already running this behaviour?
+                    #
+                    # is there a task the ship can execute? if not, go to behaviour scripts instead.
+                    #
+                    task = self.get_task_for_ships(
+                        self.client, ship_and_behaviour["name"]
+                    )
+                    if task:
+                        self.claim_task(task["task_hash"], ship_and_behaviour["name"])
+                        task["behaviour_params"]["task_hash"] = task["task_hash"]
+                        bhvr = self.map_behaviour_to_class(
+                            task["behaviour_id"],
+                            ship_and_behaviour["name"],
+                            task["behaviour_params"],
+                            agent_symbol,
+                        )
+
+                        doing_task = self.lock_and_execute(
+                            ships_and_threads,
+                            ship_and_behaviour["name"],
+                            bhvr,
+                            ship_and_behaviour["behaviour_id"],
+                        )
+                        if doing_task:
+                            continue
+
+                    #
+                    # Instead, fallback behaviour.
+                    #
 
                     if ship_and_behaviour["name"] in ships_and_threads:
                         thread = ships_and_threads[ship_and_behaviour["name"]]
@@ -184,27 +220,116 @@ class dispatcher:
                         agent_symbol,
                     )
 
-                    if not bhvr:
-                        continue
-
-                    lock_r = lock_ship(
-                        ship_and_behaviour["name"], self.lock_id, self.connection
+                    self.lock_and_execute(
+                        ships_and_threads,
+                        ship_and_behaviour["name"],
+                        bhvr,
+                        ship_and_behaviour["behaviour_id"],
                     )
-                    if lock_r is None:
-                        continue
-                    # we know this is behaviour, so lock it and start it.
-                    ships_and_threads[ship_and_behaviour["name"]] = threading.Thread(
-                        target=bhvr.run,
-                        name=f"{ship_and_behaviour['name']}-{ship_and_behaviour['behaviour_id']}",
-                    )
-                    self.logger.info(
-                        "Starting thread for ship %s", ship_and_behaviour["name"]
-                    )
-                    ships_and_threads[ship_and_behaviour["name"]].start()
                     # time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
                     pass
 
                 time.sleep(1)
+
+    def lock_and_execute(
+        self, ships_and_threads: dict, ship_symbol: str, bhvr: Behaviour, bhvr_id
+    ):
+        if not bhvr:
+            return False
+
+        lock_r = lock_ship(ship_symbol, self.lock_id, self.connection)
+        if lock_r is None:
+            return False
+        # we know this is behaviour, so lock it and start it.
+        ships_and_threads[ship_symbol] = threading.Thread(
+            target=bhvr.run,
+            name=f"{ship_symbol}-{bhvr_id}",
+        )
+        self.logger.info("Starting thread for ship %s", ship_symbol)
+        ships_and_threads[ship_symbol].start()
+
+    def claim_task(self, task_hash, ship_symbol):
+        sql = """
+            UPDATE public.ship_tasks
+	        SET  claimed_by= %s
+	        WHERE task_hash = %s;"""
+        try_execute_upsert(self.connection, sql, (ship_symbol, task_hash))
+        pass
+
+    def get_task_for_ships(self, client: SpaceTraders, ship_symbol):
+        if self.tasks_last_updated + self.task_refresh_period < datetime.now():
+            sql = """SELECT task_hash, agent_symbol, requirements, expiry, priority, claimed_by, behaviour_id, target_system, behaviour_params, completed
+ 
+            from ship_tasks
+                where (completed is null or completed is false)
+                and expiry > now() at time zone 'utc'
+                order by claimed_by, priority;
+
+                """
+            results = try_execute_select(self.connection, sql, ())
+            self.tasks = {
+                row[0]: {
+                    "task_hash": row[0],
+                    "agent_symbol": row[1],
+                    "requirements": row[2],
+                    "expiry": row[3],
+                    "priority": row[4],
+                    "claimed_by": row[5],
+                    "behaviour_id": row[6],
+                    "target_system": row[7],
+                    "behaviour_params": row[8],
+                }
+                for row in results
+            }
+        ship = self.ships.get(ship_symbol, None)
+        if not ship:
+            ship = client.ships_view_one(ship_symbol)
+            self.ships[ship_symbol] = ship
+
+        for hash, task in self.tasks.items():
+            if task["claimed_by"] == ship_symbol:
+                return task
+        valid_tasks = []
+        #
+        # get all the highest priority tasks.
+        #
+        highest_priority = 999999
+        shortest_distance = 999999
+        for hash, task in self.tasks.items():
+            if task["claimed_by"] is None:
+                valid_for_ship = True
+                if task["requirements"]:
+                    for requirement in task["requirements"]:
+                        if requirement == "DRONE" and ship.frame.symbol not in [
+                            "FRAME_DRONE",
+                            "FRAME_PROBE",
+                        ]:
+                            valid_for_ship = False
+                            break
+
+                if valid_for_ship:
+                    if task["priority"] < highest_priority:
+                        highest_priority = task["priority"]
+                        valid_tasks = []
+                        # reset the list, discard lower priorities from consideration.
+
+                    valid_tasks.append(task)
+            else:
+                continue
+        best_task = None
+        start_system = client.systems_view_one(ship.nav.system_symbol)
+        for task in valid_tasks:
+            end_system = client.systems_view_one(task["target_system"])
+            path = self.generic_behaviour.astar(
+                self.generic_behaviour.graph, start_system, end_system
+            )
+
+            if path and len(path) < shortest_distance:
+                shortest_distance = len(path)
+                best_task = task
+
+        return best_task
+        # does this ship meet the requirements? not currently implemented
 
     def map_behaviour_to_class(
         self, behaviour_id: str, ship_symbol: str, behaviour_params: dict, aname
