@@ -114,6 +114,8 @@ class Behaviour:
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
 
             self.go_and_refuel()
+        if fuel_cost > ship.fuel_capacity:
+            st.ship_patch_nav(ship, "DRIFT")
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
