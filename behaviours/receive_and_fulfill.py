@@ -150,6 +150,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             self.ship_intrasolar(start_wp_s)
 
         self.sleep_until_ready()
+        self.end()
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
@@ -158,7 +159,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "D"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})

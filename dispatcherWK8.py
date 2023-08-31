@@ -174,6 +174,14 @@ class dispatcher:
                 #
 
                 for ship_and_behaviour in unlocked_ships:
+                    if ship_and_behaviour["name"] in ships_and_threads:
+                        thread = ships_and_threads[ship_and_behaviour["name"]]
+                        thread: threading.Thread
+                        if thread.is_alive():
+                            continue
+                        else:
+                            del ships_and_threads[ship_and_behaviour["name"]]
+
                     #
                     # is there a task the ship can execute? if not, go to behaviour scripts instead.
                     #
@@ -202,14 +210,6 @@ class dispatcher:
                     #
                     # Instead, fallback behaviour.
                     #
-
-                    if ship_and_behaviour["name"] in ships_and_threads:
-                        thread = ships_and_threads[ship_and_behaviour["name"]]
-                        thread: threading.Thread
-                        if thread.is_alive():
-                            continue
-                        else:
-                            del ships_and_threads[ship_and_behaviour["name"]]
 
                     # first time we've seen this ship - create a thread
                     bhvr = None
@@ -247,6 +247,7 @@ class dispatcher:
         )
         self.logger.info("Starting thread for ship %s", ship_symbol)
         ships_and_threads[ship_symbol].start()
+        return True
 
     def claim_task(self, task_hash, ship_symbol):
         sql = """
