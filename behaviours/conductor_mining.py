@@ -60,6 +60,8 @@ def run(client: SpaceTraders):
     extraction_params = None
     delivery_params = None
 
+    log_tasks_for_recon(connection)
+
     if survey:
         survey: Survey
         values = get_price_per_distance_for_survey(
@@ -140,6 +142,7 @@ def log_task(
     requirements: list,
     target_system: str,
     priority=5,
+    agent_symbol=None,
     behaviour_params=None,
     expiry=None,
     specific_ship_symbol=None,
