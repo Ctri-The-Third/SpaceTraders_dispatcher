@@ -4,7 +4,6 @@ from time import sleep
 from straders_sdk.ship import Ship
 from straders_sdk.models import Waypoint, System, Market
 from straders_sdk.local_response import LocalSpaceTradersRespose
-from straders_sdk.utils import set_logging, try_execute_select, waypoint_slicer
 from straders_sdk.utils import (
     set_logging,
     try_execute_select,
