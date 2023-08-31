@@ -8,6 +8,7 @@ from .pg_pieces.transactions import _upsert_transaction
 import psycopg2
 import uuid
 import json
+import logging
 
 
 class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
@@ -25,7 +26,13 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         connection=None,
     ) -> None:
         self.token = token
-        self.connection = connection
+        self._connection = connection
+        self.db_host = db_host
+        self.db_port = db_port
+        self.db_name = db_name
+        self.db_user = db_user
+        self.db_pass = db_pass
+        self.logger = logging.getLogger("PGLoggerClient")
         if not self.connection:
             self.connection = psycopg2.connect(
                 host=db_host,
@@ -37,10 +44,23 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 
         self.session_id = str(uuid.uuid4())
         self.connection.autocommit = True
-        self.current_agent_name = ""
+        self.current_agent_name = current_agent_name
         utils.st_log_client = self
 
     pass
+
+    @property
+    def connection(self):
+        if self._connection is None or self._connection.closed > 0:
+            self._connection = psycopg2.connect(
+                host=self.db_host,
+                port=self.db_port,
+                database=self.db_name,
+                user=self.db_user,
+                password=self.db_pass,
+            )
+            self.logger.warning("Reconnected to database")
+        return self._connection
 
     def log_beginning(
         self, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
@@ -88,6 +108,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         error_code = 0
         status_code = 0
         new_credits = None
+        connection = self.connection
         if response_obj is not None:
             if isinstance(response_obj, SpaceTradersResponse):
                 status_code = response_obj.status_code
@@ -109,7 +130,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 	event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
 	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
 
-        cursor = self.connection.cursor()
+        cursor = connection.cursor()
         cursor.execute(
             sql,
             (
