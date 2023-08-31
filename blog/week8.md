@@ -20,6 +20,8 @@ There's been several sales so far for 5k a pop (yay), but I don't see any IRON b
 
 Note that we're now reaching approximate saturation of requests, so our focus will need to turn to behaviour optimisation, and ship upgrades.
 
+I've also just noticed that because of the rate limiter sending 3 requests at the same instant, our primary key in the logging table is no longer up to the task. Going to have to implement an eventuuid before we can collect meaningful data. 
+
 ## Major feature - Tasks!
 
 The conductor now identifies never-before-visited shipyards and markets that are on the jump network, and creates tasks for them. 

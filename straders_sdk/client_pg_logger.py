@@ -128,7 +128,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
             ship_name = ship_name.name
         sql = """INSERT INTO public.logging(
 	event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
-	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
+	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s) on conflict (event_timestamp, ship_symbol) do nothing;"""
 
         cursor = connection.cursor()
         cursor.execute(
