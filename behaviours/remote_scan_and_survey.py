@@ -164,6 +164,8 @@ class RemoteScanWaypoints(Behaviour):
         # jump to system
         # explore system
         # return to gate
+        self.end()
+
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
     def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[str]:

@@ -114,13 +114,13 @@ class ExtractAndTransferOrSell_4(Behaviour):
                     hauler: Ship
                     hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
 
-                    cargo_to_transfer = min(
+                    qty_to_transfer = min(
                         hauler.cargo_capacity - hauler.cargo_units_used, cargo.units
                     )
                     resp = st.ship_transfer_cargo(
                         ship,
                         cargo.symbol,
-                        min(cargo_to_transfer, hauler_space),
+                        min(qty_to_transfer, hauler_space),
                         hauler.name,
                     )
                     if not resp:
@@ -145,6 +145,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         # end of script.
         #
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        self.end()
         self.logger.info(
             "Completed. Credits: %s, change = %s",
             agent.credits,

@@ -62,7 +62,10 @@ class MonitorPrices(Behaviour):
         wp = st.waypoints_view_one(target_sys_sym, target_wp)
         if wp.has_shipyard:
             st.system_shipyard(wp, True)
+            self.end()
+
             time.sleep(600)
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
 
 if __name__ == "__main__":

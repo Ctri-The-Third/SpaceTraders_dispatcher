@@ -512,6 +512,11 @@ order by 1 desc """
     def end(self):
         self.st.db_client.connection.close()
         self.st.logging_client.connection.close()
+        if "task_hash" in self.behaviour_params:
+            sql = """update ship_tasks set completed = true where task_hash = %s"""
+            try_execute_upsert(
+                sql, self.connection, (self.behaviour_params["task_hash"],)
+            )
 
     def astar(
         self,

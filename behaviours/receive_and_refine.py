@@ -144,6 +144,8 @@ class ReceiveAndRefine(Behaviour):
         if not did_something:
             self.logger.debug("Nothing to do, sleeping for 60s")
             time.sleep(60)
+        self.end()
+
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.

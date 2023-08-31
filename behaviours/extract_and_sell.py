@@ -77,6 +77,7 @@ class ExtractAndSell(Behaviour):
         self.sell_all_cargo()
         st.system_market(current_wp, True)
 
+        self.end()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
         self.logger.info(
             "Completed. Credits: %s, change = %s",

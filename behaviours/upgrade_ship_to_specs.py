@@ -115,6 +115,9 @@ class FindModulesAndEquip(Behaviour):
         # setup initial parameters and preflight checks
         #
 
+        self.end()
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+
     def find_cheapest_markets_for_good(
         self, tradegood_sym: str, opportunity_cost_cps: int = 200
     ) -> list[str]:

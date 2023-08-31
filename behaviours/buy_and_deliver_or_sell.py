@@ -147,6 +147,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        self.end()
+
         time.sleep(SAFETY_PADDING)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
