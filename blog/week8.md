@@ -18,6 +18,15 @@ Also refinery takes 160 seconds per compression. Will need to do some maths on h
 Requests will either result in high value IRON, mid value ore being hauled away, or low value ore being sold locally.
 There's been several sales so far for 5k a pop (yay), but I don't see any IRON being sold, which is a little concerning. Perhaps the trader in question is still filling up with ore. it'll take 29.3 minutes for a light hauler to fill up entirely with IRON, so this actually makes sense.
 
+Note that we're now reaching approximate saturation of requests, so our focus will need to turn to behaviour optimisation, and ship upgrades.
+
+## Major feature - Tasks!
+
+The conductor now identifies never-before-visited shipyards and markets that are on the jump network, and creates tasks for them. 
+The dispatcher now searches for tasks. It looks for a ship's active task (due to a restart or crash), then it looks for tasks that a ship meets the criteria for. Currently our only category for this is "DRONE", which equates to satelites and/or mining drones. This ensures that as we enter the endgame, our high-CPH ships are not being used for low-value tasks.
+
+This capability will eventually be used to assign Ore Hounds to go get upgraded with Mining Laser IIs (at a point where we have sufficient money), and to instrument specific buy-sell behaviour for delivery quests next week.
+
 **Contracts or steady earnings?**
 Week 8 behaviour has 1 drone and 1 ore hound, and is therefore in stage 3 going for the contract with command-frigate supporting. I think
 
@@ -79,7 +88,7 @@ Drones earned 5.4k cph 39.2 cpr
 hounds earned 6.9k cph 44.9 cpr
 TOTAL 6.1k CPH, 42.02 cpr
 
-Heartbreaking. 
+Heartbreaking.  QUESTION - wonder if this would be the same using Gold/Platinum instead of iron?
 
 
 **Prioritisation of pipeline vs brute force** 
