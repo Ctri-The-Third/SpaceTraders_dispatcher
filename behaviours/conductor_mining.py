@@ -3,12 +3,13 @@ import sys
 sys.path.append(".")
 
 import json, sys
-
+import hashlib
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
+from datetime import datetime
 import logging
 import time
 from dispatcherWK8 import (
@@ -122,6 +123,42 @@ def run(client: SpaceTraders):
         )
     for excavator in spare_drones:
         set_behaviour(connection, excavator.name, BHVR_EXPLORE_SYSTEM)
+
+
+def log_task(
+    connection,
+    behaviour_id: str,
+    requirements: list,
+    target_system: str,
+    priority=5,
+    behaviour_params=None,
+    expiry=None,
+    specific_ship_symbol=None,
+):
+    behaviour_params = {} if not behaviour_params else behaviour_params
+    param_s = json.dumps(behaviour_params)
+    hash_str = hashlib.md5(
+        f"{behaviour_id}-{target_system}-{priority}-{behaviour_params}-{expiry}-{specific_ship_symbol}".encode()
+    ).hexdigest()
+    sql = """ INSERT INTO public.ship_tasks(
+	task_hash, requirements, expiry, priority, claimed_by, behaviour_id, target_system, behaviour_params)
+	VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """
+
+    try_execute_select(
+        connection,
+        sql,
+        (
+            hash_str,
+            requirements,
+            expiry,
+            priority,
+            None,
+            behaviour_id,
+            target_system,
+            param_s,
+        ),
+    )
 
 
 def get_price_per_distance_for_survey(

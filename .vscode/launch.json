@@ -31,11 +31,11 @@
             "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK7.py",
+            "program": "dispatcherWK8.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-U7-"
+                "CTRI-U-"
             ]
         },
         {
