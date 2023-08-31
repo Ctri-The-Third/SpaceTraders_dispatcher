@@ -8,8 +8,13 @@ from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTrad
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
 from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
-from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
-from datetime import datetime
+from straders_sdk.utils import (
+    set_logging,
+    waypoint_slicer,
+    try_execute_select,
+    try_execute_upsert,
+)
+from datetime import datetime, timedelta
 import logging
 import time
 from dispatcherWK8 import (
@@ -34,15 +39,19 @@ def run(client: SpaceTraders):
     hq_sys_sym = waypoint_slicer(agent.headquarters)
 
     ships = client.ships_view()
-    excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    # excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
+
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
 
-    target_miners = 50
+    target_miners = 30
+    excavators = (hounds + drones)[0:target_miners]
     drones_padding = target_miners - len(hounds)
-    drones = drones[0:drones_padding]  # limit ourselves to 50 extractors
+    active_drones = drones[
+        0:drones_padding
+    ]  # identify the target drones (included in excavators already)
     spare_drones = drones[drones_padding:]  # switch these ones off.
 
     asteroid_wp = client.find_waypoints_by_type(hq_sys_sym, "ASTEROID_FIELD")[0]
