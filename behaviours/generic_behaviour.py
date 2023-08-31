@@ -5,6 +5,12 @@ from straders_sdk.ship import Ship
 from straders_sdk.models import Waypoint, System, Market
 from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.utils import set_logging, try_execute_select, waypoint_slicer
+from straders_sdk.utils import (
+    set_logging,
+    try_execute_select,
+    waypoint_slicer,
+    try_execute_upsert,
+)
 import logging
 import math
 import networkx
@@ -53,7 +59,7 @@ class Behaviour:
             session=session,
             connection=connection,
         )
-        self.graph = None
+        self._graph = None
         self.ships = None
         self.agent = None
 
@@ -63,9 +69,13 @@ class Behaviour:
             self._connection = self.st.db_client.connection
         return self._connection
 
-    def run(self):
-        self.graph = self._populate_graph()
+    @property
+    def graph(self):
+        if not self._graph:
+            self._graph = self._populate_graph()
+        return self._graph
 
+    def run(self):
         self.ship = self.st.ships_view_one(self.ship_name, force=True)
         if not self.ship:
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
@@ -510,13 +520,13 @@ order by 1 desc """
         return path
 
     def end(self):
-        self.st.db_client.connection.close()
-        self.st.logging_client.connection.close()
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(
                 sql, self.connection, (self.behaviour_params["task_hash"],)
             )
+        self.st.db_client.connection.close()
+        self.st.logging_client.connection.close()
 
     def astar(
         self,
