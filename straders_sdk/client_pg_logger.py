@@ -80,22 +80,25 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self, event_name, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
     ):
         sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
-        values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
+        values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s) on conflict(ship_symbol, event_timestamp) do nothing;"""
         cursor = self.connection.cursor()
-        cursor.execute(
-            sql,
-            (
-                event_name,
-                self.current_agent_name,
-                ship_name,
-                self.session_id,
-                None,
-                starting_credits,
-                0,
-                0,
-                json.dumps({"script_name": behaviour_name}),
-            ),
-        )
+        try:
+            cursor.execute(
+                sql,
+                (
+                    event_name,
+                    self.current_agent_name,
+                    ship_name,
+                    self.session_id,
+                    None,
+                    starting_credits,
+                    0,
+                    0,
+                    json.dumps({"script_name": behaviour_name}),
+                ),
+            )
+        except Exception as err:
+            self.logger.error("Failed to log custom event, %s", err)
 
     def log_event(
         self,
