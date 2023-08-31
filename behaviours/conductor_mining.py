@@ -150,11 +150,12 @@ def log_task(
         f"{behaviour_id}-{target_system}-{priority}-{behaviour_params}-{expiry}-{specific_ship_symbol}".encode()
     ).hexdigest()
     sql = """ INSERT INTO public.ship_tasks(
-	task_hash, requirements, expiry, priority, claimed_by, behaviour_id, target_system, behaviour_params)
-	VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+	task_hash, requirements, expiry, priority, agent_symbol, claimed_by, behaviour_id, target_system, behaviour_params)
+	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    on conflict(task_hash) DO NOTHING
     """
 
-    try_execute_select(
+    try_execute_upsert(
         connection,
         sql,
         (
@@ -162,12 +163,39 @@ def log_task(
             requirements,
             expiry,
             priority,
+            agent_symbol,
             None,
             behaviour_id,
             target_system,
             param_s,
         ),
     )
+
+
+def log_tasks_for_recon(connection):
+    # we need to find all freighters, refineries, and ore hound systems on the jump gate network.
+    # then we need to go find all the systems that buy metal.
+    # then we need to go through all the other shipyards
+    # then all the other markets.
+
+    # midnight tonight
+
+    expiry = datetime.now() + timedelta(days=1)
+    expiry = datetime(expiry.year, expiry.month, expiry.day)
+
+    requirements = ["DRONE"]
+    sql = """select * from mkt_shpyrds_systems_to_visit_first """
+    results = try_execute_select(connection, sql, ())
+    for result in results:
+        log_task(
+            connection,
+            BHVR_EXPLORE_SYSTEM,
+            requirements,
+            result[0],
+            priority=2,
+            expiry=expiry,
+            behaviour_params={"target_sys": result[0]},
+        )
 
 
 def get_price_per_distance_for_survey(
