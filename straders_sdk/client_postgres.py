@@ -13,6 +13,7 @@ from .models import (
     Agent,
     JumpGate,
 )
+import logging
 from .contracts import Contract
 from datetime import datetime
 from .responses import SpaceTradersResponse
@@ -58,6 +59,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         self._db_port = db_port
         self._connection = None
         self.current_agent_symbol = current_agent_symbol
+        self.logger = logging.getLogger(__name__)
 
     @property
     def connection(self):
@@ -70,6 +72,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 password=self._db_pass,
             )
             self._connection.autocommit = True
+            self.logger.warning("lost connection to DB, restoring")
         return self._connection
 
     def _headers(self) -> dict:
