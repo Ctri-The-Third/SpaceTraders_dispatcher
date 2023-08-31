@@ -89,6 +89,7 @@ class ExploreSystem(Behaviour):
         self.scan_local_system()
 
         self.end()
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # travel to target system
         # scan target system
 
