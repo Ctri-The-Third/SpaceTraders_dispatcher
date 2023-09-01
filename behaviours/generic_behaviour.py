@@ -71,7 +71,9 @@ class Behaviour:
     @property
     def graph(self):
         if not self._graph:
-            self._graph = self._populate_graph()
+            maybe_graph = self._populate_graph()
+            if maybe_graph:
+                self._graph = maybe_graph
         return self._graph
 
     def run(self):
@@ -636,6 +638,8 @@ order by 1 desc """
                 """
         results = try_execute_select(self.connection, sql, ())
         connections = []
+        if not results:
+            return graph
         for row in results:
             try:
                 connections.append((nodes[row[0]], nodes[row[1]]))
