@@ -72,7 +72,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 password=self._db_pass,
             )
             self._connection.autocommit = True
-            self.logger.warning("lost connection to DB, restoring")
+            # self.logger.warning("lost connection to DB, restoring")
         return self._connection
 
     def _headers(self) -> dict:

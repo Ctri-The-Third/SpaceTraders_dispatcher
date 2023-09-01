@@ -5,6 +5,7 @@ from .client_interface import SpaceTradersClient
 import straders_sdk.utils as utils
 from .responses import SpaceTradersResponse
 from .pg_pieces.transactions import _upsert_transaction
+from straders_sdk.utils import try_execute_select, try_execute_upsert
 import psycopg2
 import uuid
 import json
@@ -59,7 +60,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
                 user=self.db_user,
                 password=self.db_pass,
             )
-            self.logger.warning("Reconnected to database")
+            # self.logger.warning("Reconnected to database")
         return self._connection
 
     def log_beginning(
@@ -81,24 +82,21 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     ):
         sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
         values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s) on conflict(ship_symbol, event_timestamp) do nothing;"""
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(
-                sql,
-                (
-                    event_name,
-                    self.current_agent_name,
-                    ship_name,
-                    self.session_id,
-                    None,
-                    starting_credits,
-                    0,
-                    0,
-                    json.dumps({"script_name": behaviour_name}),
-                ),
-            )
-        except Exception as err:
-            self.logger.error("Failed to log custom event, %s", err)
+        return try_execute_upsert(
+            self.connection,
+            sql,
+            (
+                event_name,
+                self.current_agent_name,
+                ship_name,
+                self.session_id,
+                None,
+                starting_credits,
+                0,
+                0,
+                json.dumps({"script_name": behaviour_name}),
+            ),
+        )
 
     def log_event(
         self,
@@ -133,8 +131,8 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
 	event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
 	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s) on conflict (event_timestamp, ship_symbol) do nothing;"""
 
-        cursor = connection.cursor()
-        cursor.execute(
+        return try_execute_upsert(
+            connection,
             sql,
             (
                 event_name,
@@ -148,6 +146,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
                 json.dumps(event_params),
             ),
         )
+
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
