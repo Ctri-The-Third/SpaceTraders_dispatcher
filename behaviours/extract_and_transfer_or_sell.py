@@ -153,7 +153,9 @@ class ExtractAndTransferOrSell_4(Behaviour):
         )
 
     def find_haulers(self, waypoint_symbol):
-        haulers = self.find_adjacent_ships(waypoint_symbol, ["HAULER", "COMMAND"])
+        haulers = self.find_adjacent_ships(waypoint_symbol, ["HAULER"])
+        if len(haulers) == 0:
+            haulers = self.find_adjacent_ships(waypoint_symbol, ["COMMAND"])
         return [hauler for hauler in haulers if hauler.cargo_space_remaining > 0]
 
     def find_refiners(self, waypoint_symbol):
