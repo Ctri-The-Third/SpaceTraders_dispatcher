@@ -46,12 +46,14 @@ class ExtractAndSell(Behaviour):
         st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
 
         try:
-            target_wp_sym = self.behaviour_params.get(
-                "asteroid_wp",
-                st.find_waypoints_by_type_one(
-                    ship.nav.system_symbol, "ASTEROID_FIELD"
-                ).symbol,
-            )
+            target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
+            if not target_wp_sym:
+                target_wp_sym = (
+                    st.find_waypoints_by_type_one(
+                        ship.nav.system_symbol, "ASTEROID_FIELD"
+                    ).symbol,
+                )
+
             market_wp_sym = self.behaviour_params.get(
                 "market_waypoint",
                 target_wp_sym,
@@ -87,8 +89,10 @@ class ExtractAndSell(Behaviour):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) >= 3 else "CTRI-L8-"
-    ship = sys.argv[2] if len(sys.argv) >= 3 else "CTRI-L8--1"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "41"
+    ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    bhvr = ExtractAndSell(agent, ship)
+    behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
+    bhvr = ExtractAndSell(agent, ship, behaviour_params)
     bhvr.run()
