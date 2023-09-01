@@ -83,10 +83,10 @@ class ExploreSystem(Behaviour):
         arrived = True
         if ship.nav.system_symbol != d_sys.symbol:
             arrived = self.ship_extrasolar(d_sys, path)
-        if not arrived:
+        if arrived:
+            self.scan_local_system()
+        else:
             self.logger.error("Couldn't jump! Unknown reason.")
-            return
-        self.scan_local_system()
 
         self.end()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -114,11 +114,11 @@ class ExploreSystem(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "ZTRI-0-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1C"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    # behaviour_params = {"target_sys": "X1-JX88"}
+    behaviour_params = {"target_sys": "X1-JD6"}
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
 
     bhvr.run()
