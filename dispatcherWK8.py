@@ -321,10 +321,13 @@ class dispatcher:
         start_system = client.systems_view_one(ship.nav.system_symbol)
         for task in valid_tasks:
             end_system = client.systems_view_one(task["target_system"])
-            path = self.generic_behaviour.astar(
-                self.generic_behaviour.graph, start_system, end_system
-            )
-
+            try:
+                path = self.generic_behaviour.astar(
+                    self.generic_behaviour.graph, start_system, end_system
+                )
+            except Exception as err:
+                self.logger.error("Couldn't find path because %s", err)
+                path = []
             if path and len(path) < shortest_distance:
                 shortest_distance = len(path)
                 best_task = task
