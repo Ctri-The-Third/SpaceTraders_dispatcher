@@ -177,8 +177,8 @@ class Behaviour:
             if ship.cargo_units_used == ship.cargo_capacity:
                 return
 
-            # 4224 means exhausted survey - we can just try again and don't need to sleep.
-            if not resp and resp.error_code != 4224:
+            # 4224/4221 means exhausted survey - we can just try again and don't need to sleep.
+            if not resp and resp.error_code not in [4224, 4221]:
                 sleep(30)
                 return
 

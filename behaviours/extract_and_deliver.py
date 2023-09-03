@@ -39,8 +39,9 @@ class ExtractAndFulfill_7(Behaviour):
     def run(self):
         super().run()
         starting_credts = self.st.view_my_self().credits
-        ship = self.ship
+
         st = self.st
+        ship = st.ships_view_one(self.ship_name, True)
         agent = st.view_my_self()
 
         #

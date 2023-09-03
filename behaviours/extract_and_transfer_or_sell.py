@@ -38,8 +38,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
     def run(self):
         super().run()
+
         starting_credts = self.st.view_my_self().credits
-        ship = self.ship
+        ship = self.st.ships_view_one(self.ship_name, True)
+        self.st.ship_cooldown(ship)
         st = self.st
         agent = st.view_my_self()
 
@@ -165,8 +167,12 @@ class ExtractAndTransferOrSell_4(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "29"
-    params = {"cargo_to_transfer": "IRON_ORE"}
+    ship_suffix = "1"
+    params = {
+        "fulfil_wp": "X1-JC68-17182Z",
+        "asteroid_wp": "X1-JC68-59415D",
+        "cargo_to_transfer": ["COPPER_ORE"],
+    }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params
