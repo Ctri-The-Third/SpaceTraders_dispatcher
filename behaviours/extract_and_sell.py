@@ -48,11 +48,11 @@ class ExtractAndSell(Behaviour):
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:
-                target_wp_sym = (
-                    st.find_waypoints_by_type_one(
-                        ship.nav.system_symbol, "ASTEROID_FIELD"
-                    ).symbol,
+                target_wp = st.find_waypoints_by_type_one(
+                    ship.nav.system_symbol, "ASTEROID_FIELD"
                 )
+
+                target_wp_sym = target_wp.symbol
 
             market_wp_sym = self.behaviour_params.get(
                 "market_waypoint",
@@ -90,9 +90,9 @@ class ExtractAndSell(Behaviour):
 
 if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "41"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "4"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
+    behaviour_params = {}  # {"asteroid_wp": "X1-QB20-13975F"}
     bhvr = ExtractAndSell(agent, ship, behaviour_params)
     bhvr.run()
