@@ -172,7 +172,7 @@ class Behaviour:
             else:
                 survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
-            sleep(ship.seconds_until_cooldown)
+            self.sleep_until_ready()
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
                 return

@@ -18,7 +18,7 @@ import logging
 from dispatcherWK7 import BHVR_EXPLORE_SYSTEM
 
 
-RECON_AGENTS_MAX = 1
+RECON_AGENTS_MAX = 10
 logger = logging.getLogger(__name__)
 
 

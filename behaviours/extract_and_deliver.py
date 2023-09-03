@@ -105,10 +105,10 @@ class ExtractAndFulfill_7(Behaviour):
             self.ship_extrasolar(fulfill_sys)
             self.ship_intrasolar(fulfill_wp.symbol)
             self.fulfill_any_relevant()
+            self.sell_all_cargo()
         #
         # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
         #
-        self.sell_all_cargo()
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
             time.sleep(300)
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     ship_suffix = "1"
     params = {
         "asteroid_wp": "X1-JC68-59415D",
-        "cargo_to_transfer": "X1-JC68-17182Z",
+        "cargo_to_transfer": "COPPER_ORE",
         "fulfill_wp": "X1-JC68-17182Z",
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
