@@ -22,7 +22,7 @@ class SpaceTradersClient(Protocol):
     token: str = None
 
     @abstractmethod
-    def __init__(self, token) -> None:
+    def __init__(self, token, connection=None) -> None:
         pass
 
     @abstractmethod
@@ -140,6 +140,12 @@ class SpaceTradersClient(Protocol):
     @abstractmethod
     def ship_extract(self, ship: "Ship", survey: Survey = None) -> SpaceTradersResponse:
         """/my/ships/{shipSymbol}/extract"""
+
+        pass
+
+    @abstractmethod
+    def ship_refine(self, ship: "Ship", trade_symbol: str) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/refine"""
 
         pass
 

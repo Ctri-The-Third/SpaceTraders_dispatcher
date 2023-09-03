@@ -19,11 +19,17 @@ class ExtractAndSell(Behaviour):
         behaviour_params: dict = {},
         config_file_name="user.json",
         session=None,
+        connection=None,
     ) -> None:
         super().__init__(
-            agent_name, ship_name, behaviour_params, config_file_name, session
+            agent_name,
+            ship_name,
+            behaviour_params,
+            config_file_name,
+            session,
+            connection,
         )
-
+        self
         self.logger = logging.getLogger("bhvr_extract_and_sell")
 
     def run(self):
@@ -40,12 +46,14 @@ class ExtractAndSell(Behaviour):
         st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
 
         try:
-            target_wp_sym = self.behaviour_params.get(
-                "asteroid_wp",
-                st.find_waypoints_by_type_one(
+            target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
+            if not target_wp_sym:
+                target_wp = st.find_waypoints_by_type_one(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
-                ).symbol,
-            )
+                )
+
+                target_wp_sym = target_wp.symbol
+
             market_wp_sym = self.behaviour_params.get(
                 "market_waypoint",
                 target_wp_sym,
@@ -71,6 +79,7 @@ class ExtractAndSell(Behaviour):
         self.sell_all_cargo()
         st.system_market(current_wp, True)
 
+        self.end()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
         self.logger.info(
             "Completed. Credits: %s, change = %s",
@@ -80,8 +89,10 @@ class ExtractAndSell(Behaviour):
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) >= 3 else "CTRI-L8-"
-    ship = sys.argv[2] if len(sys.argv) >= 3 else "CTRI-L8--1"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "4"
+    ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    bhvr = ExtractAndSell(agent, ship)
+    behaviour_params = {}  # {"asteroid_wp": "X1-QB20-13975F"}
+    bhvr = ExtractAndSell(agent, ship, behaviour_params)
     bhvr.run()

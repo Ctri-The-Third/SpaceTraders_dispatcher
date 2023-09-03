@@ -7,6 +7,7 @@
 import sys
 import json
 import psycopg2, psycopg2.sql
+import math
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.contracts import Contract
@@ -23,7 +24,7 @@ from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK7 import (
+from dispatcherWK8 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -31,6 +32,7 @@ from dispatcherWK7 import (
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_BUY_AND_DELIVER_OR_SELL,
+    BHVR_RECEIVE_AND_REFINE,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
@@ -59,6 +61,9 @@ def master():
     sleep_time = 1
     while True:
         for agent, client in agents_and_clients.items():
+            # reset our cached view of the agent
+            client.current_agent = None
+            client.view_my_self()
             logger.info(f"Agent {agent} is at stage {stages_per_agent[agent]}")
             current_stage = stages_per_agent[agent]
             try:
@@ -130,9 +135,15 @@ def stage_1(client: SpaceTraders):
         set_behaviour(
             ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp.symbol}
         )
+
     for ship in extractors:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL)
-    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
+
+    prices = get_ship_prices_in_hq_system(client)
+    if prices["SHIP_ORE_HOUND"] < 175000:
+        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
+    else:
+        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     if maybe_ship:
         set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     return 1
@@ -217,7 +228,6 @@ def stage_3(client: SpaceTraders):
         and len(haulers) >= len(excavators) // extractors_per_hauler
     ):
         return 4
-
     #
     # SETTING PARAMETERS & HAULER PREPARING
     #
@@ -240,7 +250,7 @@ def stage_3(client: SpaceTraders):
                         contract_type = "DELIVERY"
 
     if contract_type == "DELIVERY":
-        hauler_behaviour = BHVR_BUY_AND_DELIVER_OR_SELL
+        hauler_behaviour = "TEMP_DISABLED"  # BHVR_BUY_AND_DELIVER_OR_SELL
         inc_del = [
             deliverable
             for deliverable in active_contract.deliverables
@@ -293,7 +303,7 @@ def stage_3(client: SpaceTraders):
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
-    if len(haulers) <= (len(excavators) / extractors_per_hauler):
+    if len(haulers) < math.floor(len(excavators) / extractors_per_hauler):
         ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
@@ -331,7 +341,7 @@ def stage_4(client: SpaceTraders):
     # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
     agent = client.view_my_self()
     # hq_sys_sym = waypoint_slicer(agent.headquarters)
-    connection = client.db_client.connection
+    connection = get_connection()
     ships = client.ships_view()
     asteroid_wp = client.find_waypoints_by_type(
         waypoint_slicer(agent.headquarters), "ASTEROID_FIELD"
@@ -342,11 +352,7 @@ def stage_4(client: SpaceTraders):
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
-    refiners = [
-        ship
-        for ship in ships.values()
-        if ship.frame.symbol == "SHIP_REFINING_FREIGHTER"
-    ]
+    refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
     target_hounds = 50
     target_refiners = 1
     extractors_per_hauler = 10
@@ -385,7 +391,9 @@ def stage_4(client: SpaceTraders):
     if len(refiners) < target_refiners:
         ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
         if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL)
+            set_behaviour(
+                ship.name, BHVR_RECEIVE_AND_FULFILL, {"asteroid_wp": asteroid_wp.symbol}
+            )
     elif len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
         if ship:
@@ -426,7 +434,7 @@ def what_ship_should_i_buy(
 ) -> str:
     # I assume this is mining but who knows.
     order_by = "cph" if speed_over_efficiency else "cpr"
-    connection.cursor()
+    connection = get_connection()
     sql = psycopg2.sql.SQL(
         """with total_cph as (select agent_name, avg(credits_earned) as avg_cph from agent_credits_per_hour acph
 where acph.event_hour >= now() at time zone 'utc' - interval '6 hours'
@@ -486,7 +494,8 @@ order by {} desc, sp.ship_type """
 
 def is_shipyard_stale(client: SpaceTraders, shipyard_wp: Waypoint):
     sql = """select last_updated from shipyard_types where shipyard_symbol = %s"""
-    resp = try_execute_select(client.db_client.connection, sql, (shipyard_wp.symbol,))
+    connection = get_connection()
+    resp = try_execute_select(connection, sql, (shipyard_wp.symbol,))
     if not resp:
         return True
 
@@ -532,7 +541,7 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
 
 
 def get_prices_for(client: SpaceTraders, tradegood: str):
-    connection = client.db_client.connection
+    connection = get_connection()
 
     sql = """select * from market_prices where trade_symbol = %s"""
     rows = try_execute_select(connection, sql, (tradegood,))
@@ -579,7 +588,7 @@ def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
         behaviour_id = %s,
         behaviour_params = %s
     """
-    cursor = connection.cursor()
+    cursor = get_connection().cursor()
     behaviour_params_s = (
         json.dumps(behaviour_params) if behaviour_params is not None else None
     )
@@ -618,7 +627,6 @@ def maybe_buy_ship(client: SpaceTraders, connection, ship_symbol):
         logger.error("Couldn't find ship type %s", ship_symbol)
         return False
     target_wp_sym = rows[0][1]
-    print(f"attempting to buy {ship_symbol} at price from {target_wp_sym}")
     target_wp = client.waypoints_view_one(waypoint_slicer(target_wp_sym), target_wp_sym)
     shipyard = client.system_shipyard(target_wp)
     return _maybe_buy_ship(client, shipyard, ship_symbol)
@@ -639,10 +647,18 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: Shipyard, ship_symbol: str):
                     0,
                     "conductorWK7.maybe_buy_ship",
                 )
+            logging.debug(
+                "Attempting to buy %s from %s, for %s",
+                ship_symbol,
+                shipyard.waypoint,
+                detail.purchase_price,
+            )
             if agent.credits > detail.purchase_price:
                 resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
                 if resp:
                     return resp[0]
+            else:
+                logging.debug("Didn't have enough money, agent has %s", agent.credits)
 
 
 def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol):
@@ -666,7 +682,8 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
     shipyard_wps = client.find_waypoints_by_trait(hq_system, "SHIPYARD")
     if not shipyard_wps or len(shipyard_wps) == 0:
-        return 2
+        client.waypoints_view_one(hq_system, client.view_my_self().headquarters, True)
+        return get_ship_prices_in_hq_system(client)
     shipyard_wp: Waypoint = shipyard_wps[0]
     shipyard = client.system_shipyard(shipyard_wp)
     if not shipyard:
@@ -680,12 +697,14 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
 
 def get_agents():
-    sql = "select distinct agent_name from ships"
-    cur = connection.cursor()
+    sql = "select distinct agent_symbol from agents"
+    cur = get_connection().cursor()
     cur.execute(sql)
     rows = cur.fetchall()
     agents_and_tokens = {}
     for agent in user.get("agents"):
+        if "username" not in agent or "token" not in agent:
+            continue
         agents_and_tokens[agent["username"]] = agent["token"]
     for row in rows:
         token = agents_and_tokens.get(row[0], None)
@@ -711,7 +730,7 @@ def get_systems_to_explore(client: SpaceTraders, ships: list[Ship]):
     from mkt_shpyrds_systems_last_updated_jumpgates
     order by last_updated asc 
     limit %s """
-    results = try_execute_select(sql, client.db_client.connection, (len(ships),))
+    results = try_execute_select(sql, get_connection(), (len(ships),))
     return_obj = {ship.name: "" for ship in ships}
     for result in results:
         return_obj[results[0]] = (result[1], result[2])
@@ -742,24 +761,45 @@ def are_surveys_weak(client: SpaceTraders, asteroid_waypoint_symbol: str) -> boo
     #
 
 
+class db:
+    _connection = None
+    _user: dict = {}
+
+    @classmethod
+    def get_connection(cls, user=None):
+        if user:
+            cls._user = user
+        if not cls._connection or cls._connection.closed > 0:
+            logging.warning("Database connection closed, reconnecting")
+            cls._connection = psycopg2.connect(
+                host=cls._user["db_host"],
+                port=cls._user["db_port"],
+                database=cls._user["db_name"],
+                user=cls._user["db_user"],
+                password=cls._user["db_pass"],
+                connect_timeout=3,
+                keepalives=1,
+                keepalives_idle=5,
+                keepalives_interval=2,
+                keepalives_count=2,
+            )
+            cls._connection.autocommit = True
+
+        return cls._connection
+
+
+def get_connection():
+    return db.get_connection()
+
+
 if __name__ == "__main__":
-    set_logging()
+    set_logging(logging.DEBUG)
     user = json.load(open("user.json"))
     logger.info("Starting up conductor, preparing to connect to database")
-    connection = psycopg2.connect(
-        host=user["db_host"],
-        port=user["db_port"],
-        database=user["db_name"],
-        user=user["db_user"],
-        password=user["db_pass"],
-        connect_timeout=3,
-        keepalives=1,
-        keepalives_idle=5,
-        keepalives_interval=2,
-        keepalives_count=2,
-    )
+
+    _CONNECTION = db.get_connection(user)
     logger.info("Connected to database")
-    connection.autocommit = True
+    _CONNECTION.autocommit = True
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
     master()

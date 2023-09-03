@@ -50,6 +50,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         db_port=None,
         current_agent_symbol=None,
         session=None,
+        connection=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_pass=db_pass,
                 db_port=db_port,
                 current_agent_symbol=current_agent_symbol,
+                connection=connection,
             )
             self.logging_client = SpaceTradersPostgresLoggerClient(
                 db_host=db_host,
@@ -71,6 +73,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 db_user=db_user,
                 db_pass=db_pass,
                 token=token,
+                connection=connection,
             )
         else:
             self.db_client = SpaceTradersStubClient()
@@ -762,6 +765,16 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
             )
         return resp
 
+    def ship_refine(self, ship: Ship, trade_symbol: str):
+        """/my/ships/{shipSymbol}/refine"""
+        resp = self.api_client.ship_refine(ship, trade_symbol)
+        self.logging_client.ship_refine(ship, trade_symbol, resp)
+        if resp:
+            ship.update(resp.data)
+            self.db_client.update(ship)
+            self.update(ship)
+        return resp
+
     def ship_install_mount(
         self, ship: "Ship", mount_symbol: str
     ) -> SpaceTradersResponse:
@@ -890,6 +903,24 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         if resp:
             self.update(resp)
             self.db_client.update(contract)
+            for deliverable in contract.deliverables:
+                total_price = (
+                    contract.payment_upfront - contract.payment_completion
+                ) / len(contract.deliverables)
+                transaction = {
+                    "transaction": {
+                        "waypointSymbol": deliverable.destination_symbol,
+                        "shipSymbol": "GLOBAL",
+                        "tradeSymbol": deliverable.symbol,
+                        "type": contract.type,
+                        "units": deliverable.units_fulfilled,
+                        "pricePerUnit": total_price / deliverable.units_fulfilled,
+                        "totalPrice": total_price,
+                    }
+                }
+                self.logging_client.update(transaction)
+
+            self.db_client.update(resp.data)
         return resp
 
     def _headers(self) -> dict:

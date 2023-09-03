@@ -113,15 +113,18 @@ order by agent_name, cph desc"""
 
 
 def transaction_summary():
-    sql = """select agent_name, credits_earned, event_hour 
+    sql = """select agent_name, credits_earned as cr, utilisation as util, event_hour 
     from agent_credits_per_hour 
     where event_hour >= now() at time zone 'utc' - interval '8 hours'
     order by event_hour desc, agent_name asc
 """
     rows = try_execute_select(connection, sql, ())
-    df = pd.DataFrame(rows, columns=["agent_name", "credits_earned", "event_hour"])
+    df = pd.DataFrame(rows, columns=["agent_name", "cr", "util", "event_hour"])
     pivot_df = pd.pivot(
-        index="event_hour", columns="agent_name", values="credits_earned", data=df
+        index="event_hour",
+        columns="agent_name",
+        values=["cr", "util"],
+        data=df,
     )
     out_str = pivot_df.to_markdown()
     return out_str
@@ -194,10 +197,16 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
         "FRAME_MINER": "🚤",
         "FRAME_LIGHT_FREIGHTER": "🚤",
         "FRAME_FRIGATE": "🚤",
-        "FRAME_HEAVY_FREIGHTER":"⛴️"
+        "FRAME_HEAVY_FREIGHTER": "⛴️",
     }
 
-    roles = {"COMMAND": "👑", "EXCAVATOR": "⛏️", "HAULER": "🚛", "SATELLITE": "🛰️", "REFINERY":"⚙️"}
+    roles = {
+        "COMMAND": "👑",
+        "EXCAVATOR": "⛏️",
+        "HAULER": "🚛",
+        "SATELLITE": "🛰️",
+        "REFINERY": "⚙️",
+    }
 
     rows = try_execute_select(connection, sql, ())
     response = ""
@@ -265,6 +274,13 @@ def index():
         extensions=["tables", "md_in_html"],
     )
     return out_str
+
+
+@app.route("/refresh")
+def refresh():
+    sql = "refresh materialized view mat_session_stats;"
+    try_execute_select(connection, sql, ())
+    return "refreshed. go back to index."
 
 
 @app.route("/ships/")

@@ -35,7 +35,12 @@ class SpaceTradersApiClient(SpaceTradersClient):
     "implements SpaceTradersClient Protocol. No in-memory caching, no database, just the API."
 
     def __init__(
-        self, token=None, base_url=None, version=None, session: LimiterSession = None
+        self,
+        token=None,
+        base_url=None,
+        version=None,
+        session: LimiterSession = None,
+        connection=None,
     ) -> None:
         self.token = token
         self.config = ApiConfig(base_url, version)
@@ -195,6 +200,28 @@ class SpaceTradersApiClient(SpaceTradersClient):
             ship.update(resp.data)
         return resp
 
+    def ship_refine(self, ship: Ship, trade_symbol: str) -> SpaceTradersResponse:
+        "/my/ships/{shipSymbol}/refine"
+
+        url = _url(f"my/ships/{ship.name}/refine")
+        if not ship.can_refine:
+            return LocalSpaceTradersRespose(
+                "Ship cannot refine - doesn't have a refinery", 0, 4239, url=url
+            )
+
+        if ship.seconds_until_cooldown > 0:
+            return LocalSpaceTradersRespose("Ship still on cooldown", 0, 4200, url=url)
+
+        data = {"produce": trade_symbol}
+        resp = post_and_validate(
+            url, json=data, headers=self._headers(), session=self.session
+        )
+
+        if resp:
+            self.update(resp.data)
+            ship.update(resp.data)
+        return resp
+
     def ship_dock(self, ship: Ship):
         "/my/ships/{shipSymbol}/dock"
         url = _url(f"my/ships/{ship.name}/dock")
@@ -272,7 +299,9 @@ class SpaceTradersApiClient(SpaceTradersClient):
 
         return resp
 
-    def ship_transfer_cargo(self, ship: Ship, trade_symbol, units, target_ship_name):
+    def ship_transfer_cargo(
+        self, ship: Ship, trade_symbol, units, target_ship_name: str
+    ):
         "/my/ships/{shipSymbol}/transfer"
 
         # 4217{'message': 'Failed to update ship cargo. Cannot add 6 unit(s) to ship cargo. Exceeds max limit of 60.', 'code': 4217, 'data': {'shipSymbol': 'CTRI-1', 'cargoCapacity': 60, 'cargoUnits': 60, 'unitsToAdd': 6}}

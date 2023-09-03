@@ -19,11 +19,17 @@ class MonitorPrices(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
+        connection=None,
     ) -> None:
-        self.graph = None
         super().__init__(
-            agent_name, ship_name, behaviour_params, config_file_name, session
+            agent_name,
+            ship_name,
+            behaviour_params,
+            config_file_name,
+            session,
+            connection,
         )
+        self
 
     def run(self):
         super().run()
@@ -56,7 +62,10 @@ class MonitorPrices(Behaviour):
         wp = st.waypoints_view_one(target_sys_sym, target_wp)
         if wp.has_shipyard:
             st.system_shipyard(wp, True)
+            self.end()
+
             time.sleep(600)
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
 
 if __name__ == "__main__":

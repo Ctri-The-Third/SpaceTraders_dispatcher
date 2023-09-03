@@ -5,31 +5,63 @@ from .client_interface import SpaceTradersClient
 import straders_sdk.utils as utils
 from .responses import SpaceTradersResponse
 from .pg_pieces.transactions import _upsert_transaction
+from straders_sdk.utils import try_execute_select, try_execute_upsert
 import psycopg2
 import uuid
 import json
+import logging
 
 
 class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
     token: str = None
 
     def __init__(
-        self, token, db_host, db_port, db_name, db_user, db_pass, current_agent_name=""
+        self,
+        token,
+        db_host,
+        db_port,
+        db_name,
+        db_user,
+        db_pass,
+        current_agent_name="",
+        connection=None,
     ) -> None:
         self.token = token
-        self.connection = psycopg2.connect(
-            host=db_host,
-            port=db_port,
-            database=db_name,
-            user=db_user,
-            password=db_pass,
-        )
+        self._connection = connection
+        self.db_host = db_host
+        self.db_port = db_port
+        self.db_name = db_name
+        self.db_user = db_user
+        self.db_pass = db_pass
+        self.logger = logging.getLogger("PGLoggerClient")
+        if not self.connection:
+            self.connection = psycopg2.connect(
+                host=db_host,
+                port=db_port,
+                database=db_name,
+                user=db_user,
+                password=db_pass,
+            )
+
         self.session_id = str(uuid.uuid4())
         self.connection.autocommit = True
-        self.current_agent_name = ""
+        self.current_agent_name = current_agent_name
         utils.st_log_client = self
 
     pass
+
+    @property
+    def connection(self):
+        if self._connection is None or self._connection.closed > 0:
+            self._connection = psycopg2.connect(
+                host=self.db_host,
+                port=self.db_port,
+                database=self.db_name,
+                user=self.db_user,
+                password=self.db_pass,
+            )
+            # self.logger.warning("Reconnected to database")
+        return self._connection
 
     def log_beginning(
         self, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
@@ -49,9 +81,9 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         self, event_name, behaviour_name: str, ship_name="GLOBAL", starting_credits=None
     ):
         sql = """INSERT INTO public.logging( event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
-        values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
-        cursor = self.connection.cursor()
-        cursor.execute(
+        values (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s) on conflict(ship_symbol, event_timestamp) do nothing;"""
+        return try_execute_upsert(
+            self.connection,
             sql,
             (
                 event_name,
@@ -77,6 +109,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         error_code = 0
         status_code = 0
         new_credits = None
+        connection = self.connection
         if response_obj is not None:
             if isinstance(response_obj, SpaceTradersResponse):
                 status_code = response_obj.status_code
@@ -96,10 +129,10 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
             ship_name = ship_name.name
         sql = """INSERT INTO public.logging(
 	event_name, event_timestamp, agent_name, ship_symbol, session_id, endpoint_name, new_credits, status_code, error_code, event_params)
-	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s);"""
+	VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s) on conflict (event_timestamp, ship_symbol) do nothing;"""
 
-        cursor = self.connection.cursor()
-        cursor.execute(
+        return try_execute_upsert(
+            connection,
             sql,
             (
                 event_name,
@@ -113,6 +146,7 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
                 json.dumps(event_params),
             ),
         )
+
         pass
 
     def update(self, update_obj: SpaceTradersResponse):
@@ -266,6 +300,12 @@ class SpaceTradersPostgresLoggerClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/extract"""
         url = _url(f"my/ships/:ship_name/extract")
         self.log_event("ship_extract", ship.name, url, response)
+        pass
+
+    def ship_refine(self, ship: "Ship", trade_symbol, response=None):
+        """/my/ships/{shipSymbol}/refine"""
+        url = _url(f"my/ships/:ship_name/refine")
+        self.log_event("ship_refine", ship.name, url, response)
         pass
 
     def ship_dock(self, ship: "Ship", response=None) -> SpaceTradersResponse:

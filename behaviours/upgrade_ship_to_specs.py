@@ -29,9 +29,15 @@ class FindModulesAndEquip(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
+        connection=None,
     ) -> None:
         super().__init__(
-            agent_name, ship_name, behaviour_params, config_file_name, session
+            agent_name,
+            ship_name,
+            behaviour_params,
+            config_file_name,
+            session,
+            connection,
         )
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
@@ -108,6 +114,9 @@ class FindModulesAndEquip(Behaviour):
         #
         # setup initial parameters and preflight checks
         #
+
+        self.end()
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
     def find_cheapest_markets_for_good(
         self, tradegood_sym: str, opportunity_cost_cps: int = 200

@@ -89,6 +89,11 @@ class SpaceTradersStubClient:
 
         pass
 
+    def ship_refine(self, ship: "Ship", trade_symbol) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/refine"""
+
+        pass
+
     def ship_dock(self, ship: "Ship"):
         """/my/ships/{shipSymbol}/dock"""
         pass

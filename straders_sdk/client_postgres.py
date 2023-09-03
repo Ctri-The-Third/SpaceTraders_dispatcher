@@ -13,6 +13,7 @@ from .models import (
     Agent,
     JumpGate,
 )
+import logging
 from .contracts import Contract
 from datetime import datetime
 from .responses import SpaceTradersResponse
@@ -45,9 +46,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         db_pass,
         current_agent_symbol,
         db_port=None,
+        connection=None,
     ) -> None:
         if not db_host or not db_name or not db_user or not db_pass:
             raise ValueError("Missing database connection information")
+        if connection:
+            self._connection = connection
         self._db_host = db_host
         self._db_name = db_name
         self._db_user = db_user
@@ -55,6 +59,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         self._db_port = db_port
         self._connection = None
         self.current_agent_symbol = current_agent_symbol
+        self.logger = logging.getLogger(__name__)
 
     @property
     def connection(self):
@@ -67,6 +72,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
                 password=self._db_pass,
             )
             self._connection.autocommit = True
+            # self.logger.warning("lost connection to DB, restoring")
         return self._connection
 
     def _headers(self) -> dict:
@@ -365,6 +371,12 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         """/my/ships/{shipSymbol}/extract"""
 
         return dummy_response(__class__.__name__, "ship_extract")
+        pass
+
+    def ship_refine(self, ship: "Ship", trade_symbol: str) -> SpaceTradersResponse:
+        """/my/ships/{shipSymbol}/refine"""
+
+        return dummy_response(__class__.__name__, "ship_refine")
         pass
 
     def ship_dock(self, ship: "Ship") -> SpaceTradersResponse:

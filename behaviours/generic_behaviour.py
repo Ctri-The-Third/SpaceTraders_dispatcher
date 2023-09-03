@@ -4,7 +4,12 @@ from time import sleep
 from straders_sdk.ship import Ship
 from straders_sdk.models import Waypoint, System, Market
 from straders_sdk.local_response import LocalSpaceTradersRespose
-from straders_sdk.utils import set_logging, try_execute_select, waypoint_slicer
+from straders_sdk.utils import (
+    set_logging,
+    try_execute_select,
+    waypoint_slicer,
+    try_execute_upsert,
+)
 import logging
 import math
 import networkx
@@ -22,14 +27,16 @@ class Behaviour:
         behaviour_params: dict = {},
         config_file_name="user.json",
         session=None,
+        connection=None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
         self.ship_name = ship_name
+        self._connection = connection
         for agent in saved_data["agents"]:
-            if agent["username"] == agent_name:
+            if agent.get("username", "") == agent_name:
                 token = agent["token"]
                 break
         if not token:
@@ -49,9 +56,9 @@ class Behaviour:
             db_pass=db_pass,
             current_agent_symbol=agent_name,
             session=session,
+            connection=connection,
         )
-        self._connection = None
-        self.graph = None
+        self._graph = None
         self.ships = None
         self.agent = None
 
@@ -61,9 +68,15 @@ class Behaviour:
             self._connection = self.st.db_client.connection
         return self._connection
 
-    def run(self):
-        self.graph = self._populate_graph()
+    @property
+    def graph(self):
+        if not self._graph:
+            maybe_graph = self._populate_graph()
+            if maybe_graph:
+                self._graph = maybe_graph
+        return self._graph
 
+    def run(self):
         self.ship = self.st.ships_view_one(self.ship_name, force=True)
         if not self.ship:
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
@@ -103,6 +116,8 @@ class Behaviour:
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
 
             self.go_and_refuel()
+        if fuel_cost > ship.fuel_capacity:
+            st.ship_patch_nav(ship, "DRIFT")
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
@@ -139,6 +154,8 @@ class Behaviour:
         st = self.st
         if cargo_to_target is None:
             cargo_to_target = []
+        if isinstance(cargo_to_target, str):
+            cargo_to_target = [cargo_to_target]
         survey = None
 
         ship = self.ship
@@ -220,9 +237,28 @@ class Behaviour:
             for i in range(0, math.ceil(cargo.units / trade_volume)):
                 resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
                 if not resp:
-                    return resp
+                    pass
+                    # try the next cargo bit
 
         return True
+
+    def find_adjacent_ships(self, waypoint_symbol: str, matching_roles: list):
+        st = self.st
+        if isinstance(matching_roles, str):
+            matching_roles = [matching_roles]
+        my_ships = st.ships_view()
+
+        matching_ships = [
+            ship for id, ship in my_ships.items() if ship.role in matching_roles
+        ]
+        valid_haulers = [
+            ship
+            for ship in matching_ships
+            if ship.nav.waypoint_symbol == waypoint_symbol
+        ]
+        if len(valid_haulers) > 0:
+            return valid_haulers
+        return []
 
     def jettison_all_cargo(self, exceptions: list = []):
         ship = self.ship
@@ -264,6 +300,22 @@ class Behaviour:
         return self.st.contracts_deliver(
             tar_contract, self.ship, cargo.symbol, cargo_to_deliver
         )
+
+    def find_best_market_systems(self, trade_symbol: str) -> list[(str, System, int)]:
+        "returns market_waypoint, system obj, price as int"
+        sql = """select sell_price, w.waypoint_symbol, s.system_symbol, s.sector_Symbol, s.type, s.x,s.y from market_tradegood_listings mtl 
+join waypoints w on mtl.market_symbol = w.waypoint_Symbol
+join systems s on w.system_symbol = s.system_symbol
+where mtl.trade_symbol = %s
+order by 1 desc """
+        results = try_execute_select(self.connection, sql, (trade_symbol,))
+        return_obj = []
+        for row in results or []:
+            sys = System(row[2], row[3], row[4], row[5], row[6], [])
+            price = row[0]
+            waypoint_symbol = row[1]
+            return_obj.append((waypoint_symbol, sys, price))
+        return return_obj
 
     def buy_cargo(self, cargo_symbol: str, quantity: int):
         # check the waypoint we're at has a market
@@ -324,6 +376,7 @@ class Behaviour:
         st = self.st
         ship = self.ship
         current_system_sym = self.ship.nav.system_symbol
+        flight_mode = "CRUISE" if ship.fuel_capacity > 0 else "BURN"
         # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
         # QUESTION
         st.waypoints_view(current_system_sym, True)
@@ -343,7 +396,7 @@ class Behaviour:
         for wayp_sym in path:
             waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
 
-            self.ship_intrasolar(wayp_sym)
+            self.ship_intrasolar(wayp_sym, flight_mode=flight_mode)
 
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             if "MARKETPLACE" in trait_symbols:
@@ -469,13 +522,27 @@ class Behaviour:
             current = next_system
         return path
 
+    def end(self):
+        if "task_hash" in self.behaviour_params:
+            sql = """update ship_tasks set completed = true where task_hash = %s"""
+            try_execute_upsert(
+                sql, self.connection, (self.behaviour_params["task_hash"],)
+            )
+        self.st.db_client.connection.close()
+        self.st.logging_client.connection.close()
+
     def astar(
-        self, graph: networkx.Graph, start: Waypoint or System, goal: Waypoint or System
+        self,
+        graph: networkx.Graph,
+        start: Waypoint or System,
+        goal: Waypoint or System,
+        bypass_check: bool = False,
     ):
-        if start not in graph.nodes:
-            return None
-        if goal not in graph.nodes:
-            return None
+        if not bypass_check:
+            if start not in graph.nodes:
+                return None
+            if goal not in graph.nodes:
+                return None
         # freely admit used chatgpt to get started here.
 
         # Priority queue to store nodes based on f-score (priority = f-score)
@@ -544,9 +611,11 @@ class Behaviour:
 
     def _populate_graph(self):
         graph = networkx.Graph()
-        sql = """select s.system_symbol, s.sector_symbol, s.type, s.x, s.y from jump_gates jg 
-join waypoints w on jg.waypoint_symbol = w.waypoint_symbol
-join systems s on w.system_symbol = s.system_symbol"""
+        sql = """
+            select s_system_symbol, sector_symbol, type, x ,y 
+            from jumpgate_connections jc 
+            join systems s on jc.s_system_symbol = s.system_symbol
+            """
 
         # the graph should be populated with Systems and Connections.
         # but note that the connections themselves need to by systems.
@@ -555,6 +624,7 @@ join systems s on w.system_symbol = s.system_symbol"""
         #    syst = System(row[0], row[1], row[2], row[3], row[4], [])
 
         results = try_execute_select(self.connection, sql, ())
+
         if results:
             nodes = {
                 row[0]: System(row[0], row[1], row[2], row[3], row[4], [])
@@ -564,11 +634,12 @@ join systems s on w.system_symbol = s.system_symbol"""
 
         else:
             return graph
-        sql = """select w1.system_symbol, jc.d_waypoint_symbol from jumpgate_connections jc
-                join waypoints w1 on jc.s_waypoint_symbol = w1.waypoint_symbol
+        sql = """select s_system_symbol, d_system_symbol from jumpgate_connections 
                 """
         results = try_execute_select(self.connection, sql, ())
         connections = []
+        if not results:
+            return graph
         for row in results:
             try:
                 connections.append((nodes[row[0]], nodes[row[1]]))

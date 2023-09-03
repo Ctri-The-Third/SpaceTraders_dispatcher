@@ -24,9 +24,15 @@ class ExtractAndTransferOrSell_4(Behaviour):
         behaviour_params: dict = {},
         config_file_name="user.json",
         session=None,
+        connection=None,
     ) -> None:
         super().__init__(
-            agent_name, ship_name, behaviour_params, config_file_name, session
+            agent_name,
+            ship_name,
+            behaviour_params,
+            config_file_name,
+            session,
+            connection,
         )
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
 
@@ -56,7 +62,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
                 target_wp = st.find_waypoints_by_type(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 )
-                if target_wp_sym:
+                if target_wp:
                     target_wp_sym = target_wp[0].symbol
             if not target_wp_sym:
                 raise AttributeError(
@@ -76,6 +82,9 @@ class ExtractAndTransferOrSell_4(Behaviour):
         #
 
         cargo_to_transfer = self.behaviour_params.get("cargo_to_transfer", [])
+        if isinstance(cargo_to_transfer, str):
+            cargo_to_transfer = [cargo_to_transfer]
+
         if cargo_to_transfer == []:
             contracts = st.view_my_contracts()
             if contracts:
@@ -97,16 +106,22 @@ class ExtractAndTransferOrSell_4(Behaviour):
         valid_agents = self.behaviour_params.get(
             "valid_agents", [agent.symbol]
         )  # which agents do we transfer quest cargo to?
-
+        refiners = self.find_refiners(ship.nav.waypoint_symbol)
         haulers = self.find_haulers(ship.nav.waypoint_symbol)
-        for hauler in haulers:
-            hauler: Ship
-            hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
+        for cargo in ship.cargo_inventory:
+            if cargo.symbol in cargo_to_transfer:
+                for hauler in refiners + haulers:
+                    hauler: Ship
+                    hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
 
-            for cargo in ship.cargo_inventory:
-                if cargo.symbol in cargo_to_transfer:
+                    qty_to_transfer = min(
+                        hauler.cargo_capacity - hauler.cargo_units_used, cargo.units
+                    )
                     resp = st.ship_transfer_cargo(
-                        ship, cargo.symbol, min(cargo.units, hauler_space), hauler.name
+                        ship,
+                        cargo.symbol,
+                        min(qty_to_transfer, hauler_space),
+                        hauler.name,
                     )
                     if not resp:
                         st.ships_view_one(hauler.name, True)
@@ -130,6 +145,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         # end of script.
         #
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        self.end()
         self.logger.info(
             "Completed. Credits: %s, change = %s",
             agent.credits,
@@ -137,29 +153,21 @@ class ExtractAndTransferOrSell_4(Behaviour):
         )
 
     def find_haulers(self, waypoint_symbol):
-        st = self.st
+        haulers = self.find_adjacent_ships(waypoint_symbol, ["HAULER"])
+        if len(haulers) == 0:
+            haulers = self.find_adjacent_ships(waypoint_symbol, ["COMMAND"])
+        return [hauler for hauler in haulers if hauler.cargo_space_remaining > 0]
 
-        my_ships = st.ships_view()
-
-        haulers = [
-            ship for id, ship in my_ships.items() if ship.role in ["HAULER", "COMMAND"]
-        ]
-        valid_haulers = [
-            ship
-            for ship in haulers
-            if ship.cargo_capacity - ship.cargo_units_used > 0
-            and ship.nav.waypoint_symbol == waypoint_symbol
-        ]
-        if len(valid_haulers) > 0:
-            return valid_haulers
-        return []
+    def find_refiners(self, waypoint_symbol):
+        return self.find_adjacent_ships(waypoint_symbol, ["REFINERY"])
 
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-U7-"
-    ship_suffix = "17"
-    params = {"asteroid_wp": "X1-JX88-51095C"}
+    agent_symbol = "CTRI-U-"
+    ship_suffix = "29"
+    params = {"cargo_to_transfer": "IRON_ORE"}
+    # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params
     ).run()

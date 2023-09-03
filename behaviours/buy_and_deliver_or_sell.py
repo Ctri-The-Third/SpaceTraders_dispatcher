@@ -33,8 +33,17 @@ class BuyAndDeliverOrSell_6(Behaviour):
         ship_name,
         behaviour_params: dict = ...,
         config_file_name="user.json",
+        session=None,
+        connection=None,
     ) -> None:
-        super().__init__(agent_name, ship_name, behaviour_params, config_file_name)
+        super().__init__(
+            agent_name,
+            ship_name,
+            behaviour_params,
+            config_file_name,
+            session,
+            connection,
+        )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
     def run(self):
@@ -138,6 +147,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+        self.end()
+
         time.sleep(SAFETY_PADDING)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
@@ -195,7 +206,7 @@ order by purchase_price asc """
             math.floor(self.agent.credits / target_price),
         )
         # do this X times where X is the amount to buy divided by the trade volume
-        for i in range(math.floor(amount / trade_volume)):
+        for i in range(math.ceil(amount / trade_volume)):
             resp = st.ship_purchase_cargo(ship, target_tradegood, trade_volume)
 
             if not resp:
@@ -207,7 +218,7 @@ order by purchase_price asc """
                     st.system_market(target_waypoint, True)
 
                 self.logger.warning(
-                    "Couldn't buy any %s, are we full? Is our market data out of date? I've done a refresh.  Manual intervention maybe required."
+                    "Couldn't buy any %s, are we full? Is our market data out of date? Did we have enough money? I've done a refresh.  Manual intervention maybe required."
                 )
                 time.sleep(SAFETY_PADDING)
                 return
@@ -228,6 +239,8 @@ order by purchase_price asc """
         # sell
         self.st.ship_dock(self.ship)
         resp = self.fulfill_any_relevant()
+        if resp:
+            time.sleep(SAFETY_PADDING * 2)  # long sleep to avoid conductor changes
         return resp
         pass
 
@@ -235,16 +248,16 @@ order by purchase_price asc """
 if __name__ == "__main__":
     from dispatcherWK7 import lock_ship
 
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "E"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "D"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndDeliverOrSell_6(
         agent,
         ship,
         behaviour_params={
-            "quantity": 1300,
-            "fulfil_wp": "X1-JX88-42150B",
-            "tradegood": "MACHINERY",
+            "quantity": 9,
+            "fulfil_wp": "X1-QB20-99657C",
+            "tradegood": "MODULE_CREW_QUARTERS_I",
         },
     )
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection)

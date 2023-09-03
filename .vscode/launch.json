@@ -12,7 +12,7 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK7.py",
+            "program": "conductorWK8.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -20,22 +20,22 @@
             "name": "dispatcher -L",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK5.py",
+            "program": "dispatcherWK7.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-L8-"
+                "CTRI-L-"
             ]
         },
         {
             "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK7.py",
+            "program": "dispatcherWK8.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "CTRI-U7-"
+                "CTRI-U-"
             ]
         },
         {
