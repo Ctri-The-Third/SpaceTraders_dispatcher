@@ -14,35 +14,36 @@ conn = psycopg2.connect(
     user=user["db_user"],
     password=user["db_pass"],
 )
-conn.autocommit=True
+conn.autocommit = True
 cur = conn.cursor()
-sql = """
+sqls = [
+    "delete from agents;",
+    "delete from contract_tradegoods;",
+    "delete from contracts;",
+    "delete from jump_gates;",
+    "delete from jumpgate_connections;",
+    "delete from logging;",
+    "delete from market_tradegood;",
+    "delete from market_tradegood_listings;",
+    "delete from ship_behaviours;",
+    "delete from ship_cooldowns;",
+    "delete from ship_frame_links;",
+    "delete from ship_frames;",
+    "delete from ship_mount_links;",
+    "delete from ship_mounts;",
+    "delete from ship_nav;",
+    "delete from ship_tasks;",
+    "delete from ships;",
+    "delete from shipyard_types;",
+    "delete from survey_deposits;",
+    "delete from surveys;",
+    "delete from systems;",
+    "delete from transactions;",
+    "delete from waypoint_Charts;",
+    "delete from waypoint_Traits;",
+    "delete from waypoints;",
+]
 
-delete from agents;
-delete from contract_tradegoods;
-delete from contracts;
-delete from jump_gates;
-delete from jumpgate_connections;
-delete from logging;
-delete from market_tradegood;
-delete from market_tradegood_listings;
-delete from ship_behaviours;
-delete from ship_cooldowns;
-delete from ship_frame_links;
-delete from ship_frames;
-delete from ship_mount_links;
-delete from ship_mounts;
-delete from ship_nav;
-delete from ship_tasks;
-delete from ships;
-delete from shipyard_types;
-delete from survey_deposits;
-delete from surveys;
-delete from systems;
-delete from transactions;
-delete from waypoint_Charts;
-delete from waypoint_Traits;
-delete from waypoints;
-"""
-result = cur.execute(sql)
-print(result)
+for sql in sqls:
+    result = cur.execute(sql)
+    print(f"{sql} - {result}")
