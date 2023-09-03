@@ -303,7 +303,6 @@ class dispatcher:
                     for requirement in task["requirements"]:
                         if requirement == "DRONE" and ship.frame.symbol not in [
                             "FRAME_DRONE",
-                            "FRAME_PROBE",
                         ]:
                             valid_for_ship = False
                             break
