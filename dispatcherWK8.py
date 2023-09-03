@@ -40,6 +40,10 @@ from behaviours.receive_and_refine import (
     ReceiveAndRefine,
     BEHAVIOUR_NAME as BHVR_RECEIVE_AND_REFINE,
 )
+from behaviours.extract_and_deliver import (
+    ExtractAndFulfill_7,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_FULFILL,
+)
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 from datetime import datetime, timedelta
@@ -399,6 +403,14 @@ class dispatcher:
             )
         elif id == BHVR_RECEIVE_AND_REFINE:
             bhvr = ReceiveAndRefine(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
+        elif id == BHVR_EXTRACT_AND_FULFILL:
+            bhvr = ExtractAndFulfill_7(
                 aname,
                 sname,
                 bhvr_params,
