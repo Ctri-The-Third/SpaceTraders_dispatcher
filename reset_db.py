@@ -6,24 +6,25 @@ if confirm != "yes":
     exit()
 
 
-user = json.load(open("db.json", "r"))
+user = json.load(open("user.json", "r"))
 conn = psycopg2.connect(
     host=user["db_host"],
     port=user["db_port"],
     database=user["db_name"],
     user=user["db_user"],
-    password=user["db_password"],
+    password=user["db_pass"],
 )
+conn.autocommit=True
 cur = conn.cursor()
 sql = """
 
 delete from agents;
-delete from contract_tradegoods
-delete from contracts
-delete from jump_gates
-delete from jumpgate_connections
---delete from logging
-delete from market_tradegood
+delete from contract_tradegoods;
+delete from contracts;
+delete from jump_gates;
+delete from jumpgate_connections;
+delete from logging;
+delete from market_tradegood;
 delete from market_tradegood_listings;
 delete from ship_behaviours;
 delete from ship_cooldowns;
