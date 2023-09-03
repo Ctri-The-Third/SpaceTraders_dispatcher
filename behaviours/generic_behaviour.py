@@ -176,7 +176,9 @@ class Behaviour:
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
                 return
-            if not resp:
+
+            # 4224 means exhausted survey - we can just try again and don't need to sleep.
+            if not resp and resp.error_code != 4224:
                 sleep(30)
                 return
 
