@@ -95,7 +95,8 @@ class Behaviour:
         st = self.st
         ship = self.ship
 
-        if ship.nav.system_symbol != waypoint_slicer(target_wp_symbol):
+        target_sys_symbol = waypoint_slicer(target_wp_symbol)
+        if ship.nav.system_symbol != target_sys_symbol:
             return LocalSpaceTradersRespose(
                 error="Ship is not in the same system as the target waypoint",
                 status_code=0,
@@ -105,7 +106,7 @@ class Behaviour:
 
         if ship.nav.flight_mode != flight_mode:
             st.ship_patch_nav(ship, flight_mode)
-        wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
+        wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
 
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
         if (
@@ -114,7 +115,6 @@ class Behaviour:
             and ship.fuel_capacity > 0
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
-
             self.go_and_refuel()
         if fuel_cost > ship.fuel_capacity:
             st.ship_patch_nav(ship, "DRIFT")
@@ -173,13 +173,16 @@ class Behaviour:
                 survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
             self.sleep_until_ready()
+
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
                 return ship
 
             # 4224/4221 means exhausted survey - we can just try again and don't need to sleep.
             # 4000 means the ship is on cooldown (shouldn't happen, but safe to repeat attempt)
-            if not resp and resp.error_code not in [4224, 4221, 4000]:
+            if not resp and resp.error_code in [4228]:
+                return False
+            elif not resp and resp.error_code not in [4224, 4221, 4000]:
                 sleep(30)
                 return False
 
@@ -283,7 +286,11 @@ class Behaviour:
                 for deliverable in contract.deliverables:
                     if deliverable.units_fulfilled < deliverable.units_required:
                         items.append(deliverable)
+        if len(items) == 0:
+            return False
 
+        if self.ship.nav.status != "DOCKED":
+            self.st.ship_dock(self.ship)
         for cargo in self.ship.cargo_inventory:
             matching_items = [item for item in items if item.symbol == cargo.symbol]
         if not matching_items:

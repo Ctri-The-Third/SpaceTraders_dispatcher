@@ -42,6 +42,8 @@ class ExtractAndFulfill_7(Behaviour):
 
         st = self.st
         self.ship = ship = st.ships_view_one(self.ship_name, True)
+        self.st.ship_cooldown(ship)
+
         agent = st.view_my_self()
 
         #
@@ -95,7 +97,9 @@ class ExtractAndFulfill_7(Behaviour):
 
         if ship.can_survey:
             st.ship_survey(ship)
+
         self.extract_till_full(cargo_to_transfer)
+        self.ship = st.ships_view_one(self.ship_name)
         self.sell_all_cargo(cargo_to_transfer)
 
         #
