@@ -101,7 +101,7 @@ class ExtractAndFulfill_7(Behaviour):
         #
         # check remaining cargo after selling spillover
         #
-        if ship.cargo_units_used > ship.cargo_capacity - 10:
+        if ship.cargo_units_used > 0:
             self.ship_extrasolar(fulfil_sys)
             self.ship_intrasolar(fulfil_wp.symbol)
             self.fulfil_any_relevant()
