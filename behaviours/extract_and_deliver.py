@@ -72,6 +72,7 @@ class ExtractAndFulfill_7(Behaviour):
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
                 )
             target_sys_sym = waypoint_slicer(target_wp_sym)
+            target_sys = st.systems_view_one(target_sys_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
@@ -99,6 +100,8 @@ class ExtractAndFulfill_7(Behaviour):
             st.ship_survey(ship)
 
         self.extract_till_full(cargo_to_transfer)
+
+        # refresh the ship from the DB - ship likely has received lots of cargo from other ships
         self.ship = st.ships_view_one(self.ship_name)
         self.sell_all_cargo(cargo_to_transfer)
 
@@ -106,11 +109,18 @@ class ExtractAndFulfill_7(Behaviour):
         # check remaining cargo after selling spillover
         #
         if ship.cargo_units_used > 0:
-            self.ship_extrasolar(fulfil_sys)
-            self.ship_intrasolar(fulfil_wp.symbol)
-            self.fulfil_any_relevant()
-            self.sell_all_cargo()
-        #
+            if fulfil_sys:
+                self.ship_extrasolar(fulfil_sys)
+                self.ship_intrasolar(fulfil_wp.symbol)
+                self.fulfil_any_relevant()
+                self.sell_all_cargo()
+            #
+            else:
+                self.logger.warning(
+                    "no fulfillment system - behaviour params = %s",
+                    self.behaviour_params,
+                )
+
         # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
         #
         if ship.cargo_units_used == ship.cargo_capacity:
