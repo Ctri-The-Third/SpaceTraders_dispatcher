@@ -76,12 +76,12 @@ class ExtractAndFulfill_7(Behaviour):
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
-        fulfill_wp = None
-        fulfill_sys = None
-        fulfill_wp_s = self.behaviour_params.get("fulfill_wp", None)
-        if fulfill_wp_s:
-            fulfill_wp = st.waypoints_view_one(target_sys_sym, fulfill_wp_s)
-            fulfill_sys = st.systems_view_one(waypoint_slicer(fulfill_wp.symbol))
+        fulfil_wp = None
+        fulfil_sys = None
+        fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
+        if fulfil_wp_s:
+            fulfil_wp = st.waypoints_view_one(target_sys_sym, fulfil_wp_s)
+            fulfil_sys = st.systems_view_one(waypoint_slicer(fulfil_wp.symbol))
 
         self.ship_extrasolar(st.systems_view_one(target_sys_sym))
         self.ship_intrasolar(target_wp_sym)
@@ -99,12 +99,12 @@ class ExtractAndFulfill_7(Behaviour):
         self.sell_all_cargo(cargo_to_transfer)
 
         #
-        # -
+        # check remaining cargo after selling spillover
         #
         if ship.cargo_units_used > ship.cargo_capacity - 10:
-            self.ship_extrasolar(fulfill_sys)
-            self.ship_intrasolar(fulfill_wp.symbol)
-            self.fulfill_any_relevant()
+            self.ship_extrasolar(fulfil_sys)
+            self.ship_intrasolar(fulfil_wp.symbol)
+            self.fulfil_any_relevant()
             self.sell_all_cargo()
         #
         # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     params = {
         "asteroid_wp": "X1-JC68-59415D",
         "cargo_to_transfer": "COPPER_ORE",
-        "fulfill_wp": "X1-JC68-17182Z",
+        "fulfil_wp": "X1-JC68-17182Z",
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndFulfill_7(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()

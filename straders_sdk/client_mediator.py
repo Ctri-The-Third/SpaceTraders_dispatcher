@@ -298,6 +298,8 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead, then do self.update(ship)
             if "cooldown" in json_data:
                 pass  # this belongs to a ship, can't exist by itself. Call ship.update(json_data) instead
+            # if "transaction" in json_data:
+            #    self.logging_client.update(json_data)
         if isinstance(json_data, Survey):
             self.surveys[json_data.signature] = json_data
             self.db_client.update(json_data)

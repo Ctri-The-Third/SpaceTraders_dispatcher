@@ -271,7 +271,7 @@ class Behaviour:
                 return resp
         return True
 
-    def fulfill_any_relevant(self, excpetions: list = []):
+    def fulfil_any_relevant(self, excpetions: list = []):
         contracts = self.st.view_my_contracts()
 
         items = []

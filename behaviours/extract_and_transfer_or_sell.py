@@ -105,9 +105,6 @@ class ExtractAndTransferOrSell_4(Behaviour):
         # find a hauler from any of the matching agents.
         #
 
-        valid_agents = self.behaviour_params.get(
-            "valid_agents", [agent.symbol]
-        )  # which agents do we transfer quest cargo to?
         refiners = self.find_refiners(ship.nav.waypoint_symbol)
         haulers = self.find_haulers(ship.nav.waypoint_symbol)
         for cargo in ship.cargo_inventory:

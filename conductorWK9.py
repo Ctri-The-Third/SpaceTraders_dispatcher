@@ -314,7 +314,9 @@ def stage_3(client: SpaceTraders):
             extractor_params["cargo_to_transfer"] = cargo_to_transfer
 
             if fulfil_wp:
-                hauler_params["fulfil_wp"] = fulfil_wp
+                hauler_params["fulfill_wp"] = fulfil_wp
+                # only the commander _might_ be running "extract and fulfill", this only gets consumed there.
+                extractor_params["fulfill_wp"] = fulfil_wp
 
     if asteroid_wp:
         extractor_params["asteroid_wp"] = asteroid_wp.symbol
@@ -338,7 +340,7 @@ def stage_3(client: SpaceTraders):
     for commander in commanders:
         # if there's no hauler, do that.
         if len(haulers) == 0:
-            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+            set_behaviour(commander.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
         else:
             # do the refresh behaviour
             set_behaviour(
