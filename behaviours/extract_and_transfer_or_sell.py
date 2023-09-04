@@ -40,7 +40,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         super().run()
 
         starting_credts = self.st.view_my_self().credits
-        ship = self.st.ships_view_one(self.ship_name, True)
+        self.ship = ship = self.st.ships_view_one(self.ship_name, True)
         self.st.ship_cooldown(ship)
         st = self.st
         agent = st.view_my_self()
@@ -164,7 +164,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "1"
+    ship_suffix = "5"
     params = {
         "fulfil_wp": "X1-JC68-17182Z",
         "asteroid_wp": "X1-JC68-59415D",
