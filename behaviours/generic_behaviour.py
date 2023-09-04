@@ -138,7 +138,7 @@ class Behaviour:
             return resp
         return True
 
-    def extract_till_full(self, cargo_to_target: list = None):
+    def extract_till_full(self, cargo_to_target: list = None) -> Ship or bool:
         # need to validate that the ship'  s current WP is a valid location
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
@@ -175,12 +175,13 @@ class Behaviour:
             self.sleep_until_ready()
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
-                return
+                return ship
 
             # 4224/4221 means exhausted survey - we can just try again and don't need to sleep.
-            if not resp and resp.error_code not in [4224, 4221]:
+            # 4000 means the ship is on cooldown (shouldn't happen, but safe to repeat attempt)
+            if not resp and resp.error_code not in [4224, 4221, 4000]:
                 sleep(30)
-                return
+                return False
 
     def go_and_refuel(self):
         ship = self.ship

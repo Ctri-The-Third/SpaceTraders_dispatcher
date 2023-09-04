@@ -755,7 +755,7 @@ class SpaceTradersMediatorClient(SpaceTradersClient):
         self.logging_client.ship_extract(ship, survey, resp)
         if resp.data is not None:
             ship.update(resp.data)
-            self.db_client.update(ship)
+            self.update(ship)
         if not resp:
             if resp.error_code in [4224, 4221, 4220]:
                 self.surveys_remove_one(survey.signature)
