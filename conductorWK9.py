@@ -290,7 +290,7 @@ def stage_3(client: SpaceTraders):
                 if deliverable.units_fulfilled < deliverable.units_required:
                     fulfil_wp = deliverable.destination_symbol
                     cargo_to_transfer.append(deliverable.symbol)
-                    if "ORE" not in cargo_to_transfer:
+                    if "ORE" not in deliverable.symbol:
                         contract_type = "DELIVERY"
 
     if contract_type == "DELIVERY":
@@ -371,11 +371,6 @@ def stage_3(client: SpaceTraders):
         else:
             ship = maybe_buy_ship_hq_sys(
                 client, what_ship_should_i_buy(client, "SHIP_MINING_DRONE")
-            )
-
-        if ship:
-            set_behaviour(
-                ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
             )
 
     return 3
