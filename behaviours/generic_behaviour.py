@@ -66,6 +66,7 @@ class Behaviour:
     def connection(self):
         if not self._connection or self._connection.closed > 0:
             self._connection = self.st.db_client.connection
+        self.logger.debug("connection socket: %s", self._connection.info.socket)
         return self._connection
 
     @property
@@ -163,6 +164,9 @@ class Behaviour:
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         while ship.cargo_units_used < ship.cargo_capacity:
+            # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
+            self.sleep_until_ready()
+
             if len(cargo_to_target) > 0:
                 survey = (
                     st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
@@ -171,8 +175,6 @@ class Behaviour:
                 )
             else:
                 survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
-
-            self.sleep_until_ready()
 
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
