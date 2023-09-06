@@ -167,7 +167,7 @@ class dispatcher:
                         api_logger = logging.getLogger("API-Client")
                         api_logger.setLevel(logging.WARNING)
                         self.logger.level = logging.WARNING
-                        logging.getLogger().setLevel(logging.WARNING)
+                        logging.getLogger().setLevel(logging.INFO)
                         pass
                     # if we're running a ship and the lock has expired during execution, what do we do?
                     # do we relock the ship whilst we're running it, or terminate the thread
