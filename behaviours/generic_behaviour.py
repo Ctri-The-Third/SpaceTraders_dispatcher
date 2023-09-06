@@ -537,8 +537,8 @@ order by 1 desc """
             try_execute_upsert(
                 sql, self.connection, (self.behaviour_params["task_hash"],)
             )
-        self.st.db_client.connection.close()
-        self.st.logging_client.connection.close()
+        # self.st.db_client.connection.close()
+        # self.st.logging_client.connection.close()
 
     def astar(
         self,
