@@ -124,10 +124,10 @@ class ExtractAndTransferOrSell_4(Behaviour):
                     )
                     if not resp:
                         st.ships_view_one(hauler.name, True)
-                        self.logger.warning(
+                        self.logger.debug(
                             "Failed to transfer cargo to hauler %s %s",
                             hauler.name,
-                            resp.error,
+                            resp.error_code,
                         )
                     if resp:
                         break
