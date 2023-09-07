@@ -40,10 +40,9 @@ from behaviours.receive_and_refine import (
     ReceiveAndRefine,
     BEHAVIOUR_NAME as BHVR_RECEIVE_AND_REFINE,
 )
-
 from behaviours.extract_and_deliver import (
     ExtractAndFulfill_7,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_DELIVER,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_FULFILL,
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -168,7 +167,7 @@ class dispatcher:
                         api_logger = logging.getLogger("API-Client")
                         api_logger.setLevel(logging.WARNING)
                         self.logger.level = logging.WARNING
-                        logging.getLogger().setLevel(logging.WARNING)
+                        logging.getLogger().setLevel(logging.INFO)
                         pass
                     # if we're running a ship and the lock has expired during execution, what do we do?
                     # do we relock the ship whilst we're running it, or terminate the thread
@@ -412,6 +411,14 @@ class dispatcher:
             )
         elif id == BHVR_RECEIVE_AND_REFINE:
             bhvr = ReceiveAndRefine(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
+        elif id == BHVR_EXTRACT_AND_FULFILL:
+            bhvr = ExtractAndFulfill_7(
                 aname,
                 sname,
                 bhvr_params,

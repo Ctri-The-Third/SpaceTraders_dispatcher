@@ -59,6 +59,7 @@ def _upsert_ship(connection, ship: Ship, owner: Agent = None):
         return resp
 
     resp = _upsert_ship_cooldown(connection, ship)
+    return resp
 
 
 def _upsert_ship_nav(connection, ship: Ship):

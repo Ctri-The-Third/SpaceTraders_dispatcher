@@ -7,10 +7,10 @@ from straders_sdk.ship import ShipInventory, Ship
 import time
 from straders_sdk.utils import set_logging, waypoint_slicer
 
-BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL_4"
+BEHAVIOUR_NAME = "EXTRACT_AND_FULFILL_7"
 
 
-class ExtractAndTransferOrSell_4(Behaviour):
+class ExtractAndFulfill_7(Behaviour):
     """Expects the following behaviour_params
 
     Optional:
@@ -38,11 +38,12 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
     def run(self):
         super().run()
-
         starting_credts = self.st.view_my_self().credits
-        self.ship = ship = self.st.ships_view_one(self.ship_name, True)
-        self.st.ship_cooldown(ship)
+
         st = self.st
+        self.ship = ship = st.ships_view_one(self.ship_name, True)
+        self.st.ship_cooldown(ship)
+
         agent = st.view_my_self()
 
         #
@@ -71,11 +72,19 @@ class ExtractAndTransferOrSell_4(Behaviour):
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
                 )
             target_sys_sym = waypoint_slicer(target_wp_sym)
+            target_sys = st.systems_view_one(target_sys_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
             st.waypoints_view(ship.nav.system_symbol, True)
             return
+
+        fulfil_wp = None
+        fulfil_sys = None
+        fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
+        if fulfil_wp_s:
+            fulfil_wp = st.waypoints_view_one(target_sys_sym, fulfil_wp_s)
+            fulfil_sys = st.systems_view_one(waypoint_slicer(fulfil_wp.symbol))
 
         self.ship_extrasolar(st.systems_view_one(target_sys_sym))
         self.ship_intrasolar(target_wp_sym)
@@ -87,55 +96,33 @@ class ExtractAndTransferOrSell_4(Behaviour):
         if isinstance(cargo_to_transfer, str):
             cargo_to_transfer = [cargo_to_transfer]
 
-        if cargo_to_transfer == []:
-            contracts = st.view_my_contracts()
-            if contracts:
-                for contract_id, contract in contracts.items():
-                    if (not contract.accepted) or contract.fulfilled:
-                        continue
-                    for deliverable in contract.deliverables:
-                        if deliverable.units_fulfilled < deliverable.units_required:
-                            cargo_to_transfer.append(deliverable.symbol)
-
         if ship.can_survey:
             st.ship_survey(ship)
+
         self.extract_till_full(cargo_to_transfer)
 
-        #
-        # find a hauler from any of the matching agents.
-        #
-
-        refiners = self.find_refiners(ship.nav.waypoint_symbol)
-        haulers = self.find_haulers(ship.nav.waypoint_symbol)
-        for cargo in ship.cargo_inventory:
-            if cargo.symbol in cargo_to_transfer:
-                for hauler in refiners + haulers:
-                    hauler: Ship
-                    hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
-
-                    qty_to_transfer = min(
-                        hauler.cargo_capacity - hauler.cargo_units_used, cargo.units
-                    )
-                    resp = st.ship_transfer_cargo(
-                        ship,
-                        cargo.symbol,
-                        min(qty_to_transfer, hauler_space),
-                        hauler.name,
-                    )
-                    if not resp:
-                        st.ships_view_one(hauler.name, True)
-                        self.logger.debug(
-                            "Failed to transfer cargo to hauler %s %s",
-                            hauler.name,
-                            resp.error_code,
-                        )
-                    if resp:
-                        break
+        # refresh the ship from the DB - ship likely has received lots of cargo from other ships
+        self.ship = st.ships_view_one(self.ship_name)
+        self.sell_all_cargo(cargo_to_transfer)
 
         #
+        # check remaining cargo after selling spillover
+        #
+        if ship.cargo_units_used > 0:
+            if fulfil_sys:
+                self.ship_extrasolar(fulfil_sys)
+                self.ship_intrasolar(fulfil_wp.symbol)
+                self.fulfil_any_relevant()
+                self.sell_all_cargo()
+            #
+            else:
+                self.logger.warning(
+                    "no fulfillment system - behaviour params = %s",
+                    self.behaviour_params,
+                )
+
         # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
         #
-        self.sell_all_cargo()
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
             time.sleep(300)
@@ -164,13 +151,11 @@ class ExtractAndTransferOrSell_4(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "5"
+    ship_suffix = "1"
     params = {
-        "fulfil_wp": "X1-JC68-17182Z",
         "asteroid_wp": "X1-JC68-59415D",
-        "cargo_to_transfer": ["COPPER_ORE"],
+        "cargo_to_transfer": "COPPER_ORE",
+        "fulfil_wp": "X1-JC68-17182Z",
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
-    ExtractAndTransferOrSell_4(
-        agent_symbol, f"{agent_symbol}-{ship_suffix}", params
-    ).run()
+    ExtractAndFulfill_7(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()

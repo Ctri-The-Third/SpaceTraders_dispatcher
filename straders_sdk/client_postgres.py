@@ -57,7 +57,7 @@ class SpaceTradersPostgresClient(SpaceTradersClient):
         self._db_user = db_user
         self._db_pass = db_pass
         self._db_port = db_port
-        self._connection = None
+        self._connection = connection
         self.current_agent_symbol = current_agent_symbol
         self.logger = logging.getLogger(__name__)
 

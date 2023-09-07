@@ -139,14 +139,14 @@ link_pieces = """<table><tr>
 
 def scan_progress():
     sql = """ 
-            select  * from waypoints_not_scanned_progress 
+            select *, 1 from waypoints_not_scanned_progress 
             union
-            select * from jumpgates_scanned_progress
+            select *, 2 from jumpgates_scanned_progress
             union 
-            select * from mkt_shpyrds_waypoints_scanned_progress
+            select *, 3 from mkt_shpyrds_waypoints_scanned_progress
             union
-            select * from  mkt_shpyrds_systems_visit_progress
-            
+            select *, 4 from  mkt_shpyrds_systems_visit_progress
+            order by 5
             """
     rows = try_execute_select(connection, sql, ())
     output = """| Search | Scanned | Total | Progress |
