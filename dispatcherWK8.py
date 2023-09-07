@@ -401,7 +401,7 @@ class dispatcher:
                 session=self.session,
                 connection=self.connection,
             )
-        elif id == BHVR_EXTRACT_AND_DELIVER:
+        elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
                 aname,
                 sname,

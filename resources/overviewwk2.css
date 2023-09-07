@@ -1,8 +1,0 @@
-shipWidget {
-    height: 1;
-    width: 32;
-}
-
-ScrollableContainer {
-    layout: grid;
-}
