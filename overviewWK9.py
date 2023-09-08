@@ -9,8 +9,9 @@ import psycopg2
 from time import sleep
 import json
 from straders_sdk.utils import try_execute_select
-from flask import Flask
-
+from flask import Flask, request
+import math
+from datetime import datetime
 
 config_file_name = "user.json"
 saved_data = json.load(open(config_file_name, "r+"))
@@ -176,8 +177,65 @@ def commander_overview():
     return response
 
 
-def ship_overview():
-    sql = """select ship_symbol
+def ship_overview(ship_id):
+    sql = """select agent_name, ship_symbol
+, ship_role
+, frame_symbol
+, waypoint_symbol
+, cargo_in_use
+, cargo_capacity
+, behaviour_id
+, last_updated 
+, cooldown_nav
+from ship_overview
+where ship_symbol = %s
+order by agent_name, ship_role, frame_symbol, ship_symbol
+
+    """
+    rows = try_execute_select(connection, sql, (ship_id,))
+
+    output_str = f"""
+
+## Ship {ship_id} 
+
+* {map_frame(rows[0][3])} {rows[0][3]} 
+
+* {map_role(rows[0][2])} {rows[0][2]} 
+
+* Cargo: {map_cargo_percents(rows[0][5],rows[0][6])} {rows[0][5]} / {rows[0][6]}
+
+* Waypoint: {rows[0][4]} 
+
+* Behaviour_id: {rows[0][7]} 
+
+## logs 
+"""
+
+    sql = """select
+ date_trunc('second', event_timestamp) as event_timestamp
+, event_name
+, event_params from logging 
+where ship_symbol = %s
+and event_timestamp >= now() at time zone 'utc' - interval '1 day'
+order by event_timestamp desc"""
+    rows = try_execute_select(connection, sql, (ship_id,))
+
+    output_str += """
+    
+| datetime | event_name | event_params |  
+| --- | --- | --- |  \n"""
+    for row in rows:
+        output_str += (
+            f"| {datetime.strftime(row[0],'%H:%M:%S')} | {row[1]} | {row[2]} |\n"
+        )
+
+    return output_str
+
+
+def ships_overview(ship_id=None):
+    if ship_id:
+        return ship_overview(ship_id)
+    sql = """select agent_name, ship_symbol
 , ship_role
 , frame_symbol
 , waypoint_symbol
@@ -191,6 +249,47 @@ where locked_until > now() at time zone 'utc'
 order by agent_name, ship_role, frame_symbol, ship_symbol
     """
 
+    cargo_percents = {
+        0: "🌑",
+        1: "🌘",
+        2: "🌗",
+        3: "🌖",
+        4: "🌕",
+        5: "🌔",
+        6: "🌓",
+        7: "🌒",
+    }
+
+    rows = try_execute_select(connection, sql, ())
+    response = ""
+    last_agent = ""
+    if len(rows) > 0:
+        for row in rows:
+            if row[0] != last_agent:
+                response += f"\n\n### {row[0]}\n"
+                last_agent = row[0]
+
+            busy_emoji = "✅" if row[9] else "❌"
+            frame_emoji = map_frame(row[3])
+            role_emoji = map_role(row[2])
+            cargo_emoji = map_cargo_percents(row[5], row[6])
+
+            response += f"[{busy_emoji}](/ships?id={row[1]}) "
+    return response
+
+
+def map_role(role) -> str:
+    roles = {
+        "COMMAND": "👑",
+        "EXCAVATOR": "⛏️",
+        "HAULER": "🚛",
+        "SATELLITE": "🛰️",
+        "REFINERY": "⚙️",
+    }
+    return roles.get(role, role)
+
+
+def map_frame(role) -> str:
     frames = {
         "FRAME_DRONE": "⛵",
         "FRAME_PROBE": "⛵",
@@ -199,28 +298,23 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
         "FRAME_FRIGATE": "🚤",
         "FRAME_HEAVY_FREIGHTER": "⛴️",
     }
+    return frames.get(role, role)
 
-    roles = {
-        "COMMAND": "👑",
-        "EXCAVATOR": "⛏️",
-        "HAULER": "🚛",
-        "SATELLITE": "🛰️",
-        "REFINERY": "⚙️",
+
+def map_cargo_percents(cargo_in_use, cargo_capacity) -> str:
+    cargo_percents = {
+        0: "🌑",
+        1: "🌘",
+        2: "🌗",
+        3: "🌖",
+        4: "🌕",
+        5: "🌔",
+        6: "🌓",
+        7: "🌒",
     }
-
-    rows = try_execute_select(connection, sql, ())
-    response = ""
-    if len(rows) > 0:
-        response = (
-            "| ship | what | waypoint | 📥 | 📦 | behaviour | Locked? | locked_until |\n"
-        )
-        response += "| --- | ---  --- | --- | --- | --- | --- | --- | --- |\n"
-    for row in rows:
-        busy_emoji = "✅" if row[8] else "❌"
-        frame_emoji = frames.get(row[2], row[2])
-        role_emoji = roles.get(row[1], row[1])
-        response += f"| {row[0]} | {role_emoji}{frame_emoji} | {row[3]} | {row[4]} | {row[5]} | {row[6]} | {busy_emoji} | {row[7]} | \n"
-    return response
+    return cargo_percents.get(
+        math.floor((cargo_in_use / max(cargo_capacity, 1)) * 8), "🌑"
+    )
 
 
 css_blob = """
@@ -237,6 +331,8 @@ td {
 padding:2px;
 padding-right:10px;
 }
+
+a { color: #3f3; text-decoration: none; }
 </style>
 """
 
@@ -285,12 +381,13 @@ def refresh():
 
 @app.route("/ships/")
 def ships():
+    param_value = request.args.get("id", None)
     out_str = markdown.markdown(
         ship_str
         % (
             css_blob,
             link_pieces,
-            ship_overview(),
+            ships_overview(param_value),
             javascript_refresh_blob,
         ),
         extensions=["tables", "md_in_html"],
