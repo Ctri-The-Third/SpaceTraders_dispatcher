@@ -46,7 +46,7 @@ def run(client: SpaceTraders):
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
 
-    target_miners = 30
+    target_miners = 50
     excavators = (hounds + drones)[0:target_miners]
     drones_padding = target_miners - len(hounds)
     active_drones = drones[

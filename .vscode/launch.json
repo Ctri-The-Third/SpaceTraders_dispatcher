@@ -33,7 +33,7 @@
             "request": "launch",
             "program": "dispatcherWK8.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": [
                 "CTRI-U-"
             ]

@@ -112,7 +112,7 @@ class Behaviour:
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
         if (
             flight_mode != "DRIFT"
-            and fuel_cost > ship.fuel_current
+            and fuel_cost >= ship.fuel_current
             and ship.fuel_capacity > 0
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
