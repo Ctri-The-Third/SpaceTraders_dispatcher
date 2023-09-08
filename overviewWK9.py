@@ -250,30 +250,45 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
     """
 
     cargo_percents = {
-        0: "🌑",
-        1: "🌘",
-        2: "🌗",
-        3: "🌖",
-        4: "🌕",
-        5: "🌔",
-        6: "🌓",
-        7: "🌒",
+        0: "🌑🌑",
+        1: "🌘🌑",
+        2: "🌗🌑",
+        3: "🌖🌑",
+        4: "🌕🌒",
+        5: "🌕🌓",
+        6: "🌕🌔",
+        7: "🌕🌕",
     }
 
     rows = try_execute_select(connection, sql, ())
     response = ""
     last_agent = ""
+    shipyard_type_counts = {}
+    agent_ships = 0
+    active_ships = 0
     if len(rows) > 0:
         for row in rows:
             if row[0] != last_agent:
-                response += f"\n\n### {row[0]}\n"
-                last_agent = row[0]
-
+                shipyard_type_counts = {}
+                agent_ships = 0
+                active_ships = 0
             busy_emoji = "✅" if row[9] else "❌"
             frame_emoji = map_frame(row[3])
             role_emoji = map_role(row[2])
             cargo_emoji = map_cargo_percents(row[5], row[6])
+            shipyard_type_counts[f"{frame_emoji}{role_emoji}"] = (
+                shipyard_type_counts.get(f"{frame_emoji}{role_emoji}", 0) + 1
+            )
+            agent_ships += 1
+            if row[9]:
+                active_ships += 1
 
+            if row[0] != last_agent:
+                response += f"""\n\n### {row[0]}\n
+* {row[0]} has {agent_ships} ships, {active_ships} active ({round(active_ships/agent_ships*100,2)}%)"""
+                for key, value in shipyard_type_counts.items():
+                    response += f"\n* {key}: {value}"
+                last_agent = row[0]
             response += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
     return response
 
