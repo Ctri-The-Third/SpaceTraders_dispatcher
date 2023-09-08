@@ -394,7 +394,7 @@ def stage_4(client: SpaceTraders):
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
-    target_hounds = 50
+    target_hounds = 30
     target_refiners = 1
     extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
@@ -447,6 +447,76 @@ def stage_4(client: SpaceTraders):
     return 4
     # switch off mining drones.
     pass
+
+
+def stage_5(client: SpaceTraders):
+    # Ideally we want to start building up hounds, replacing excavators.
+    # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
+    agent = client.view_my_self()
+    # hq_sys_sym = waypoint_slicer(agent.headquarters)
+    connection = get_connection()
+    ships = client.ships_view()
+    asteroid_wp = client.find_waypoints_by_type(
+        waypoint_slicer(agent.headquarters), "ASTEROID_FIELD"
+    )[0]
+    excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
+
+    refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
+    target_hounds = 30
+    target_refiners = 2
+    extractors_per_hauler = 5
+    # once we're at 30 excavators and 3 haulers, we can move on.
+    if (
+        len(hounds) >= target_hounds
+        and len(haulers) >= len(excavators) / extractors_per_hauler
+    ):
+        return 5
+    # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
+
+    ships_we_might_buy = [
+        "SHIP_PROBE",
+        "SHIP_ORE_HOUND",
+        "SHIP_REFINING_FREIGHTER",
+        "SHIP_LIGHT_HAULER",
+    ]
+    for ship, target in zip_longest(satelites, ships_we_might_buy, fillvalue=None):
+        if not ship or not target:
+            break
+        behaviour_params = {"ship_type": target}
+        set_behaviour(ship.name, BHVR_MONITOR_CHEAPEST_PRICE, behaviour_params)
+    if len(satelites) < len(ships_we_might_buy):
+        maybe_buy_ship_hq_sys(client, "SHIP_PROBE")
+
+    if len(haulers) <= min(len(excavators), target_hounds) / extractors_per_hauler:
+        hauler_params = {"asteroid_wp": asteroid_wp.symbol}
+        ship = maybe_buy_ship(
+            client,
+            connection,
+            "SHIP_LIGHT_HAULER",
+        )
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+    # then either buy a refining freighter, or an ore hound
+    if len(refiners) < target_refiners:
+        ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
+        if ship:
+            set_behaviour(
+                ship.name, BHVR_RECEIVE_AND_FULFILL, {"asteroid_wp": asteroid_wp.symbol}
+            )
+    elif len(hounds) <= target_hounds:
+        ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(
+                ship.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                {"asteroid_wp": asteroid_wp.symbol},
+            )
+
+    return 5
 
 
 def refresh_materialised_views(connection):
