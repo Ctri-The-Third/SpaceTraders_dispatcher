@@ -274,7 +274,7 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
             role_emoji = map_role(row[2])
             cargo_emoji = map_cargo_percents(row[5], row[6])
 
-            response += f"[{busy_emoji}](/ships?id={row[1]}) "
+            response += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
     return response
 
 
