@@ -266,9 +266,23 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
     shipyard_type_counts = {}
     agent_ships = 0
     active_ships = 0
+    response_block = """"""
+
     if len(rows) > 0:
+        rows.append(["", "", "", "", "", 0, 0, "", "", ""])
         for row in rows:
             if row[0] != last_agent:
+                # only print the header row if this is not the first pass through
+                # the header row gets added at the end of the loop
+                if last_agent != "":
+                    header_block = f"""\n\n### {last_agent}\n
+* {last_agent} has {agent_ships} ships, {active_ships} active ({round(active_ships/agent_ships*100,2)}%)\n"""
+
+                    for key, value in shipyard_type_counts.items():
+                        header_block += f"* {key}: {value}\n"
+                    response += header_block + agent_block + "\n\n"
+                last_agent = row[0]
+                agent_block = """"""
                 shipyard_type_counts = {}
                 agent_ships = 0
                 active_ships = 0
@@ -283,13 +297,7 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
             if row[9]:
                 active_ships += 1
 
-            if row[0] != last_agent:
-                response += f"""\n\n### {row[0]}\n
-* {row[0]} has {agent_ships} ships, {active_ships} active ({round(active_ships/agent_ships*100,2)}%)"""
-                for key, value in shipyard_type_counts.items():
-                    response += f"\n* {key}: {value}"
-                last_agent = row[0]
-            response += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
+            agent_block += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
     return response
 
 
