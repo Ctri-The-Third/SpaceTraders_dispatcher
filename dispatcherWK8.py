@@ -13,7 +13,6 @@ from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
 import random
-from pyrate_limiter import Limiter, Duration, RequestRate
 from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import (
     ExtractAndTransferOrSell_4,
@@ -40,10 +39,9 @@ from behaviours.receive_and_refine import (
     ReceiveAndRefine,
     BEHAVIOUR_NAME as BHVR_RECEIVE_AND_REFINE,
 )
-
 from behaviours.extract_and_deliver import (
     ExtractAndFulfill_7,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_DELIVER,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_FULFILL,
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -70,7 +68,7 @@ class dispatcher:
         db_user: str,
         db_pass: str,
     ) -> None:
-        self.lock_id = f"w5dis {get_fun_name()}"
+        self.lock_id = f"{get_fun_name()}"
         self.db_host = db_host
         self.db_port = db_port
         self.db_name = db_name
@@ -166,7 +164,7 @@ class dispatcher:
                     if len(unlocked_ships) > 10:
                         set_logging(level=logging.WARNING)
                         api_logger = logging.getLogger("API-Client")
-                        api_logger.setLevel(logging.WARNING)
+                        api_logger.setLevel(logging.CRITICAL)
                         self.logger.level = logging.WARNING
                         logging.getLogger().setLevel(logging.WARNING)
                         pass
@@ -402,7 +400,7 @@ class dispatcher:
                 session=self.session,
                 connection=self.connection,
             )
-        elif id == BHVR_EXTRACT_AND_DELIVER:
+        elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
                 aname,
                 sname,
@@ -412,6 +410,14 @@ class dispatcher:
             )
         elif id == BHVR_RECEIVE_AND_REFINE:
             bhvr = ReceiveAndRefine(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
+        elif id == BHVR_EXTRACT_AND_FULFILL:
+            bhvr = ExtractAndFulfill_7(
                 aname,
                 sname,
                 bhvr_params,

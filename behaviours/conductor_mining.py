@@ -46,14 +46,14 @@ def run(client: SpaceTraders):
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
 
-    target_miners = 30
+    target_miners = 50
     excavators = (hounds + drones)[0:target_miners]
     drones_padding = target_miners - len(hounds)
     active_drones = drones[
         0:drones_padding
     ]  # identify the target drones (included in excavators already)
-    spare_drones = drones[drones_padding:]  # switch these ones off.
-
+    idle_ships = drones[drones_padding:]  # switch these ones off.
+    idle_ships = idle_ships + hounds[target_miners:]  # switch these ones off.
     asteroid_wp = client.find_waypoints_by_type(hq_sys_sym, "ASTEROID_FIELD")[0]
     survey = client.find_survey_best(asteroid_wp.symbol)
     values = None
@@ -102,8 +102,11 @@ def run(client: SpaceTraders):
         }
 
         extractors_per_hauler = 2
-    hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
-    other_extractors = excavators[len(haulers) * extractors_per_hauler :]
+        hauler_extractors = excavators[0 : len(haulers) * extractors_per_hauler]
+        other_extractors = excavators[len(haulers) * extractors_per_hauler :]
+
+    # trim extractors down to target miners
+
     for excavator in hauler_extractors:
         set_behaviour(
             connection,
@@ -132,7 +135,7 @@ def run(client: SpaceTraders):
             BHVR_EXTRACT_AND_SELL,
             other_extraction_params,
         )
-    for excavator in spare_drones:
+    for excavator in idle_ships:
         set_behaviour(connection, excavator.name, BHVR_EXPLORE_SYSTEM)
 
 

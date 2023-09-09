@@ -22,6 +22,27 @@ Note that we're now reaching approximate saturation of requests, so our focus wi
 
 I've also just noticed that because of the rate limiter sending 3 requests at the same instant, our primary key in the logging table is no longer up to the task. Going to have to implement an eventuuid before we can collect meaningful data. 
 
+
+## End of week stats 
+(an `a` entry means it was un-managed, and largely left to run by itself with minimal restarts or intervention.
+Entries without an `a` were development versions of the behaviour and have manual decision making and interventions - compared for reference.)
+
+| stat             | Week 6a    | Week 7a    | Week 7     |Week 8 
+| ---              | ---       | ---         | ---        | ---
+| fleet size       | 14        |38           | 63         | 86
+| missions complete| 0         |3            | 2          | 1
+| credits earned   | 4,156,300 |25,163,516   | 18,145,200 | 7,635,436
+| requests         | 330,259   |325,241      | 462,995    | 139,392
+| uptime           | 6d 3h 52m |6d 22h 28m   | 6d 3h 56m  | 6d 22h 29 
+| CPH              | 28,107.79 |151,159.46   | 122,657.95 | 45,863.06
+| CPR              | 12.58     |77.36        | 39.19      | 54.78
+
+A stable week 7 shows clear superiority over week 6, and will be used going forwards.
+Week 8 had instability and needs tuned, so we'll see how it performs this week. 
+Most notably the managed week 8 behaviour outperformed the week7 behaviour in CPR, and if it had operated at scale better, may well have exceeded the week 7 mumbers.
+
+
+
 ## Major feature - Tasks!
 
 The conductor now identifies never-before-visited shipyards and markets that are on the jump network, and creates tasks for them. 

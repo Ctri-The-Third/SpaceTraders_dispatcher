@@ -66,6 +66,7 @@ class Behaviour:
     def connection(self):
         if not self._connection or self._connection.closed > 0:
             self._connection = self.st.db_client.connection
+        self.logger.debug("connection socket: %s", self._connection.info.socket)
         return self._connection
 
     @property
@@ -95,7 +96,8 @@ class Behaviour:
         st = self.st
         ship = self.ship
 
-        if ship.nav.system_symbol != waypoint_slicer(target_wp_symbol):
+        target_sys_symbol = waypoint_slicer(target_wp_symbol)
+        if ship.nav.system_symbol != target_sys_symbol:
             return LocalSpaceTradersRespose(
                 error="Ship is not in the same system as the target waypoint",
                 status_code=0,
@@ -105,16 +107,15 @@ class Behaviour:
 
         if ship.nav.flight_mode != flight_mode:
             st.ship_patch_nav(ship, flight_mode)
-        wp = self.st.waypoints_view_one(ship.nav.system_symbol, target_wp_symbol)
+        wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
 
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
         if (
             flight_mode != "DRIFT"
-            and fuel_cost > ship.fuel_current
+            and fuel_cost >= ship.fuel_current
             and ship.fuel_capacity > 0
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
-
             self.go_and_refuel()
         if fuel_cost > ship.fuel_capacity:
             st.ship_patch_nav(ship, "DRIFT")
@@ -138,7 +139,7 @@ class Behaviour:
             return resp
         return True
 
-    def extract_till_full(self, cargo_to_target: list = None):
+    def extract_till_full(self, cargo_to_target: list = None) -> Ship or bool:
         # need to validate that the ship'  s current WP is a valid location
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
@@ -163,6 +164,9 @@ class Behaviour:
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         while ship.cargo_units_used < ship.cargo_capacity:
+            # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
+            self.sleep_until_ready()
+
             if len(cargo_to_target) > 0:
                 survey = (
                     st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
@@ -171,17 +175,18 @@ class Behaviour:
                 )
             else:
                 survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
-            if ship.seconds_until_cooldown > 0:  # we're coming into this already on CD
-                sleep(ship.seconds_until_cooldown)
+
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
-                return
-            if not resp:
+                return ship
+
+            # 4224/4221 means exhausted survey - we can just try again and don't need to sleep.
+            # 4000 means the ship is on cooldown (shouldn't happen, but safe to repeat attempt)
+            if not resp and resp.error_code in [4228]:
+                return False
+            elif not resp and resp.error_code not in [4224, 4221, 4000]:
                 sleep(30)
-                return
-                # ship is probably stuck in this state forever
-            else:
-                sleep_until_ready(self.ship)
+                return False
 
     def go_and_refuel(self):
         ship = self.ship
@@ -272,7 +277,7 @@ class Behaviour:
                 return resp
         return True
 
-    def fulfill_any_relevant(self, excpetions: list = []):
+    def fulfil_any_relevant(self, excpetions: list = []):
         contracts = self.st.view_my_contracts()
 
         items = []
@@ -283,7 +288,11 @@ class Behaviour:
                 for deliverable in contract.deliverables:
                     if deliverable.units_fulfilled < deliverable.units_required:
                         items.append(deliverable)
+        if len(items) == 0:
+            return False
 
+        if self.ship.nav.status != "DOCKED":
+            self.st.ship_dock(self.ship)
         for cargo in self.ship.cargo_inventory:
             matching_items = [item for item in items if item.symbol == cargo.symbol]
         if not matching_items:
@@ -528,8 +537,8 @@ order by 1 desc """
             try_execute_upsert(
                 sql, self.connection, (self.behaviour_params["task_hash"],)
             )
-        self.st.db_client.connection.close()
-        self.st.logging_client.connection.close()
+        # self.st.db_client.connection.close()
+        # self.st.logging_client.connection.close()
 
     def astar(
         self,

@@ -238,7 +238,7 @@ order by purchase_price asc """
         # fulfill
         # sell
         self.st.ship_dock(self.ship)
-        resp = self.fulfill_any_relevant()
+        resp = self.fulfil_any_relevant()
         if resp:
             time.sleep(SAFETY_PADDING * 2)  # long sleep to avoid conductor changes
         return resp

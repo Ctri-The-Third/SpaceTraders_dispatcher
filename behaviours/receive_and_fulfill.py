@@ -115,7 +115,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
             managed_to_fulfill = False
             if fulfil_wp_s:
-                resp = self.fulfill_any_relevant()
+                resp = self.fulfil_any_relevant()
                 if resp:  # we fulfilled something
                     managed_to_fulfill = True
                     # we fulfilled something, so we should be able to sell the rest

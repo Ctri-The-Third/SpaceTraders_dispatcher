@@ -153,7 +153,7 @@ def stage_1(client: SpaceTraders):
     for ship in commanders:
         ship: Ship
         # if refresh_instruction returns something, do that, otherwise:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_DELIVER, extractor_params)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
 
     for ship in satelites:
         set_behaviour(
@@ -194,16 +194,36 @@ def stage_2(client: SpaceTraders):
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+
+    contracts = client.view_my_contracts()
+
+    extractor_params = {"asteroid_wp": wayp.symbol}
+    for contract in contracts.values():
+        if contract.fulfilled or not contract.accepted:
+            continue
+        for deliv in contract.deliverables:
+            if deliv.units_fulfilled < deliv.units_required:
+                asteroid_wp = client.find_waypoints_by_type(
+                    waypoint_slicer(agent.headquarters), "ASTEROID_FIELD"
+                )[0]
+                deliverable = deliv.symbol
+                deliverable_dest = deliv.destination_symbol
+                extractor_params = {
+                    "asteroid_wp": asteroid_wp.symbol,
+                    "cargo_to_transfer": [deliverable],
+                    "fulfil_wp": deliverable_dest,
+                }
+
+                break
+
     if len(excavators) >= 5 or len(hounds) >= 1:
         return 3
     for ship in commanders:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
     for ship in excavators:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_SELL, {"asteroid_wp": wayp.symbol})
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params)
     for ship in satelites:
-        set_behaviour(
-            ship.name, BHVR_REMOTE_SCAN_AND_SURV, {"asteroid_wp": shipyard_wp.symbol}
-        )
+        set_behaviour(ship.name, BHVR_REMOTE_SCAN_AND_SURV, extractor_params)
 
     ship_to_buy = what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
     ship = maybe_buy_ship_hq_sys(client, ship_to_buy)
@@ -270,7 +290,7 @@ def stage_3(client: SpaceTraders):
                 if deliverable.units_fulfilled < deliverable.units_required:
                     fulfil_wp = deliverable.destination_symbol
                     cargo_to_transfer.append(deliverable.symbol)
-                    if "ORE" not in cargo_to_transfer:
+                    if "ORE" not in deliverable.symbol:
                         contract_type = "DELIVERY"
 
     if contract_type == "DELIVERY":
@@ -294,7 +314,9 @@ def stage_3(client: SpaceTraders):
             extractor_params["cargo_to_transfer"] = cargo_to_transfer
 
             if fulfil_wp:
-                hauler_params["fulfil_wp"] = fulfil_wp
+                hauler_params["fulfill_wp"] = fulfil_wp
+                # only the commander _might_ be running "extract and fulfill", this only gets consumed there.
+                extractor_params["fulfill_wp"] = fulfil_wp
 
     if asteroid_wp:
         extractor_params["asteroid_wp"] = asteroid_wp.symbol
@@ -318,7 +340,7 @@ def stage_3(client: SpaceTraders):
     for commander in commanders:
         # if there's no hauler, do that.
         if len(haulers) == 0:
-            set_behaviour(commander.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+            set_behaviour(commander.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
         else:
             # do the refresh behaviour
             set_behaviour(
@@ -351,11 +373,6 @@ def stage_3(client: SpaceTraders):
                 client, what_ship_should_i_buy(client, "SHIP_MINING_DRONE")
             )
 
-        if ship:
-            set_behaviour(
-                ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
-            )
-
     return 3
 
 
@@ -377,7 +394,7 @@ def stage_4(client: SpaceTraders):
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
-    target_hounds = 50
+    target_hounds = 30
     target_refiners = 1
     extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
@@ -430,6 +447,76 @@ def stage_4(client: SpaceTraders):
     return 4
     # switch off mining drones.
     pass
+
+
+def stage_5(client: SpaceTraders):
+    # Ideally we want to start building up hounds, replacing excavators.
+    # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
+    agent = client.view_my_self()
+    # hq_sys_sym = waypoint_slicer(agent.headquarters)
+    connection = get_connection()
+    ships = client.ships_view()
+    asteroid_wp = client.find_waypoints_by_type(
+        waypoint_slicer(agent.headquarters), "ASTEROID_FIELD"
+    )[0]
+    excavators = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
+    drones = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_DRONE"]
+    hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
+    haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+    satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
+
+    refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
+    target_hounds = 30
+    target_refiners = 2
+    extractors_per_hauler = 5
+    # once we're at 30 excavators and 3 haulers, we can move on.
+    if (
+        len(hounds) >= target_hounds
+        and len(haulers) >= len(excavators) / extractors_per_hauler
+    ):
+        return 5
+    # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
+
+    ships_we_might_buy = [
+        "SHIP_PROBE",
+        "SHIP_ORE_HOUND",
+        "SHIP_REFINING_FREIGHTER",
+        "SHIP_LIGHT_HAULER",
+    ]
+    for ship, target in zip_longest(satelites, ships_we_might_buy, fillvalue=None):
+        if not ship or not target:
+            break
+        behaviour_params = {"ship_type": target}
+        set_behaviour(ship.name, BHVR_MONITOR_CHEAPEST_PRICE, behaviour_params)
+    if len(satelites) < len(ships_we_might_buy):
+        maybe_buy_ship_hq_sys(client, "SHIP_PROBE")
+
+    if len(haulers) <= min(len(excavators), target_hounds) / extractors_per_hauler:
+        hauler_params = {"asteroid_wp": asteroid_wp.symbol}
+        ship = maybe_buy_ship(
+            client,
+            connection,
+            "SHIP_LIGHT_HAULER",
+        )
+        if ship:
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+    # then either buy a refining freighter, or an ore hound
+    if len(refiners) < target_refiners:
+        ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
+        if ship:
+            set_behaviour(
+                ship.name, BHVR_RECEIVE_AND_FULFILL, {"asteroid_wp": asteroid_wp.symbol}
+            )
+    elif len(hounds) <= target_hounds:
+        ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
+        if ship:
+            set_behaviour(
+                ship.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                {"asteroid_wp": asteroid_wp.symbol},
+            )
+
+    return 5
 
 
 def refresh_materialised_views(connection):
@@ -721,30 +808,26 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
 
 def get_agents():
-    sql = "select distinct agent_symbol from agents"
-    cur = get_connection().cursor()
-    cur.execute(sql)
-    rows = cur.fetchall()
     agents_and_tokens = {}
     for agent in user.get("agents"):
         if "username" not in agent or "token" not in agent:
             continue
-        agents_and_tokens[agent["username"]] = agent["token"]
-    for row in rows:
-        token = agents_and_tokens.get(row[0], None)
-        if not token:
-            continue
-            # skip users for which we don't have tokens
+        agent_name = agent["username"]
+        token = agent["token"]
+
+        agents_and_tokens[agent_name] = agent["token"]
+
         st = SpaceTraders(
-            token=agents_and_tokens.get(row[0], None),
+            token=agents_and_tokens.get(agent_name, None),
             db_host=user["db_host"],
             db_port=user["db_port"],
             db_name=user["db_name"],
             db_user=user["db_user"],
             db_pass=user["db_pass"],
-            current_agent_symbol=row[0],
+            current_agent_symbol=agent_name,
         )
-        agents_and_clients[row[0]] = st
+        agents_and_clients[agent_name] = st
+        st.view_my_self()
     return agents_and_clients
 
 
