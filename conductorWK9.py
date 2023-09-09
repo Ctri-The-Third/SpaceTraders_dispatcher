@@ -61,8 +61,9 @@ def master():
     # stage 5 - no behaviour.
 
     stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4]
-    sleep_time = 1
+    sleep_time = 60
     while True:
+        changed = False
         for agent, client in agents_and_clients.items():
             # reset our cached view of the agent
             client.current_agent = None
@@ -74,9 +75,9 @@ def master():
             except Exception as err:
                 logger.error(err)
                 continue
-        time.sleep(sleep_time)
+            changed = stages_per_agent[agent] != current_stage
 
-        sleep_time = 60
+        time.sleep(sleep_time if not changed else 1)
 
     pass
 
