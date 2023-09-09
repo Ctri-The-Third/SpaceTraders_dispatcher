@@ -191,6 +191,7 @@ def stage_2(client: SpaceTraders):
     wayp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
     if not wayp:
         logger.warning("No asteroid field found yet shouldn't happen.")
+    maybe_upgrade_a_ship(client, ships)
 
     # 1. decide on what ship to purchase.
     # ore hounds = 25 mining power
@@ -259,6 +260,8 @@ def stage_3(client: SpaceTraders):
     if is_shipyard_stale(client, shipyard_wp):
         client.system_shipyard(shipyard_wp, True)
     process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
+
     #
     # SHIP SORTING
     #
@@ -409,6 +412,8 @@ def stage_4(client: SpaceTraders):
     ):
         return 5
     # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
 
     ships_we_might_buy = [
         "SHIP_PROBE",
@@ -475,6 +480,9 @@ def stage_5(client: SpaceTraders):
     target_refiners = 2
     extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
+
     if (
         len(hounds) >= target_hounds
         and len(haulers) >= len(excavators) / extractors_per_hauler
