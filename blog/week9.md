@@ -18,3 +18,14 @@ I'm scaling back up to 50 ore hounds for mining, and will keep an eye on the new
  * ☑️ Build some sexy charts for CPH, CPR, and saturation.
 * ✅ Condense ship overview and create ship detail page
 * `Monitor_cheapest_shipyard_price` is calling `ships_view_one` and `ship_change_flight_mode` unecessarily.
+
+
+| stat             | Week 6a    | Week 7a    | week 8a   |Week 8   | Week 9
+| ---              | ---       | ---         |        | ---       |
+| fleet size       | 14        |38           |        | 86        | 88
+| missions complete| 0         |3            |        | 1         | 1
+| credits earned   | 4,156,300 |25,163,516   |        | 7,635,436 | 19,491,643
+| requests         | 330,259   |325,241      |        | 139,392   | 336,995
+| uptime           | 6d 3h 52m |6d 22h 28m   |        | 6d 22h 29 | 5d 23h 59m
+| CPH              | 28,107.79 |151,159.46   |        | 45,863.06 | 135,374
+| CPR              | 12.58     |77.36        |        | 54.78     | 57

@@ -832,6 +832,7 @@ def get_agents():
             current_agent_symbol=row[0],
         )
         agents_and_clients[row[0]] = st
+        st.view_my_self()
     return agents_and_clients
 
 
