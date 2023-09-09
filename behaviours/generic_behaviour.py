@@ -535,7 +535,7 @@ order by 1 desc """
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(
-                sql, self.connection, (self.behaviour_params["task_hash"],)
+                self.connection, sql, (self.behaviour_params["task_hash"],)
             )
         # self.st.db_client.connection.close()
         # self.st.logging_client.connection.close()
