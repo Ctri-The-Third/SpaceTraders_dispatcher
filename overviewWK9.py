@@ -326,14 +326,14 @@ def map_frame(role) -> str:
 
 def map_cargo_percents(cargo_in_use, cargo_capacity) -> str:
     cargo_percents = {
-        0: "🌑",
-        1: "🌘",
-        2: "🌗",
-        3: "🌖",
-        4: "🌕",
-        5: "🌔",
-        6: "🌓",
-        7: "🌒",
+        0: "🌑🌑",
+        1: "🌘🌑",
+        2: "🌗🌑",
+        3: "🌖🌑",
+        4: "🌕🌒",
+        5: "🌕🌓",
+        6: "🌕🌔",
+        7: "🌕🌕",
     }
     return cargo_percents.get(
         math.floor((cargo_in_use / max(cargo_capacity, 1)) * 8), "🌑"
