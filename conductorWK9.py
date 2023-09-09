@@ -25,7 +25,7 @@ import hashlib
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK8 import (
+from dispatcherWK9 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -91,6 +91,7 @@ def stage_0(client: SpaceTraders):
     wayps = client.waypoints_view(sys_wp)
     satelites = [ship for ship in client.ships.values() if ship.role == "SATELLITE"]
 
+    process_contracts(client)
     contracts = client.view_my_contracts()
     if len(contracts) == 0:
         client.ship_negotiate(satelites[0])
@@ -123,6 +124,7 @@ def stage_1(client: SpaceTraders):
     hq_sys = waypoint_slicer(agent.headquarters)
     shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     # commander behaviour
+    process_contracts(client)
     maybe_upgrade_a_ship(client, ships)
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     if len(extractors) >= 2:
@@ -527,6 +529,7 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
     connection = client.db_client.connection
     sql = """select count(*) from ship_tasks
         where behaviour_id = %s
+        and expiry > now() at time zone 'utc'
         and agent_symbol = %s"""
     results = try_execute_select(
         connection, sql, (BHVR_UPGRADE_TO_SPEC, client.current_agent_symbol)
@@ -534,7 +537,7 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
     if len(results) > 0 and results[0][0] > 0:
         return
     # if not, is there a ship that needs upgrading?
-    ship = None
+    found_ship = False
     for ship in ships.values():
         ship: Ship
         # ore hound
@@ -548,8 +551,9 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
 
             if mining_power <= 25:
                 # upgrade it.
+                found_ship = True
                 break
-    if not ship:
+    if not found_ship:
         return
     params = {
         "mounts": ["MOUNT_SURVEYOR_I", "MOUNT_MINING_LASER_II", "MOUNT_MINING_LASER_II"]
@@ -578,9 +582,12 @@ def log_task(
     priority=5,
     agent_symbol=None,
     behaviour_params=None,
-    expiry=None,
+    expiry: datetime = None,
     specific_ship_symbol=None,
 ):
+    if not expiry:
+        expiry = datetime.utcnow() + timedelta(days=1)
+        expiry.replace(hour=0, minute=0, second=0, microsecond=0)
     behaviour_params = {} if not behaviour_params else behaviour_params
     param_s = json.dumps(behaviour_params)
     hash_str = hashlib.md5(
@@ -601,7 +608,7 @@ def log_task(
             expiry,
             priority,
             agent_symbol,
-            None,
+            specific_ship_symbol,
             behaviour_id,
             target_system,
             param_s,

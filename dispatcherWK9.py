@@ -45,7 +45,7 @@ from behaviours.extract_and_deliver import (
 )
 
 from behaviours.upgrade_ship_to_specs import (
-    FindModulesAndEquip,
+    FindMountsAndEquip,
     BEHAVIOUR_NAME as BHVR_UPGRADE_TO_SPEC,
 )
 from behaviours.generic_behaviour import Behaviour
@@ -197,7 +197,10 @@ class dispatcher:
                         self.client, ship_and_behaviour["name"]
                     )
                     if task:
-                        self.claim_task(task["task_hash"], ship_and_behaviour["name"])
+                        if task["claimed_by"] is None or task["claimed_by"] == "":
+                            self.claim_task(
+                                task["task_hash"], ship_and_behaviour["name"]
+                            )
                         task["behaviour_params"]["task_hash"] = task["task_hash"]
                         bhvr = self.map_behaviour_to_class(
                             task["behaviour_id"],
@@ -271,11 +274,13 @@ class dispatcher:
  
             from ship_tasks
                 where (completed is null or completed is false)
+                and (claimed_by is null 
+                or claimed_By = %s)
                 and expiry > now() at time zone 'utc'
                 order by claimed_by, priority;
 
                 """
-            results = try_execute_select(self.connection, sql, ())
+            results = try_execute_select(self.connection, sql, (ship_symbol,))
             self.tasks = {
                 row[0]: {
                     "task_hash": row[0],
@@ -423,6 +428,14 @@ class dispatcher:
             )
         elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.connection,
+            )
+        elif id == BHVR_UPGRADE_TO_SPEC:
+            bhvr = FindMountsAndEquip(
                 aname,
                 sname,
                 bhvr_params,
