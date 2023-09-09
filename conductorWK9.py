@@ -538,6 +538,7 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
     sql = """select count(*) from ship_tasks
         where behaviour_id = %s
         and expiry > now() at time zone 'utc'
+        and not completed
         and agent_symbol = %s"""
     results = try_execute_select(
         connection, sql, (BHVR_UPGRADE_TO_SPEC, client.current_agent_symbol)
