@@ -813,11 +813,8 @@ def get_agents():
         if "username" not in agent or "token" not in agent:
             continue
         agent_name = agent["username"]
-        token = agents_and_tokens.get(agent_name, None)
+        token = agent["token"]
 
-        if not token:
-            continue
-            # skip users for which we don't have tokens
         agents_and_tokens[agent_name] = agent["token"]
 
         st = SpaceTraders(
