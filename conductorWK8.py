@@ -24,7 +24,7 @@ from behaviours.conductor_mining import run as refresh_stale_waypoints
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK8 import (
+from dispatcherWK9 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -153,7 +153,7 @@ def stage_1(client: SpaceTraders):
     for ship in commanders:
         ship: Ship
         # if refresh_instruction returns something, do that, otherwise:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_DELIVER, extractor_params)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
 
     for ship in satelites:
         set_behaviour(

@@ -21,6 +21,7 @@ from straders_sdk.utils import (
 )
 from itertools import zip_longest
 from behaviours.conductor_mining import run as refresh_stale_waypoints
+import hashlib
 import logging
 import time
 from datetime import datetime, timedelta
@@ -34,6 +35,7 @@ from dispatcherWK8 import (
     BHVR_BUY_AND_DELIVER_OR_SELL,
     BHVR_RECEIVE_AND_REFINE,
     BHVR_EXTRACT_AND_FULFILL,
+    BHVR_UPGRADE_TO_SPEC,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
@@ -120,7 +122,7 @@ def stage_1(client: SpaceTraders):
     hq_sys = waypoint_slicer(agent.headquarters)
     shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     # commander behaviour
-
+    maybe_upgrade_a_ship(client, ships)
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     if len(extractors) >= 2:
         return 2
@@ -517,6 +519,93 @@ def stage_5(client: SpaceTraders):
             )
 
     return 5
+
+
+def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
+    # first - is there already an upgrade task needing completed?
+    connection = client.db_client.connection
+    sql = """select count(*) from ship_tasks
+        where behaviour_id = %s
+        and agent_symbol = %s"""
+    results = try_execute_select(
+        connection, sql, (BHVR_UPGRADE_TO_SPEC, client.current_agent_symbol)
+    )
+    if len(results) > 0 and results[0][0] > 0:
+        return
+    # if not, is there a ship that needs upgrading?
+    ship = None
+    for ship in ships.values():
+        ship: Ship
+        # ore hound
+        if ship.frame.symbol == "FRAME_MINER":
+            mining_power = 0
+            if not (hasattr(ship, "mounts")) or not len(ship.mounts) == 0:
+                ship = client.ships_view_one(ship.name, True)
+            for mount in ship.mounts:
+                if "MINING" in mount.symbol:
+                    mining_power += mount.strength
+
+            if mining_power <= 25:
+                # upgrade it.
+                break
+    if not ship:
+        return
+    params = {
+        "mounts": ["MOUNT_SURVEYOR_I", "MOUNT_MINING_LASER_II", "MOUNT_MINING_LASER_II"]
+    }
+    target_system = ship.nav.system_symbol
+    log_task(
+        connection,
+        BHVR_UPGRADE_TO_SPEC,
+        [],
+        target_system,
+        5,
+        client.current_agent_symbol,
+        behaviour_params=params,
+        specific_ship_symbol=ship.name,
+    )
+    # and if there is, create that task.
+
+    pass
+
+
+def log_task(
+    connection,
+    behaviour_id: str,
+    requirements: list,
+    target_system: str,
+    priority=5,
+    agent_symbol=None,
+    behaviour_params=None,
+    expiry=None,
+    specific_ship_symbol=None,
+):
+    behaviour_params = {} if not behaviour_params else behaviour_params
+    param_s = json.dumps(behaviour_params)
+    hash_str = hashlib.md5(
+        f"{behaviour_id}-{target_system}-{priority}-{behaviour_params}-{expiry}-{specific_ship_symbol}".encode()
+    ).hexdigest()
+    sql = """ INSERT INTO public.ship_tasks(
+	task_hash, requirements, expiry, priority, agent_symbol, claimed_by, behaviour_id, target_system, behaviour_params)
+	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    on conflict(task_hash) DO NOTHING
+    """
+
+    try_execute_upsert(
+        connection,
+        sql,
+        (
+            hash_str,
+            requirements,
+            expiry,
+            priority,
+            agent_symbol,
+            None,
+            behaviour_id,
+            target_system,
+            param_s,
+        ),
+    )
 
 
 def refresh_materialised_views(connection):

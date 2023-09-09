@@ -20,7 +20,8 @@ SAFETY_PADDING = 60
 class FindModulesAndEquip(Behaviour):
     """Requires a parameter blob containing
 
-    `mounts`: a list of the mount symbols to equip\n"""
+    `mounts`: a list of the mount symbols to equip\n
+    `market_wp`: the waypoint symbol of the market to buy all the mounts from\n"""
 
     def __init__(
         self,
