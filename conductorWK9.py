@@ -259,8 +259,6 @@ def stage_3(client: SpaceTraders):
 
     if is_shipyard_stale(client, shipyard_wp):
         client.system_shipyard(shipyard_wp, True)
-    process_contracts(client)
-    maybe_upgrade_a_ship(client, ships)
 
     #
     # SHIP SORTING
@@ -272,6 +270,8 @@ def stage_3(client: SpaceTraders):
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
 
     extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
@@ -608,7 +608,7 @@ def log_task(
     on conflict(task_hash) DO NOTHING
     """
 
-    try_execute_upsert(
+    results = try_execute_upsert(
         connection,
         sql,
         (
@@ -623,6 +623,9 @@ def log_task(
             param_s,
         ),
     )
+    if not results:
+        logger.error("Couldn't log task because %s", results.error)
+        return
 
 
 def refresh_materialised_views(connection):
