@@ -808,30 +808,28 @@ def get_ship_prices_in_hq_system(client: SpaceTraders):
 
 
 def get_agents():
-    sql = "select distinct agent_symbol from agents"
-    cur = get_connection().cursor()
-    cur.execute(sql)
-    rows = cur.fetchall()
     agents_and_tokens = {}
     for agent in user.get("agents"):
         if "username" not in agent or "token" not in agent:
             continue
-        agents_and_tokens[agent["username"]] = agent["token"]
-    for row in rows:
-        token = agents_and_tokens.get(row[0], None)
+        agent_name = agent["username"]
+        token = agents_and_tokens.get(agent_name, None)
+
         if not token:
             continue
             # skip users for which we don't have tokens
+        agents_and_tokens[agent_name] = agent["token"]
+
         st = SpaceTraders(
-            token=agents_and_tokens.get(row[0], None),
+            token=agents_and_tokens.get(agent_name, None),
             db_host=user["db_host"],
             db_port=user["db_port"],
             db_name=user["db_name"],
             db_user=user["db_user"],
             db_pass=user["db_pass"],
-            current_agent_symbol=row[0],
+            current_agent_symbol=agent_name,
         )
-        agents_and_clients[row[0]] = st
+        agents_and_clients[agent_name] = st
         st.view_my_self()
     return agents_and_clients
 
