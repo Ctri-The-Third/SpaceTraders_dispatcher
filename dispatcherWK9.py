@@ -39,7 +39,7 @@ from behaviours.receive_and_refine import (
     ReceiveAndRefine,
     BEHAVIOUR_NAME as BHVR_RECEIVE_AND_REFINE,
 )
-from behaviours.extract_and_deliver import (
+from behaviours.extract_and_fulfill import (
     ExtractAndFulfill_7,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_FULFILL,
 )
