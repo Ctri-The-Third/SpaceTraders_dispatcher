@@ -83,7 +83,7 @@ class dispatcher:
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
-        self.session = LimiterSession(per_second=3)
+        self.session = LimiterSession(per_second=3, per_hour=10800)
         self.ships = {}
         self.tasks_last_updated = datetime.min
         self.task_refresh_period = timedelta(minutes=1)
