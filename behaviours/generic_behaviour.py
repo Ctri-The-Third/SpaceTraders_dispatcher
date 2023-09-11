@@ -10,6 +10,7 @@ from straders_sdk.utils import (
     waypoint_slicer,
     try_execute_upsert,
 )
+import time
 import logging
 import math
 import networkx
@@ -139,7 +140,9 @@ class Behaviour:
             return resp
         return True
 
-    def extract_till_full(self, cargo_to_target: list = None) -> Ship or bool:
+    def extract_till_full(
+        self, cargo_to_target: list = None, cutoff_cargo_units_used=None
+    ) -> Ship or bool:
         # need to validate that the ship'  s current WP is a valid location
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
@@ -163,7 +166,8 @@ class Behaviour:
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
-        while ship.cargo_units_used < ship.cargo_capacity:
+        cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
+        while ship.cargo_units_used < cutoff_cargo_units_used:
             # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
             self.sleep_until_ready()
 
@@ -537,6 +541,7 @@ order by 1 desc """
             try_execute_upsert(
                 self.connection, sql, (self.behaviour_params["task_hash"],)
             )
+            time.sleep(20)
         # self.st.db_client.connection.close()
         # self.st.logging_client.connection.close()
 

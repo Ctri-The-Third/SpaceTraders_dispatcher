@@ -10,15 +10,24 @@ After adding in a 0.1 second sleep to the SDK's recursive retry for requests, sa
 I'm scaling back up to 50 ore hounds for mining, and will keep an eye on the new "seconds per request" average. If this is around 0.33 then the system is handling everything with effectively zero delay. It'll be worth exploring to see if this scales up super high when we're saturated or if it just goes up a little bit.
 
 
+# week 10 
+
+Because we didn't ge the week 8 behaviour to run permanently without assistance, I'm rolling the 9 and 10 into a single release for the purposes of charting.
+
+
 # Goals
 * Build a new bucket class for the session object to prioritise ship actions that enable cooldowns
+* ✅ add upgrading of ore hounds
+ * Update the "extract until full" behaviour to not extract if more than half of the yield would be wasted  
+ * add mounts into the database
 * ☑️ Fix the recursive behaviour in the utils behaviour which risks deadlocking the dispatcher <---- this one appears to have had biggest impact
 * Have the conductor able to identify when it's oversaturated and scale down.
  * ☑️ Build analytics queries for identifying saturation
  * ☑️ Build some sexy charts for CPH, CPR, and saturation.
 * ✅ Condense ship overview and create ship detail page
-* `Monitor_cheapest_shipyard_price` is calling `ships_view_one` and `ship_change_flight_mode` unecessarily.
 
+* `Monitor_cheapest_shipyard_price` is calling `ships_view_one` and `ship_change_flight_mode` unecessarily.
+* `conductor week10` is having to query ships for their mounts, due to caching. 
 
 | stat             | Week 6a    | Week 7a    | week 8a   |Week 8   | Week 9
 | ---              | ---       | ---         |        | ---       |
