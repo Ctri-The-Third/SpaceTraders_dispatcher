@@ -15,6 +15,14 @@ I'm scaling back up to 50 ore hounds for mining, and will keep an eye on the new
 Because we didn't ge the week 8 behaviour to run permanently without assistance, I'm rolling the 9 and 10 into a single release for the purposes of charting.
 
 
+With only 45 ships but still getting the kind of delays we were seeing in the late game last week, it's clear there's something wrong. 
+
+I've identified that the issue appears to be overload on the database itself. One of the spacetraders devs shared the [https://www.postgresql.org/docs/current/pgstatstatements.html](pg_stat_statements) extension, which I've installed and enabled. 
+
+It's apparent that most of the expense comes from updating the ships in the DB, so I'm going to add some "dirty" flags to indicate when we should/should not update any of the objects in the DB. We already handle most of the updating via the ships object and the object's "update" method, which is incredibly fortunate and reduces the dev footprint something fierce.
+
+
+
 # Goals
 * Build a new bucket class for the session object to prioritise ship actions that enable cooldowns
 * ✅ add upgrading of ore hounds
