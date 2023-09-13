@@ -287,7 +287,11 @@ class dispatcher:
             }
         ship = self.ships.get(ship_symbol, None)
         if not ship:
-            ship = client.ships_view_one(ship_symbol)
+            ship = client.db_client.ships_view_one(ship_symbol)
+            if not ship:
+                #dafuq
+                self.logger.warning("Ship %s not in the database for some reason - can't assign tasks for it.", ship_symbol)
+                return None 
             self.ships[ship_symbol] = ship
 
         for hash, task in self.tasks.items():
