@@ -100,14 +100,14 @@ class ReceiveAndRefine(Behaviour):
                             resp = st.ship_transfer_cargo(
                                 ship,
                                 cargo.symbol,
-                                min(cargo.units, valid_trader.cargo_capacity),
+                                min(cargo.units, valid_trader.cargo_space_remaining),
                                 valid_trader.name,
                             )
                             if not resp:
                                 self.logger.warning(
                                     f"{ship.name} unable to transfer %s because of %s",
                                     cargo.symbol,
-                                    resp,
+                                    resp.error,
                                 )
                                 return
                             else:
