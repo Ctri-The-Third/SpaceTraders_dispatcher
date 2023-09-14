@@ -25,6 +25,7 @@ The above change resulted in significant improvement in query usage, huzzah!
 We have two active issues that are toppling the system. as of yesterday "urllib3.connectionpool  Connection pool is full, discarding connection: api.spacetraders.io" - which I think might be because we've increased the bucket size for the session object? going to try find and increase the connection pool to match.
 
 The second is the soft locking that has yet to be adequitely explained, and requires the entire dispatcher to by hard-killed before it can be started up again.
+I observed the soft-lock occurred when we restarted the U dispatcher - or more likely, when we reset all the ships_locked values. I'm going to assume it's a DB locking issue and see if tinkering with the connection object is the way forwards there.
 
 
 # Goals

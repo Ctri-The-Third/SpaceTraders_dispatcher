@@ -132,7 +132,7 @@ class ReceiveAndRefine(Behaviour):
                                 )
                                 if not resp:
                                     self.logger.warning(
-                                        f"{ship.name} unable to transfer %s because of %s",
+                                        f"{ship.name} unable to transfer to %s because of %s",
                                         cargo.symbol,
                                         resp,
                                     )

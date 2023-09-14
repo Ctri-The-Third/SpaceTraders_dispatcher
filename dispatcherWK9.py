@@ -142,15 +142,20 @@ class dispatcher:
 
         # add a new connection if we're below the max
         if len(self.connection_pool) < self.max_connections:
-            self.connection_pool.append(
-                psycopg2.connect(
+            new_con = psycopg2.connect(
                     host=self.db_host,
                     port=self.db_port,
                     database=self.db_name,
                     user=self.db_user,
                     password=self.db_pass,
+                    application_name=self.lock_id,
+                    keepalives=1,
+                    keepalives_idle=30,
+                    keepalives_interval=10,
+                    keepalives_count=3,  # connection terminates after 30 seconds of silence
                 )
-            )
+            new_con.autocommit = True
+            self.connection_pool.append(new_con)            
 
         # reconnect the connection if it's closed
 
@@ -208,10 +213,10 @@ class dispatcher:
                         round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
                     )
                     if len(unlocked_ships) > 10:
-                        set_logging(level=logging.WARNING)
+                        set_logging(level=logging.INFO)
                         api_logger = logging.getLogger("API-Client")
                         api_logger.setLevel(logging.CRITICAL)
-                        self.logger.level = logging.WARNING
+                        self.logger.level = logging.INFO
                         logging.getLogger().setLevel(logging.WARNING)
                         pass
                     # if we're running a ship and the lock has expired during execution, what do we do?
