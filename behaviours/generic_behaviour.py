@@ -182,7 +182,9 @@ class Behaviour:
             self.sleep_until_ready()
 
             resp = st.ship_extract(ship, survey)
-            if ship.cargo_units_used == ship.cargo_capacity:
+
+            # extract. if we're full, return without refreshing the survey (as we won't use it)
+            if ship.cargo_units_used >= cutoff_cargo_units_used:
                 return ship
 
             # 4224/4221 means exhausted survey - we can just try again and don't need to sleep.
