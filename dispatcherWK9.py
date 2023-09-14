@@ -5,6 +5,7 @@ import logging
 import psycopg2
 import sys, threading, os, uuid, time
 from requests_ratelimiter import LimiterSession
+from requests.adapters import HTTPAdapter
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
@@ -12,6 +13,7 @@ from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
+
 import random
 from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import (
@@ -87,6 +89,10 @@ class dispatcher:
         self.agents = agents
 
         self.session = LimiterSession(per_second=3, per_hour=10800)
+        self.session.mount(
+            "https://api.spacetraders.io",
+            HTTPAdapter(pool_maxsize=self.max_connections),
+        )
         self.ships = {}
         self.tasks_last_updated = datetime.min
         self.task_refresh_period = timedelta(minutes=1)
@@ -171,6 +177,7 @@ class dispatcher:
         check_frequency = timedelta(seconds=15 * len(self.agents))
         agents_and_last_checkeds = {}
         agents_and_unlocked_ships = {}
+        self.client.ships_view()
         while True:
             #
             # every 15 seconds update the list of unlocked ships with a DB query
@@ -332,6 +339,11 @@ class dispatcher:
         ship = self.ships.get(ship_symbol, None)
         if not ship:
             ship = client.ships_view_one(ship_symbol)
+            if not ship:
+                self.logger.warning(
+                    "For some reason the ship %s doesn't exist in db", ship_symbol
+                )
+                return None
             self.ships[ship_symbol] = ship
 
         for hash, task in self.tasks.items():
