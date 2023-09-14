@@ -167,18 +167,19 @@ class Behaviour:
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
+
+        if len(cargo_to_target) > 0:
+            survey = (
+                st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
+                or st.find_survey_best(wayp_s)
+                or None
+            )
+        else:
+            survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
+
         while ship.cargo_units_used < cutoff_cargo_units_used:
             # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
             self.sleep_until_ready()
-
-            if len(cargo_to_target) > 0:
-                survey = (
-                    st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
-                    or st.find_survey_best(wayp_s)
-                    or None
-                )
-            else:
-                survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
             resp = st.ship_extract(ship, survey)
             if ship.cargo_units_used == ship.cargo_capacity:
@@ -189,8 +190,17 @@ class Behaviour:
             if not resp and resp.error_code in [4228]:
                 return False
             elif not resp and resp.error_code not in [4224, 4221, 4000]:
-                sleep(30)
                 return False
+            else:
+                # the survey is expired, refresh it.
+                if len(cargo_to_target) > 0:
+                    survey = (
+                        st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
+                        or st.find_survey_best(wayp_s)
+                        or None
+                    )
+                else:
+                    survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
     def go_and_refuel(self):
         ship = self.ship
