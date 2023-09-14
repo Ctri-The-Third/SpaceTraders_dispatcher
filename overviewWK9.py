@@ -187,6 +187,7 @@ def ship_overview(ship_id):
 , behaviour_id
 , last_updated 
 , cooldown_nav
+, behaviour_params
 from ship_overview
 where ship_symbol = %s
 order by agent_name, ship_role, frame_symbol, ship_symbol
@@ -208,26 +209,35 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
 
 * Behaviour_id: {rows[0][7]} 
 
+* Behaviour_params {rows[0][10]}
+
 ## logs 
 """
 
-    sql = """select
- date_trunc('second', event_timestamp) as event_timestamp
-, event_name
-, event_params from logging 
-where ship_symbol = %s
-and event_timestamp >= now() at time zone 'utc' - interval '1 day'
-order by event_timestamp desc"""
+    sql = """SELECT 
+  date_trunc('second', event_timestamp) AS event_timestamp,
+  event_name,
+  event_params,
+  status_code,
+  round(duration_seconds,2) AS request_delay,
+  round(EXTRACT(epoch FROM (
+     event_timestamp - 
+    LAG( event_timestamp) OVER (ORDER BY event_timestamp DESC)
+  ))::numeric,2)*-1 AS process_delay
+FROM logging 
+WHERE 
+  ship_symbol = %s
+  AND event_timestamp >= NOW() AT TIME ZONE 'utc' - INTERVAL '1 day'
+ORDER BY event_timestamp DESC;
+"""
     rows = try_execute_select(connection, sql, (ship_id,))
 
     output_str += """
     
-| datetime | event_name | event_params |  
-| --- | --- | --- |  \n"""
+| datetime | request | execution | event_name | event_params |  
+| --- | --- | --- | --- | --- |   \n"""
     for row in rows:
-        output_str += (
-            f"| {datetime.strftime(row[0],'%H:%M:%S')} | {row[1]} | {row[2]} |\n"
-        )
+        output_str += f"| {datetime.strftime(row[0],'%H:%M:%S')} |{row[4] or 0 }s | {row[5] or 0}s  | {row[1]} | {row[3]} {row[2]} |\n"
 
     return output_str
 
@@ -326,15 +336,15 @@ def map_frame(role) -> str:
 
 def map_cargo_percents(cargo_in_use, cargo_capacity) -> str:
     cargo_percents = {
-    0: "\U0001F311\U0001F311",
-    1: "\U0001F318\U0001F311",
-    2: "\U0001F317\U0001F311",
-    3: "\U0001F316\U0001F311",
-    7: "\U0001F316\U0001F315",
-    6: "\U0001F316\U0001F314",
-    5: "\U0001F316\U0001F313",
-    4: "\U0001F316\U0001F312",
-}
+        0: "\U0001F311\U0001F311",
+        1: "\U0001F318\U0001F311",
+        2: "\U0001F317\U0001F311",
+        3: "\U0001F316\U0001F311",
+        7: "\U0001F316\U0001F315",
+        6: "\U0001F316\U0001F314",
+        5: "\U0001F316\U0001F313",
+        4: "\U0001F316\U0001F312",
+    }
     return cargo_percents.get(
         math.floor((cargo_in_use / max(cargo_capacity, 1)) * 8), "\U0001F311"
     )
