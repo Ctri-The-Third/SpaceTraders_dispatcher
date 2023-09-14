@@ -21,6 +21,10 @@ I've identified that the issue appears to be overload on the database itself. On
 
 It's apparent that most of the expense comes from updating the ships in the DB, so I'm going to add some "dirty" flags to indicate when we should/should not update any of the objects in the DB. We already handle most of the updating via the ships object and the object's "update" method, which is incredibly fortunate and reduces the dev footprint something fierce.
 
+The above change resulted in significant improvement in query usage, huzzah!
+We have two active issues that are toppling the system. as of yesterday "urllib3.connectionpool  Connection pool is full, discarding connection: api.spacetraders.io" - which I think might be because we've increased the bucket size for the session object? going to try find and increase the connection pool to match.
+
+The second is the soft locking that has yet to be adequitely explained, and requires the entire dispatcher to by hard-killed before it can be started up again.
 
 
 # Goals
