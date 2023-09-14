@@ -80,6 +80,9 @@ class dispatcher:
         self.db_user = db_user
         self.db_pass = db_pass
         self._connection = None
+        self.connection_pool = []
+        self.max_connections = 100
+        self.last_connection = 0
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
@@ -126,6 +129,37 @@ class dispatcher:
             )
             self._connection.autocommit = True
         return self._connection
+
+    def get_connection(self):
+        if self.last_connection == 100:
+            self.last_connection = 0
+
+        # add a new connection if we're below the max
+        if len(self.connection_pool) < self.max_connections:
+            self.connection_pool.append(
+                psycopg2.connect(
+                    host=self.db_host,
+                    port=self.db_port,
+                    database=self.db_name,
+                    user=self.db_user,
+                    password=self.db_pass,
+                )
+            )
+
+        # reconnect the connection if it's closed
+
+        connection = self.connection_pool[self.last_connection]
+        if connection.closed > 0:
+            connection = self.connection_pool[self.last_connection] = psycopg2.connect(
+                host=self.db_host,
+                port=self.db_port,
+                database=self.db_name,
+                user=self.db_user,
+                password=self.db_pass,
+            )
+
+        return connection
+        pass
 
     def query(self, sql, args: list):
         return try_execute_select(self.connection, sql, args)
@@ -360,7 +394,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
@@ -368,7 +402,7 @@ class dispatcher:
                 sname,
                 behaviour_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
             bhvr = ExtractAndTransferOrSell_4(
@@ -376,7 +410,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
             bhvr = RemoteScanWaypoints(
@@ -384,7 +418,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXPLORE_SYSTEM:
             bhvr = ExploreSystem(
@@ -392,7 +426,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
             bhvr = MonitorPrices(
@@ -400,7 +434,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
             bhvr = BuyAndDeliverOrSell_6(
@@ -408,7 +442,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
@@ -416,7 +450,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_RECEIVE_AND_REFINE:
             bhvr = ReceiveAndRefine(
@@ -424,7 +458,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
@@ -432,7 +466,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_UPGRADE_TO_SPEC:
             bhvr = FindMountsAndEquip(
@@ -440,7 +474,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         else:
             pass
