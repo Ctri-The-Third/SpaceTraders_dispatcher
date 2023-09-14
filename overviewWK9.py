@@ -222,8 +222,8 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
   round(duration_seconds,2) AS request_delay,
   round(EXTRACT(epoch FROM (
      event_timestamp - 
-    LAG( event_timestamp) OVER (ORDER BY event_timestamp DESC)
-  ))::numeric,2)*-1 AS process_delay
+    LAG( event_timestamp) OVER (ORDER BY event_timestamp asc)
+  ))::numeric,2) AS process_delay
 FROM logging 
 WHERE 
   ship_symbol = %s
