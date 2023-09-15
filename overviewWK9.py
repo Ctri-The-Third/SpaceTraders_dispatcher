@@ -223,7 +223,7 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
   round(EXTRACT(epoch FROM (
      event_timestamp - 
     LAG( event_timestamp) OVER (ORDER BY event_timestamp asc)
-  ))::numeric,2) AS process_delay
+  ))::numeric - duration_seconds,2) process_delay
 FROM logging 
 WHERE 
   ship_symbol = %s
@@ -234,7 +234,7 @@ ORDER BY event_timestamp DESC;
 
     output_str += """
     
-| datetime | request | execution | event_name | event_params |  
+| datetime | request time | other time | event_name | event_params |  
 | --- | --- | --- | --- | --- |   \n"""
     for row in rows:
         output_str += f"| {datetime.strftime(row[0],'%H:%M:%S')} |{row[4] or 0 }s | {row[5] or 0}s  | {row[1]} | {row[3]} {row[2]} |\n"

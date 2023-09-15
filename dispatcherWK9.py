@@ -137,40 +137,22 @@ class dispatcher:
         return self._connection
 
     def get_connection(self):
-        if self.last_connection == 100:
-            self.last_connection = 0
+        # switching this from a pool to just a connection generator that passes one connection down to the mediator (Which itself distributes it to the db and pg client)
+        return None
+        new_con = psycopg2.connect(
+            host=self.db_host,
+            port=self.db_port,
+            database=self.db_name,
+            user=self.db_user,
+            password=self.db_pass,
+            application_name=self.lock_id,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=3,  # connection terminates after 30 seconds of silence
+        )
 
-        # add a new connection if we're below the max
-        if len(self.connection_pool) < self.max_connections:
-            new_con = psycopg2.connect(
-                    host=self.db_host,
-                    port=self.db_port,
-                    database=self.db_name,
-                    user=self.db_user,
-                    password=self.db_pass,
-                    application_name=self.lock_id,
-                    keepalives=1,
-                    keepalives_idle=30,
-                    keepalives_interval=10,
-                    keepalives_count=3,  # connection terminates after 30 seconds of silence
-                )
-            new_con.autocommit = True
-            self.connection_pool.append(new_con)            
-
-        # reconnect the connection if it's closed
-
-        connection = self.connection_pool[self.last_connection]
-        if connection.closed > 0:
-            connection = self.connection_pool[self.last_connection] = psycopg2.connect(
-                host=self.db_host,
-                port=self.db_port,
-                database=self.db_name,
-                user=self.db_user,
-                password=self.db_pass,
-            )
-
-        return connection
-        pass
+        return None
 
     def query(self, sql, args: list):
         return try_execute_select(self.connection, sql, args)
