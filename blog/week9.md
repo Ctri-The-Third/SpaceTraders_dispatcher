@@ -27,6 +27,14 @@ We have two active issues that are toppling the system. as of yesterday "urllib3
 The second is the soft locking that has yet to be adequitely explained, and requires the entire dispatcher to by hard-killed before it can be started up again.
 I observed the soft-lock occurred when we restarted the U dispatcher - or more likely, when we reset all the ships_locked values. I'm going to assume it's a DB locking issue and see if tinkering with the connection object is the way forwards there.
 
+Update on the soft-locking! I've implemented additional "how long did this take" tracking in the overview page. It works based on the `lag` sql function so counts sleeps as execution time. This is understandable and not hugely a big deal, but it did highlight several log entries where the execution time was over an hour!!
+This prompted further investigation of PGAdmin and I foudn several transactions stuck in the "idle in transaction" state, and this was locking several connections (connections which are shared) from updating the agent table.
+The query that got stuck in transaction is the standard "uptrade market tradegood" query which is currently the most expensive impact on the DB.
+
+solutions: 
+* StackOverflow suggests this is a problem with transaction management that needs fixed at the source in my code. Since it's an intermittent issue possibly caused by a crash / network hiccup, that's going to be super challenging to fix.
+* I can "prevent the worst from happening" but setting `idle_in_transaction_session_timeout` - which I'll set to 60 seconds. This will result in the DB getting locked for at most 60 seconds. I won't have an easy way of identifying when this happens though. 
+* Add client side comparrison of market data and only upload to the DB when there's an actual change in a given market good. each tradegood will probably need a "dirty" flag.
 
 # Goals
 * Build a new bucket class for the session object to prioritise ship actions that enable cooldowns
