@@ -105,9 +105,6 @@ class Behaviour:
                 error_code=4202,
                 url=f"{__name__}.ship_intrasolar",
             )
-
-        if ship.nav.flight_mode != flight_mode:
-            st.ship_patch_nav(ship, flight_mode)
         wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
 
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
@@ -118,7 +115,7 @@ class Behaviour:
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.go_and_refuel()
-        if fuel_cost > ship.fuel_capacity:
+        if fuel_cost >= ship.fuel_current:
             st.ship_patch_nav(ship, "DRIFT")
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
@@ -554,8 +551,8 @@ order by 1 desc """
                 self.connection, sql, (self.behaviour_params["task_hash"],)
             )
             time.sleep(20)
-        # self.st.db_client.connection.close()
-        # self.st.logging_client.connection.close()
+        self.st.db_client.connection.close()
+        self.st.logging_client.connection.close()
 
     def astar(
         self,
