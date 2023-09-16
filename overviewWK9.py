@@ -214,7 +214,15 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
 ## logs 
 """
 
-    sql = """SELECT 
+    sql = """with sessions as ( 
+select session_id
+from logging
+where ship_symbol = %s
+and event_timestamp >= now() at time zone 'utc' - interval '1 day'
+group by 1 )
+
+
+SELECT 
   date_trunc('second', event_timestamp) AS event_timestamp,
   event_name,
   event_params,
@@ -222,13 +230,17 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
   round(duration_seconds,2) AS request_delay,
   round(EXTRACT(epoch FROM (
      event_timestamp - 
-    LAG( event_timestamp) OVER (ORDER BY event_timestamp asc)
+    LAG( event_timestamp) OVER (partition by session_id ORDER BY event_timestamp asc)
   ))::numeric - duration_seconds,2) process_delay
 FROM logging 
 WHERE 
-  ship_symbol = %s
+	session_id in (select session_id from sessions)
+	and (status_code > 0
+	or event_name in ('BEGIN_BEHAVIOUR_SCRIPT','END_BEHAVIOUR_SCRIPT'))
+
   AND event_timestamp >= NOW() AT TIME ZONE 'utc' - INTERVAL '1 day'
 ORDER BY event_timestamp DESC;
+
 """
     rows = try_execute_select(connection, sql, (ship_id,))
 
