@@ -7,6 +7,7 @@ from behaviours.receive_and_fulfill import (
     ReceiveAndFulfillOrSell_3,
     BEHAVIOUR_NAME as BHVR_RECEIVE_AND_FULFILL,
 )
+import hashlib
 import re
 from straders_sdk.utils import (
     set_logging,
@@ -43,7 +44,7 @@ class ReconConductor:
         self.agents_and_tokens = {
             agent_obj["username"]: agent_obj["token"]
             for agent_obj in user.get("agents")
-            if agent_regex.match(agent_obj["username"])
+            if agent_regex.match(agent_obj["username"]) and "token" in agent_obj
         }
         if len(self.agents_and_tokens) < max_agents:
             i = len(agents)
@@ -57,6 +58,7 @@ class ReconConductor:
 
     def run(self):
         asteroid_wp: Waypoint = None
+        all_commanders = []
         for agent_name, token in self.agents_and_tokens.items():
             self.client.token = token
             self.client.api_client.token = token
@@ -82,6 +84,7 @@ class ReconConductor:
                     satellites.append(maybe_ship)
 
             for ship in commanders:
+                all_commanders.append(ship)
                 self.set_behaviour(
                     ship.name,
                     BHVR_RECEIVE_AND_FULFILL,
@@ -89,6 +92,48 @@ class ReconConductor:
                 )
             for satelite in satellites:
                 self.set_behaviour(satelite.name, BHVR_EXPLORE_SYSTEM)
+        self.maybe_explore_starting_system(all_commanders[0].name)
+
+        sql = "select * from mkt_shpyrds_systems_to_visit_first limit 20"
+        systems = try_execute_select(self.connection, sql, [])
+        if systems:
+            for system in systems:
+                log_task(
+                    self.connection,
+                    BHVR_EXPLORE_SYSTEM,
+                    ["DRONE"],
+                    system[0],
+                    5,
+                    None,
+                    {"target_sys": system[0]},
+                )
+
+    def maybe_explore_starting_system(self, ship_symbol):
+        sql = """with starting_systems as (
+select distinct system_symbol from agents a join waypoints w on a.headquarters = w.waypoint_Symbol
+),
+relevant_market_info as (
+select system_symbol, m.symbol, mtl.* from market m 
+left join market_tradegood_listings mtl on mtl.market_symbol = m.symbol
+where m.system_symbol in (select * from starting_systems ) 
+
+	)
+	select system_symbol, symbol, count (market_symbol) 
+	from relevant_market_info 
+	group by 1 , 2 
+	having count(market_symbol) = 0 """
+        resp = try_execute_select(self.connection, sql, [])
+        if len(resp) > 0:
+            task = log_task(
+                self.connection,
+                BHVR_EXPLORE_SYSTEM,
+                [],
+                resp[0][0],
+                5,
+                None,
+                {"target_sys": resp[0][0]},
+                specific_ship_symbol=ship_symbol,
+            )
 
     def set_behaviour(self, ship_symbol, behaviour_id, behaviour_params=None):
         sql = """INSERT INTO ship_behaviours (ship_symbol, behaviour_id, behaviour_params)
@@ -116,6 +161,47 @@ class ReconConductor:
         except Exception as err:
             logging.error(err)
             return False
+
+
+def log_task(
+    connection,
+    behaviour_id: str,
+    requirements: list,
+    target_system: str,
+    priority=5,
+    agent_symbol=None,
+    behaviour_params=None,
+    expiry=None,
+    specific_ship_symbol=None,
+):
+    if 
+    behaviour_params = {} if not behaviour_params else behaviour_params
+    param_s = json.dumps(behaviour_params)
+    hash_str = hashlib.md5(
+        f"{behaviour_id}-{target_system}-{priority}-{behaviour_params}-{expiry}-{specific_ship_symbol}".encode()
+    ).hexdigest()
+    sql = """ INSERT INTO public.ship_tasks(
+	task_hash, requirements, expiry, priority, agent_symbol, claimed_by, behaviour_id, target_system, behaviour_params)
+	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    on conflict(task_hash) DO NOTHING
+    """
+
+    resp = try_execute_upsert(
+        connection,
+        sql,
+        (
+            hash_str,
+            requirements,
+            expiry,
+            priority,
+            agent_symbol,
+            specific_ship_symbol,
+            behaviour_id,
+            target_system,
+            param_s,
+        ),
+    )
+    return resp or True
 
 
 def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol):
