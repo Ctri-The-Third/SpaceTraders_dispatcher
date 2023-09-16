@@ -169,10 +169,10 @@ def stage_1(client: SpaceTraders):
         set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params)
 
     prices = get_ship_prices_in_hq_system(client)
-    if prices["SHIP_ORE_HOUND"] < 175000:
-        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
-    else:
-        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
+    # if prices["SHIP_ORE_HOUND"] < 175000:
+    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
+    # else:
+    #    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     if maybe_ship:
         set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     return 1
@@ -362,24 +362,9 @@ def stage_3(client: SpaceTraders):
         if ship:
             set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
     elif len(excavators) <= 30:
-        prices = get_ship_prices_in_hq_system(client)
-        for ship, price in prices.items():
-            if price is None:
-                logger.warning(
-                    "Couldn't get price for %s - unable to buy ne ships in stage 3, skipping",
-                    ship,
-                )
-                return 3
-        if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
-            "SHIP_MINING_DRONE", 99999999
-        ) / 10:
-            ship = maybe_buy_ship_hq_sys(
-                client, what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
-            )
-        else:
-            ship = maybe_buy_ship_hq_sys(
-                client, what_ship_should_i_buy(client, "SHIP_MINING_DRONE")
-            )
+        ship = maybe_buy_ship_hq_sys(
+            client, what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
+        )
 
     return 3
 
@@ -568,13 +553,13 @@ where trade_symbol = %s"""
         # ore hound
         if ship.frame.symbol == "FRAME_MINER":
             mining_power = 0
-            if not (hasattr(ship, "mounts")) or not len(ship.mounts) == 0:
+            if not (hasattr(ship, "mounts")) or len(ship.mounts) == 0:
                 ship = client.ships_view_one(ship.name, True)
             for mount in ship.mounts:
                 if "MINING" in mount.symbol:
                     mining_power += mount.strength
 
-            if mining_power <= 60:
+            if mining_power < 50:
                 # upgrade it.
                 found_ship = True
                 break
