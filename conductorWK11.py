@@ -545,6 +545,7 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
     ]
     sql = """select count(*) from market_tradegood_listings 
 where trade_symbol = %s"""
+
     for mount in mounts_to_buy:
         results = try_execute_select(connection, sql, (mount,))
         if len(results) == 0 or results[0][0] == 0:

@@ -94,7 +94,14 @@ class ReconConductor:
                 self.set_behaviour(satelite.name, BHVR_EXPLORE_SYSTEM)
         self.maybe_explore_starting_system(all_commanders[0].name)
 
-        sql = "select * from mkt_shpyrds_systems_to_visit_first limit 20"
+        sql = """select distinct system_symbol 
+	from market_tradegood mt 
+	join waypoints w on mt.market_waypoint = w.waypoint_symbol
+	left join market_tradegood_listings mtl on mt.market_waypoint = mtl.market_symbol and mt.symbol = mtl.trade_symbol
+	where symbol IN ( 'MOUNT_MINING_LASER_II', 'MOUNT_MINING_LASER_III' ,'MOUNT_SURVEYOR_II') 
+	and mtl.trade_symbol is null
+union
+(select * from mkt_shpyrds_systems_to_visit_first limit 20)"""
         systems = try_execute_select(self.connection, sql, [])
         if systems:
             for system in systems:
@@ -174,7 +181,6 @@ def log_task(
     expiry=None,
     specific_ship_symbol=None,
 ):
-    if 
     behaviour_params = {} if not behaviour_params else behaviour_params
     param_s = json.dumps(behaviour_params)
     hash_str = hashlib.md5(
