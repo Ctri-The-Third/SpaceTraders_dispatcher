@@ -33,14 +33,18 @@ The query that got stuck in transaction is the standard "uptrade market tradegoo
 
 solutions: 
 * StackOverflow suggests this is a problem with transaction management that needs fixed at the source in my code. Since it's an intermittent issue possibly caused by a crash / network hiccup, that's going to be super challenging to fix.
+  - it turns out I wasn't doing cursor.close(), or `with connection.cursor() as cursor:` - which was resulting in a lot of transactions / DB sessions being left open and filling things up. That simple change has solved a lot of bottleneck there. I also switched raspberry pis around and put the DB on one with more ram.
 * I can "prevent the worst from happening" but setting `idle_in_transaction_session_timeout` - which I'll set to 60 seconds. This will result in the DB getting locked for at most 60 seconds. I won't have an easy way of identifying when this happens though. 
+  - I haven't seen this be necessary since the first issue was solved, but it was keeping things moving back then so I'm going to keep it. Don't think it's strictly necessary tho.
 * Add client side comparrison of market data and only upload to the DB when there's an actual change in a given market good. each tradegood will probably need a "dirty" flag.
 
 # Goals
 * Build a new bucket class for the session object to prioritise ship actions that enable cooldowns
+* remove the "ships_view_one" from the initialisation of behaviours, as it's impacting the dispatcher by having it depend on the request bucket
 * ✅ add upgrading of ore hounds
  * Update the "extract until full" behaviour to not extract if more than half of the yield would be wasted  
- * add mounts into the database
+ * ✅ add mounts into the database
+* add upgrading of surveying freighters to surveyor IIs
 * ☑️ Fix the recursive behaviour in the utils behaviour which risks deadlocking the dispatcher <---- this one appears to have had biggest impact
 * Have the conductor able to identify when it's oversaturated and scale down.
  * ☑️ Build analytics queries for identifying saturation
@@ -50,12 +54,12 @@ solutions:
 * `Monitor_cheapest_shipyard_price` is calling `ships_view_one` and `ship_change_flight_mode` unecessarily.
 * `conductor week10` is having to query ships for their mounts, due to caching. 
 
-| stat             | Week 6a    | Week 7a    | week 8a   |Week 8   | Week 9
-| ---              | ---       | ---         |        | ---       |
-| fleet size       | 14        |38           |        | 86        | 88
-| missions complete| 0         |3            |        | 1         | 1
-| credits earned   | 4,156,300 |25,163,516   |        | 7,635,436 | 19,491,643
-| requests         | 330,259   |325,241      |        | 139,392   | 336,995
-| uptime           | 6d 3h 52m |6d 22h 28m   |        | 6d 22h 29 | 5d 23h 59m
-| CPH              | 28,107.79 |151,159.46   |        | 45,863.06 | 135,374
-| CPR              | 12.58     |77.36        |        | 54.78     | 57
+| stat             | Week 6a    | Week 7a    | week 8a     |Week 8   | Week 9
+| ---              | ---       | ---         |  ---        | ---       |
+| fleet size       | 14        |38           | 60          | 86        | 88
+| missions complete| 0         |3            | 1           | 1         | 1
+| credits earned   | 4,156,300 |25,163,516   | 15,506,754  | 7,635,436 | 19,491,643
+| requests         | 330,259   |325,241      | 296,051     | 139,392   | 336,995
+| uptime           | 6d 3h 52m |6d 22h 28m   | 3d 21h 10m  | 6d 22h 29 | 5d 23h 59m
+| CPH              | 28,107.79 |151,159.46   | 166,520.36  | 45,863.06 | 135,374
+| CPR              | 12.58     |77.36        | 52.38       | 54.78     | 57
