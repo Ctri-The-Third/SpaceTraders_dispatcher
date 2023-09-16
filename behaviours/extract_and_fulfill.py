@@ -77,6 +77,7 @@ class ExtractAndFulfill_7(Behaviour):
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
             st.waypoints_view(ship.nav.system_symbol, True)
+            self.end()
             return
 
         fulfil_wp = None
