@@ -445,5 +445,79 @@ def analytics():
     return out_str
 
 
+@app.route("/hourly_stats/<agent_id>")
+def hourly_stats(agent_id):
+    sql = """select agent_name, credits_earned as cr, utilisation as util, event_hour 
+    from agent_credits_per_hour 
+    where agent_name = %s
+    order by event_hour desc
+"""
+
+    markdown = f"""# Stats from {start_time} to {end_time} ({duration})
+Requests: {requests_total} ie {requests_per_sec}/s   avg wait: {requests_avg_wait}   max: {requests_max_wait}
+Too many requests: {requests_429s} ie 0.04/s
+21:23:05 Actual requests: {requests_alid} ie 2.73/s
+21:23:05 Wasted requests: {requests_400s} ie 0.0057/s ie one every 2min55s
+21:23:05 (NOT CAPTURED) Request time avg: 0.27s  min: 0.14s  max: 2.37s
+21:23:05 (NOT CAPTURED) Rate limiter idle time: 8min59s ie 7.49%
+21:23:05
+21:23:05 Credits from extractions: {earnings_mining} ({earnings_mining_ps}/s)
+21:23:05 Credits from resells: 0 (0.000/s)
+21:23:05 Credits spent on trade: 0 (0.000/s)
+21:23:05 Net profit from trade: 0 (0.000/s)
+21:23:05 Contracts fulfilled: {new_contracts_fulfilled}
+21:23:05 Credits from contracts: {earnings_contracts} (0.000/s)
+21:23:05 Credits spent on contracts: 0 (0.000/s)
+21:23:05 Credits spent on fuel: {spendings_fuel} (51.331/s)
+21:23:05 Credits spent on ships: {spendings_ships} (0.000/s)
+21:23:05 Net credits gained (without counting ship buys): {net_credits_without_capex} ({net_credits_without_capex_ps}/s)
+21:23:05 Net credits per request: {net_credits_per_request}
+21:23:05
+21:23:05 Totals: extracts {requests_extractions}, amount extracted {total_extracted}, credits from sells {earnings_sells}
+21:23:05
+21:23:05 ALUMINUM_ORE      : exacted 28_643 in 495 actions (avg 57.9, share actions 0.166, share amount 0.167)
+21:23:05 AMMONIA_ICE       : exacted 29_089 in 501 actions (avg 58.1, share actions 0.168, share amount 0.169)
+21:23:05 COPPER_ORE        : exacted 39_848 in 692 actions (avg 57.6, share actions 0.233, share amount 0.232)
+21:23:05 DIAMONDS          : exacted 2_850 in 50 actions (avg 57.0, share actions 0.017, share amount 0.017)
+21:23:05 ICE_WATER         : exacted 18_433 in 319 actions (avg 57.8, share actions 0.107, share amount 0.107)
+21:23:05 IRON_ORE          : exacted 21_428 in 371 actions (avg 57.8, share actions 0.125, share amount 0.125)
+21:23:05 PRECIOUS_STONES   : exacted 1_868 in 32 actions (avg 58.4, share actions 0.011, share amount 0.011)
+21:23:05 QUARTZ_SAND       : exacted 16_640 in 288 actions (avg 57.8, share actions 0.097, share amount 0.097)
+21:23:05 SILICON_CRYSTALS  : exacted 13_179 in 227 actions (avg 58.1, share actions 0.076, share amount 0.077)
+21:23:05
+21:23:05 ALUMINUM_ORE      : sold 28_522 for 1_463_351 credits (avg 51.3, share of profits 0.21)
+21:23:05 AMMONIA_ICE       : sold 27_871 for 1_114_840 credits (avg 40.0, share of profits 0.16)
+21:23:05 COPPER_ORE        : sold 40_508 for 2_265_896 credits (avg 55.9, share of profits 0.33)
+21:23:05 DIAMONDS          : sold 2_850 for 334_027 credits (avg 117.2, share of profits 0.05)
+21:23:05 ICE_WATER         : sold 18_433 for 221_196 credits (avg 12.0, share of profits 0.03)
+21:23:05 IRON_ORE          : sold 21_546 for 991_116 credits (avg 46.0, share of profits 0.14)
+21:23:05 PRECIOUS_STONES   : sold 1_868 for 3_736 credits (avg 2.0, share of profits 0.00)
+21:23:05 QUARTZ_SAND       : sold 16_640 for 282_880 credits (avg 17.0, share of profits 0.04)
+21:23:05 SILICON_CRYSTALS  : sold 13_179 for 193_031 credits (avg 14.6, share of profits 0.03)
+21:23:05
+21:23:05 Credits: 360_261_349¢
+21:23:05 COMMAND: 1
+21:23:05 HYBRID_ORE_HOUND: 0
+21:23:05 MANUAL: 1
+21:23:05 MINER: 80
+21:23:05 PROBE: 0
+21:23:05 SURVEYOR: 16
+21:23:05 UNCLAIMED_ORE_HOUND: 0
+21:23:05 mining_strength:#ships : 0:17,10:1,60:80
+21:23:05 survey_strength:#ships : 0:81,1:1,6:16
+21:23:05 new_ship_price: 160_000¢
+21:23:05 Best listings to buy mounts:
+21:23:05 SH(X1-Z40-41827B) I MOUNT_MINING_LASER_II 37231 75352 V:100 MODERATE 19:23:02 in G(Z40) (-10356,9642) from_home:0 unexplored RED\
+_STAR  as:1 sh:1 ma:7
+21:23:05 No known listing for MOUNT_MINING_LASER_III
+21:23:05 QU9-01912B E MOUNT_SURVEYOR_II  18822 38440 V:10 MODERATE 13:48:14 in G(QU9) (-8768,9022) from_home:1705 unqueried RED_STAR  as:\
+0 sh:0 ma:0
+21:23:05 No known listing for MOUNT_SURVEYOR_III
+21:23:05 Survey report: best:632.2 [COP,QUA,AMM,AMM,AMM,IRO] extractions:3 extracted:157 until 22:10:11 available:17 recent_scores:384 ta\
+rget:256.2 avg:158.2 over 4122 surveys -- n_extracts: avg:8.1 amount:466.2 over 352 -- avg exhausted score:772.2  8.54% of all surveys --\
+ with diamonds: 29/4122 = 0.007 -- new score is positive: 2838 ie 68.85%
+"""
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=4000)

@@ -243,6 +243,9 @@ class dispatcher:
                             ship_and_behaviour["behaviour_id"],
                         )
 
+                        if doing_task:
+                            continue
+
                     #
                     # Instead, fallback behaviour.
                     #
@@ -301,7 +304,7 @@ class dispatcher:
                 where (completed is null or completed is false)
                 and (claimed_by is null 
                 or claimed_By = %s)
-                and expiry > now() at time zone 'utc'
+                and (expiry > now() at time zone 'utc' or expiry is null)
                 order by claimed_by, priority;
 
                 """
