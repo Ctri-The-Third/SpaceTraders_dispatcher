@@ -47,7 +47,7 @@ class ReconConductor:
         }
         if len(self.agents_and_tokens) < max_agents:
             i = len(agents)
-            while len(self.agents_and_tokens) < max_agents:
+            for i in range(max_agents - len(self.agents_and_tokens)):
                 agent_name = f"{recon_prefix}-{i}-"
                 token = register_and_store_user(agent_name)
                 i += 1
