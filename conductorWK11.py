@@ -541,7 +541,6 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
         "MOUNT_SURVEYOR_I",
         "MOUNT_MINING_LASER_II",
         "MOUNT_MINING_LASER_II",
-        "MOUNT_MINING_LASER_I",
     ]
     sql = """select count(*) from market_tradegood_listings 
 where trade_symbol = %s"""
@@ -552,7 +551,7 @@ where trade_symbol = %s"""
     sql = """select count(*) from ship_tasks
         where behaviour_id = %s
         and expiry > now() at time zone 'utc'
-        and not completed
+        and (not completed or completed is null)
         and agent_symbol = %s"""
     results = try_execute_select(
         connection, sql, (BHVR_UPGRADE_TO_SPEC, client.current_agent_symbol)
@@ -574,7 +573,7 @@ where trade_symbol = %s"""
                 if "MINING" in mount.symbol:
                     mining_power += mount.strength
 
-            if mining_power <= 25:
+            if mining_power <= 60:
                 # upgrade it.
                 found_ship = True
                 break

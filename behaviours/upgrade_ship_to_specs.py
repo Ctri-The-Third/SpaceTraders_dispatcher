@@ -44,7 +44,7 @@ class FindMountsAndEquip(Behaviour):
 
     def run(self):
         super().run()
-        ship = self.ship
+        ship = self.ship = self.st.ships_view_one(self.ship_name, True) #we're working with inventory and don't have that yet
         st = self.st
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -69,7 +69,8 @@ class FindMountsAndEquip(Behaviour):
             #
             for inventory in ship.cargo_inventory:
                 if inventory.symbol == target_mount:
-                    st.ship_install_mount(ship, target_mount)
+                    resp = st.ship_install_mount(ship, target_mount)
+                    
                     continue
             #
             # choose the best waypoint (does not factor in lost CPS/ best cost per distance)
@@ -160,19 +161,18 @@ order by purchase_price asc """
 
 
 if __name__ == "__main__":
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "3"
     ship = f"{agent}-{ship_suffix}"
     bhvr = FindMountsAndEquip(
         agent,
         ship,
         behaviour_params={
-            "mounts": [
-                "MOUNT_MINING_LASER_II",
-                "MOUNT_MINING_LASER_II",
-                "MOUNT_MINING_LASER_I",
-            ]
-        },
+  "mounts": [
+    "MOUNT_SURVEYOR_I",
+    "MOUNT_MINING_LASER_II",
+    "MOUNT_MINING_LASER_II"  ]
+},
     )
     set_logging(logging.DEBUG)
     bhvr.run()

@@ -59,7 +59,7 @@ class Behaviour:
             session=session,
             connection=connection,
         )
-        self._graph = None
+        self._graph = None 
         self.ships = None
         self.agent = None
 
