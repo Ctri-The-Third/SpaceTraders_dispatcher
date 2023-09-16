@@ -99,7 +99,11 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
         if ship.can_survey:
             st.ship_survey(ship)
-        self.extract_till_full(cargo_to_transfer)
+
+        cutoff_cargo_limit = None
+        if ship.extract_strength > 0:
+            cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
+        self.extract_till_full(cargo_to_transfer, cutoff_cargo_limit)
 
         #
         # find a hauler from any of the matching agents.
@@ -165,11 +169,7 @@ if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
     ship_suffix = "5"
-    params = {
-        "fulfil_wp": "X1-JC68-17182Z",
-        "asteroid_wp": "X1-JC68-59415D",
-        "cargo_to_transfer": ["COPPER_ORE"],
-    }
+    params = {"asteroid_wp": "X1-GX37-24885Z"}
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params

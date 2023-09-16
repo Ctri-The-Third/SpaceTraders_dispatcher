@@ -21,10 +21,11 @@ from straders_sdk.utils import (
 )
 from itertools import zip_longest
 from behaviours.conductor_mining import run as refresh_stale_waypoints
+import hashlib
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK8 import (
+from dispatcherWK9 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -34,6 +35,7 @@ from dispatcherWK8 import (
     BHVR_BUY_AND_DELIVER_OR_SELL,
     BHVR_RECEIVE_AND_REFINE,
     BHVR_EXTRACT_AND_FULFILL,
+    BHVR_UPGRADE_TO_SPEC,
 )
 
 BHVR_RECEIVE_AND_FULFILL_OR_SELL = (
@@ -59,8 +61,9 @@ def master():
     # stage 5 - no behaviour.
 
     stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4]
-    sleep_time = 1
+    sleep_time = 60
     while True:
+        changed = False
         for agent, client in agents_and_clients.items():
             # reset our cached view of the agent
             client.current_agent = None
@@ -72,9 +75,9 @@ def master():
             except Exception as err:
                 logger.error(err)
                 continue
-        time.sleep(sleep_time)
+            changed = stages_per_agent[agent] != current_stage
 
-        sleep_time = 60
+        time.sleep(sleep_time if not changed else 1)
 
     pass
 
@@ -88,6 +91,7 @@ def stage_0(client: SpaceTraders):
     wayps = client.waypoints_view(sys_wp)
     satelites = [ship for ship in client.ships.values() if ship.role == "SATELLITE"]
 
+    process_contracts(client)
     contracts = client.view_my_contracts()
     if len(contracts) == 0:
         client.ship_negotiate(satelites[0])
@@ -120,7 +124,8 @@ def stage_1(client: SpaceTraders):
     hq_sys = waypoint_slicer(agent.headquarters)
     shipyard_wp = client.find_waypoints_by_trait(hq_sys, "SHIPYARD")[0]
     # commander behaviour
-
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
     extractors = [ship for ship in ships.values() if ship.role == "EXCAVATOR"]
     if len(extractors) >= 2:
         return 2
@@ -186,6 +191,7 @@ def stage_2(client: SpaceTraders):
     wayp = client.find_waypoints_by_type(hq_sys, "ASTEROID_FIELD")[0]
     if not wayp:
         logger.warning("No asteroid field found yet shouldn't happen.")
+    maybe_upgrade_a_ship(client, ships)
 
     # 1. decide on what ship to purchase.
     # ore hounds = 25 mining power
@@ -253,7 +259,7 @@ def stage_3(client: SpaceTraders):
 
     if is_shipyard_stale(client, shipyard_wp):
         client.system_shipyard(shipyard_wp, True)
-    process_contracts(client)
+
     #
     # SHIP SORTING
     #
@@ -264,6 +270,8 @@ def stage_3(client: SpaceTraders):
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
 
     extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
@@ -404,6 +412,8 @@ def stage_4(client: SpaceTraders):
     ):
         return 5
     # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
 
     ships_we_might_buy = [
         "SHIP_PROBE",
@@ -470,6 +480,9 @@ def stage_5(client: SpaceTraders):
     target_refiners = 2
     extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
+    process_contracts(client)
+    maybe_upgrade_a_ship(client, ships)
+
     if (
         len(hounds) >= target_hounds
         and len(haulers) >= len(excavators) / extractors_per_hauler
@@ -517,6 +530,102 @@ def stage_5(client: SpaceTraders):
             )
 
     return 5
+
+
+def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
+    # first - is there already an upgrade task needing completed?
+    connection = client.db_client.connection
+    sql = """select count(*) from ship_tasks
+        where behaviour_id = %s
+        and expiry > now() at time zone 'utc'
+        and not completed
+        and agent_symbol = %s"""
+    results = try_execute_select(
+        connection, sql, (BHVR_UPGRADE_TO_SPEC, client.current_agent_symbol)
+    )
+    if len(results) > 0 and results[0][0] > 0:
+        return
+    # if not, is there a ship that needs upgrading?
+    found_ship = False
+    for ship in ships.values():
+        ship: Ship
+        # ore hound
+        if ship.frame.symbol == "FRAME_MINER":
+            mining_power = 0
+            if not (hasattr(ship, "mounts")) or not len(ship.mounts) == 0:
+                ship = client.ships_view_one(ship.name, True)
+            for mount in ship.mounts:
+                if "MINING" in mount.symbol:
+                    mining_power += mount.strength
+
+            if mining_power <= 25:
+                # upgrade it.
+                found_ship = True
+                break
+    if not found_ship:
+        return
+    params = {
+        "mounts": ["MOUNT_SURVEYOR_I", "MOUNT_MINING_LASER_II", "MOUNT_MINING_LASER_II"]
+    }
+    target_system = ship.nav.system_symbol
+    log_task(
+        connection,
+        BHVR_UPGRADE_TO_SPEC,
+        [],
+        target_system,
+        5,
+        client.current_agent_symbol,
+        behaviour_params=params,
+        specific_ship_symbol=ship.name,
+    )
+    # and if there is, create that task.
+
+    pass
+
+
+def log_task(
+    connection,
+    behaviour_id: str,
+    requirements: list,
+    target_system: str,
+    priority=5,
+    agent_symbol=None,
+    behaviour_params=None,
+    expiry: datetime = None,
+    specific_ship_symbol=None,
+):
+    if not expiry:
+        expiry = datetime.utcnow() + timedelta(days=1)
+        expiry.replace(hour=0, minute=0, second=0, microsecond=0)
+    behaviour_params = {} if not behaviour_params else behaviour_params
+    param_s = json.dumps(behaviour_params)
+    hash_str = hashlib.md5(
+        f"{behaviour_id}-{target_system}-{priority}-{behaviour_params}-{expiry}-{specific_ship_symbol}".encode()
+    ).hexdigest()
+    sql = """ INSERT INTO public.ship_tasks(
+	task_hash, requirements, expiry, priority, agent_symbol, claimed_by, behaviour_id, target_system, behaviour_params)
+	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    on conflict(task_hash) DO NOTHING
+    """
+
+    results = try_execute_upsert(
+        connection,
+        sql,
+        (
+            hash_str,
+            requirements,
+            expiry,
+            priority,
+            agent_symbol,
+            specific_ship_symbol,
+            behaviour_id,
+            target_system,
+            param_s,
+        ),
+    )
+    if not results:
+        logger.error("Couldn't log task because %s", results.error)
+        return
 
 
 def refresh_materialised_views(connection):

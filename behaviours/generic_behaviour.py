@@ -10,6 +10,7 @@ from straders_sdk.utils import (
     waypoint_slicer,
     try_execute_upsert,
 )
+import time
 import logging
 import math
 import networkx
@@ -104,9 +105,6 @@ class Behaviour:
                 error_code=4202,
                 url=f"{__name__}.ship_intrasolar",
             )
-
-        if ship.nav.flight_mode != flight_mode:
-            st.ship_patch_nav(ship, flight_mode)
         wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
 
         fuel_cost = self.determine_fuel_cost(self.ship, wp)
@@ -117,7 +115,7 @@ class Behaviour:
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.go_and_refuel()
-        if fuel_cost > ship.fuel_capacity:
+        if fuel_cost >= ship.fuel_current:
             st.ship_patch_nav(ship, "DRIFT")
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
@@ -139,7 +137,9 @@ class Behaviour:
             return resp
         return True
 
-    def extract_till_full(self, cargo_to_target: list = None) -> Ship or bool:
+    def extract_till_full(
+        self, cargo_to_target: list = None, cutoff_cargo_units_used=None
+    ) -> Ship or bool:
         # need to validate that the ship'  s current WP is a valid location
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
@@ -163,21 +163,25 @@ class Behaviour:
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
-        while ship.cargo_units_used < ship.cargo_capacity:
+        cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
+
+        if len(cargo_to_target) > 0:
+            survey = (
+                st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
+                or st.find_survey_best(wayp_s)
+                or None
+            )
+        else:
+            survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
+
+        while ship.cargo_units_used < cutoff_cargo_units_used:
             # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
             self.sleep_until_ready()
 
-            if len(cargo_to_target) > 0:
-                survey = (
-                    st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
-                    or st.find_survey_best(wayp_s)
-                    or None
-                )
-            else:
-                survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
-
             resp = st.ship_extract(ship, survey)
-            if ship.cargo_units_used == ship.cargo_capacity:
+
+            # extract. if we're full, return without refreshing the survey (as we won't use it)
+            if ship.cargo_units_used >= cutoff_cargo_units_used:
                 return ship
 
             # 4224/4221 means exhausted survey - we can just try again and don't need to sleep.
@@ -185,8 +189,17 @@ class Behaviour:
             if not resp and resp.error_code in [4228]:
                 return False
             elif not resp and resp.error_code not in [4224, 4221, 4000]:
-                sleep(30)
                 return False
+            else:
+                # the survey is expired, refresh it.
+                if len(cargo_to_target) > 0:
+                    survey = (
+                        st.find_survey_best_deposit(wayp_s, cargo_to_target[0])
+                        or st.find_survey_best(wayp_s)
+                        or None
+                    )
+                else:
+                    survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
     def go_and_refuel(self):
         ship = self.ship
@@ -535,10 +548,11 @@ order by 1 desc """
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(
-                sql, self.connection, (self.behaviour_params["task_hash"],)
+                self.connection, sql, (self.behaviour_params["task_hash"],)
             )
-        # self.st.db_client.connection.close()
-        # self.st.logging_client.connection.close()
+            time.sleep(20)
+        self.st.db_client.connection.close()
+        self.st.logging_client.connection.close()
 
     def astar(
         self,

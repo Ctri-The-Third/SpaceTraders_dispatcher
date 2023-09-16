@@ -5,6 +5,7 @@ import logging
 import psycopg2
 import sys, threading, os, uuid, time
 from requests_ratelimiter import LimiterSession
+from requests.adapters import HTTPAdapter
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
@@ -12,6 +13,7 @@ from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
+
 import random
 from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import (
@@ -42,6 +44,11 @@ from behaviours.receive_and_refine import (
 from behaviours.extract_and_fulfill import (
     ExtractAndFulfill_7,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_FULFILL,
+)
+
+from behaviours.upgrade_ship_to_specs import (
+    FindMountsAndEquip,
+    BEHAVIOUR_NAME as BHVR_UPGRADE_TO_SPEC,
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -75,10 +82,17 @@ class dispatcher:
         self.db_user = db_user
         self.db_pass = db_pass
         self._connection = None
+        self.connection_pool = []
+        self.max_connections = 100
+        self.last_connection = 0
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
         self.session = LimiterSession(per_second=3, per_hour=10800)
+        self.session.mount(
+            "https://api.spacetraders.io",
+            HTTPAdapter(pool_maxsize=self.max_connections),
+        )
         self.ships = {}
         self.tasks_last_updated = datetime.min
         self.task_refresh_period = timedelta(minutes=1)
@@ -122,6 +136,24 @@ class dispatcher:
             self._connection.autocommit = True
         return self._connection
 
+    def get_connection(self):
+        # switching this from a pool to just a connection generator that passes one connection down to the mediator (Which itself distributes it to the db and pg client)
+        return None
+        new_con = psycopg2.connect(
+            host=self.db_host,
+            port=self.db_port,
+            database=self.db_name,
+            user=self.db_user,
+            password=self.db_pass,
+            application_name=self.lock_id,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=3,  # connection terminates after 30 seconds of silence
+        )
+
+        return None
+
     def query(self, sql, args: list):
         return try_execute_select(self.connection, sql, args)
 
@@ -132,6 +164,7 @@ class dispatcher:
         check_frequency = timedelta(seconds=15 * len(self.agents))
         agents_and_last_checkeds = {}
         agents_and_unlocked_ships = {}
+        self.client.ships_view()
         while True:
             #
             # every 15 seconds update the list of unlocked ships with a DB query
@@ -162,10 +195,10 @@ class dispatcher:
                         round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
                     )
                     if len(unlocked_ships) > 10:
-                        set_logging(level=logging.WARNING)
+                        set_logging(level=logging.INFO)
                         api_logger = logging.getLogger("API-Client")
                         api_logger.setLevel(logging.CRITICAL)
-                        self.logger.level = logging.WARNING
+                        self.logger.level = logging.INFO
                         logging.getLogger().setLevel(logging.WARNING)
                         pass
                     # if we're running a ship and the lock has expired during execution, what do we do?
@@ -192,7 +225,10 @@ class dispatcher:
                         self.client, ship_and_behaviour["name"]
                     )
                     if task:
-                        self.claim_task(task["task_hash"], ship_and_behaviour["name"])
+                        if task["claimed_by"] is None or task["claimed_by"] == "":
+                            self.claim_task(
+                                task["task_hash"], ship_and_behaviour["name"]
+                            )
                         task["behaviour_params"]["task_hash"] = task["task_hash"]
                         bhvr = self.map_behaviour_to_class(
                             task["behaviour_id"],
@@ -266,11 +302,13 @@ class dispatcher:
  
             from ship_tasks
                 where (completed is null or completed is false)
+                and (claimed_by is null 
+                or claimed_By = %s)
                 and expiry > now() at time zone 'utc'
                 order by claimed_by, priority;
 
                 """
-            results = try_execute_select(self.connection, sql, ())
+            results = try_execute_select(self.connection, sql, (ship_symbol,))
             self.tasks = {
                 row[0]: {
                     "task_hash": row[0],
@@ -287,11 +325,12 @@ class dispatcher:
             }
         ship = self.ships.get(ship_symbol, None)
         if not ship:
-            ship = client.db_client.ships_view_one(ship_symbol)
+            ship = client.ships_view_one(ship_symbol)
             if not ship:
-                #dafuq
-                self.logger.warning("Ship %s not in the database for some reason - can't assign tasks for it.", ship_symbol)
-                return None 
+                self.logger.warning(
+                    "For some reason the ship %s doesn't exist in db", ship_symbol
+                )
+                return None
             self.ships[ship_symbol] = ship
 
         for hash, task in self.tasks.items():
@@ -354,7 +393,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
@@ -362,7 +401,7 @@ class dispatcher:
                 sname,
                 behaviour_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
             bhvr = ExtractAndTransferOrSell_4(
@@ -370,7 +409,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
             bhvr = RemoteScanWaypoints(
@@ -378,7 +417,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXPLORE_SYSTEM:
             bhvr = ExploreSystem(
@@ -386,7 +425,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
             bhvr = MonitorPrices(
@@ -394,7 +433,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
             bhvr = BuyAndDeliverOrSell_6(
@@ -402,7 +441,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
@@ -410,7 +449,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_RECEIVE_AND_REFINE:
             bhvr = ReceiveAndRefine(
@@ -418,7 +457,7 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
             )
         elif id == BHVR_EXTRACT_AND_FULFILL:
             bhvr = ExtractAndFulfill_7(
@@ -426,7 +465,15 @@ class dispatcher:
                 sname,
                 bhvr_params,
                 session=self.session,
-                connection=self.connection,
+                connection=self.get_connection(),
+            )
+        elif id == BHVR_UPGRADE_TO_SPEC:
+            bhvr = FindMountsAndEquip(
+                aname,
+                sname,
+                bhvr_params,
+                session=self.session,
+                connection=self.get_connection(),
             )
         else:
             pass

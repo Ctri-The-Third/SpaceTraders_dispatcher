@@ -17,10 +17,11 @@ BEHAVIOUR_NAME = "UPGRADE_TO_SPEC"
 SAFETY_PADDING = 60
 
 
-class FindModulesAndEquip(Behaviour):
+class FindMountsAndEquip(Behaviour):
     """Requires a parameter blob containing
 
-    `mounts`: a list of the mount symbols to equip\n"""
+    `mounts`: a list of the mount symbols to equip\n
+    `market_wp`: the waypoint symbol of the market to buy all the mounts from\n"""
 
     def __init__(
         self,
@@ -62,7 +63,6 @@ class FindModulesAndEquip(Behaviour):
 
             if got_it:
                 ship_mounts.pop(index)
-
                 continue
             #
             # is it already in our inventory? if so, skip this step, and just try and equip it.
@@ -72,7 +72,7 @@ class FindModulesAndEquip(Behaviour):
                     st.ship_install_mount(ship, target_mount)
                     continue
             #
-            # choose the best waypoint, factoring in lost CPS
+            # choose the best waypoint (does not factor in lost CPS/ best cost per distance)
             #
             destination_wp_sym = self.find_cheapest_markets_for_good(target_mount)
             if not destination_wp_sym:
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U7-"
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_suffix}"
-    bhvr = FindModulesAndEquip(
+    bhvr = FindMountsAndEquip(
         agent,
         ship,
         behaviour_params={

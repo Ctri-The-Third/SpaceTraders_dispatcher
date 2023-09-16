@@ -6,7 +6,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": false
         },
         {
             "name": "conductor",
@@ -20,7 +21,7 @@
             "name": "dispatcher -L",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK7.py",
+            "program": "dispatcherWK9.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -31,7 +32,7 @@
             "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK8.py",
+            "program": "dispatcherWK9.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -39,10 +40,10 @@
             ]
         },
         {
-            "name": "Python: overview ",
+            "name": " overview ",
             "type": "python",
             "request": "launch",
-            "program": "overviewWK7.py",
+            "program": "overviewWK9.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
