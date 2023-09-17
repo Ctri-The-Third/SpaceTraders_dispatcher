@@ -219,6 +219,7 @@ select session_id
 from logging
 where ship_symbol = %s
 and event_timestamp >= now() at time zone 'utc' - interval '1 day'
+and event_name = 'BEGIN_BEHAVIOUR_SCRIPT'
 group by 1 )
 
 
@@ -231,7 +232,8 @@ SELECT
   round(EXTRACT(epoch FROM (
      event_timestamp - 
     LAG( event_timestamp) OVER (partition by session_id ORDER BY event_timestamp asc)
-  ))::numeric - duration_seconds,2) process_delay
+  ))::numeric - duration_seconds,2) process_delay,
+  
 FROM logging 
 WHERE 
 	session_id in (select session_id from sessions)
