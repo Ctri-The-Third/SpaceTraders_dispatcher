@@ -369,7 +369,7 @@ def stage_4(client: SpaceTraders):
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
-
+    refineries = [ship for ship in ships.values() if ship.role == "REFINERY"]
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
     target_hounds = 30
     target_refiners = 1
@@ -378,6 +378,7 @@ def stage_4(client: SpaceTraders):
     if (
         len(hounds) >= target_hounds
         and len(haulers) >= len(excavators) / extractors_per_hauler
+        and len(refineries) >= target_refiners
     ):
         return 5
     # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
