@@ -164,7 +164,8 @@ def scan_progress():
 def commander_overview():
     sql = """select ao.agent_symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated 
             from agent_overview ao 
-            join contracts_overview co on ao.agent_symbol = co.agent_symbol 
+            left join contracts_overview co on ao.agent_symbol = co.agent_symbol and co.expiration >= now() at time zone 'utc'
+			where last_updated >= now() at time zone 'utc' - interval '1 day'
             order by last_updated desc"""
     cursor.execute(sql)
     rows = cursor.fetchall()

@@ -413,7 +413,7 @@ def stage_4(client: SpaceTraders):
         ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
         if ship:
             set_behaviour(
-                ship.name, BHVR_RECEIVE_AND_FULFILL, {"asteroid_wp": asteroid_wp.symbol}
+                ship.name, BHVR_RECEIVE_AND_REFINE, {"asteroid_wp": asteroid_wp.symbol}
             )
     elif len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
@@ -482,7 +482,7 @@ def stage_5(client: SpaceTraders):
             "SHIP_LIGHT_HAULER",
         )
         if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_REFINE, hauler_params)
     # then either buy a refining freighter, or an ore hound
     if len(refiners) < target_refiners:
         ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")

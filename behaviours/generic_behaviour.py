@@ -237,8 +237,7 @@ class Behaviour:
         listings = {}
         if not market:
             market = self.st.system_market(
-                st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol),
-                True,
+                st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
             )
         if market:
             listings = {listing.symbol: listing for listing in market.listings}
