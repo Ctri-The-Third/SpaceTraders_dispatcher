@@ -12,3 +12,5 @@ We had some brainwaves that have informed decision making for our goals.
   * the queue is a priority quueue.
 * Currently our behaviour is updating the market after a transaction. That's computationally expensive, we should only update the market tradegood involved, by using the transaction to update the market tradegood or ship cost.
 * ✅ We should validate in the conductor whether or not to assign a task, based on whether or not it's possible. No buying things if we don't have an accessible system for them.
+  * Additionally, don't schedule a task until we have enough money for it.
+* Seems to be an issue with getting the right surveys out of the DB? put some logging into the DB for extractions, which should include the survey ID.

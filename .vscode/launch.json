@@ -29,14 +29,14 @@
             ]
         },
         {
-            "name": "dispatcher -U",
+            "name": "dispatcher -V",
             "type": "python",
             "request": "launch",
             "program": "dispatcherWK9.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "CTRI-U-"
+                "CTRI-V-"
             ]
         },
         {

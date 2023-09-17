@@ -238,9 +238,9 @@ def stage_2(client: SpaceTraders):
 
 
 def stage_3(client: SpaceTraders):
-    # we're have 1 or 2 surveyors, and 3 or 5 excavators.
+    # we begin scaling ore hounds - expect the completion of the first quest..
     # at this point we want to switch to surveying and extracting, not raw extracting.
-
+    # go for 10 ore hounds then move on.
     #
     # PREFLIGHT AND DATA REFRESH
     #
@@ -273,12 +273,8 @@ def stage_3(client: SpaceTraders):
     process_contracts(client)
     maybe_upgrade_a_ship(client, ships)
 
-    extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
-    if (
-        len(excavators) >= 30
-        and len(haulers) >= len(excavators) // extractors_per_hauler
-    ):
+    if len(excavators) >= 15:
         return 4
     #
     # SETTING PARAMETERS & HAULER PREPARING
@@ -337,8 +333,6 @@ def stage_3(client: SpaceTraders):
         set_behaviour(
             excavator.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
         )
-    for hauler in haulers:
-        set_behaviour(hauler.name, hauler_behaviour, hauler_params)
     for satelite in satelites:
         set_behaviour(
             satelite.name,
@@ -346,22 +340,12 @@ def stage_3(client: SpaceTraders):
             {"asteroid_wp": shipyard_wp.symbol},
         )
     for commander in commanders:
-        # if there's no hauler, do that.
-        if len(haulers) == 0:
-            set_behaviour(commander.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
-        else:
-            # do the refresh behaviour
-            set_behaviour(
-                commander.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
-            )
+        # do the refresh behaviour
+        set_behaviour(commander.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
-    if len(haulers) < math.floor(len(excavators) / extractors_per_hauler):
-        ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
-        if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
-    elif len(excavators) <= 30:
+    if len(excavators) <= 15:
         ship = maybe_buy_ship_hq_sys(
             client, what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
         )
@@ -370,8 +354,8 @@ def stage_3(client: SpaceTraders):
 
 
 def stage_4(client: SpaceTraders):
-    # we're at at 30 excavators and 3 haulers.
-    # Ideally we want to start building up hounds, replacing excavators.
+    # we're at at 10 excavators and no haulers.
+    # begin scaling toward the hauler / hound model.
     # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
     agent = client.view_my_self()
     # hq_sys_sym = waypoint_slicer(agent.headquarters)
@@ -389,7 +373,7 @@ def stage_4(client: SpaceTraders):
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
     target_hounds = 30
     target_refiners = 1
-    extractors_per_hauler = 10
+    extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
     if (
         len(hounds) >= target_hounds

@@ -51,11 +51,11 @@ solutions:
 * `conductor week10` is having to query ships for their mounts, due to caching. 
 
 | stat             | Week 6a    | Week 7a    | week 8a   |Week 8   | Week 9
-| ---              | ---       | ---         |        | ---       |
-| fleet size       | 14        |38           |        | 86        | 88
-| missions complete| 0         |3            |        | 1         | 1
-| credits earned   | 4,156,300 |25,163,516   |        | 7,635,436 | 19,491,643
-| requests         | 330,259   |325,241      |        | 139,392   | 336,995
+| ---              | ---       | ---         | ---       | ---       |
+| fleet size       | 14        |38           | isssues       | 86        | 88
+| missions complete| 0         |3            | skipped       | 1         | 1
+| credits earned   | 4,156,300 |25,163,516   | worse CPH       | 7,635,436 | 19,491,643
+| requests         | 330,259   |325,241      | in anycase.       | 139,392   | 336,995
 | uptime           | 6d 3h 52m |6d 22h 28m   |        | 6d 22h 29 | 5d 23h 59m
 | CPH              | 28,107.79 |151,159.46   |        | 45,863.06 | 135,374
 | CPR              | 12.58     |77.36        |        | 54.78     | 57
