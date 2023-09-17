@@ -446,7 +446,7 @@ def stage_5(client: SpaceTraders):
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
-    target_hounds = 30
+    target_hounds = 50
     target_refiners = 2
     extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
