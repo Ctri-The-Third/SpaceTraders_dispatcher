@@ -289,10 +289,20 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
     agent_ships = 0
     active_ships = 0
     response_block = """"""
-
+    last_ship = ""
+    ship_block = """"""
     if len(rows) > 0:
         rows.append(["", "", "", "", "", 0, 0, "", "", ""])
         for row in rows:
+            # in a situation where the next row is a different agent - we're done aggregating this agent, and need to add it to the output.
+            # the same thing needs to happen if we're accessing a different ship type - we're done aggregating that kind of ship and need to add it to the still-baking agent output
+
+            if last_ship != f"{row[3]}{row[2]}" or row[0] != last_agent:
+                if last_ship != "":
+                    agent_block = f"{agent_block}* {frame_emoji}{role_emoji}: {shipyard_type_counts[f'{frame_emoji}{role_emoji}']}:  {ship_block} \n"
+                last_ship = f"{row[3]}{row[2]}"
+                ship_block = ""
+
             if row[0] != last_agent:
                 # only print the header row if this is not the first pass through
                 # the header row gets added at the end of the loop
@@ -300,14 +310,16 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
                     header_block = f"""\n\n### {last_agent}\n
 * {last_agent} has {agent_ships} ships, {active_ships} active ({round(active_ships/agent_ships*100,2)}%)\n"""
 
-                    for key, value in shipyard_type_counts.items():
-                        header_block += f"* {key}: {value}\n"
+                    # for key, value in shipyard_type_counts.items():
+                    #    header_block += f"* {key}: {value}\n"
                     response += header_block + agent_block + "\n\n"
+                    last_ship = ""
                 last_agent = row[0]
                 agent_block = """"""
                 shipyard_type_counts = {}
                 agent_ships = 0
                 active_ships = 0
+
             busy_emoji = "✅" if row[9] else "❌"
             frame_emoji = map_frame(row[3])
             role_emoji = map_role(row[2])
@@ -319,7 +331,7 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
             if row[9]:
                 active_ships += 1
 
-            agent_block += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
+            ship_block += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
     return response
 
 
@@ -459,10 +471,58 @@ def analytics():
 
 @app.route("/hourly_stats/<agent_id>")
 def hourly_stats(agent_id):
-    sql = """select agent_name, credits_earned as cr, utilisation as util, event_hour 
-    from agent_credits_per_hour 
-    where agent_name = %s
-    order by event_hour desc
+    sql = """with request_stats as (
+	select s.agent_name
+	, min(event_timestamp) report_start
+	, max(event_timestamp) report_end
+	, max(event_timestamp) - min(event_timestamp) as report_period 
+	, count(*) filter (where status_Code >= 0 ) as requests
+	, count(*) filter (where status_code >= 400 and status_Code < 500) as invalid_Requests
+	, count(*) filter (where status_Code >= 0 ) / EXTRACT(EPOCH FROM max(event_timestamp) - min(event_timestamp)) as rps
+	, avg(l.duration_seconds) filter (where status_code >= 0) as requests_avg_wait
+	, max(l.duration_Seconds) filter (where status_code >= 0) as requests_max_wait
+
+	from logging l join ships s on l.ship_symbol = s.ship_symbol
+	where s.agent_name = 'CTRI-U-'
+	and event_timestamp >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	group by 1
+),
+transaction_summary as (
+	select s.agent_name
+	, sum(total_price) as total_credits_earned
+	, min("timestamp") report_start
+	, max("timestamp") report_end
+	, round(sum(total_price) / EXTRACT(EPOCH FROM max("timestamp") - min("timestamp"))::numeric,2) as cps
+
+	from transactions t 
+	join ships s on t.ship_Symbol = s.ship_symbol
+	where s.agent_name = 'CTRI-U-'
+	and "timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	--and "timestamp" <= date_trunc('hour',now() at time zone 'utc')
+	group by 1 
+),
+cps as (
+  select * from request_stats rs join transaction_summary ts on rs.agent_name = ts.agent_name
+),
+transaction_stats as (
+  select agent_name, trade_Symbol, sum(units) as units_sold, sum(total_price) as credits_earned from transactions t join ships s on t.ship_Symbol = s.ship_symbol
+  where agent_name = 'CTRI-U-'
+	
+  and "timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	and type = 'SELL'
+	group by 1 ,2
+	order by 4 desc
+),
+extraction_stats as ( 
+	select agent_name, trade_Symbol, sum(quantity) from extractions e join ships s on e.ship_Symbol = s.ship_symbol 
+	where s.agent_name = 'CTRI-U-'
+	and event_timestamp >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	
+ 	group by 1, 2
+	order by 3 desc
+)
+select * from transaction_stats
+
 """
 
     markdown = f"""# Stats from {start_time} to {end_time} ({duration})
