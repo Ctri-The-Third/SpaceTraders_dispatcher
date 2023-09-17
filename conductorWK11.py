@@ -60,7 +60,7 @@ def master():
     ## if there are 50 total ore-hounds move on
     # stage 5 - no behaviour.
 
-    stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4]
+    stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4, stage_5]
     sleep_time = 60
     while True:
         changed = False
