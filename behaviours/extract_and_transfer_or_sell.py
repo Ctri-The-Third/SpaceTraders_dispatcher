@@ -42,7 +42,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
         starting_credts = self.st.view_my_self().credits
         self.logger.info("NEEDLESS REQUEST - get inventory into DB")
         self.ship = ship = self.st.ships_view_one(self.ship_name, True)
-        self.st.ship_cooldown(ship)
+        # self.st.ship_cooldown(ship)
         st = self.st
         agent = st.view_my_self()
 

@@ -22,28 +22,41 @@ WITH sessions AS (
   GROUP BY agent_name
 )
 SELECT s.agent_name,
-       EXTRACT(EPOCH FROM (MAX(max_timestamp) - MIN(min_timestamp))) / 3600 as total_time_seconds,
-       EXTRACT(EPOCH FROM total_downtime) /3600 as total_downtime_seconds  ,
-       EXTRACT(EPOCH FROM (MAX(max_timestamp) - MIN(min_timestamp)) - total_downtime) / 3600 as uptime_seconds
+       EXTRACT(EPOCH FROM (MAX(max_timestamp) - MIN(min_timestamp))) / 3600 as total_time_hours,
+       EXTRACT(EPOCH FROM total_downtime) /3600 as total_downtime_hours  ,
+       EXTRACT(EPOCH FROM (MAX(max_timestamp) - MIN(min_timestamp)) - total_downtime) / 3600 as uptime_hours
 FROM sessions s 
 JOIN downtime d ON s.agent_name = d.agent_name 
-GROUP BY 1, total_downtime ;
+GROUP BY 1, total_downtime 
+order by 1;
+
 
 ```
 
 ```sql 
-
+--ship count
 select agent_name, count(*)
 from ships 
 group by 1;
 
-
+-- contracts fulfilled
 select agent_symbol, count(*) from contracts 
 where fulfilled = true
 group by 1 ;
 
+--earnings
 select agent_name, sum(total_price) 
 from transactions t 
 join ships s on t.ship_Symbol = s.ship_symbol
 where type = 'SELL'
 group by 1;
+
+--requests (excluding 429 responses)
+select msbt.agent_name, count(*)
+from mat_Session_behaviour_types msbt
+join logging l on msbt.session_id = l.session_id
+ where status_code >= 200 and status_code < 500
+and status_code != 429
+group by 1 
+
+```
