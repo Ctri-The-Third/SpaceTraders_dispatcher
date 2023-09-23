@@ -7,6 +7,10 @@ from behaviours.receive_and_fulfill import (
     ReceiveAndFulfillOrSell_3,
     BEHAVIOUR_NAME as BHVR_RECEIVE_AND_FULFILL,
 )
+from behaviours.explore_system import (
+    ExploreSystem,
+    BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
+)
 import hashlib
 import re
 from straders_sdk.utils import (
@@ -16,7 +20,6 @@ from straders_sdk.utils import (
     try_execute_upsert,
 )
 import logging
-from dispatcherWK7 import BHVR_EXPLORE_SYSTEM
 
 
 RECON_AGENTS_MAX = 10
