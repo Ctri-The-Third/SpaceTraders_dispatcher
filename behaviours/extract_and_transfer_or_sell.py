@@ -40,15 +40,15 @@ class ExtractAndTransferOrSell_4(Behaviour):
         super().run()
 
         starting_credts = self.st.view_my_self().credits
+        self.logger.info("NEEDLESS REQUEST - get inventory into DB")
         self.ship = ship = self.st.ships_view_one(self.ship_name, True)
-        self.st.ship_cooldown(ship)
+        # self.st.ship_cooldown(ship)
         st = self.st
         agent = st.view_my_self()
 
         #
         #  -- log beginning
         #
-
         if not ship.can_extract:
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
             return
@@ -88,6 +88,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
             cargo_to_transfer = [cargo_to_transfer]
 
         if cargo_to_transfer == []:
+            self.logger.info("st.view_my_contracts() is triggering a needless request")
             contracts = st.view_my_contracts()
             if contracts:
                 for contract_id, contract in contracts.items():
@@ -99,7 +100,6 @@ class ExtractAndTransferOrSell_4(Behaviour):
 
         if ship.can_survey:
             st.ship_survey(ship)
-
         cutoff_cargo_limit = None
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
     ship_suffix = "5"
-    params = {"asteroid_wp": "X1-GX37-24885Z"}
+    params = {"asteroid_wp": "X1-GM20-77355E"}
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndTransferOrSell_4(
         agent_symbol, f"{agent_symbol}-{ship_suffix}", params

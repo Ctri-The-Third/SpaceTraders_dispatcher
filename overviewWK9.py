@@ -164,7 +164,8 @@ def scan_progress():
 def commander_overview():
     sql = """select ao.agent_symbol, ao.credits, ao.starting_faction, ao.ship_count, trade_symbol, units_fulfilled, units_required , progress, ao.last_updated 
             from agent_overview ao 
-            join contracts_overview co on ao.agent_symbol = co.agent_symbol 
+            left join contracts_overview co on ao.agent_symbol = co.agent_symbol and co.expiration >= now() at time zone 'utc'
+			where last_updated >= now() at time zone 'utc' - interval '1 day'
             order by last_updated desc"""
     cursor.execute(sql)
     rows = cursor.fetchall()
@@ -214,7 +215,16 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
 ## logs 
 """
 
-    sql = """SELECT 
+    sql = """with sessions as ( 
+select session_id
+from logging
+where ship_symbol = %s
+and event_timestamp >= now() at time zone 'utc' - interval '1 day'
+and event_name = 'BEGIN_BEHAVIOUR_SCRIPT'
+group by 1 )
+
+
+SELECT 
   date_trunc('second', event_timestamp) AS event_timestamp,
   event_name,
   event_params,
@@ -222,13 +232,18 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
   round(duration_seconds,2) AS request_delay,
   round(EXTRACT(epoch FROM (
      event_timestamp - 
-    LAG( event_timestamp) OVER (ORDER BY event_timestamp asc)
+    LAG( event_timestamp) OVER (partition by session_id ORDER BY event_timestamp asc)
   ))::numeric - duration_seconds,2) process_delay
+  
 FROM logging 
 WHERE 
-  ship_symbol = %s
+	session_id in (select session_id from sessions)
+	and (status_code > 0
+	or event_name in ('BEGIN_BEHAVIOUR_SCRIPT','END_BEHAVIOUR_SCRIPT'))
+
   AND event_timestamp >= NOW() AT TIME ZONE 'utc' - INTERVAL '1 day'
 ORDER BY event_timestamp DESC;
+
 """
     rows = try_execute_select(connection, sql, (ship_id,))
 
@@ -277,10 +292,20 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
     agent_ships = 0
     active_ships = 0
     response_block = """"""
-
+    last_ship = ""
+    ship_block = """"""
     if len(rows) > 0:
         rows.append(["", "", "", "", "", 0, 0, "", "", ""])
         for row in rows:
+            # in a situation where the next row is a different agent - we're done aggregating this agent, and need to add it to the output.
+            # the same thing needs to happen if we're accessing a different ship type - we're done aggregating that kind of ship and need to add it to the still-baking agent output
+
+            if last_ship != f"{row[3]}{row[2]}" or row[0] != last_agent:
+                if last_ship != "":
+                    agent_block = f"{agent_block}* {frame_emoji}{role_emoji}: {shipyard_type_counts[f'{frame_emoji}{role_emoji}']}:  {ship_block} \n"
+                last_ship = f"{row[3]}{row[2]}"
+                ship_block = ""
+
             if row[0] != last_agent:
                 # only print the header row if this is not the first pass through
                 # the header row gets added at the end of the loop
@@ -288,14 +313,16 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
                     header_block = f"""\n\n### {last_agent}\n
 * {last_agent} has {agent_ships} ships, {active_ships} active ({round(active_ships/agent_ships*100,2)}%)\n"""
 
-                    for key, value in shipyard_type_counts.items():
-                        header_block += f"* {key}: {value}\n"
+                    # for key, value in shipyard_type_counts.items():
+                    #    header_block += f"* {key}: {value}\n"
                     response += header_block + agent_block + "\n\n"
+                    last_ship = ""
                 last_agent = row[0]
                 agent_block = """"""
                 shipyard_type_counts = {}
                 agent_ships = 0
                 active_ships = 0
+
             busy_emoji = "✅" if row[9] else "❌"
             frame_emoji = map_frame(row[3])
             role_emoji = map_role(row[2])
@@ -307,7 +334,7 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
             if row[9]:
                 active_ships += 1
 
-            agent_block += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
+            ship_block += f'[{busy_emoji}](/ships?id={row[1]} "{row[1]}{frame_emoji}{role_emoji}{cargo_emoji}") '
     return response
 
 
@@ -407,7 +434,8 @@ def index():
 
 @app.route("/refresh")
 def refresh():
-    sql = "refresh materialized view mat_session_stats;"
+    sql = """refresh materialized view mat_session_stats;
+    refresh materialized view mat_session_behaviour_types;"""
     try_execute_select(connection, sql, ())
     return "refreshed. go back to index."
 
@@ -442,6 +470,263 @@ def analytics():
         formatted_analytics,
         extensions=["tables", "md_in_html"],
     )
+    return out_str
+
+
+@app.route("/hourly_stats/<agent_id>")
+def hourly_stats(agent_id):
+    sql = """with request_stats as (
+	select s.agent_name
+	, min(event_timestamp) report_start
+	, max(event_timestamp) report_end
+	, max(event_timestamp) - min(event_timestamp) as report_period 
+	, count(*) filter (where status_Code >= 0 ) as requests
+	, count(*) filter (where status_code >= 400 and status_Code < 500) as invalid_Requests
+	, count(*) filter (where status_Code >= 0 ) / EXTRACT(EPOCH FROM max(event_timestamp) - min(event_timestamp)) as rps
+	, avg(l.duration_seconds) filter (where status_code >= 0) as requests_avg_wait
+	, max(l.duration_Seconds) filter (where status_code >= 0) as requests_max_wait
+
+	from logging l join ships s on l.ship_symbol = s.ship_symbol
+	where s.agent_name = %s
+	and event_timestamp >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	group by 1
+),
+transaction_summary as (
+	select s.agent_name
+	, sum(total_price) as total_credits_earned
+	, min("timestamp") report_start
+	, max("timestamp") report_end
+	, round(sum(total_price) / EXTRACT(EPOCH FROM max("timestamp") - min("timestamp"))::numeric,2) as cps
+
+	from transactions t 
+	join ships s on t.ship_Symbol = s.ship_symbol
+	where s.agent_name = %s
+	and "timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	--and "timestamp" <= date_trunc('hour',now() at time zone 'utc')
+	group by 1 
+),
+cps as (
+  select * from request_stats rs join transaction_summary ts on rs.agent_name = ts.agent_name
+),
+transaction_stats as (
+  select agent_name, trade_Symbol, sum(units) as units_sold, sum(total_price) as credits_earned from transactions t join ships s on t.ship_Symbol = s.ship_symbol
+  where agent_name = %s
+	
+  and "timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	and type = 'SELL'
+	group by 1 ,2
+	order by 4 desc
+),
+extraction_stats as ( 
+	select agent_name, trade_Symbol, sum(quantity) from extractions e join ships s on e.ship_Symbol = s.ship_symbol 
+	where s.agent_name = %s
+	and event_timestamp >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	
+ 	group by 1, 2
+	order by 3 desc
+)
+select * from transaction_stats
+
+"""
+
+    request_stats_sql = """	select s.agent_name
+	, min(event_timestamp) report_start
+	, max(event_timestamp) report_end
+	, max(event_timestamp) - min(event_timestamp) as report_period 
+	, count(*) filter (where status_Code >= 0 ) as requests
+	, count(*) filter (where status_code >= 400 and status_Code < 500) as invalid_Requests
+	, round((count(*) filter (where status_Code >= 0 ) / EXTRACT(EPOCH FROM max(event_timestamp) - min(event_timestamp)))::numeric,2) as rps
+	, round(avg(l.duration_seconds) filter (where status_code >= 0),2) as requests_avg_wait
+	, round(max(l.duration_Seconds) filter (where status_code >= 0),2) as requests_max_wait
+
+	from logging l join ships s on l.ship_symbol = s.ship_symbol
+	where s.agent_name = %s
+	and event_timestamp >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+    and event_timestamp <= date_trunc('hour',now() at time zone 'utc')
+
+	group by 1"""
+    rows = try_execute_select(connection, request_stats_sql, (agent_id,))
+    if not rows:
+        return "no data"
+    start_time = rows[0][1]
+    end_time = rows[0][2]
+    duration = rows[0][3]
+    requests_valid = rows[0][4]
+    requests_total = rows[0][4] + rows[0][5]
+    requests_per_sec = rows[0][6]
+    requests_avg_wait = rows[0][7]
+    requests_max_wait = rows[0][8]
+    requests_400s = rows[0][5]
+
+    transaction_stats_sql = """
+	select s.agent_name
+	, sum(total_price) as total_credits_earned
+	, min("timestamp") report_start
+	, max("timestamp") report_end
+	, round(sum(total_price) / EXTRACT(EPOCH FROM max("timestamp") - min("timestamp"))::numeric,2) as cps
+
+	from transactions t 
+	join ships s on t.ship_Symbol = s.ship_symbol
+	left join mat_session_behaviour_types msbt on msbt.session_id = t.session_id
+	where s.agent_name = %s
+    and t."type" = 'SELL'
+
+	and (msbt.behaviour_name is null or msbt.behaviour_name 
+		 in ('EXTRACT_AND_TRANSFER_OR_SELL_4','EXTRACT_AND_SELL','EXTRACT_AND_FULFILL_7') )
+	and "timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+	and "timestamp" <= date_trunc('hour',now() at time zone 'utc')
+	group by 1 	"""
+    rows = try_execute_select(connection, transaction_stats_sql, (agent_id,))
+    if not rows:
+        return "no data"
+    earnings_mining = rows[0][1]
+    earnings_mining_ps = rows[0][4]
+
+    transaction_breakdown_sql = """
+with hq_systems as (
+  select distinct headquarters, w.system_symbol
+  from agents a 
+  join waypoints w on a.headquarters = w.waypoint_Symbol
+),
+
+starting_asteroids as ( 
+  select waypoint_Symbol, count(*) from waypoint_traits wt
+  where wt.trait_symbol in ('MARKETPLACE','COMMON_METAL_DEPOSITS')
+  group by 1 
+  having count(*) = 2
+  order by 2 desc
+)
+
+ select 
+   date_trunc('hour',t.timestamp)
+   , hs.system_symbol is not null as starting_system
+   , sa.waypoint_symbol is not null as starting_asteroid
+   , t.trade_symbol in ('IRON','ALUMINUM','COPPER') as processed_good
+   , sum(total_price) as earnings
+   , sum(t.units) as quantity 
+   , round(sum(total_price) / sum(t.units),2) as average_value_per_item
+from transactions t 
+join mat_session_behaviour_types msbt on t.session_id = msbt.session_id
+join ships s on t.ship_Symbol = s.ship_symbol
+join waypoints w on t.waypoint_symbol = w.waypoint_symbol
+left join hq_systems hs on hs.system_symbol = w.system_symbol
+left join starting_asteroids sa on (w.waypoint_symbol = sa.waypoint_symbol)
+where t."type" = 'SELL'
+and "timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+and "timestamp" <= date_trunc('hour',now() at time zone 'utc')
+
+and s.agent_name = %s
+group by 1,2,3,4
+order by 1 desc,3,2,4 """
+    rows = try_execute_select(connection, transaction_breakdown_sql, (agent_id,))
+    if not rows:
+        return "no data - try refreshing?"
+    sells_at_asteroid = 0
+    sells_in_system = 0
+    sells_in_sector = 0
+    sells_of_processed_material = 0
+    for row in rows:
+        if row[2]:
+            sells_at_asteroid += row[4]
+        elif row[1]:
+            sells_in_system += row[4]
+        else:
+            sells_in_sector += row[4]
+        if row[3]:
+            sells_of_processed_material += row[4]
+
+    sell_per_trade_symbol_sql = """
+select trade_symbol, sum(units), sum(total_price), round(avg(price_per_unit),2)  from transactions t join ships s on t.ship_Symbol = s.ship_symbol
+where agent_name = %s
+and type = 'SELL'
+and t."timestamp" >= date_trunc('hour',now() at time zone 'utc') - interval '1 hour'
+group by  1 
+order by 1 """
+    rows = try_execute_select(connection, sell_per_trade_symbol_sql, (agent_id,))
+    if not rows:
+        return "no data"
+    transaction_lines = []
+    total_profits = sum([row[2] for row in rows])
+    max_len = max([len(row[0]) for row in rows])
+    for row in rows:
+        transaction_lines.append(
+            (row[0], row[1], row[2], round(row[3], 2), round(row[2] / total_profits, 2))
+        )
+
+    out_md = f"""# Stats from {start_time} to {end_time} ({duration})
+Requests: {requests_total} ie {requests_per_sec}/s   avg wait: {requests_avg_wait}   max: {requests_max_wait} \n
+Actual requests: {requests_valid} ie 2.73/s \n
+Wasted requests: {requests_400s} ie 0.0057/s ie one every 2min55s \n
+(NOT CAPTURED) Request time avg: 0.27s  min: 0.14s  max: 2.37s \n
+(NOT CAPTURED) Rate limiter idle time: 8min59s ie 7.49% \n
+--- \n
+Credits from extractions: {earnings_mining} ({earnings_mining_ps}/s) \n
+Credits from resells: 0 (0.000/s) \n
+Credits spent on trade: 0 (0.000/s) \n
+Net profit from trade: 0 (0.000/s) \n
+Contracts fulfilled: {"new_contracts_fulfilled"} \n
+Credits from contracts: {"earnings_contracts"} (0.000/s) \n
+Credits spent on contracts: 0 (0.000/s) \n
+Credits spent on fuel: {"spendings_fuel"} (51.331/s) \n
+Credits spent on ships: {"spendings_ships"} (0.000/s) \n
+Net credits gained (without counting ship buys): {"net_credits_without_capex"} ({"net_credits_without_capex_ps"}/s) \n
+Net credits per request: {"net_credits_per_request"} \n
+
+Totals: extracts {"requests_extractions"}, amount extracted {"total_extracted"}, credits from sells {"earnings_sells"} \n
+### total sells by type
+Credits earned at the starting_Asteroid {sells_at_asteroid}  
+Credits earned elsewhere in the starting_System {sells_in_system}  
+Credits earned outside the starting_system {sells_in_sector}  
+Credits from processed material {sells_of_processed_material}  
+
+### extractions per trade symbol (not implemented)
+
+* ALUMINUM_ORE      : exacted 28_643 in 495 actions (avg 57.9, share actions 0.166, share amount 0.167) 
+* AMMONIA_ICE       : exacted 29_089 in 501 actions (avg 58.1, share actions 0.168, share amount 0.169)
+* COPPER_ORE        : exacted 39_848 in 692 actions (avg 57.6, share actions 0.233, share amount 0.232)
+* DIAMONDS          : exacted 2_850 in 50 actions (avg 57.0, share actions 0.017, share amount 0.017)
+* ICE_WATER         : exacted 18_433 in 319 actions (avg 57.8, share actions 0.107, share amount 0.107)
+* IRON_ORE          : exacted 21_428 in 371 actions (avg 57.8, share actions 0.125, share amount 0.125)
+* PRECIOUS_STONES   : exacted 1_868 in 32 actions (avg 58.4, share actions 0.011, share amount 0.011)
+* QUARTZ_SAND       : exacted 16_640 in 288 actions (avg 57.8, share actions 0.097, share amount 0.097)
+* SILICON_CRYSTALS  : exacted 13_179 in 227 actions (avg 58.1, share actions 0.076, share amount 0.077)\n\n
+
+
+### earnings per trade symbol
+| Trade symbol | units sold | credits earned | avg credits per unit | share of profits |
+| --- | --- | --- | --- | --- |
+
+{"".join(str(i) for i in transaction_lines)}
+
+Credits: 360_261_349¢
+COMMAND: 1
+HYBRID_ORE_HOUND: 0
+MANUAL: 1
+MINER: 80
+PROBE: 0
+SURVEYOR: 16
+UNCLAIMED_ORE_HOUND: 0
+mining_strength:#ships : 0:17,10:1,60:80
+survey_strength:#ships : 0:81,1:1,6:16
+new_ship_price: 160_000¢
+Best listings to buy mounts:
+SH(X1-Z40-41827B) I MOUNT_MINING_LASER_II 37231 75352 V:100 MODERATE 19:23:02 in G(Z40) (-10356,9642) from_home:0 unexplored RED\
+_STAR  as:1 sh:1 ma:7
+No known listing for MOUNT_MINING_LASER_III
+QU9-01912B E MOUNT_SURVEYOR_II  18822 38440 V:10 MODERATE 13:48:14 in G(QU9) (-8768,9022) from_home:1705 unqueried RED_STAR  as:\
+0 sh:0 ma:0
+No known listing for MOUNT_SURVEYOR_III
+Survey report: best:632.2 [COP,QUA,AMM,AMM,AMM,IRO] extractions:3 extracted:157 until 22:10:11 available:17 recent_scores:384 ta\
+rget:256.2 avg:158.2 over 4122 surveys -- n_extracts: avg:8.1 amount:466.2 over 352 -- avg exhausted score:772.2  8.54% of all surveys --\
+ with diamonds: 29/4122 = 0.007 -- new score is positive: 2838 ie 68.85%
+"""
+
+    formatted_markdown = markdown.markdown(
+        out_md,
+        extensions=["tables", "md_in_html"],
+    )
+    out_str = "%s\n%s\%s" % (css_blob, link_pieces, formatted_markdown)
+
     return out_str
 
 
