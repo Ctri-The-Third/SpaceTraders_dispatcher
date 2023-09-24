@@ -96,7 +96,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             # check if we have a contract for the items in our inventory
             found_contracts = st.view_my_contracts()
             contracts = []
-            for id, contract in found_contracts.items():
+            for contract in found_contracts:
                 if contract.accepted and not contract.fulfilled:
                     contracts.append(contract)
             cargo_to_skip = []

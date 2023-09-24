@@ -13,9 +13,9 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK9.py",
+            "program": "conductorWK11.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": false
         },
         {
             "name": "dispatcher -L",

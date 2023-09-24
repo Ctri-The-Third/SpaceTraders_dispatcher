@@ -776,7 +776,7 @@ def get_prices_for(client: SpaceTraders, tradegood: str):
 def process_contracts(client: SpaceTraders):
     contracts = client.view_my_contracts()
     need_to_negotiate = True
-    for con in contracts.values():
+    for con in contracts:
         con: Contract
         should_we_complete = False
 

@@ -91,7 +91,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
             self.logger.info("st.view_my_contracts() is triggering a needless request")
             contracts = st.view_my_contracts()
             if contracts:
-                for contract_id, contract in contracts.items():
+                for contract in contracts:
                     if (not contract.accepted) or contract.fulfilled:
                         continue
                     for deliverable in contract.deliverables:

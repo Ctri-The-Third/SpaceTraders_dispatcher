@@ -11,7 +11,7 @@ from straders_sdk.models import ShipyardShip, Waypoint, Shipyard, Survey, System
 from straders_sdk.utils import set_logging, waypoint_slicer, try_execute_select
 import logging
 import time
-from dispatcherWK7 import (
+from dispatcherWK11 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -40,7 +40,7 @@ def run(client: SpaceTraders):
     contracts = client.view_my_contracts()
     contract_type = "MINING"
     hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
-    for con in contracts.values():
+    for con in contracts:
         con: Contract
         if con.accepted and not con.fulfilled:
             active_contract = con

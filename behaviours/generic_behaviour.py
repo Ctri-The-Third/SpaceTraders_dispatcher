@@ -294,7 +294,7 @@ class Behaviour:
 
         items = []
         tar_contract = None
-        for contract_id, contract in contracts.items():
+        for contract in contracts:
             if contract.accepted and not contract.fulfilled:
                 tar_contract = contract
                 for deliverable in contract.deliverables:
