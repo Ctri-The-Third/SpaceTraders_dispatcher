@@ -96,7 +96,7 @@ def stage_0(client: SpaceTraders):
     if len(contracts) == 0:
         client.ship_negotiate(satelites[0])
         contracts = client.view_my_contracts()
-    for con in contracts():
+    for con in contracts:
         con: Contract
         if not con.accepted and should_we_accept_contract(client, con):
             client.contract_accept(con.id)
