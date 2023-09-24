@@ -114,7 +114,7 @@ order by agent_name, cph desc"""
 
 
 def transaction_summary():
-    sql = """select agent_name, credits_earned as cr, utilisation as util, event_hour 
+    sql = """select agent_name, credits_earned::text as cr, utilisation as util, event_hour 
     from agent_credits_per_hour 
     where event_hour >= now() at time zone 'utc' - interval '8 hours'
     order by event_hour desc, agent_name asc
