@@ -96,7 +96,7 @@ def stage_0(client: SpaceTraders):
     if len(contracts) == 0:
         client.ship_negotiate(satelites[0])
         contracts = client.view_my_contracts()
-    for con in contracts.values():
+    for con in contracts:
         con: Contract
         if not con.accepted and should_we_accept_contract(client, con):
             client.contract_accept(con.id)
@@ -137,7 +137,7 @@ def stage_1(client: SpaceTraders):
     contracts = client.view_my_contracts()
     extractor_params = ""
 
-    for contract in contracts.values():
+    for contract in contracts:
         if contract.fulfilled or not contract.accepted:
             continue
         for deliv in contract.deliverables:
@@ -204,7 +204,7 @@ def stage_2(client: SpaceTraders):
     contracts = client.view_my_contracts()
 
     extractor_params = {"asteroid_wp": wayp.symbol}
-    for contract in contracts.values():
+    for contract in contracts:
         if contract.fulfilled or not contract.accepted:
             continue
         for deliv in contract.deliverables:
