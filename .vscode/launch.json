@@ -18,14 +18,14 @@
             "justMyCode": false
         },
         {
-            "name": "dispatcher -L",
+            "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK9.py",
+            "program": "dispatcherWK11.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": [
-                "CTRI-L-"
+                "CTRI-U-"
             ]
         },
         {
