@@ -14,7 +14,7 @@ from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
 import random
 from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer_or_sell import (
+from behaviours.extract_and_transfer_or_sell_wk11 import (
     ExtractAndTransferOrSell_4,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
 )
@@ -289,9 +289,12 @@ class dispatcher:
         if not ship:
             ship = client.db_client.ships_view_one(ship_symbol)
             if not ship:
-                #dafuq
-                self.logger.warning("Ship %s not in the database for some reason - can't assign tasks for it.", ship_symbol)
-                return None 
+                # dafuq
+                self.logger.warning(
+                    "Ship %s not in the database for some reason - can't assign tasks for it.",
+                    ship_symbol,
+                )
+                return None
             self.ships[ship_symbol] = ship
 
         for hash, task in self.tasks.items():

@@ -16,7 +16,7 @@ from behaviours.generic_behaviour import Behaviour
 
 import random
 from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer_or_sell import (
+from behaviours.extract_and_transfer_or_sell_wk11 import (
     ExtractAndTransferOrSell_4,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
 )

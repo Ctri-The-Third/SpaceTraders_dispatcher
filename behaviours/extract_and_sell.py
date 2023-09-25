@@ -94,7 +94,7 @@ class ExtractAndSell(Behaviour):
 
 if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "4"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1E"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {}  # {"asteroid_wp": "X1-QB20-13975F"}

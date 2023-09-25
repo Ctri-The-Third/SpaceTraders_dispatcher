@@ -17,7 +17,7 @@ from straders_sdk.utils import (
 from datetime import datetime, timedelta
 import logging
 import time
-from dispatcherWK9 import (
+from dispatcherWK12 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
