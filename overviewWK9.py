@@ -242,7 +242,8 @@ WHERE
 	or event_name in ('BEGIN_BEHAVIOUR_SCRIPT','END_BEHAVIOUR_SCRIPT'))
 
   AND event_timestamp >= NOW() AT TIME ZONE 'utc' - INTERVAL '1 day'
-ORDER BY event_timestamp DESC;
+ORDER BY event_timestamp DESC 
+limit 100;
 
 """
     rows = try_execute_select(connection, sql, (ship_id,))
