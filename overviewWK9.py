@@ -225,7 +225,7 @@ group by 1 )
 
 
 SELECT 
-  date_trunc('second', event_timestamp) AS event_timestamp,
+  date_trunc('second', event_timestamp) AS event_timestamp_t,
   event_name,
   event_params,
   status_code,
