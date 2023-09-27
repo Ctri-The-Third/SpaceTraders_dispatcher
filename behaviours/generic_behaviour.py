@@ -129,11 +129,21 @@ class Behaviour:
         if not jumpgate_only:
             return results[0][0]
         path = None
+        best_distance = 999999999
         for result in results:
             destination = System(result[0], None, None, result[1], result[2], None)
-            route = self.astar(self.graph, source_system, destination)
-            if not path or (route is not None and len(route) < len(path)):
-                path = route
+            if destination.symbol == source_system.symbol:
+                distance = 0
+            else:
+                distance = math.sqrt(
+                    (destination.x - source_system.x) ** 2
+                    + (destination.y - source_system.y) ** 2
+                )
+            if distance * 2 < best_distance:
+                route = self.astar(self.graph, source_system, destination)
+                if not path or (route is not None and len(route) < len(path)):
+                    path = route
+                    best_distance = distance
         return path[-1]
 
     def ship_intrasolar(
@@ -369,7 +379,9 @@ class Behaviour:
             tar_contract, self.ship, cargo.symbol, cargo_to_deliver
         )
 
-    def find_best_market_systems(self, trade_symbol: str) -> list[(str, System, int)]:
+    def find_best_market_systems_to_sell(
+        self, trade_symbol: str
+    ) -> list[(str, System, int)]:
         "returns market_waypoint, system obj, price as int"
         sql = """select sell_price, w.waypoint_symbol, s.system_symbol, s.sector_Symbol, s.type, s.x,s.y from market_tradegood_listings mtl 
 join waypoints w on mtl.market_symbol = w.waypoint_Symbol
