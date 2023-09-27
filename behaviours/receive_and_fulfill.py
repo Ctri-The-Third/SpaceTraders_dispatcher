@@ -59,7 +59,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                 ship.cargo_inventory, key=lambda item: item.units
             )
 
-            markets = self.find_best_market_systems(item_with_highest_quantity.symbol)
+            markets = self.find_best_market_systems_to_sell(
+                item_with_highest_quantity.symbol
+            )
             # markets is a tuple, where the items are waypoint_s, system, price
             paths = {
                 system[0]: self.astar(self.graph, start_sys, system[1])

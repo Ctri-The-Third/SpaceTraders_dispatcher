@@ -7,6 +7,7 @@ import sys
 sys.path.append(".")
 from straders_sdk.utils import waypoint_slicer, try_execute_select, set_logging
 from behaviours.generic_behaviour import Behaviour
+from straders_sdk.models import System
 import logging
 import time
 import math
@@ -44,9 +45,7 @@ class FindMountsAndEquip(Behaviour):
 
     def run(self):
         super().run()
-        ship = self.ship = self.st.ships_view_one(
-            self.ship_name, True
-        )  # we're working with inventory and don't have that yet
+        ship = self.ship
         st = self.st
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -56,6 +55,7 @@ class FindMountsAndEquip(Behaviour):
         starting_system = st.systems_view_one(ship.nav.system_symbol)
         sell_unequipped_mounts = True
 
+        missing_mounts = []
         for target_mount in mounts:
             got_it = False
             index = 0
@@ -69,6 +69,8 @@ class FindMountsAndEquip(Behaviour):
             if got_it:
                 ship_mounts.pop(index)
                 continue
+            else:
+                missing_mounts.append(target_mount)
 
         # at this point, ship_mounts contains all the excess mounts we need to get rid of. Find the nearest shipyard and execute.
         if len(ship_mounts) > 0:
@@ -86,8 +88,9 @@ class FindMountsAndEquip(Behaviour):
         #
         # we now have all the space necessary for the mounts.
         #
-        for target_mount in mounts:
+        for target_mount in missing_mounts:
             #
+            # is it already equipped? if so, skip this step (and do something to avoid checking again!)
             # is it already in our inventory? if so, skip this step, and just try and equip it.
             #
             for inventory in ship.cargo_inventory:
@@ -142,7 +145,44 @@ class FindMountsAndEquip(Behaviour):
         #
         # setup initial parameters and preflight checks
         #
+        current_system = st.systems_view_one(ship.nav.system_symbol)
+        for item in ship.cargo_inventory:
+            destinations = self.find_best_market_systems_to_sell(item.symbol)
+            best_destination = None
+            best_distance = 9999999999
+            best_cpj = 0
 
+            # work out the best credits per jump. If we're in the same system, assume it's all the same even if there's multiple markets.
+            for destination in destinations:
+                dest_sys = destination[1]
+                dest_sys: System
+                price = destination[2]
+                distance = math.sqrt(
+                    (dest_sys.x - current_system.x) ** 2
+                    + (dest_sys.y - current_system.y) ** 2
+                )
+                # if we're in the same system,
+                if dest_sys.symbol == current_system.symbol:
+                    cpj = price / 1
+                    jumps = 0
+                # 2000 is one jump gate away, so any thing that's conceivably AT LEAST 2 jumps away gets checked
+                elif distance < (best_distance + 2000) * 2:
+                    jumps = len(self.astar(self.graph, current_system, dest_sys) or [])
+                    cpj = price / (jumps + 1)
+                else:
+                    cpj = 0
+                    jumps = 0
+
+                if cpj > best_cpj:
+                    best_cpj = cpj
+                    best_jumps = jumps
+                    best_distance = distance
+                    best_destination_sys = dest_sys
+                    best_destination_wp = destination[0]
+            self.ship_extrasolar(best_destination_sys)
+            self.ship_intrasolar(best_destination_wp)
+            st.ship_dock(ship)
+            st.ship_sell(ship, item.symbol, item.units)
         self.end()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
@@ -202,11 +242,11 @@ order by purchase_price asc """
 
 
 if __name__ == "__main__":
-    from dispatcherWK11 import lock_ship
+    from dispatcherWK12 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 4,5,6,7,8,9, 10
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "4"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "6"
     ship = f"{agent}-{ship_suffix}"
 
     bhvr = FindMountsAndEquip(
