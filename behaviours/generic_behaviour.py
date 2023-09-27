@@ -89,6 +89,53 @@ class Behaviour:
 
         pass
 
+    def find_neighbouring_systems_by_waypoint_trait(
+        self,
+        source_system: System,
+        trait: str,
+        range: int = 50000,
+        jumpgate_only=True,
+    ) -> str:
+        sql = """
+            with source as (select src.x, src.y
+            from systems src where system_Symbol  = %s
+            )
+            
+            select s.system_symbol, s.x, s.y  
+            , SQRT(POWER((s.x - source.x), 2) + POWER((s.y - source.y), 2)) AS distance
+            from waypoint_traits wt
+            join waypoints w on wt.waypoint_symbol = w.waypoint_symbol
+            join systems s on s.system_symbol = w.system_symbol
+            cross join source
+            where wt.trait_symbol = %s
+            and s.x between source.x - %s and source.x + %s
+            and s.y between source.y - %s and source.y + %s
+            order by distance asc 
+
+        """
+        results = try_execute_select(
+            self.connection,
+            sql,
+            (
+                source_system.symbol,
+                trait,
+                range,
+                range,
+                range,
+                range,
+            ),
+        )
+
+        if not jumpgate_only:
+            return results[0][0]
+        path = None
+        for result in results:
+            destination = System(result[0], None, None, result[1], result[2], None)
+            route = self.astar(self.graph, source_system, destination)
+            if not path or (route is not None and len(route) < len(path)):
+                path = route
+        return path[-1]
+
     def ship_intrasolar(
         self, target_wp_symbol: "str", sleep_till_done=True, flight_mode="CRUISE"
     ):
@@ -560,6 +607,7 @@ order by 1 desc """
         goal: Waypoint or System,
         bypass_check: bool = False,
     ):
+        "`bypass_check` is for when we're looking for the nearest nodes to the given locations, when either the source or destination are not on the jump network."
         if not bypass_check:
             if start not in graph.nodes:
                 return None

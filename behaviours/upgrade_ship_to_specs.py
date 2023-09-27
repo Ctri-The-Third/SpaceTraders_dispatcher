@@ -44,16 +44,21 @@ class FindMountsAndEquip(Behaviour):
 
     def run(self):
         super().run()
-        ship = self.ship = self.st.ships_view_one(self.ship_name, True) #we're working with inventory and don't have that yet
+        ship = self.ship = self.st.ships_view_one(
+            self.ship_name, True
+        )  # we're working with inventory and don't have that yet
         st = self.st
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         mounts = self.behaviour_params["mounts"]
         ship_mounts = [mount.symbol for mount in ship.mounts]
+        starting_system = st.systems_view_one(ship.nav.system_symbol)
+        sell_unequipped_mounts = True
+
         for target_mount in mounts:
-            index = 0
             got_it = False
+            index = 0
             for my_mount in ship_mounts:
                 if my_mount == target_mount:
                     got_it = True
@@ -64,14 +69,34 @@ class FindMountsAndEquip(Behaviour):
             if got_it:
                 ship_mounts.pop(index)
                 continue
+
+        # at this point, ship_mounts contains all the excess mounts we need to get rid of. Find the nearest shipyard and execute.
+        if len(ship_mounts) > 0:
+            self.goto_shipyard(starting_system)
+            st.ship_dock(ship)
+            for mount in ship_mounts:
+                resp = st.ship_remove_mount(ship, mount)
+                if not resp:
+                    self.logger.error(
+                        "Couldn't remove mount %s because %s", mount, resp.error
+                    )
+                    time.sleep(SAFETY_PADDING)
+                    continue
+
+        #
+        # we now have all the space necessary for the mounts.
+        #
+        for target_mount in mounts:
             #
             # is it already in our inventory? if so, skip this step, and just try and equip it.
             #
             for inventory in ship.cargo_inventory:
                 if inventory.symbol == target_mount:
+                    self.goto_shipyard(starting_system)
+                    st.ship_dock(ship)
                     resp = st.ship_install_mount(ship, target_mount)
-                    
                     continue
+
             #
             # choose the best waypoint (does not factor in lost CPS/ best cost per distance)
             #
@@ -97,11 +122,13 @@ class FindMountsAndEquip(Behaviour):
                 st.ship_dock(ship)
 
                 resp = st.ship_purchase_cargo(ship, target_mount, 1)
-
+                for mount in ship_mounts:  # sell the unwanted stuff
+                    resp = st.ship_sell(ship, mount, 1)
                 if not resp:
                     time.sleep(SAFETY_PADDING)
                     continue
 
+                self.goto_shipyard(destination_sys)
                 resp = st.ship_install_mount(ship, target_mount)
                 if not resp:
                     time.sleep(SAFETY_PADDING)
@@ -118,6 +145,20 @@ class FindMountsAndEquip(Behaviour):
 
         self.end()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+
+    def goto_shipyard(self, starting_system):
+        st = self.st
+        target_system = self.find_neighbouring_systems_by_waypoint_trait(
+            starting_system, "SHIPYARD", 50000, True
+        )
+        if not target_system.symbol:
+            self.logger.error("Couldn't find a shipyard to sell excess mounts to!")
+            time.sleep(SAFETY_PADDING)
+        else:
+            target_system = st.systems_view_one(target_system.symbol)
+            target_wp = st.find_waypoints_by_trait_one(target_system.symbol, "SHIPYARD")
+            self.ship_extrasolar(target_system)
+            self.ship_intrasolar(target_wp)
 
     def find_cheapest_markets_for_good(
         self, tradegood_sym: str, opportunity_cost_cps: int = 200
@@ -161,18 +202,25 @@ order by purchase_price asc """
 
 
 if __name__ == "__main__":
+    from dispatcherWK11 import lock_ship
+
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "3"
+    # 4,5,6,7,8,9, 10
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "4"
     ship = f"{agent}-{ship_suffix}"
+
     bhvr = FindMountsAndEquip(
         agent,
         ship,
         behaviour_params={
-  "mounts": [
-    "MOUNT_SURVEYOR_I",
-    "MOUNT_MINING_LASER_II",
-    "MOUNT_MINING_LASER_II"  ]
-},
+            "mounts": [
+                "MOUNT_MINING_LASER_I",
+                "MOUNT_MINING_LASER_II",
+                "MOUNT_MINING_LASER_II",
+            ]
+        },
     )
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)
