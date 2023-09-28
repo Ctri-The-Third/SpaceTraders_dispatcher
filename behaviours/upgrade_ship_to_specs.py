@@ -85,19 +85,23 @@ class FindMountsAndEquip(Behaviour):
                     time.sleep(SAFETY_PADDING)
                     continue
 
-        #
-        # we now have all the space necessary for the mounts.
-        #
+            #
+            # we now have all the space necessary for the mounts.
+            #
+
+        # equip any stored mounts
         for target_mount in missing_mounts:
-            #
-            # is it already equipped? if so, skip this step (and do something to avoid checking again!)
-            # is it already in our inventory? if so, skip this step, and just try and equip it.
-            #
             for inventory in ship.cargo_inventory:
                 if inventory.symbol == target_mount:
                     self.goto_shipyard(starting_system)
                     st.ship_dock(ship)
                     resp = st.ship_install_mount(ship, target_mount)
+                    missing_mounts.pop(missing_mounts.index(target_mount))
+
+        # buy any still missing mounts
+        for target_mount in missing_mounts:
+            #
+            #
 
             #
             # choose the best waypoint (does not factor in lost CPS/ best cost per distance)
@@ -126,8 +130,11 @@ class FindMountsAndEquip(Behaviour):
                 resp = st.ship_purchase_cargo(ship, target_mount, 1)
                 for mount in ship_mounts:  # sell the unwanted stuff
                     resp = st.ship_sell(ship, mount, 1)
+
+        # now we have all the missing mounts, equip em
         for target_mount in missing_mounts:
             self.goto_shipyard(destination_sys)
+            st.ship_dock(ship)
             resp = st.ship_install_mount(ship, target_mount)
             if not resp:
                 time.sleep(SAFETY_PADDING)
@@ -184,7 +191,7 @@ class FindMountsAndEquip(Behaviour):
 
     def goto_shipyard(self, starting_system):
         st = self.st
-        target_system = self.find_neighbouring_systems_by_waypoint_trait(
+        target_system = self.find_nearest_systems_by_waypoint_trait(
             starting_system, "SHIPYARD", 50000, True
         )
         if not target_system.symbol:
@@ -251,9 +258,9 @@ if __name__ == "__main__":
         ship,
         behaviour_params={
             "mounts": [
-                "MOUNT_SURVEYOR_I",
-                "MOUNT_SURVEYOR_I",
-                "MOUNT_SURVEYOR_I",
+                "MOUNT_SURVEYOR_II",
+                "MOUNT_SURVEYOR_II",
+                "MOUNT_SURVEYOR_II",
             ]
         },
     )

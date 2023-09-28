@@ -89,7 +89,7 @@ class Behaviour:
 
         pass
 
-    def find_neighbouring_systems_by_waypoint_trait(
+    def find_nearest_systems_by_waypoint_trait(
         self,
         source_system: System,
         trait: str,
