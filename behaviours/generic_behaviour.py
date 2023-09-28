@@ -139,7 +139,7 @@ class Behaviour:
                     (destination.x - source_system.x) ** 2
                     + (destination.y - source_system.y) ** 2
                 )
-            if distance * 2 < best_distance:
+            if distance < best_distance * 2:
                 route = self.astar(self.graph, source_system, destination)
                 if not path or (route is not None and len(route) < len(path)):
                     path = route
