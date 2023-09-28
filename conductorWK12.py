@@ -383,7 +383,8 @@ def stage_4(client: SpaceTraders):
         return 5
     # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
     process_contracts(client)
-    maybe_upgrade_a_ship(client, ships)
+    # this method is for Survey/ Mining laser hybrids - we're experimenting with pure mining lasers and surveyors, and this messes with the surveyors
+    # maybe_upgrade_a_ship(client, ships)
 
     ships_we_might_buy = [
         "SHIP_PROBE",
@@ -451,7 +452,9 @@ def stage_5(client: SpaceTraders):
     extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
     process_contracts(client)
-    maybe_upgrade_a_ship(client, ships)
+
+    # needs replaced with a mining str 60 and survey str 3/6 method.
+    # maybe_upgrade_a_ship(client, ships)
 
     if (
         len(hounds) >= target_hounds
