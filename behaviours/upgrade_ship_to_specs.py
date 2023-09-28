@@ -98,7 +98,6 @@ class FindMountsAndEquip(Behaviour):
                     self.goto_shipyard(starting_system)
                     st.ship_dock(ship)
                     resp = st.ship_install_mount(ship, target_mount)
-                    continue
 
             #
             # choose the best waypoint (does not factor in lost CPS/ best cost per distance)
@@ -127,15 +126,12 @@ class FindMountsAndEquip(Behaviour):
                 resp = st.ship_purchase_cargo(ship, target_mount, 1)
                 for mount in ship_mounts:  # sell the unwanted stuff
                     resp = st.ship_sell(ship, mount, 1)
-                if not resp:
-                    time.sleep(SAFETY_PADDING)
-                    continue
-
-                self.goto_shipyard(destination_sys)
-                resp = st.ship_install_mount(ship, target_mount)
-                if not resp:
-                    time.sleep(SAFETY_PADDING)
-                    continue
+        for target_mount in missing_mounts:
+            self.goto_shipyard(destination_sys)
+            resp = st.ship_install_mount(ship, target_mount)
+            if not resp:
+                time.sleep(SAFETY_PADDING)
+                continue
 
         # check what mounts we still need (including what's in cargo)
         # go to a shipyard with mounts we're missing
@@ -245,8 +241,9 @@ if __name__ == "__main__":
     from dispatcherWK12 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    # 4,5,6,7,8,9, 10
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "6"
+    # 3, 4,5,6,7,8,9
+    # A is the surveyor
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "A"
     ship = f"{agent}-{ship_suffix}"
 
     bhvr = FindMountsAndEquip(
@@ -254,9 +251,9 @@ if __name__ == "__main__":
         ship,
         behaviour_params={
             "mounts": [
-                "MOUNT_MINING_LASER_I",
-                "MOUNT_MINING_LASER_II",
-                "MOUNT_MINING_LASER_II",
+                "MOUNT_SURVEYOR_I",
+                "MOUNT_SURVEYOR_I",
+                "MOUNT_SURVEYOR_I",
             ]
         },
     )
