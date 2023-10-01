@@ -510,6 +510,9 @@ def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
     connection = client.db_client.connection
 
     # CAN we do updates?
+    cost = 100000
+    if client.current_agent.credits < cost:
+        return
     mounts_to_buy = [
         "MOUNT_SURVEYOR_I",
         "MOUNT_MINING_LASER_II",
