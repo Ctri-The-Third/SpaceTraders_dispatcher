@@ -167,9 +167,19 @@ class ExtractAndTransferOrSell_8(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "5"
-    params = {"asteroid_wp": "X1-GM20-77355E"}
+    ship_suffix = "4"
+    ship = f"{agent_symbol}-{ship_suffix}"
+    params = {
+        "fulfill_wp": "X1-CN90-22412Z",
+        "asteroid_wp": "X1-CN90-02905X",
+        "cargo_to_transfer": ["ALUMINUM_ORE"],
+    }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
-    ExtractAndTransferOrSell_4(
-        agent_symbol, f"{agent_symbol}-{ship_suffix}", params
-    ).run()
+    bhvr = ExtractAndTransferOrSell_8(agent_symbol, f"{ship}", params)
+
+    from dispatcherWK12 import lock_ship
+
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
+    bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)

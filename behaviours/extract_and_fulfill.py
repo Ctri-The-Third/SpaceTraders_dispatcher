@@ -154,9 +154,9 @@ if __name__ == "__main__":
     agent_symbol = "CTRI-U-"
     ship_suffix = "1"
     params = {
-        "asteroid_wp": "X1-JC68-59415D",
-        "cargo_to_transfer": "COPPER_ORE",
-        "fulfil_wp": "X1-JC68-17182Z",
+        "fulfil_wp": "X1-CN90-22412Z",
+        "asteroid_wp": "X1-CN90-02905X",
+        "cargo_to_transfer": ["ALUMINUM_ORE"],
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     ExtractAndFulfill_7(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
