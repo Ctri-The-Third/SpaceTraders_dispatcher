@@ -45,12 +45,12 @@ at 240k credits, ore hounds and command frigates are equal cost per mount. I thi
 * Buy 6 command ships, outfitting them with surveyors and switch the orehounds over.  
 
 
-| stat             | Week 6a    | Week 7a    | week 8a   | Week 9a   | Week 9
-| ---              | ---       | ---         | ---       | ---       |
-| fleet size       | 14        |38           | isssues   | 38        | 88
-| missions complete| 0         |3            | skipped   | 1         | 1
-| credits earned   | 4,156,300 |25,163,516   | worse CPH | 7,635,436 | 19,491,643
-| requests         | 330,259   |325,241      | in anycase| 139,392   | 336,995
-| uptime           | 6d 3h 52m |6d 22h 28m   |           | 6d 23h 25m | 5d 23h 59m
-| CPH              | 28,107.79 |151,159.46   |           | 45,863.06 | 135,374
-| CPR              | 12.58     |77.36        |           | 54.78     | 57
+| stat             | Week 6a    | Week 7a    | week 8a   | Week 9a    |  Week 11a  | Week 12 |
+| ---              | ---       | ---         | ---       | ---        | ---        | ---
+| fleet size       | 14        |38           | isssues   | 38         | 69         | 69
+| missions complete| 0         |3            | skipped   | 1          | 1          | 1
+| credits earned   | 4,156,300 |25,163,516   | worse CPH | 7,635,436  | 60,550,875 | 53,803,883
+| requests         | 330,259   |325,241      | in anycase| 139,392    | 861,510    | 644,279
+| uptime           | 6d 3h 52m |6d 22h 28m   |           | 6d 23h 25m | 7d 14h 9m  | 160.705604364166
+| CPH              | 28,107.79 |151,159.46   |           | 45,863.06  | 332,404.62 | 334,797.80
+| CPR              | 12.58     |77.36        |           | 54.78      | 70.28      | 83.51
