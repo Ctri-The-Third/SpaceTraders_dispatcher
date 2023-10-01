@@ -170,7 +170,7 @@ def log_task(
             expiry,
             priority,
             agent_symbol,
-            None,
+            specific_ship_symbol,
             behaviour_id,
             target_system,
             param_s,
@@ -276,4 +276,20 @@ if __name__ == "__main__":
         current_agent_symbol=agent,
     )
     agents = []
+    params = {
+        "mounts": [
+            "MOUNT_SURVEYOR_II",
+            "MOUNT_SURVEYOR_II",
+            "MOUNT_SURVEYOR_II",
+        ]
+    }
+    for ship_symbol in ["A"]:
+        log_task(
+            st.db_client.connection,
+            "UPGRADE_TO_SPEC",
+            [],
+            "X1-94",
+            specific_ship_symbol=f"CTRI-U--{ship_symbol}",
+            behaviour_params=params,
+        )
     run(st)
