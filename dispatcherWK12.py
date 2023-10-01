@@ -13,7 +13,7 @@ from straders_sdk.utils import set_logging
 from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
-
+import signal
 import random
 from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell_wk12 import (
@@ -101,6 +101,11 @@ class dispatcher:
             "", "", connection=self.connection, session=self.session
         )
         self.client = self.generic_behaviour.st
+        self.exit_flag = False
+
+    def set_exit_flag(self, signum, frame):
+        self.exit_flag = True
+        self.logger.warning("Dispatcher received SIGINT, shutting down gracefully.")
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
@@ -165,7 +170,9 @@ class dispatcher:
         agents_and_last_checkeds = {}
         agents_and_unlocked_ships = {}
         self.client.ships_view()
-        while True:
+        startime = datetime.now()
+        while not self.exit_flag:
+            # if we've been running for more than 12 hours, terminate. important for profiling.
             #
             # every 15 seconds update the list of unlocked ships with a DB query
             #
@@ -269,6 +276,18 @@ class dispatcher:
                     pass
 
                 time.sleep(1)
+
+        while len([t for t in ships_and_threads.values() if t.is_alive()]) > 0:
+            ships_to_pop = []
+            for ship_id, thread in ships_and_threads.items():
+                if not thread.is_alive():
+                    thread.join()
+                    print(f"ship {ship_id} has finished - releasing")
+                    lock_ship(ship_id, self.lock_id, self.connection, duration=0)
+                    ships_to_pop.append(ship_id)
+            for ship_id in ships_to_pop:
+                ships_and_threads.pop(ship_id)
+            time.sleep(1)
 
     def lock_and_execute(
         self, ships_and_threads: dict, ship_symbol: str, bhvr: Behaviour, bhvr_id
@@ -599,6 +618,7 @@ if __name__ == "__main__":
         os.environ.get("ST_DB_USER", "DB_USER_not_set"),
         os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
     )
+    signal.signal(signal.SIGINT, dips.set_exit_flag)
     dips.run()
     exit()
     ships = dips.ships_view(True)
