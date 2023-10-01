@@ -631,6 +631,10 @@ order by 1 desc """
         # Priority queue to store nodes based on f-score (priority = f-score)
         # C'tri note - I think this will be 1 for all edges?
         # Update - no, F-score is the distance between the specific node and the start
+        if (
+            not graph
+        ):  # this can happen early in the game when we've not got any jump gate nodes yet
+            return None
         open_set = []
         heapq.heappush(open_set, (0, start))
 
