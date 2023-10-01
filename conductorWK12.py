@@ -318,9 +318,9 @@ def stage_3(client: SpaceTraders):
             extractor_params["cargo_to_transfer"] = cargo_to_transfer
 
             if fulfil_wp:
-                hauler_params["fulfill_wp"] = fulfil_wp
+                hauler_params["fulfil_wp"] = fulfil_wp
                 # only the commander _might_ be running "extract and fulfill", this only gets consumed there.
-                extractor_params["fulfill_wp"] = fulfil_wp
+                extractor_params["fulfil_wp"] = fulfil_wp
 
     if asteroid_wp:
         extractor_params["asteroid_wp"] = asteroid_wp.symbol
