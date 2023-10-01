@@ -276,9 +276,13 @@ class dispatcher:
                     pass
 
                 time.sleep(1)
-
-        while len([t for t in ships_and_threads.values() if t.is_alive()]) > 0:
+        last_exec = False
+        while (
+            len([t for t in ships_and_threads.values() if t.is_alive()]) > 0
+            or last_exec
+        ):
             ships_to_pop = []
+            last_exec = False
             for ship_id, thread in ships_and_threads.items():
                 if not thread.is_alive():
                     thread.join()
@@ -287,6 +291,7 @@ class dispatcher:
                     ships_to_pop.append(ship_id)
             for ship_id in ships_to_pop:
                 ships_and_threads.pop(ship_id)
+                last_exec = len(ships_and_threads) == 0
             time.sleep(1)
 
     def lock_and_execute(
