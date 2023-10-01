@@ -166,7 +166,7 @@ def commander_overview():
             from agent_overview ao 
             left join contracts_overview co on ao.agent_symbol = co.agent_symbol and co.expiration >= now() at time zone 'utc'
 			where last_updated >= now() at time zone 'utc' - interval '1 day'
-            order by last_updated desc"""
+            order by 1 asc"""
     cursor.execute(sql)
     rows = cursor.fetchall()
     response = ""
@@ -225,7 +225,7 @@ group by 1 )
 
 
 SELECT 
-  date_trunc('second', event_timestamp) AS event_timestamp,
+  date_trunc('second', event_timestamp) AS event_timestamp_t,
   event_name,
   event_params,
   status_code,
@@ -242,7 +242,8 @@ WHERE
 	or event_name in ('BEGIN_BEHAVIOUR_SCRIPT','END_BEHAVIOUR_SCRIPT'))
 
   AND event_timestamp >= NOW() AT TIME ZONE 'utc' - INTERVAL '1 day'
-ORDER BY event_timestamp DESC;
+ORDER BY event_timestamp DESC 
+limit 100;
 
 """
     rows = try_execute_select(connection, sql, (ship_id,))

@@ -25,7 +25,7 @@ import hashlib
 import logging
 import time
 from datetime import datetime, timedelta
-from dispatcherWK9 import (
+from dispatcherWK12 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -60,7 +60,7 @@ def master():
     ## if there are 50 total ore-hounds move on
     # stage 5 - no behaviour.
 
-    stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4]
+    stage_functions = [stage_0, stage_1, stage_2, stage_3, stage_4, stage_5]
     sleep_time = 60
     while True:
         changed = False
@@ -169,10 +169,10 @@ def stage_1(client: SpaceTraders):
         set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params)
 
     prices = get_ship_prices_in_hq_system(client)
-    if prices["SHIP_ORE_HOUND"] < 175000:
-        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
-    else:
-        maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
+    # if prices["SHIP_ORE_HOUND"] < 175000:
+    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_ORE_HOUND")
+    # else:
+    #    maybe_ship = maybe_buy_ship_hq_sys(client, "SHIP_MINING_DRONE")
     if maybe_ship:
         set_behaviour(maybe_ship.name, BHVR_EXTRACT_AND_SELL)
     return 1
@@ -238,9 +238,9 @@ def stage_2(client: SpaceTraders):
 
 
 def stage_3(client: SpaceTraders):
-    # we're have 1 or 2 surveyors, and 3 or 5 excavators.
+    # we begin scaling ore hounds - expect the completion of the first quest..
     # at this point we want to switch to surveying and extracting, not raw extracting.
-
+    # go for 10 ore hounds then move on.
     #
     # PREFLIGHT AND DATA REFRESH
     #
@@ -273,12 +273,8 @@ def stage_3(client: SpaceTraders):
     process_contracts(client)
     maybe_upgrade_a_ship(client, ships)
 
-    extractors_per_hauler = 10
     # once we're at 30 excavators and 3 haulers, we can move on.
-    if (
-        len(excavators) >= 30
-        and len(haulers) >= len(excavators) // extractors_per_hauler
-    ):
+    if len(excavators) >= 15:
         return 4
     #
     # SETTING PARAMETERS & HAULER PREPARING
@@ -290,7 +286,7 @@ def stage_3(client: SpaceTraders):
     contracts = client.view_my_contracts()
     contract_type = "MINING"
     hauler_behaviour = BHVR_RECEIVE_AND_FULFILL
-    for con in contracts.values():
+    for con in contracts:
         con: Contract
         if con.accepted and not con.fulfilled:
             active_contract = con
@@ -337,8 +333,6 @@ def stage_3(client: SpaceTraders):
         set_behaviour(
             excavator.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
         )
-    for hauler in haulers:
-        set_behaviour(hauler.name, hauler_behaviour, hauler_params)
     for satelite in satelites:
         set_behaviour(
             satelite.name,
@@ -346,47 +340,22 @@ def stage_3(client: SpaceTraders):
             {"asteroid_wp": shipyard_wp.symbol},
         )
     for commander in commanders:
-        # if there's no hauler, do that.
-        if len(haulers) == 0:
-            set_behaviour(commander.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
-        else:
-            # do the refresh behaviour
-            set_behaviour(
-                commander.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
-            )
+        # do the refresh behaviour
+        set_behaviour(commander.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
     #
     # Scale up to 30 miners and 3 haulers. Prioritise a hauler if we've got too many drones.
     #
-    if len(haulers) < math.floor(len(excavators) / extractors_per_hauler):
-        ship = maybe_buy_ship_hq_sys(client, "SHIP_LIGHT_HAULER")
-        if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
-    elif len(excavators) <= 30:
-        prices = get_ship_prices_in_hq_system(client)
-        for ship, price in prices.items():
-            if price is None:
-                logger.warning(
-                    "Couldn't get price for %s - unable to buy ne ships in stage 3, skipping",
-                    ship,
-                )
-                return 3
-        if (prices.get("SHIP_ORE_HOUND", 99999999) / 25) < prices.get(
-            "SHIP_MINING_DRONE", 99999999
-        ) / 10:
-            ship = maybe_buy_ship_hq_sys(
-                client, what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
-            )
-        else:
-            ship = maybe_buy_ship_hq_sys(
-                client, what_ship_should_i_buy(client, "SHIP_MINING_DRONE")
-            )
+    if len(excavators) <= 15:
+        ship = maybe_buy_ship_hq_sys(
+            client, what_ship_should_i_buy(client, "SHIP_ORE_HOUND")
+        )
 
     return 3
 
 
 def stage_4(client: SpaceTraders):
-    # we're at at 30 excavators and 3 haulers.
-    # Ideally we want to start building up hounds, replacing excavators.
+    # we're at at 10 excavators and no haulers.
+    # begin scaling toward the hauler / hound model.
     # we also assume that the starting system is drained of resources, so start hauling things out-of-system.
     agent = client.view_my_self()
     # hq_sys_sym = waypoint_slicer(agent.headquarters)
@@ -400,20 +369,22 @@ def stage_4(client: SpaceTraders):
     hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
     haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
-
+    refineries = [ship for ship in ships.values() if ship.role == "REFINERY"]
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
     target_hounds = 30
     target_refiners = 1
-    extractors_per_hauler = 10
+    extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
     if (
         len(hounds) >= target_hounds
         and len(haulers) >= len(excavators) / extractors_per_hauler
+        and len(refineries) >= target_refiners
     ):
         return 5
     # note at stage 4, behaviour should be handled less frequently, based on compiled stuff - see conductor_mining.py
     process_contracts(client)
-    maybe_upgrade_a_ship(client, ships)
+    # this method is for Survey/ Mining laser hybrids - we're experimenting with pure mining lasers and surveyors, and this messes with the surveyors
+    # maybe_upgrade_a_ship(client, ships)
 
     ships_we_might_buy = [
         "SHIP_PROBE",
@@ -443,7 +414,7 @@ def stage_4(client: SpaceTraders):
         ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
         if ship:
             set_behaviour(
-                ship.name, BHVR_RECEIVE_AND_FULFILL, {"asteroid_wp": asteroid_wp.symbol}
+                ship.name, BHVR_RECEIVE_AND_REFINE, {"asteroid_wp": asteroid_wp.symbol}
             )
     elif len(hounds) <= target_hounds:
         ship = maybe_buy_ship(client, connection, "SHIP_ORE_HOUND")
@@ -476,12 +447,14 @@ def stage_5(client: SpaceTraders):
     satelites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
 
     refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
-    target_hounds = 30
+    target_hounds = 50
     target_refiners = 2
     extractors_per_hauler = 5
     # once we're at 30 excavators and 3 haulers, we can move on.
     process_contracts(client)
-    maybe_upgrade_a_ship(client, ships)
+
+    # needs replaced with a mining str 60 and survey str 3/6 method.
+    # maybe_upgrade_a_ship(client, ships)
 
     if (
         len(hounds) >= target_hounds
@@ -512,7 +485,7 @@ def stage_5(client: SpaceTraders):
             "SHIP_LIGHT_HAULER",
         )
         if ship:
-            set_behaviour(ship.name, BHVR_RECEIVE_AND_FULFILL, hauler_params)
+            set_behaviour(ship.name, BHVR_RECEIVE_AND_REFINE, hauler_params)
     # then either buy a refining freighter, or an ore hound
     if len(refiners) < target_refiners:
         ship = maybe_buy_ship(client, connection, "SHIP_REFINING_FREIGHTER")
@@ -535,38 +508,52 @@ def stage_5(client: SpaceTraders):
 def maybe_upgrade_a_ship(client: SpaceTraders, ships: dict):
     # first - is there already an upgrade task needing completed?
     connection = client.db_client.connection
+
+    # CAN we do updates?
+    mounts_to_buy = [
+        "MOUNT_SURVEYOR_I",
+        "MOUNT_MINING_LASER_II",
+        "MOUNT_MINING_LASER_II",
+    ]
+    sql = """select count(*) from market_tradegood_listings 
+where trade_symbol = %s"""
+
+    for mount in mounts_to_buy:
+        results = try_execute_select(connection, sql, (mount,))
+        if len(results) == 0 or results[0][0] == 0:
+            return  # we can't do upgrades yet.
     sql = """select count(*) from ship_tasks
         where behaviour_id = %s
         and expiry > now() at time zone 'utc'
-        and not completed
+        and (not completed or completed is null)
         and agent_symbol = %s"""
     results = try_execute_select(
         connection, sql, (BHVR_UPGRADE_TO_SPEC, client.current_agent_symbol)
     )
     if len(results) > 0 and results[0][0] > 0:
         return
+
     # if not, is there a ship that needs upgrading?
+
     found_ship = False
     for ship in ships.values():
         ship: Ship
         # ore hound
         if ship.frame.symbol == "FRAME_MINER":
             mining_power = 0
-            if not (hasattr(ship, "mounts")) or not len(ship.mounts) == 0:
+            if not (hasattr(ship, "mounts")) or len(ship.mounts) == 0:
                 ship = client.ships_view_one(ship.name, True)
             for mount in ship.mounts:
                 if "MINING" in mount.symbol:
                     mining_power += mount.strength
 
-            if mining_power <= 25:
+            if mining_power < 50:
                 # upgrade it.
                 found_ship = True
                 break
     if not found_ship:
         return
-    params = {
-        "mounts": ["MOUNT_SURVEYOR_I", "MOUNT_MINING_LASER_II", "MOUNT_MINING_LASER_II"]
-    }
+    params = {"mounts": mounts_to_buy}
     target_system = ship.nav.system_symbol
     log_task(
         connection,

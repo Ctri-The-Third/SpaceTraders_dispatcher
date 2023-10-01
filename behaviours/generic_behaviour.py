@@ -89,6 +89,63 @@ class Behaviour:
 
         pass
 
+    def find_nearest_systems_by_waypoint_trait(
+        self,
+        source_system: System,
+        trait: str,
+        range: int = 50000,
+        jumpgate_only=True,
+    ) -> str:
+        sql = """
+            with source as (select src.x, src.y
+            from systems src where system_Symbol  = %s
+            )
+            
+            select s.system_symbol, s.x, s.y  
+            , SQRT(POWER((s.x - source.x), 2) + POWER((s.y - source.y), 2)) AS distance
+            from waypoint_traits wt
+            join waypoints w on wt.waypoint_symbol = w.waypoint_symbol
+            join systems s on s.system_symbol = w.system_symbol
+            cross join source
+            where wt.trait_symbol = %s
+            and s.x between source.x - %s and source.x + %s
+            and s.y between source.y - %s and source.y + %s
+            order by distance asc 
+
+        """
+        results = try_execute_select(
+            self.connection,
+            sql,
+            (
+                source_system.symbol,
+                trait,
+                range,
+                range,
+                range,
+                range,
+            ),
+        )
+
+        if not jumpgate_only:
+            return results[0][0]
+        path = None
+        best_distance = 999999999
+        for result in results:
+            destination = System(result[0], None, None, result[1], result[2], None)
+            if destination.symbol == source_system.symbol:
+                distance = 0
+            else:
+                distance = math.sqrt(
+                    (destination.x - source_system.x) ** 2
+                    + (destination.y - source_system.y) ** 2
+                )
+            if distance < best_distance * 2:
+                route = self.astar(self.graph, source_system, destination)
+                if not path or (route is not None and len(route) < len(path)):
+                    path = route
+                    best_distance = distance
+        return path[-1]
+
     def ship_intrasolar(
         self, target_wp_symbol: "str", sleep_till_done=True, flight_mode="CRUISE"
     ):
@@ -128,6 +185,7 @@ class Behaviour:
                 sleep_until_ready(self.ship)
                 ship.nav.status = "IN_ORBIT"
                 ship.nav.waypoint_symbol = target_wp_symbol
+                ship.nav_dirty = True
                 st.update(ship)
             self.logger.debug(
                 "moved to %s, time to destination %s",
@@ -294,7 +352,7 @@ class Behaviour:
 
         items = []
         tar_contract = None
-        for contract_id, contract in contracts.items():
+        for contract in contracts:
             if contract.accepted and not contract.fulfilled:
                 tar_contract = contract
                 for deliverable in contract.deliverables:
@@ -322,7 +380,9 @@ class Behaviour:
             tar_contract, self.ship, cargo.symbol, cargo_to_deliver
         )
 
-    def find_best_market_systems(self, trade_symbol: str) -> list[(str, System, int)]:
+    def find_best_market_systems_to_sell(
+        self, trade_symbol: str
+    ) -> list[(str, System, int)]:
         "returns market_waypoint, system obj, price as int"
         sql = """select sell_price, w.waypoint_symbol, s.system_symbol, s.sector_Symbol, s.type, s.x,s.y from market_tradegood_listings mtl 
 join waypoints w on mtl.market_symbol = w.waypoint_Symbol
@@ -560,6 +620,7 @@ order by 1 desc """
         goal: Waypoint or System,
         bypass_check: bool = False,
     ):
+        "`bypass_check` is for when we're looking for the nearest nodes to the given locations, when either the source or destination are not on the jump network."
         if not bypass_check:
             if start not in graph.nodes:
                 return None

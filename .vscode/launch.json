@@ -13,19 +13,19 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK9.py",
+            "program": "conductorWK12.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": false
         },
         {
-            "name": "dispatcher -L",
+            "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK9.py",
+            "program": "dispatcherWK12.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": [
-                "CTRI-L-"
+                "CTRI-U-"
             ]
         },
         {

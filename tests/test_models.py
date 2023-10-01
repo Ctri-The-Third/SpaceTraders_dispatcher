@@ -46,14 +46,14 @@ def test_fuel_info():
 def test_ship_requirements():
     ship_requirements = ShipRequirements()
     assert ship_requirements is not None
-    ship_requirements = ShipRequirements(crew=1, module_slots=2, slots=3)
+    ship_requirements = ShipRequirements(crew=1, module_slots=2, power=3)
     assert ship_requirements.crew == 1
     assert ship_requirements.module_slots == 2
     assert ship_requirements.slots == 3
 
 
 def test_ship_frame():
-    ship_requirements = ShipRequirements(crew=1, module_slots=2, slots=3)
+    ship_requirements = ShipRequirements(crew=1, module_slots=2, power=3)
     ship_frame = ShipFrame(
         "symbol", "name", "description", 1, 2, 3, 4, ship_requirements
     )
@@ -73,7 +73,7 @@ def test_agent():
 
     assert agent.account_id == "acc_id"
     assert agent.symbol == "name"
-    assert agent.headquaters == "location"
+    assert agent.headquarters == "location"
     assert agent.credits == 150
 
     assert agent.starting_faction == "COSMIC"
@@ -90,7 +90,7 @@ def test_agent_from_json():
     agent = Agent.from_json(json)
     assert agent.account_id == "acc_id"
     assert agent.symbol == "name"
-    assert agent.headquaters == "location"
+    assert agent.headquarters == "location"
     assert agent.credits == 150
     assert agent.starting_faction == "COSMIC"
 
@@ -126,7 +126,7 @@ def test_ship_module_from_json(ship_module_json_data):
 
 
 def test_ship_reactor():
-    requirements = ShipRequirements(crew=1, module_slots=2, slots=3)
+    requirements = ShipRequirements(crew=1, module_slots=2, power=3)
     ship_reactor = ShipReactor("symbol", "name", "description", 1, 30, requirements)
     assert ship_reactor is not None
     assert ship_reactor.symbol == "symbol"
@@ -138,7 +138,7 @@ def test_ship_reactor():
 
 
 def test_ship_engine():
-    requirements = ShipRequirements(crew=1, module_slots=2, slots=3)
+    requirements = ShipRequirements(crew=1, module_slots=2, power=3)
     ship_engine = ShipEngine("symbol", "name", "description", 1, 30, requirements)
     assert ship_engine is not None
     assert ship_engine.symbol == "symbol"

@@ -15,7 +15,6 @@ conn = psycopg2.connect(
     password=user["db_pass"],
 )
 conn.autocommit = True
-cur = conn.cursor()
 sqls = [
     "delete from agents;",
     "delete from contract_tradegoods;",
@@ -29,7 +28,6 @@ sqls = [
     "delete from ship_cooldowns;",
     "delete from ship_frame_links;",
     "delete from ship_frames;",
-    "delete from ship_mount_links;",
     "delete from ship_mounts;",
     "delete from ship_nav;",
     "delete from ship_tasks;",
@@ -45,9 +43,10 @@ sqls = [
 ]
 
 for sql in sqls:
-    # result = cur.execute(sql)
-    result = 0
-    print(f"{sql} - {cur.statusmessage}")
+    with conn.cursor() as cur:
+        result = cur.execute(sql)
+        result = 0
+        print(f"{sql} - {cur.statusmessage}")
 
 rows = [
     [
@@ -178,5 +177,6 @@ VALUES (%s, %s, %s, %s, %s, %s)
 
 on conflict (mount_symbol) do nothing;"""
 for mount in rows:
-    result = cur.execute(sql, mount)
-    print(f"{mount} - {cur.statusmessage}")
+    with conn.cursor() as cur:
+        result = cur.execute(sql, mount)
+        print(f"{mount} - {cur.statusmessage}")

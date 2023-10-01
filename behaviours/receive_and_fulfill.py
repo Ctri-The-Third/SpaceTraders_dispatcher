@@ -59,7 +59,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                 ship.cargo_inventory, key=lambda item: item.units
             )
 
-            markets = self.find_best_market_systems(item_with_highest_quantity.symbol)
+            markets = self.find_best_market_systems_to_sell(
+                item_with_highest_quantity.symbol
+            )
             # markets is a tuple, where the items are waypoint_s, system, price
             paths = {
                 system[0]: self.astar(self.graph, start_sys, system[1])
@@ -96,7 +98,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             # check if we have a contract for the items in our inventory
             found_contracts = st.view_my_contracts()
             contracts = []
-            for id, contract in found_contracts.items():
+            for contract in found_contracts:
                 if contract.accepted and not contract.fulfilled:
                     contracts.append(contract)
             cargo_to_skip = []
