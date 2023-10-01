@@ -620,10 +620,12 @@ order by 1 desc """
         goal: Waypoint or System,
         bypass_check: bool = False,
     ):
-        #check if there's a graph yet. There won't be if this is very early in the restart.
+        # check if there's a graph yet. There won't be if this is very early in the restart.
+        if start == goal:
+            return [start]
         if not graph:
-            return None 
-        
+            return None
+
         "`bypass_check` is for when we're looking for the nearest nodes to the given locations, when either the source or destination are not on the jump network."
         if not bypass_check:
             if start not in graph.nodes:
