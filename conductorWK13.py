@@ -49,8 +49,8 @@ class Conductor:
         #
         # * scale regularly and set defaults
         # * progress missions
-        last_hourly_update = datetime.now() - timedelta(hours=1)
-        last_daily_update = datetime.now() - timedelta(days=1)
+        last_hourly_update = datetime.now() - timedelta(hours=2)
+        last_daily_update = datetime.now() - timedelta(days=2)
         #
         # hourly calculations of profitable things, assign behaviours and tasks
         #
@@ -58,15 +58,23 @@ class Conductor:
         self.asteroid_wp: Waypoint = None
         all_commanders = []
 
-        if last_hourly_update < datetime.now() - timedelta(hours=1):
-            self.hourly_update()
-
         if last_daily_update < datetime.now() - timedelta(days=1):
             self.daily_update()
+
+        if last_hourly_update < datetime.now() - timedelta(hours=1):
+            self.hourly_update()
 
         self.minutely_update()
 
     def hourly_update(self):
+        for agent, token in self.agents_and_tokens.items():
+            st = self.client
+            st.set_current_agent(agent, token)
+
+            hq = st.view_my_self().headquarters
+            hq_sys = waypoint_slicer(hq)
+            resp = st.find_waypoints_by_type_one(hq_sys, "ASTEROID_FIELD")
+            self.asteroid_wp = resp
         # determine current starting asteroid
         # determine top 2 goods to export
         # assign a single trader to buy/sell behaviour
@@ -83,12 +91,14 @@ class Conductor:
                 select waypoint_symbol from waypoint_traits wt where wt.trait_symbol = 'UNCHARTED'
             );
             delete from waypoint_traits WT where wt.trait_symbol = 'UNCHARTED';"""
-        pass
+        try_execute_upsert(self.connection, sql, [])
 
     def minutely_update(self):
-        for agent, token in self.agents_and_tokens:
+        """This method handles ship scaling and assigning default behaviours."""
+        for agent, token in self.agents_and_tokens.items():
             st = self.client
-            st.current_agent_symbol = agent
+            st.set_current_agent(agent, token)
+
             st.token = token
             st.current_agent = st.view_my_self()
             ships = st.ships_view()
@@ -151,7 +161,7 @@ class Conductor:
             if new_ship:
                 set_behaviour(
                     self.connection,
-                    new_ship.symbol,
+                    new_ship.name,
                     new_behaviour,
                     behaviour_params=behaviour_params,
                 )
@@ -240,6 +250,7 @@ def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol) -> "Ship" or None:
 
     shipyard = client.system_shipyard(shipyard_wps[0])
     return _maybe_buy_ship(client, shipyard, ship_symbol)
+
 
 
 def _maybe_buy_ship(client: SpaceTraders, shipyard: Shipyard, ship_symbol: str):
