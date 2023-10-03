@@ -12,3 +12,18 @@ Our questions for study were:
 * Week 13 - does having ore hounds that can't transfer cargo leave the asteroid to sell make sense? (Determine CPR and CPH estimations)
 * the recon dispatcher is not behaving correctly and is trying to use the wrong token for some ships.
 
+
+## Dedicated Surveyors
+
+We've begun reworking our conductor structure to allow for hourly executions, and daily executions. The daily execution currently is for resetting the uncharted waypoints, to be searched for again.
+
+The hourly behaviour will be for ascribing ship behaviours - relocating fleets etc...
+
+The every-minute will be scaling and buying new ships, and upgrading them.
+The new conductor splits ore hounds based on their numerical index.
+
+## Survey collision
+
+We noticed last week that having a single survey be returned for all ships was no ideal - we're actually consuming them significantly faster than we'd expect. This results in a bunch of 409s as ships try and fight over the same survey.
+
+The solution will be assigned surveys to ships. 

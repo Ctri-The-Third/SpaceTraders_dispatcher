@@ -28,6 +28,7 @@ from conductor_functions import (
     get_prices_for,
     set_behaviour,
     maybe_buy_ship_hq_sys,
+    log_task,
 )
 
 
@@ -41,8 +42,8 @@ class Conductor:
     def __init__(
         self,
     ) -> None:
-        self.current_agent_symbol = user.get(agents)[0]["username"]
-        self.current_agent_token = user.get(agents)[0]["token"]
+        self.current_agent_symbol = user.get("agents")[0]["username"]
+        self.current_agent_token = user.get("agents")[0]["token"]
 
         client = self.st = SpaceTraders(
             self.current_agent_token,
@@ -138,7 +139,7 @@ class Conductor:
                 "SHIP_REFINERY",
             ]
             if len(hounds) < 50:
-                new_ship = maybe_buy_ship_hq_sys(st, "SHIP_ORE_HOUND")
+                new_ship = False  # maybe_buy_ship_hq_sys(st, "SHIP_ORE_HOUND")
                 new_behaviour = BHVR_EXTRACT_AND_SELL
             elif len(refiners) < 2:
                 new_ship = maybe_buy_ship_hq_sys(st, "SHIP_REFINERY")
@@ -155,6 +156,7 @@ class Conductor:
                 new_behaviour,
                 behaviour_params=behaviour_params,
             )
+            self.populate_ships()
 
         self.maybe_upgrade_ship()
 
@@ -165,19 +167,33 @@ class Conductor:
         best_surveyor = (
             "MOUNT_SURVEYOR_I" if max_survey_strength == 3 else "MOUNT_SURVEYOR_II"
         )
+        if not clear_to_upgrade(self.st.view_my_self(), self.connection):
+            return
         ship_to_upgrade = None
-        price = get_prices_for(self.connection, best_surveyor) * 3
+        price = get_prices_for(self.connection, best_surveyor)[0] * 3
         for ship in self.surveyors:
             ship: Ship
             if ship.survey_strength <= max_survey_strength:
                 outfit_symbols = [best_surveyor, best_surveyor, best_surveyor]
                 ship_to_upgrade = ship
-                if self.st.current_agent.credits > price:
-                    # we've got a ship that needs upgraded
-                    # we've got the money to upgrade it
-                    # log it
-                    break
                 break
+
+        if not ship_to_upgrade:
+            return
+
+        params = {"mounts": outfit_symbols}
+        if self.st.view_my_self().credits < price:
+            return
+        log_task(
+            self.connection,
+            "UPGRADE_TO_SPEC",
+            [],
+            ship_to_upgrade.nav.system_symbol,
+            1,
+            self.st.current_agent_symbol,
+            params,
+            specific_ship_symbol=ship_to_upgrade.name,
+        )
 
     def max_mining_strength(self):
         sql = """select * from market_prices
@@ -191,8 +207,8 @@ where trade_symbol ilike 'mount_mining_laser%'"""
 
     def max_survey_strength(self):
         sql = """select * from market_prices
-where trade_symbol ilike 'mount_surveyor_%'"""
-        results = try_execute_select(self.connection, sql, ())
+where trade_symbol ilike 'mount_surveyor_%%'"""
+        results = try_execute_select(self.connection, sql, [])
         symbols = [row[0] for row in results]
         if "MOUNT_SURVEYOR_II" in symbols:
             return 2
@@ -203,15 +219,12 @@ where trade_symbol ilike 'mount_surveyor_%'"""
         "Set the conductor's ship lists, and subdivides them into roles."
         ships = self.st.ships_view()
         self.satellites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
-        self.haulers = [ship for ship in ships.values() if ship.role == "HAULER"].sort(
-            key=lambda ship: ship.index
-        )
-        self.commanders = [
-            ship for ship in ships.values() if ship.role == "COMMAND"
-        ].sort(key=lambda ship: ship.index)
-        hounds = [
-            ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"
-        ].sort(key=lambda ship: ship.index)
+        self.haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
+        self.haulers.sort(key=lambda ship: ship.index)
+        self.commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
+        self.commanders.sort(key=lambda ship: ship.index)
+        hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
+        hounds.sort(key=lambda ship: ship.index)
         # for every 6.6667 hounds, make one a surveyor. ignore the first one.
         self.surveyors = hounds[1::6]
 
