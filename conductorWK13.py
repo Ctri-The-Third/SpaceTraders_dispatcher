@@ -76,6 +76,7 @@ class Conductor:
         # hourly calculations of profitable things, assign behaviours and tasks
         #
         while True:
+            logging.info("Conductor is running")
             self.populate_ships()
             # daily reset uncharted waypoints.
 
