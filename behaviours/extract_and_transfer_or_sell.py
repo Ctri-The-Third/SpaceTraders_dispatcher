@@ -97,7 +97,14 @@ class ExtractAndTransferOrSell_8(Behaviour):
         if ship.can_survey:
             st.ship_survey(ship)
         if not ship.can_extract:
-            return
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            self.end()
+            self.logger.info(
+                "Completed. Credits: %s, change = %s",
+                agent.credits,
+                agent.credits - starting_credts,
+            )
+
         cutoff_cargo_limit = None
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
