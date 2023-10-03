@@ -46,7 +46,7 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
     total_value = contract.payment_completion + contract.payment_upfront
     total_cost = 0
     for deliverable in contract.deliverables:
-        cost = get_prices_for(client, deliverable.symbol)
+        cost = get_prices_for(client.db_client.connection, deliverable.symbol)
         if not cost:
             logging.warning(
                 "Couldn't find a market for %s, I don't think we should accept this contract %s ",
@@ -150,20 +150,23 @@ def log_task(
     return resp or True
 
 
-def maybe_buy_ship_hq_sys(client: SpaceTraders, ship_symbol) -> "Ship" or None:
-    system_symbol = waypoint_slicer(client.view_my_self().headquarters)
+def maybe_buy_ship_sys(client: SpaceTraders, ship_symbol) -> "Ship" or None:
+    location_sql = """select distinct shipyard_symbol, ship_cost from shipyard_types st 
+join ship_nav sn on  st.shipyard_symbol = sn.waypoint_symbol
+join ships s on s.ship_symbol = sn.ship_symbol
+where s.agent_name = %s
+and st.ship_type = %s
+order by ship_cost desc """
+    rows = try_execute_select(
+        client.db_client.connection,
+        location_sql,
+        (client.current_agent_symbol, ship_symbol),
+    )
+    best_waypoint = rows[0][0]
 
-    shipyard_wps = client.find_waypoints_by_trait(system_symbol, "SHIPYARD")
-    if not shipyard_wps:
-        logging.warning("No shipyards found yet - can't scale.")
-        return
-
-    if len(shipyard_wps) == 0:
-        return False
-    agent = client.view_my_self()
-
-    shipyard = client.system_shipyard(shipyard_wps[0])
-    return _maybe_buy_ship(client, shipyard, ship_symbol)
+    wayp = client.waypoints_view_one(waypoint_slicer(best_waypoint), best_waypoint)
+    shipyard = client.system_shipyard(wayp)
+    # return _maybe_buy_ship(client, shipyard, ship_symbol)
 
 
 def _maybe_buy_ship(client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str):
