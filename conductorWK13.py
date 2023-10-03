@@ -28,7 +28,7 @@ from conductor_functions import (
     process_contracts,
     get_prices_for,
     set_behaviour,
-    maybe_buy_ship_hq_sys,
+    maybe_buy_ship_sys,
     log_task,
 )
 
@@ -96,6 +96,32 @@ class Conductor:
         hq_sys = waypoint_slicer(hq)
         resp = st.find_waypoints_by_type_one(hq_sys, "ASTEROID_FIELD")
         self.asteroid_wp = resp
+
+        # find unvisited shipyards
+        for ship in self.ships_we_might_buy:
+            sql = """select msstvf.system_symbol from mkt_shpyrds_systems_to_visit_first msstvf 
+                    join systems s on msstvf.system_symbol = s.system_symbol
+                    join waypoints w on w.system_symbol = s.system_symbol
+                    join shipyard_types st on st.shipyard_symbol = w.waypoint_symbol
+                    join systems_with_jumpgates swj on swj.system_symbol = s.system_symbol
+                    where ship_type = %s
+                    order by ship_cost = null, last_updated asc
+                    limit 1 ;
+
+                    """
+
+            rows = try_execute_select(self.connection, sql, (ship,))
+            system = rows[0][0]
+            log_task(
+                self.connection,
+                BHVR_EXPLORE_SYSTEM,
+                [
+                    "DRONE",
+                ],
+                system,
+                priority=5,
+            )
+        # find unvisited network gates
 
         # determine current starting asteroid
         # determine top 2 goods to export
