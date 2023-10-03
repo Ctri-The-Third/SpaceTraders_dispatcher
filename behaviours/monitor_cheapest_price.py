@@ -69,9 +69,16 @@ class MonitorPrices(Behaviour):
 
 
 if __name__ == "__main__":
-    set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-UWK5-"
-    ship_suffix = "25"
-    params = None
+    from dispatcherWK12 import lock_ship
+
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    # 3, 4,5,6,7,8,9
+    # A is the surveyor
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"
+    ship = f"{agent}-{ship_suffix}"
     params = {"ship_type": "SHIP_ORE_HOUND"}
-    MonitorPrices(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
+    bhvr = MonitorPrices(agent, f"{ship}", params)
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
+    bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)
