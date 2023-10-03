@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 import json
+from time import sleep
 
 import psycopg2.sql
 
@@ -74,16 +75,18 @@ class Conductor:
         #
         # hourly calculations of profitable things, assign behaviours and tasks
         #
-        self.populate_ships()
-        # daily reset uncharted waypoints.
+        while True:
+            self.populate_ships()
+            # daily reset uncharted waypoints.
 
-        if last_daily_update < datetime.now() - timedelta(days=1):
-            self.daily_update()
+            if last_daily_update < datetime.now() - timedelta(days=1):
+                self.daily_update()
 
-        if last_hourly_update < datetime.now() - timedelta(hours=1):
-            self.hourly_update()
+            if last_hourly_update < datetime.now() - timedelta(hours=1):
+                self.hourly_update()
 
-        self.minutely_update()
+            self.minutely_update()
+            sleep(60)
 
     def hourly_update(self):
         st = self.st
@@ -162,7 +165,7 @@ class Conductor:
 
     def maybe_upgrade_ship(self):
         # surveyors first, then extractors
-        max_mining_strength = 0
+        max_mining_strength = 60
         max_survey_strength = self.max_survey_strength() * 3
         best_surveyor = (
             "MOUNT_SURVEYOR_I" if max_survey_strength == 3 else "MOUNT_SURVEYOR_II"
@@ -178,6 +181,17 @@ class Conductor:
                 ship_to_upgrade = ship
                 break
 
+        if not ship_to_upgrade:
+            for ship in self.extractors:
+                ship: Ship
+                if ship.extract_strength <= max_mining_strength:
+                    outfit_symbols = [
+                        "MOUNT_MINING_LASER_II",
+                        "MOUNT_MINING_LASER_II",
+                        "MOUNT_MINING_LASER_I",
+                    ]
+                    ship_to_upgrade = ship
+                    break
         if not ship_to_upgrade:
             return
 
