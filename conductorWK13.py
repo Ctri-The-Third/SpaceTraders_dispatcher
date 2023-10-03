@@ -22,6 +22,9 @@ from dispatcherWK12 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_RECEIVE_AND_REFINE,
+    BHVR_REMOTE_SCAN_AND_SURV,
+    BHVR_MONITOR_CHEAPEST_PRICE,
+    BHVR_EXPLORE_SYSTEM,
 )
 
 from conductor_functions import (
@@ -62,7 +65,7 @@ class Conductor:
         self.hounds = []
         self.extractors = []
         self.surveyors = []
-        self.ships_we_might_buy = []
+        self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
         self.satellites = []
         self.refiners = []
 
@@ -82,9 +85,11 @@ class Conductor:
 
             if last_daily_update < datetime.now() - timedelta(days=1):
                 self.daily_update()
+                last_daily_update = datetime.now()
 
             if last_hourly_update < datetime.now() - timedelta(hours=1):
                 self.hourly_update()
+                last_hourly_update = datetime.now()
 
             self.minutely_update()
             sleep(60)
@@ -142,6 +147,7 @@ class Conductor:
 
     def minutely_update(self):
         """This method handles ship scaling and assigning default behaviours."""
+
         st = self.st
 
         st.current_agent = st.view_my_self()
@@ -156,7 +162,7 @@ class Conductor:
         behaviour_params = {"asteroid_wp": self.asteroid_wp.symbol}
         # stage
         if len(hounds) < 50:
-            new_ship = maybe_buy_ship_hq_sys(st, "SHIP_ORE_HOUND")
+            new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
             new_behaviour = BHVR_EXTRACT_AND_SELL
             self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
         # stage 4
@@ -172,10 +178,10 @@ class Conductor:
                 new_ship = False  # maybe_buy_ship_hq_sys(st, "SHIP_ORE_HOUND")
                 new_behaviour = BHVR_EXTRACT_AND_SELL
             elif len(refiners) < 2:
-                new_ship = maybe_buy_ship_hq_sys(st, "SHIP_REFINERY")
+                new_ship = maybe_buy_ship_sys(st, "SHIP_REFINERY")
                 new_behaviour = BHVR_RECEIVE_AND_REFINE
             elif len(haulers) < 10:
-                new_ship = maybe_buy_ship_hq_sys(st, "SHIP_HEAVY_HAULER")
+                new_ship = maybe_buy_ship_sys(st, "SHIP_HEAVY_HAULER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             pass
 
@@ -187,7 +193,20 @@ class Conductor:
                 behaviour_params=behaviour_params,
             )
             self.populate_ships()
+        for i in list(range(len(self.ships_we_might_buy))):
+            if len(self.satellites) < i:
+                ship = maybe_buy_ship_sys(st, "SHIP_PROBE")
+            else:
+                ship = self.satellites[i]
 
+            if not ship:
+                break
+            set_behaviour(
+                self.connection,
+                ship.name,
+                BHVR_MONITOR_CHEAPEST_PRICE,
+                behaviour_params={"ship_type": self.ships_we_might_buy[i]},
+            )
         self.maybe_upgrade_ship()
 
     def maybe_upgrade_ship(self):
@@ -200,24 +219,27 @@ class Conductor:
         if not clear_to_upgrade(self.st.view_my_self(), self.connection):
             return
         ship_to_upgrade = None
+        ship_new_behaviour = None
         price = get_prices_for(self.connection, best_surveyor)[0] * 3
         for ship in self.surveyors:
             ship: Ship
-            if ship.survey_strength <= max_survey_strength:
+            if ship.survey_strength < max_survey_strength:
                 outfit_symbols = [best_surveyor, best_surveyor, best_surveyor]
                 ship_to_upgrade = ship
+                switch_to_surveying(self.connection, ship_to_upgrade.name)
                 break
 
         if not ship_to_upgrade:
             for ship in self.extractors:
                 ship: Ship
-                if ship.extract_strength <= max_mining_strength:
+                if ship.extract_strength < max_mining_strength:
                     outfit_symbols = [
                         "MOUNT_MINING_LASER_II",
                         "MOUNT_MINING_LASER_II",
                         "MOUNT_MINING_LASER_I",
                     ]
                     ship_to_upgrade = ship
+
                     break
         if not ship_to_upgrade:
             return
@@ -285,7 +307,12 @@ def clear_to_upgrade(agent: Agent, connection) -> bool:
 where behaviour_id = 'UPGRADE_TO_SPEC' and (not completed or completed is null)
 and agent_symbol = %s"""
     rows = try_execute_select(connection, sql, (agent.symbol,))
-    return len(rows)
+    return len(rows) == 0
+
+
+def switch_to_surveying(connection, ship_symbol):
+    sql = """update ship_behaviours set behaviour_id = %s where ship_symbol = %s"""
+    try_execute_upsert(connection, sql, (BHVR_REMOTE_SCAN_AND_SURV, ship_symbol))
 
 
 if __name__ == "__main__":
