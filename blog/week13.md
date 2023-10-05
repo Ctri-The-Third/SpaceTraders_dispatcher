@@ -8,8 +8,8 @@ Our questions for study were:
 * Next week (12) - Does switching to dedicated surveying hounds / frigates make sense? (repurposing the starting frigate absolutely does)
  * ANSWER: Yes
 * The current production chain of haulers and refiners definitely adds money into the system. Is it breaking even? Is the opportunity cost worth it? (perform queries and chart this)
- * ANSWER: unknown
-* Week 13 - does having ore hounds that can't transfer cargo leave the asteroid to sell make sense? (Determine CPR and CPH estimations)
+ * ANSWER: not worth it until market crash.
+* Week 13 - does having ore hounds that can't transfer cargo leave the asteroid to sell make sense? (Determine CPR and CPH estimations) Does jetisonning garbage cargo make the most sense?
 * the recon dispatcher is not behaving correctly and is trying to use the wrong token for some ships.
 
 
@@ -21,6 +21,8 @@ The hourly behaviour will be for ascribing ship behaviours - relocating fleets e
 
 The every-minute will be scaling and buying new ships, and upgrading them.
 The new conductor splits ore hounds based on their numerical index.
+
+
 
 ## Survey collision
 
