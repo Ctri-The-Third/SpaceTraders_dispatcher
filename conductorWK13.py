@@ -26,6 +26,7 @@ from dispatcherWK12 import (
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
 )
+from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
 from conductor_functions import (
     process_contracts,
@@ -68,6 +69,11 @@ class Conductor:
         self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
         self.satellites = []
         self.refiners = []
+        self.routing_behaviour = GenericBehaviour(
+            self.current_agent_symbol, "GLOBAL", connection=self.connection
+        )
+
+        self.starting_system = None
 
     def run(self):
         #
@@ -78,6 +84,9 @@ class Conductor:
         #
         # hourly calculations of profitable things, assign behaviours and tasks
         #
+
+        # rerun the hourly thing after we've calculated "ships we might buy"
+        starting_run = True
         while True:
             logging.info("Conductor is running")
             self.populate_ships()
@@ -92,18 +101,29 @@ class Conductor:
                 last_hourly_update = datetime.now()
 
             self.minutely_update()
+            if starting_run:
+                self.daily_update()
+                self.hourly_update()
+                starting_run = False
             sleep(60)
 
     def hourly_update(self):
         st = self.st
 
-        hq = st.view_my_self().headquarters
-        hq_sys = waypoint_slicer(hq)
-        resp = st.find_waypoints_by_type_one(hq_sys, "ASTEROID_FIELD")
-        self.asteroid_wp = resp
+        if not self.starting_system:
+            hq = st.view_my_self().headquarters
+            hq_sys = waypoint_slicer(hq)
+            self.starting_system = st.systems_view_one(hq_sys)
 
+        if not self.asteroid_wp:
+            resp = st.find_waypoints_by_type_one(
+                self.starting_system.symbol, "ASTEROID_FIELD"
+            )
+            self.asteroid_wp = resp
         # find unvisited shipyards
+
         for ship in self.ships_we_might_buy:
+            # get all possibilities
             sql = """select msstvf.system_symbol from mkt_shpyrds_systems_to_visit_first msstvf 
                     join systems s on msstvf.system_symbol = s.system_symbol
                     join waypoints w on w.system_symbol = s.system_symbol
@@ -111,21 +131,34 @@ class Conductor:
                     join systems_with_jumpgates swj on swj.system_symbol = s.system_symbol
                     where ship_type = %s
                     order by ship_cost = null, last_updated asc
-                    limit 1 ;
+                     
 
                     """
 
+            # can we visit it via gate?
+
             rows = try_execute_select(self.connection, sql, (ship,))
-            system = rows[0][0]
-            log_task(
-                self.connection,
-                BHVR_EXPLORE_SYSTEM,
-                [
-                    "DRONE",
-                ],
-                system,
-                priority=5,
-            )
+            for row in rows:
+                dest_system_wp = row[0]
+                syst = st.systems_view_one(dest_system_wp)
+                path = self.routing_behaviour.astar(
+                    self.routing_behaviour.graph, self.starting_system, syst
+                )
+
+                requirements = ["EXPLORER"] if not path else ["DRONE"]
+                log_task(
+                    self.connection,
+                    BHVR_EXPLORE_SYSTEM,
+                    requirements,
+                    dest_system_wp,
+                    priority=5,
+                    behaviour_params={"target_sys": dest_system_wp},
+                )
+
+                # if we've found one that can be visited by drone, stop logging tasks.
+                if path:
+                    break
+
         # find unvisited network gates
 
         # determine current starting asteroid
