@@ -166,7 +166,7 @@ order by ship_cost desc """
 
     wayp = client.waypoints_view_one(waypoint_slicer(best_waypoint), best_waypoint)
     shipyard = client.system_shipyard(wayp)
-    # return _maybe_buy_ship(client, shipyard, ship_symbol)
+    return _maybe_buy_ship(client, shipyard, ship_symbol)
 
 
 def _maybe_buy_ship(client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str):
