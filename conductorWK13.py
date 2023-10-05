@@ -208,7 +208,7 @@ class Conductor:
                 "SHIP_REFINERY",
             ]
             if len(hounds) < 50:
-                new_ship = False  # maybe_buy_ship_hq_sys(st, "SHIP_ORE_HOUND")
+                new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
                 new_behaviour = BHVR_EXTRACT_AND_SELL
             elif len(refiners) < 2:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_REFINERY")

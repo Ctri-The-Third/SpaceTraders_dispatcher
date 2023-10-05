@@ -172,9 +172,13 @@ class Behaviour:
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.go_and_refuel()
-        if fuel_cost >= ship.fuel_current and ship.fuel_capacity > 0:
+        if (
+            fuel_cost >= ship.fuel_current
+            and ship.fuel_capacity > 0
+            and ship.nav.flight_mode != "DRIFT"
+        ):
             st.ship_patch_nav(ship, "DRIFT")
-        elif ship.fuel_capacity == 0:
+        elif ship.fuel_capacity == 0 and ship.nav.flight_mode != "BURN":
             st.ship_patch_nav(ship, "BURN")
 
         if ship.nav.waypoint_symbol != target_wp_symbol:
@@ -553,6 +557,14 @@ order by 1 desc """
             sleep(max(ship.nav.travel_time_remaining, ship.seconds_until_cooldown))
         current_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
+        self.st.logging_client.log_custom_event(
+            "BEGIN_EXTRASOLAR_NAVIGATION",
+            {
+                "origin_system": o_sys.symbol,
+                "destination_system": destination_system.symbol,
+                "route_length": f"{len(route)}",
+            },
         )
         if current_wp.type != "JUMP_GATE":
             jg_wp = st.find_waypoints_by_type_one(ship.nav.system_symbol, "JUMP_GATE")
