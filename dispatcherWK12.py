@@ -377,6 +377,9 @@ class dispatcher:
                         ]:
                             valid_for_ship = False
                             break
+                        if requirement == "EXPLORER" and ship.role != "COMMANDER":
+                            valid_for_ship = False
+                            break
 
                 if valid_for_ship:
                     if task["priority"] < highest_priority:
