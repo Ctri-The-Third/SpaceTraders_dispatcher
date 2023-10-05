@@ -635,6 +635,7 @@ order by 1 desc """
         goal: Waypoint or System,
         bypass_check: bool = False,
     ):
+        self.logger.warning("Doing an A*")
         # check if there's a graph yet. There won't be if this is very early in the restart.
         if start == goal:
             return [start]
