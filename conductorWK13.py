@@ -162,7 +162,52 @@ class Conductor:
                     break
 
         # find unvisited network gates
+        refinables = ["IRON_ORE", "ALUMINUM_ORE", "COPPER_ORE"]
+        best_refinable = "IRON_ORE"
+        best_refinable_value = 0
+        for refinable in refinables:
+            prices = get_prices_for(self.connection, refinable)
+            if not prices:
+                break
+            sell_price = prices[1]
+            if sell_price > best_refinable_value:
+                best_refinable_value = sell_price
+                best_refinable = refinable
 
+        # send refiners to asteroid
+        for refiner in self.refiners:
+            params = {"asteroid_wp": self.asteroid_wp.symbol}
+            set_behaviour(
+                self.connection, refiner.name, BHVR_RECEIVE_AND_REFINE, params
+            )
+
+        # send haulers to asteroid
+        for hauler in self.haulers:
+            params = {"asteroid_wp": self.asteroid_wp.symbol}
+            BHVR_RECEIVE_AND_FULFILL
+            set_behaviour(
+                self.connection, hauler.name, BHVR_RECEIVE_AND_FULFILL, params
+            )
+
+        # send haulers to asteroid and tell them to extract and transfer
+        for extractor in self.extractors[0 : len(self.refiners)]:
+            params = {"asteroid_wp": self.asteroid_wp.symbol}
+            set_behaviour(
+                self.connection,
+                extractor.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                params,
+            )
+
+        # send other haulers to extract and sell.
+        for extractor in self.extractors[len(self.refiners) :]:
+            params = {
+                "asteroid_wp": self.asteroid_wp.symbol,
+                "cargo_to_transfer": [best_refinable],
+            }
+            set_behaviour(
+                self.connection, extractor.name, BHVR_EXTRACT_AND_SELL, params
+            )
         # determine current starting asteroid
         # determine top 2 goods to export
         # assign a single trader to buy/sell behaviour
