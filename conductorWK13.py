@@ -25,6 +25,7 @@ from dispatcherWK12 import (
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
+    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -44,9 +45,7 @@ class Conductor:
 
     """This class will manage the recon agents and their behaviour."""
 
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self, user: dict[str, str], connection=None, session=None) -> None:
         self.current_agent_symbol = user.get("agents")[0]["username"]
         self.current_agent_token = user.get("agents")[0]["token"]
 
@@ -124,6 +123,9 @@ class Conductor:
             self.asteroid_wp = resp
         # find unvisited shipyards
 
+        #
+        # visit unvisited shipyards
+        #
         for ship in self.ships_we_might_buy:
             # get all possibilities
             sql = """select msstvf.system_symbol from mkt_shpyrds_systems_to_visit_first msstvf 
@@ -406,4 +408,4 @@ if __name__ == "__main__":
     logger.info("Connected to database")
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
-    Conductor().run()
+    Conductor(user).run()
