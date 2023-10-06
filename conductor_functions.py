@@ -2,6 +2,7 @@ from straders_sdk import SpaceTraders
 from straders_sdk.contracts import Contract
 from straders_sdk.utils import try_execute_select, try_execute_upsert, waypoint_slicer
 from straders_sdk.local_response import LocalSpaceTradersRespose
+from straders_sdk.models import System
 import datetime
 import logging
 import json
@@ -229,3 +230,22 @@ def register_and_store_user(
     if not resp:
         return resp
     return resp.data["token"]
+
+
+def find_best_market_systems_to_sell(
+    connection, trade_symbol: str
+) -> list[(str, System, int)]:
+    "returns market_waypoint, system obj, price as int"
+    sql = """select sell_price, w.waypoint_symbol, s.system_symbol, s.sector_Symbol, s.type, s.x,s.y from market_tradegood_listings mtl 
+join waypoints w on mtl.market_symbol = w.waypoint_Symbol
+join systems s on w.system_symbol = s.system_symbol
+where mtl.trade_symbol = %s
+order by 1 desc """
+    results = try_execute_select(connection, sql, (trade_symbol,))
+    return_obj = []
+    for row in results or []:
+        sys = System(row[2], row[3], row[4], row[5], row[6], [])
+        price = row[0]
+        waypoint_symbol = row[1]
+        return_obj.append((waypoint_symbol, sys, price))
+    return return_obj
