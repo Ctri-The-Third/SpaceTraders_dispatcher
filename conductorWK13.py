@@ -137,8 +137,6 @@ class Conductor:
 
                     """
 
-            # can we visit it via gate?
-
             rows = try_execute_select(self.connection, sql, (ship,))
             for row in rows:
                 dest_system_wp = row[0]
@@ -264,6 +262,8 @@ class Conductor:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_HEAVY_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             pass
+        else:
+            new_ship = False
 
         if new_ship:
             set_behaviour(
