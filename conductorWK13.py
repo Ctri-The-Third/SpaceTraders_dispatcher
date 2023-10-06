@@ -79,6 +79,7 @@ class Conductor:
         #
         # * scale regularly and set defaults
         # * progress missions
+        self.next_hourly_update = datetime.now() + timedelta(hours=1)
         last_hourly_update = datetime.now() - timedelta(hours=2)
         last_daily_update = datetime.now() - timedelta(days=2)
         #
@@ -99,6 +100,7 @@ class Conductor:
             if last_hourly_update < datetime.now() - timedelta(hours=1):
                 self.hourly_update()
                 last_hourly_update = datetime.now()
+                self.next_hourly_update = datetime.now() + timedelta(hours=1)
 
             self.minutely_update()
             if starting_run:
@@ -194,7 +196,7 @@ class Conductor:
         #
         behaviour_params = {"asteroid_wp": self.asteroid_wp.symbol}
         # stage
-        if len(hounds) < 50:
+        if len(hounds) < 40:
             new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
             new_behaviour = BHVR_EXTRACT_AND_SELL
             self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
@@ -203,18 +205,18 @@ class Conductor:
             self.ships_we_might_buy = [
                 "SHIP_PROBE",
                 "SHIP_ORE_HOUND",
-                "SHIP_HEAVY_HAULER",
+                "SHIP_HEAVY_FREIGHTER",
                 "SHIP_COMMAND_FRIGATE",
                 "SHIP_REFINERY",
             ]
             if len(hounds) < 50:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
                 new_behaviour = BHVR_EXTRACT_AND_SELL
-            elif len(refiners) < 2:
+            elif len(refiners) < 1:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_REFINERY")
                 new_behaviour = BHVR_RECEIVE_AND_REFINE
-            elif len(haulers) < 10:
-                new_ship = maybe_buy_ship_sys(st, "SHIP_HEAVY_HAULER")
+            elif len(haulers) < 3:
+                new_ship = maybe_buy_ship_sys(st, "SHIP_HEAVY_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             pass
 
@@ -227,7 +229,7 @@ class Conductor:
             )
             self.populate_ships()
         for i in list(range(len(self.ships_we_might_buy))):
-            if len(self.satellites) < i:
+            if len(self.satellites) <= i:
                 ship = maybe_buy_ship_sys(st, "SHIP_PROBE")
             else:
                 ship = self.satellites[i]
