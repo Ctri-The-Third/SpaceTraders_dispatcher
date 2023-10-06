@@ -147,18 +147,18 @@ class Conductor:
                     self.routing_behaviour.graph, self.starting_system, syst
                 )
 
-                requirements = ["EXPLORER"] if not path else ["DRONE"]
-                log_task(
-                    self.connection,
-                    BHVR_EXPLORE_SYSTEM,
-                    requirements,
-                    dest_system_wp,
-                    priority=5,
-                    behaviour_params={"target_sys": dest_system_wp},
-                )
-
-                # if we've found one that can be visited by drone, stop logging tasks.
                 if path:
+                    log_task(
+                        self.connection,
+                        BHVR_EXPLORE_SYSTEM,
+                        ["drone"],
+                        dest_system_wp,
+                        priority=5,
+                        behaviour_params={"target_sys": dest_system_wp},
+                    )
+
+                    # if we've found one that can be visited by drone, stop logging tasks.
+
                     break
 
         # find unvisited network gates
