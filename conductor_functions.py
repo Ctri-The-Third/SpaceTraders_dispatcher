@@ -2,7 +2,7 @@ from straders_sdk import SpaceTraders
 from straders_sdk.contracts import Contract
 from straders_sdk.utils import try_execute_select, try_execute_upsert, waypoint_slicer
 from straders_sdk.local_response import LocalSpaceTradersRespose
-
+import datetime
 import logging
 import json
 import hashlib
@@ -25,7 +25,7 @@ def process_contracts(client: SpaceTraders):
         if should_we_complete:
             client.contracts_fulfill(con)
 
-        if not con.accepted:
+        if not con.accepted and con.deadline_to_accept > datetime.datetime.utcnow():
             need_to_negotiate = False
             if should_we_accept_contract(client, con):
                 client.contract_accept(con.id)
@@ -162,6 +162,9 @@ order by ship_cost desc """
         location_sql,
         (client.current_agent_symbol, ship_symbol),
     )
+    if len(rows) == 0:
+        logging.warning(f"Tried to buy a ship {ship_symbol} but couldn't find one")
+        return False
     best_waypoint = rows[0][0]
 
     wayp = client.waypoints_view_one(waypoint_slicer(best_waypoint), best_waypoint)
