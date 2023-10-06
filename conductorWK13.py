@@ -322,6 +322,9 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
         hounds.sort(key=lambda ship: ship.index)
         # for every 6.6667 hounds, make one a surveyor. ignore the first one.
+        self.hounds = hounds
+        # surveyors are every 6th hound, starting with the second one.
+        # however - if we have spare commanders, they should replace these surveyors, and those surveyors should be made into extractors
         self.surveyors = hounds[1::6]
 
         # extractors are all hounds that aren't surveyors
