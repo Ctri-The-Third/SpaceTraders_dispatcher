@@ -291,6 +291,7 @@ class Conductor:
             self.st.current_agent_symbol,
             params,
             specific_ship_symbol=ship_to_upgrade.name,
+            expiry=self.next_hourly_update,
         )
 
     def max_mining_strength(self):
