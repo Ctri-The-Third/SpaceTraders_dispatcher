@@ -328,11 +328,14 @@ class dispatcher:
                 where (completed is null or completed is false)
                 and (claimed_by is null 
                 or claimed_By = %s)
+                and (agent_symbol = %s or agent_symbol is null)
                 and (expiry > now() at time zone 'utc' or expiry is null)
                 order by claimed_by, priority;
 
                 """
-            results = try_execute_select(self.connection, sql, (ship_symbol,))
+            results = try_execute_select(
+                self.connection, sql, (ship_symbol, client.current_agent_symbol)
+            )
             self.tasks = {
                 row[0]: {
                     "task_hash": row[0],
