@@ -217,6 +217,13 @@ class Conductor:
 
         # how do we decide on surveyors?
 
+        # contracts = self.st.view_my_contracts()
+        # unfulfilled_contracts = [c for c in contracts if not c.fulfilled]
+        # for con in unfulfilled_contracts:
+        #    for deliverable in con.deliverables:
+        #        if "ORE" not in deliverable.symbol:
+        #            log_task
+
     def daily_update(self):
         sql = """
             update waypoints w set checked = false where waypoint_symbol in (
@@ -379,6 +386,8 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
 
         # extractors are all hounds that aren't surveyors
         self.extractors = [ship for ship in hounds if ship not in self.surveyors]
+        if self.extractors < 5:
+            self.extractors = self.extractors + self.commanders
 
         self.refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
 
