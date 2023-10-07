@@ -386,7 +386,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
 
         # extractors are all hounds that aren't surveyors
         self.extractors = [ship for ship in hounds if ship not in self.surveyors]
-        if self.extractors < 5:
+        if len(self.extractors) < 5:
             self.extractors = self.extractors + self.commanders
 
         self.refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
