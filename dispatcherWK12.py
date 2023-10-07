@@ -16,7 +16,7 @@ from behaviours.generic_behaviour import Behaviour
 import signal
 import random
 from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer_or_sell_wk12 import (
+from behaviours.extract_and_transfer_or_sell import (
     ExtractAndTransferOrSell_8,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
 )
@@ -328,11 +328,14 @@ class dispatcher:
                 where (completed is null or completed is false)
                 and (claimed_by is null 
                 or claimed_By = %s)
+                and (agent_symbol = %s or agent_symbol is null)
                 and (expiry > now() at time zone 'utc' or expiry is null)
                 order by claimed_by, priority;
 
                 """
-            results = try_execute_select(self.connection, sql, (ship_symbol,))
+            results = try_execute_select(
+                self.connection, sql, (ship_symbol, client.current_agent_symbol)
+            )
             self.tasks = {
                 row[0]: {
                     "task_hash": row[0],
@@ -373,7 +376,18 @@ class dispatcher:
                     for requirement in task["requirements"]:
                         if requirement == "DRONE" and ship.frame.symbol not in [
                             "FRAME_DRONE",
+                            "FRAME_PROBE",
                         ]:
+                            valid_for_ship = False
+                            break
+                        if requirement == "EXPLORER" and ship.role != "COMMANDER":
+                            valid_for_ship = False
+                            break
+                        if (
+                            requirement == "HEAVY_FREIGHTER"
+                            and ship.role != "HAULER"
+                            and ship.cargo_capacity >= 360
+                        ):
                             valid_for_ship = False
                             break
 

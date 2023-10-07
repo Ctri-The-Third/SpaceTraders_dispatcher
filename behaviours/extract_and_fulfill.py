@@ -150,13 +150,21 @@ class ExtractAndFulfill_7(Behaviour):
 
 
 if __name__ == "__main__":
+    from dispatcherWK12 import lock_ship
+
     set_logging(level=logging.DEBUG)
-    agent_symbol = "CTRI-U-"
-    ship_suffix = "1"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship = f"{agent}-{ship_suffix}"
     params = {
-        "asteroid_wp": "X1-JC68-59415D",
-        "cargo_to_transfer": "COPPER_ORE",
-        "fulfil_wp": "X1-JC68-17182Z",
+        "fulfil_wp": "X1-CN90-22412Z",
+        "asteroid_wp": "X1-CN90-02905X",
+        "cargo_to_transfer": ["ALUMINUM_ORE"],
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
-    ExtractAndFulfill_7(agent_symbol, f"{agent_symbol}-{ship_suffix}", params).run()
+    bhvr = ExtractAndFulfill_7(agent, f"{ship}", params)
+
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
+    bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)

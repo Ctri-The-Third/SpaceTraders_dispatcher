@@ -12,7 +12,9 @@ from straders_sdk.utils import set_logging
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
 import random
-from behaviours.extract_and_transfer_or_sell_wk11 import ExtractAndTransferOrSell_4
+from old_conductors_and_dispatchers.extract_and_transfer_or_sell_wk11 import (
+    ExtractAndTransferOrSell_4,
+)
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
     BEHAVIOUR_NAME as BHVR_REMOTE_SCAN_AND_SURV,

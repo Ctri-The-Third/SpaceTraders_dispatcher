@@ -172,8 +172,15 @@ class Behaviour:
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.go_and_refuel()
-        if fuel_cost >= ship.fuel_current:
+        if (
+            fuel_cost >= ship.fuel_current
+            and ship.fuel_capacity > 0
+            and ship.nav.flight_mode != "DRIFT"
+        ):
             st.ship_patch_nav(ship, "DRIFT")
+        elif ship.fuel_capacity == 0 and ship.nav.flight_mode != "BURN":
+            st.ship_patch_nav(ship, "BURN")
+
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
                 st.ship_orbit(self.ship)
@@ -551,6 +558,14 @@ order by 1 desc """
         current_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
+        self.st.logging_client.log_custom_event(
+            "BEGIN_EXTRASOLAR_NAVIGATION",
+            {
+                "origin_system": o_sys.symbol,
+                "destination_system": destination_system.symbol,
+                "route_length": f"{len(route)}",
+            },
+        )
         if current_wp.type != "JUMP_GATE":
             jg_wp = st.find_waypoints_by_type_one(ship.nav.system_symbol, "JUMP_GATE")
             resp = self.ship_intrasolar(jg_wp.symbol)
@@ -620,6 +635,7 @@ order by 1 desc """
         goal: Waypoint or System,
         bypass_check: bool = False,
     ):
+        self.logger.warning("Doing an A*")
         # check if there's a graph yet. There won't be if this is very early in the restart.
         if start == goal:
             return [start]

@@ -48,9 +48,6 @@ class ExtractAndTransferOrSell_8(Behaviour):
         #
         #  -- log beginning
         #
-        if not ship.can_extract:
-            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-            return
 
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
@@ -98,7 +95,18 @@ class ExtractAndTransferOrSell_8(Behaviour):
                             cargo_to_transfer.append(deliverable.symbol)
 
         if ship.can_survey:
+            self.sleep_until_ready()
             st.ship_survey(ship)
+        if not ship.can_extract:
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            self.end()
+            self.logger.info(
+                "Completed. Credits: %s, change = %s",
+                agent.credits,
+                agent.credits - starting_credts,
+            )
+            return
+
         cutoff_cargo_limit = None
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
@@ -167,9 +175,19 @@ class ExtractAndTransferOrSell_8(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "5"
-    params = {"asteroid_wp": "X1-GM20-77355E"}
+    ship_suffix = "4"
+    ship = f"{agent_symbol}-{ship_suffix}"
+    params = {
+        "fulfill_wp": "X1-CN90-22412Z",
+        "asteroid_wp": "X1-CN90-02905X",
+        "cargo_to_transfer": ["ALUMINUM_ORE"],
+    }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
-    ExtractAndTransferOrSell_4(
-        agent_symbol, f"{agent_symbol}-{ship_suffix}", params
-    ).run()
+    bhvr = ExtractAndTransferOrSell_8(agent_symbol, f"{ship}", params)
+
+    from dispatcherWK12 import lock_ship
+
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
+    bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)
