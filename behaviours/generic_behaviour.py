@@ -10,6 +10,7 @@ from straders_sdk.utils import (
     waypoint_slicer,
     try_execute_upsert,
 )
+from straders_sdk.pathfinder import PathFinder, JumpGateRoute
 import time
 import logging
 import math
@@ -59,6 +60,7 @@ class Behaviour:
             session=session,
             connection=connection,
         )
+        self.pathfinder = PathFinder()
         self._graph = None
         self.ships = None
         self.agent = None
