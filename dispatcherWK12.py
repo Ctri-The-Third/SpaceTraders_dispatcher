@@ -143,7 +143,6 @@ class dispatcher:
 
     def get_connection(self):
         # switching this from a pool to just a connection generator that passes one connection down to the mediator (Which itself distributes it to the db and pg client)
-        return None
         new_con = psycopg2.connect(
             host=self.db_host,
             port=self.db_port,
@@ -157,7 +156,7 @@ class dispatcher:
             keepalives_count=3,  # connection terminates after 30 seconds of silence
         )
 
-        return None
+        return new_con
 
     def query(self, sql, args: list):
         return try_execute_select(self.connection, sql, args)
@@ -169,7 +168,9 @@ class dispatcher:
         check_frequency = timedelta(seconds=15 * len(self.agents))
         agents_and_last_checkeds = {}
         agents_and_unlocked_ships = {}
-        self.client.ships_view()
+        self.client: SpaceTraders
+        self.client.ships_view(force=True)
+
         startime = datetime.now()
         while not self.exit_flag:
             # if we've been running for more than 12 hours, terminate. important for profiling.
