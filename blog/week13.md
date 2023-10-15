@@ -49,9 +49,3 @@ end of week stats.
 | CPH              | 28,107.79 |151,159.46   |           | 45,863.06  | 332,404.62 | 389,002     |
 | CPR              | 12.58     |77.36        |           | 54.78      | 70.28      | 89.71       |
 
-
-There isn't a week 13 reset as the development team are away camping, so I'm going to run the following:
-
-Week 12 (continued) - node V  
-week 13 (mid-reset) - node C  
-Week 13/14 (continued) - node U  

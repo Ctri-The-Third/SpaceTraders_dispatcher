@@ -21,7 +21,6 @@ sqls = [
     "delete from contracts;",
     "delete from jump_gates;",
     "delete from jumpgate_connections;",
-    "delete from logging;",
     "delete from market_tradegood;",
     "delete from market_tradegood_listings;",
     "delete from ship_behaviours;",
@@ -40,6 +39,7 @@ sqls = [
     "delete from waypoint_Charts;",
     "delete from waypoint_Traits;",
     "delete from waypoints;",
+    "delete from logging;",
 ]
 
 for sql in sqls:

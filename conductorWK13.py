@@ -367,6 +367,8 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             return 2
         elif "MOUNT_SURVEYOR_I" in symbols:
             return 1
+        else:
+            return 0
 
     def populate_ships(self):
         "Set the conductor's ship lists, and subdivides them into roles."
