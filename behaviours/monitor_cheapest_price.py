@@ -52,7 +52,7 @@ class MonitorPrices(Behaviour):
             self.logger.error(
                 "Couldn't find ship type %s", self.behaviour_params["ship_type"]
             )
-            time.sleep(600)
+            time.sleep(30)
             return
         print(f"Searching for ship {rows[0][0]} at  wayp {rows[0][1]} ")
         target_wp = rows[0][1]
@@ -66,7 +66,7 @@ class MonitorPrices(Behaviour):
             st.system_shipyard(wp, True)
             self.end()
 
-            time.sleep(600)
+            time.sleep(30)
         scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
