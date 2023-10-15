@@ -303,20 +303,24 @@ class Conductor:
         max_mining_strength = 60
         max_survey_strength = self.max_survey_strength() * 3
         best_surveyor = (
-            "MOUNT_SURVEYOR_I" if max_survey_strength == 3 else "MOUNT_SURVEYOR_II"
+            "MOUNT_SURVEYOR_II" if max_survey_strength == 6 else "MOUNT_SURVEYOR_I"
         )
         if not clear_to_upgrade(self.st.view_my_self(), self.connection):
             return
         ship_to_upgrade = None
         ship_new_behaviour = None
-        price = get_prices_for(self.connection, best_surveyor)[0] * 3
-        for ship in self.surveyors:
-            ship: Ship
-            if ship.survey_strength < max_survey_strength:
-                outfit_symbols = [best_surveyor, best_surveyor, best_surveyor]
-                ship_to_upgrade = ship
-                switch_to_surveying(self.connection, ship_to_upgrade.name)
-                break
+        prices = get_prices_for(self.connection, best_surveyor)
+        if len(prices) == 0:
+            return
+        price = prices[0] * 3
+        if price is not None:
+            for ship in self.surveyors:
+                ship: Ship
+                if ship.survey_strength < max_survey_strength:
+                    outfit_symbols = [best_surveyor, best_surveyor, best_surveyor]
+                    ship_to_upgrade = ship
+                    switch_to_surveying(self.connection, ship_to_upgrade.name)
+                    break
 
         if not ship_to_upgrade:
             for ship in self.extractors:
