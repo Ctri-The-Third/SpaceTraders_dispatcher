@@ -310,7 +310,7 @@ class Conductor:
         ship_to_upgrade = None
         ship_new_behaviour = None
         prices = get_prices_for(self.connection, best_surveyor)
-        if len(prices) == 0:
+        if not prices or len(prices) == 0:
             return
         price = prices[0] * 3
         if price is not None:
