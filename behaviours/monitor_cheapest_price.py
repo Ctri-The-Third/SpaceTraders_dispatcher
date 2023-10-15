@@ -37,7 +37,7 @@ class MonitorPrices(Behaviour):
         st = self.st
         agent = st.view_my_self()
         # check all markets in the system
-        scan_thread = threading.Thread(target=self.scan, daemon=False)
+        scan_thread = threading.Thread(target=self.scan, daemon=False, name="scan_thread")
         scan_thread.start()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
