@@ -10,6 +10,7 @@ from straders_sdk.utils import (
     waypoint_slicer,
     try_execute_upsert,
 )
+from straders_sdk.pathfinder import PathFinder, JumpGateRoute
 import time
 import logging
 import math
@@ -32,10 +33,12 @@ class Behaviour:
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
+
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
         self.ship_name = ship_name
         self._connection = connection
+        self.pathfinder = PathFinder(connection=self.connection)
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
                 token = agent["token"]
@@ -69,14 +72,6 @@ class Behaviour:
             self._connection = self.st.db_client.connection
         self.logger.debug("connection socket: %s", self._connection.info.socket)
         return self._connection
-
-    @property
-    def graph(self):
-        if not self._graph:
-            maybe_graph = self._populate_graph()
-            if maybe_graph:
-                self._graph = maybe_graph
-        return self._graph
 
     def run(self):
         self.ship = self.st.ships_view_one(self.ship_name, force=True)
@@ -140,7 +135,7 @@ class Behaviour:
                     + (destination.y - source_system.y) ** 2
                 )
             if distance < best_distance * 2:
-                route = self.astar(self.graph, source_system, destination)
+                route = self.pathfinder.astar(source_system, destination)
                 if not path or (route is not None and len(route) < len(path)):
                     path = route
                     best_distance = distance
@@ -512,7 +507,9 @@ order by 1 desc """
         speed = {"CRUISE": 1, "DRIFT": 0, "BURN": 2, "STEALTH": 1}
         return int(
             max(
-                distance_between_wps(source, target_wp) * speed[ship.nav.flight_mode], 1
+                self.pathfinder.get_distance_between(source, target_wp)
+                * speed[ship.nav.flight_mode],
+                1,
             )
         )
 
@@ -534,9 +531,9 @@ order by 1 desc """
         source = self.st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
-        return distance_between_wps(source, target_wp)
+        return self.pathfinder.get_distance_between(source, target_wp)
 
-    def ship_extrasolar(self, destination_system: System, route: list = None):
+    def ship_extrasolar(self, destination_system: System, route: JumpGateRoute = None):
         if isinstance(destination_system, str):
             self.logger.error("You passed a string not a system to ship_extrasolar")
             return False
@@ -545,7 +542,7 @@ order by 1 desc """
         if ship.nav.system_symbol == destination_system.symbol:
             return True
         o_sys = st.systems_view_one(ship.nav.system_symbol)
-        route = route or self.astar(self.graph, o_sys, destination_system)
+        route = route or self.pathfinder.astar(o_sys, destination_system)
         if not route:
             self.logger.error(f"Unable to jump to {o_sys.symbol} - no route found")
             return None
@@ -573,7 +570,7 @@ order by 1 desc """
                 self.logger.warn("Unable to jump - not at warp gate.")
                 return False
         route.pop(0)
-        for next_sys in route:
+        for next_sys in route.route:
             next_sys: System
             sleep(ship.seconds_until_cooldown)
             resp = st.ship_jump(ship, next_sys.symbol)
@@ -598,7 +595,8 @@ order by 1 desc """
             #   pass it as "wp" to the calculate_distance function
             #   return the minimum value of those returned by the function.
             next_waypoint = min(
-                unplotted, key=lambda wp: calculate_distance(current, wp)
+                unplotted,
+                key=lambda wp: self.pathfinder.get_distance_between(current, wp),
             )
             path.append(next_waypoint.symbol)
             unplotted.remove(next_waypoint)
@@ -611,7 +609,8 @@ order by 1 desc """
         current = start
         while unplotted:
             next_system = min(
-                unplotted, key=lambda sys: calculate_distance(current, sys)
+                unplotted,
+                key=lambda sys: self.pathfinder.get_distance_between(current, sys),
             )
             path.append(next_system.symbol)
             unplotted.remove(next_system)
@@ -625,145 +624,9 @@ order by 1 desc """
                 self.connection, sql, (self.behaviour_params["task_hash"],)
             )
             time.sleep(20)
-        #self.st.db_client.connection.close()
-        #self.st.logging_client.connection.close()
-
-    def astar(
-        self,
-        graph: networkx.Graph,
-        start: Waypoint or System,
-        goal: Waypoint or System,
-        bypass_check: bool = False,
-    ):
-        self.logger.warning("Doing an A*")
-        # check if there's a graph yet. There won't be if this is very early in the restart.
-        if start == goal:
-            return [start]
-        if not graph:
-            return None
-
-        "`bypass_check` is for when we're looking for the nearest nodes to the given locations, when either the source or destination are not on the jump network."
-        if not bypass_check:
-            if start not in graph.nodes:
-                return None
-            if goal not in graph.nodes:
-                return None
-        # freely admit used chatgpt to get started here.
-
-        # Priority queue to store nodes based on f-score (priority = f-score)
-        # C'tri note - I think this will be 1 for all edges?
-        # Update - no, F-score is the distance between the specific node and the start
-
-        open_set = []
-        heapq.heappush(open_set, (0, start))
-
-        # note to self - this dictionary is setting all g_scores to infinity- they have not been calculated yet.
-        g_score = {node: float("inf") for node in graph.nodes}
-        g_score[start] = 0
-
-        # Data structure to store the f-score (g-score + heuristic) for each node
-        f_score = {node: float("inf") for node in graph.nodes}
-        f_score[start] = self.h(
-            start, goal
-        )  # heuristic function - standard straight-line X/Y distance
-
-        # this is how we reconstruct our route back.Z came from Y. Y came from X. X came from start.
-        came_from = {}
-        while open_set:
-            # Get the node with the lowest estimated total cost from the priority queue
-            current = heapq.heappop(open_set)[1]
-            # print(f"NEW NODE: {f_score[current]}")
-            if current == goal:
-                # first list item = destination
-                total_path = [current]
-                while current in came_from:
-                    # +1 list item = -1 from destination
-                    current = came_from[current]
-                    total_path.append(current)
-                # reverse so frist list_item = source.
-                logging.debug("Completed A* - total jumps = %s", len(total_path))
-                return list(reversed(total_path))
-                # Reconstruct the shortest path
-                # the path will have been filled with every other step we've taken so far.
-
-            for neighbour in graph.neighbors(current):
-                # yes, g_score is the total number of jumps to get to this node.
-                tentative_global_score = g_score[current] + 1
-
-                if tentative_global_score < g_score[neighbour]:
-                    # what if the neighbour hasn't been g_scored yet?
-                    # ah we inf'd them, so unexplored is always higher
-                    # so if we're in here, neighbour is the one behind us.
-
-                    came_from[neighbour] = current
-                    g_score[neighbour] = tentative_global_score
-                    f_score[neighbour] = tentative_global_score + self.h(
-                        neighbour, goal
-                    )
-                    # print(f" checked: {f_score[neighbour]}")
-                    # this f_score part I don't quite get - we're storing number of jumps + remaining distance
-                    # I can't quite visualise but but if we're popping the lowest f_score in the heap - then we get the one that's closest?
-                    # which is good because if we had variable jump costs, that would be factored into the g_score - for example time.
-                    # actually that's a great point, time is the bottleneck we want to cut down on, not speed.
-                    # this function isn't built with that in mind tho so I'm not gonna bother _just yet_
-
-                    # add this neighbour to the priority queue - the one with the lowest remaining distance will be the next one popped.
-                    heapq.heappush(open_set, (f_score[neighbour], neighbour))
-
-        return None
-
-    def h(self, start: Waypoint or System, goal: Waypoint or System):
-        return ((start.x - goal.x) ** 2 + (start.y - goal.y) ** 2) ** 0.5
-
-    def _populate_graph(self):
-        graph = networkx.Graph()
-        sql = """
-            select s_system_symbol, sector_symbol, type, x ,y 
-            from jumpgate_connections jc 
-            join systems s on jc.s_system_symbol = s.system_symbol
-            """
-
-        # the graph should be populated with Systems and Connections.
-        # but note that the connections themselves need to by systems.
-        # sql = """SELECT symbol, sector_symbol, type, x, y FROM systems"""
-        # for row in rows:
-        #    syst = System(row[0], row[1], row[2], row[3], row[4], [])
-
-        results = try_execute_select(self.connection, sql, ())
-
-        if results:
-            nodes = {
-                row[0]: System(row[0], row[1], row[2], row[3], row[4], [])
-                for row in results
-            }
-            graph.add_nodes_from(nodes)
-
-        else:
-            return graph
-        sql = """select s_system_symbol, d_system_symbol from jumpgate_connections 
-                """
-        results = try_execute_select(self.connection, sql, ())
-        connections = []
-        if not results:
-            return graph
-        for row in results:
-            try:
-                connections.append((nodes[row[0]], nodes[row[1]]))
-            except KeyError:
-                pass
-                # this happens when the gate we're connected to is not one that we've scanned yet.
-        if results:
-            graph.add_edges_from(connections)
-        return graph
-
-
-def calculate_distance(src: Waypoint, dest: Waypoint):
-    return math.sqrt((src.x - dest.x) ** 2 + (src.y - dest.y) ** 2)
+        # self.st.db_client.connection.close()
+        # self.st.logging_client.connection.close()
 
 
 def sleep_until_ready(ship: "Ship"):
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
-
-
-def distance_between_wps(source: Waypoint, target_wp: Waypoint) -> float:
-    return math.sqrt((target_wp.x - source.x) ** 2 + (target_wp.y - source.y) ** 2)

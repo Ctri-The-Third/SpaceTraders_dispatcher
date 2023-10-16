@@ -52,6 +52,7 @@ from behaviours.upgrade_ship_to_specs import (
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
+from straders_sdk.pathfinder import PathFinder
 from datetime import datetime, timedelta
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
@@ -85,6 +86,7 @@ class dispatcher:
         self.connection_pool = []
         self.max_connections = 100
         self.last_connection = 0
+        self.pathfinder = PathFinder(connection=self.connection)
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
@@ -406,9 +408,7 @@ class dispatcher:
         for task in valid_tasks:
             end_system = client.systems_view_one(task["target_system"])
             try:
-                path = self.generic_behaviour.astar(
-                    self.generic_behaviour.graph, start_system, end_system
-                )
+                path = self.pathfinder.astar(start_system, end_system)
             except Exception as err:
                 self.logger.error("Couldn't find path because %s", err)
                 path = []

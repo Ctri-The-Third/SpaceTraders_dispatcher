@@ -11,7 +11,7 @@ from straders_sdk.models import Shipyard, ShipyardShip, Waypoint, Agent
 from straders_sdk.ship import Ship
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
 from straders_sdk.contracts import Contract
-
+from straders_sdk.pathfinder import PathFinder
 from straders_sdk.utils import (
     set_logging,
     waypoint_slicer,
@@ -68,9 +68,7 @@ class Conductor:
         self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
         self.satellites = []
         self.refiners = []
-        self.routing_behaviour = GenericBehaviour(
-            self.current_agent_symbol, "GLOBAL", connection=self.connection
-        )
+        self.pathfinder = PathFinder(connection=self.connection)
 
         self.starting_system = None
 
@@ -143,11 +141,9 @@ class Conductor:
             for row in rows:
                 dest_system_wp = row[0]
                 syst = st.systems_view_one(dest_system_wp)
-                path = self.routing_behaviour.astar(
-                    self.routing_behaviour.graph, self.starting_system, syst
-                )
+                route = self.pathfinder.astar(self.starting_system, syst)
 
-                if path:
+                if route.jumps > 0:
                     log_task(
                         self.connection,
                         BHVR_EXPLORE_SYSTEM,
