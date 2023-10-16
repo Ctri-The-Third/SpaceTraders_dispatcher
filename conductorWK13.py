@@ -143,7 +143,7 @@ class Conductor:
                 syst = st.systems_view_one(dest_system_wp)
                 route = self.pathfinder.astar(self.starting_system, syst)
 
-                if route.jumps > 0:
+                if route and route.jumps > 0:
                     log_task(
                         self.connection,
                         BHVR_EXPLORE_SYSTEM,
