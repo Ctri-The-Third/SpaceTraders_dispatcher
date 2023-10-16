@@ -38,7 +38,6 @@ class Behaviour:
         token = None
         self.ship_name = ship_name
         self._connection = connection
-        self.pathfinder = PathFinder(connection=self.connection)
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
                 token = agent["token"]
@@ -62,6 +61,8 @@ class Behaviour:
             session=session,
             connection=connection,
         )
+        self.pathfinder = PathFinder(connection=self.connection)
+
         self._graph = None
         self.ships = None
         self.agent = None
@@ -123,23 +124,14 @@ class Behaviour:
 
         if not jumpgate_only:
             return results[0][0]
-        path = None
-        best_distance = 999999999
+        path = JumpGateRoute(None, None, 9999999, 999999, [], 0, None)
+
         for result in results:
             destination = System(result[0], None, None, result[1], result[2], None)
-            if destination.symbol == source_system.symbol:
-                distance = 0
-            else:
-                distance = math.sqrt(
-                    (destination.x - source_system.x) ** 2
-                    + (destination.y - source_system.y) ** 2
-                )
-            if distance < best_distance * 2:
-                route = self.pathfinder.astar(source_system, destination)
-                if not path or (route is not None and len(route) < len(path)):
-                    path = route
-                    best_distance = distance
-        return path[-1]
+            route = self.pathfinder.astar(source_system, destination)
+            if route and route.jumps < path.jumps:
+                path = route
+        return path.end_system if path.jumps < 999999 else None
 
     def ship_intrasolar(
         self, target_wp_symbol: "str", sleep_till_done=True, flight_mode="CRUISE"
