@@ -624,8 +624,8 @@ order by 1 desc """
                 self.connection, sql, (self.behaviour_params["task_hash"],)
             )
             time.sleep(20)
-        self.st.db_client.connection.close()
-        self.st.logging_client.connection.close()
+        # self.st.db_client.connection.close()
+        # self.st.logging_client.connection.close()
 
 
 def sleep_until_ready(ship: "Ship"):
