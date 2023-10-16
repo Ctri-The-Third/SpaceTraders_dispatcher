@@ -177,6 +177,9 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str
     agent = client.view_my_self()
 
     if not shipyard:
+        logging.warning(
+            f"Tried to buy a ship {ship_symbol} but couldn't find a shipyard"
+        )
         return False
     for _, detail in shipyard.ships.items():
         detail: "ShipyardShip"
@@ -192,6 +195,11 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str
                 resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
                 if resp:
                     return resp[0]
+            else:
+                logging.warning(
+                    f"Tried to buy a ship {ship_symbol} but didn't have enough credits ({agent.credits}))"
+                )
+                return False
 
 
 def register_and_store_user(
