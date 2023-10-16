@@ -118,8 +118,11 @@ class dispatcher:
     where agent_name = %s
     and (locked_until <= (now() at time zone 'utc') or locked_until is null or locked_by = %s)
     order by last_updated asc """
-        rows = self.query(sql, (current_agent_symbol, self.lock_id))
-
+        rows = try_execute_select(
+            self.connection, sql, (current_agent_symbol, self.lock_id)
+        )
+        if not rows:
+            return []
         return [
             {"name": row[0], "behaviour_id": row[1], "behaviour_params": row[4]}
             for row in rows

@@ -250,7 +250,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "3"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "14"
     ship = f"{agent}-{ship_suffix}"
 
     bhvr = FindMountsAndEquip(
@@ -258,9 +258,9 @@ if __name__ == "__main__":
         ship,
         behaviour_params={
             "mounts": [
-                "MOUNT_SURVEYOR_I",
                 "MOUNT_MINING_LASER_II",
                 "MOUNT_MINING_LASER_II",
+                "MOUNT_MINING_LASER_I",
             ]
         },
     )

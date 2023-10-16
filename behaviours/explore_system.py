@@ -114,11 +114,10 @@ class ExploreSystem(Behaviour):
 
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1C"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-V-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    behaviour_params = {"target_sys": "X1-JD6"}
+    behaviour_params = {"target_sys": "X1-CS80"}
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
-
     bhvr.run()
