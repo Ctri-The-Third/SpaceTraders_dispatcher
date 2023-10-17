@@ -561,14 +561,14 @@ order by 1 desc """
             if not resp:
                 self.logger.warn("Unable to jump - not at warp gate.")
                 return False
-        route.pop(0)
+        route.route.pop(0)
         for next_sys in route.route:
             next_sys: System
             sleep(ship.seconds_until_cooldown)
-            resp = st.ship_jump(ship, next_sys.symbol)
+            resp = st.ship_jump(ship, next_sys)
             if not resp:
                 return resp
-            if next_sys.symbol == destination_system.symbol:
+            if next_sys == destination_system.symbol:
                 # we've arrived, no need to sleepx
                 break
 

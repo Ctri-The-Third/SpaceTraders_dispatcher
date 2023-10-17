@@ -4,6 +4,7 @@ sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
 import logging
 from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
+from straders_sdk.models import Waypoint, System
 import time, math, threading
 
 BEHAVIOUR_NAME = "MONITOR_CHEAPEST_SHIPYARD_PRICE"
@@ -37,14 +38,21 @@ class MonitorPrices(Behaviour):
         st = self.st
         agent = st.view_my_self()
         # check all markets in the system
-        scan_thread = threading.Thread(target=self.scan, daemon=False, name="scan_thread")
+        scan_thread = threading.Thread(
+            target=self.scan, daemon=False, name="scan_thread"
+        )
         scan_thread.start()
+        starting_system = st.systems_view_one(ship.nav.system_symbol)
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         time.sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
 
-        sql = """select ship_type, cheapest_location from shipyard_prices
-            where ship_type = %s"""
+        sql = """select st.*, s.system_symbol, s.x, s.y from shipyard_types st
+        join waypoints w on st.shipyard_symbol = w.waypoint_symbol
+        join systems s on w.system_symbol = s.system_symbol
+        where ship_type = %s
+        and ship_cost is not null
+        order by ship_cost asc """
         rows = try_execute_select(
             self.connection, sql, (self.behaviour_params["ship_type"],)
         )
@@ -54,8 +62,19 @@ class MonitorPrices(Behaviour):
             )
             time.sleep(30)
             return
-        print(f"Searching for ship {rows[0][0]} at  wayp {rows[0][1]} ")
-        target_wp = rows[0][1]
+        route = None
+        for row in rows:
+            destination_system = System(row[4], "", "", row[5], row[6], [])
+            new_route = self.pathfinder.astar(starting_system, destination_system)
+
+            if new_route:
+                route = new_route
+                break
+        print(
+            f"Searching for ship {rows[0][1]} at  system {new_route.end_system.symbol} "
+        )
+
+        target_wp = row[0]
         target_sys_sym = waypoint_slicer(target_wp)
         target_sys = st.systems_view_one(target_sys_sym)
         self.ship_extrasolar(target_sys)
@@ -194,7 +213,7 @@ order by random()"""
 if __name__ == "__main__":
     from dispatcherWK12 import lock_ship
 
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-V-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"

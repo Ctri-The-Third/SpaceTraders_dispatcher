@@ -59,7 +59,7 @@ class ExploreSystem(Behaviour):
             d_sys = self.find_unexplored_jumpgate()
             if d_sys:
                 d_sys = st.systems_view_one(d_sys)
-                path = self.astar(self.graph, o_sys, d_sys, bypass_check=True)
+                path = self.pathfinder(o_sys, d_sys, bypass_check=True)
             else:
                 tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
                     FROM public.mkt_shpyrds_systems_last_updated_jumpgates j

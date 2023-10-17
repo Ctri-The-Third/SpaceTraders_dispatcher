@@ -132,3 +132,4 @@ overview.md
 overview_ships.md
 sc_http_throttler.py
 resources/graph.json
+resources/routes/*
