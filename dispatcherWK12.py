@@ -183,6 +183,8 @@ class dispatcher:
             # every 15 seconds update the list of unlocked ships with a DB query
             #
             for _, agent_symbol in self.agents:
+                self.client.current_agent_symbol = agent_symbol
+
                 if (
                     agents_and_last_checkeds.get(
                         agent_symbol, datetime.now() - (check_frequency * 2)
