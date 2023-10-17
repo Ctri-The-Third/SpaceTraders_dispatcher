@@ -172,7 +172,7 @@ class FindMountsAndEquip(Behaviour):
                 elif distance < (best_distance + 2000) * 2:
                     route = self.pathfinder.astar(current_system, dest_sys)
                     jumps = route.route if route is not None else []
-                    cpj = price / (jumps + 1)
+                    cpj = price / (route.jumps + 1)
                 else:
                     cpj = 0
                     jumps = 0
@@ -226,10 +226,10 @@ order by purchase_price asc """
         markets = []
         for market in destination_wps_and_prices:
             dest_system = st.systems_view_one(waypoint_slicer(market[0]))
-            distance = self.pathfinder.astar(start_system, dest_system)
-            if distance.jumps >= 0:
+            calced_nav = self.pathfinder.astar(start_system, dest_system)
+            if calced_nav.jumps < 0:
                 continue
-            obj = (market[0], market[1], len(distance))
+            obj = (market[0], market[1], calced_nav.jumps)
             markets.append(obj)
             # if we a assume a jump is worth 4 minutes of intrasolar and 6 minutes of cooldown and a CPM of like 200, then the cost of a jump is ~2400 credits per jump + 1600 for being more than 0.
 
