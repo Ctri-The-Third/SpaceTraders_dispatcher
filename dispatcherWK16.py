@@ -149,6 +149,10 @@ class dispatcher:
 
     def get_connection(self):
         # switching this from a pool to just a connection generator that passes one connection down to the mediator (Which itself distributes it to the db and pg client)
+        # generated connections appear to fail unpredictably during execution.
+        # they seemed to be timing out / "closed unexpectedly" either immediately, or between surveys. Suspect keepalive shenanigans.
+
+        return None
         new_con = psycopg2.connect(
             host=self.db_host,
             port=self.db_port,
@@ -156,10 +160,10 @@ class dispatcher:
             user=self.db_user,
             password=self.db_pass,
             application_name=self.lock_id,
-            keepalives=1,
-            keepalives_idle=30,
-            keepalives_interval=10,
-            keepalives_count=3,  # connection terminates after 30 seconds of silence
+            # keepalives=1,
+            # keepalives_idle=30,
+            # keepalives_interval=10,
+            # keepalives_count=3,  # connection terminates after 30 seconds of silence
         )
 
         return new_con
