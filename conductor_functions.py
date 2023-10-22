@@ -89,7 +89,7 @@ def get_prices_for(connection, tradegood: str, agent_symbol="@"):
         row = rows[0]
         average_price_buy = row[0]
         average_price_sell = row[1]
-        return [average_price_buy, average_price_sell]
+        return [int(average_price_buy), int(average_price_sell)]
     return None
 
 
