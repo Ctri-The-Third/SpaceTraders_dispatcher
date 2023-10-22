@@ -39,7 +39,7 @@ class MonitorPrices(Behaviour):
         agent = st.view_my_self()
         # check all markets in the system
         scan_thread = threading.Thread(
-            target=self.scan, daemon=False, name="scan_thread"
+            target=self.scan_waypoints, daemon=False, name="scan_thread"
         )
         scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
@@ -89,29 +89,9 @@ class MonitorPrices(Behaviour):
         scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-    def scan(self):
+    def scan_waypoints(self):
         st = self.st
         ship = self.ship
-        systems_sweep = self.have_we_all_the_systems()
-        if not systems_sweep[0]:
-            for i in range(1, math.ceil(systems_sweep[1] / 20) + 1):
-                print(i)
-                resp = st.systems_view_twenty(i, True)
-                while not resp:
-                    time.sleep(20)
-                    resp = st.systems_view_twenty(i, True)
-                    self.logger.warn("Failed to get system - page %s - retrying", i)
-                if not resp:
-                    self.logger.error(
-                        "Failed to get system - page %s - redo this later!", i
-                    )
-                if ship.seconds_until_cooldown > 0:
-                    continue
-                if ship.nav.travel_time_remaining > 0:
-                    continue
-                if ship.can_survey:
-                    st.ship_survey(ship)
-                time.sleep(1.2)
         #
         # get 20 unscanned waypoints, focusing on stations, asteroids, and gates
         #
@@ -175,17 +155,6 @@ class MonitorPrices(Behaviour):
             if wp.has_shipyard:
                 resp = st.system_shipyard(wp, True)
                 time.sleep(1.2)
-
-    def have_we_all_the_systems(self):
-        sql = """select count(distinct system_symbol) from systems"""
-        cursor = self.st.db_client.connection.cursor()
-        cursor.execute(sql, ())
-        row = cursor.fetchone()
-        db_systems = row[0]
-
-        status = self.st.game_status()
-        api_systems = status.total_systems
-        return (db_systems >= api_systems, status.total_systems)
 
     def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[str]:
         sql = """
