@@ -72,13 +72,23 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
     return False
 
 
-def get_prices_for(connection, tradegood: str):
-    sql = """select * from market_prices where trade_symbol = %s"""
-    rows = try_execute_select(connection, sql, (tradegood,))
+def get_prices_for(connection, tradegood: str, agent_symbol="@"):
+    sql = """with results as ( 
+        select trade_symbol, purchase_price, sell_price 
+        from market_prices where trade_symbol = %s
+        union
+        select trade_symbol,0 as purchase_price, payment_per_item as sell_price
+        from contracts_overview  co
+        where trade_symbol = %s and agent_symbol ilike %s
+    )
+
+    select max(purchase_price),max(sell_price) from results  
+"""
+    rows = try_execute_select(connection, sql, (tradegood, tradegood, agent_symbol))
     if rows:
         row = rows[0]
-        average_price_buy = row[1]
-        average_price_sell = row[2]
+        average_price_buy = row[0]
+        average_price_sell = row[1]
         return [average_price_buy, average_price_sell]
     return None
 
