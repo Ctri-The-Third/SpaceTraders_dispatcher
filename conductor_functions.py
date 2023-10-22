@@ -100,25 +100,22 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
         behaviour_id = %s,
         behaviour_params = %s
     """
-    cursor = connection.cursor()
+
     behaviour_params_s = (
         json.dumps(behaviour_params) if behaviour_params is not None else None
     )
 
-    try:
-        cursor.execute(
-            sql,
-            (
-                ship_symbol,
-                behaviour_id,
-                behaviour_params_s,
-                behaviour_id,
-                behaviour_params_s,
-            ),
-        )
-    except Exception as err:
-        logging.error(err)
-        return False
+    return try_execute_upsert(
+        connection,
+        sql,
+        (
+            ship_symbol,
+            behaviour_id,
+            behaviour_params_s,
+            behaviour_id,
+            behaviour_params_s,
+        ),
+    )
 
 
 def log_task(
