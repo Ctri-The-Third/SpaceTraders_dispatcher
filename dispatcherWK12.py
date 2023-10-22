@@ -52,6 +52,7 @@ from behaviours.upgrade_ship_to_specs import (
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
+from straders_sdk.pathfinder import PathFinder
 from datetime import datetime, timedelta
 
 BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
@@ -85,6 +86,7 @@ class dispatcher:
         self.connection_pool = []
         self.max_connections = 100
         self.last_connection = 0
+        self.pathfinder = PathFinder(connection=self.connection)
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
@@ -116,8 +118,11 @@ class dispatcher:
     where agent_name = %s
     and (locked_until <= (now() at time zone 'utc') or locked_until is null or locked_by = %s)
     order by last_updated asc """
-        rows = self.query(sql, (current_agent_symbol, self.lock_id))
-
+        rows = try_execute_select(
+            self.connection, sql, (current_agent_symbol, self.lock_id)
+        )
+        if not rows:
+            return []
         return [
             {"name": row[0], "behaviour_id": row[1], "behaviour_params": row[4]}
             for row in rows
@@ -143,7 +148,6 @@ class dispatcher:
 
     def get_connection(self):
         # switching this from a pool to just a connection generator that passes one connection down to the mediator (Which itself distributes it to the db and pg client)
-        return None
         new_con = psycopg2.connect(
             host=self.db_host,
             port=self.db_port,
@@ -157,7 +161,7 @@ class dispatcher:
             keepalives_count=3,  # connection terminates after 30 seconds of silence
         )
 
-        return None
+        return new_con
 
     def query(self, sql, args: list):
         return try_execute_select(self.connection, sql, args)
@@ -169,7 +173,9 @@ class dispatcher:
         check_frequency = timedelta(seconds=15 * len(self.agents))
         agents_and_last_checkeds = {}
         agents_and_unlocked_ships = {}
-        self.client.ships_view()
+        self.client: SpaceTraders
+        self.client.ships_view(force=True)
+
         startime = datetime.now()
         while not self.exit_flag:
             # if we've been running for more than 12 hours, terminate. important for profiling.
@@ -177,6 +183,8 @@ class dispatcher:
             # every 15 seconds update the list of unlocked ships with a DB query
             #
             for _, agent_symbol in self.agents:
+                self.client.current_agent_symbol = agent_symbol
+
                 if (
                     agents_and_last_checkeds.get(
                         agent_symbol, datetime.now() - (check_frequency * 2)
@@ -405,9 +413,7 @@ class dispatcher:
         for task in valid_tasks:
             end_system = client.systems_view_one(task["target_system"])
             try:
-                path = self.generic_behaviour.astar(
-                    self.generic_behaviour.graph, start_system, end_system
-                )
+                path = self.pathfinder.astar(start_system, end_system)
             except Exception as err:
                 self.logger.error("Couldn't find path because %s", err)
                 path = []

@@ -170,8 +170,9 @@ class FindMountsAndEquip(Behaviour):
                     jumps = 0
                 # 2000 is one jump gate away, so any thing that's conceivably AT LEAST 2 jumps away gets checked
                 elif distance < (best_distance + 2000) * 2:
-                    jumps = len(self.astar(self.graph, current_system, dest_sys) or [])
-                    cpj = price / (jumps + 1)
+                    route = self.pathfinder.astar(current_system, dest_sys)
+                    jumps = route.route if route is not None else []
+                    cpj = price / (route.jumps + 1)
                 else:
                     cpj = 0
                     jumps = 0
@@ -194,6 +195,7 @@ class FindMountsAndEquip(Behaviour):
         target_system = self.find_nearest_systems_by_waypoint_trait(
             starting_system, "SHIPYARD", 50000, True
         )
+
         if not target_system.symbol:
             self.logger.error("Couldn't find a shipyard to sell excess mounts to!")
             time.sleep(SAFETY_PADDING)
@@ -224,10 +226,10 @@ order by purchase_price asc """
         markets = []
         for market in destination_wps_and_prices:
             dest_system = st.systems_view_one(waypoint_slicer(market[0]))
-            distance = self.astar(self.graph, start_system, dest_system)
-            if not distance:
+            calced_nav = self.pathfinder.astar(start_system, dest_system)
+            if calced_nav.jumps < 0:
                 continue
-            obj = (market[0], market[1], len(distance))
+            obj = (market[0], market[1], calced_nav.jumps)
             markets.append(obj)
             # if we a assume a jump is worth 4 minutes of intrasolar and 6 minutes of cooldown and a CPM of like 200, then the cost of a jump is ~2400 credits per jump + 1600 for being more than 0.
 
@@ -250,7 +252,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "3"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_suffix}"
 
     bhvr = FindMountsAndEquip(
@@ -258,9 +260,9 @@ if __name__ == "__main__":
         ship,
         behaviour_params={
             "mounts": [
-                "MOUNT_SURVEYOR_I",
                 "MOUNT_MINING_LASER_II",
                 "MOUNT_MINING_LASER_II",
+                "MOUNT_MINING_LASER_I",
             ]
         },
     )
