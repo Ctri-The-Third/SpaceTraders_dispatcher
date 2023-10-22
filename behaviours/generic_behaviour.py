@@ -71,7 +71,7 @@ class Behaviour:
     def connection(self):
         if not self._connection or self._connection.closed > 0:
             self._connection = self.st.db_client.connection
-        self.logger.debug("connection socket: %s", self._connection.info.socket)
+        self.logger.debug("connection PID: %s", self._connection.get_backend_pid())
         return self._connection
 
     def run(self):
