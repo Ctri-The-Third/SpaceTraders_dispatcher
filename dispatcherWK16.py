@@ -9,7 +9,7 @@ from requests.adapters import HTTPAdapter
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
-from straders_sdk.utils import set_logging
+from straders_sdk.utils import set_logging, waypoint_slicer
 from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
@@ -175,6 +175,7 @@ class dispatcher:
         agents_and_last_checkeds = {}
         agents_and_unlocked_ships = {}
         self.client: SpaceTraders
+        self.client.set_current_agent(self.agents[0][1], self.agents[0][0])
         self.client.ships_view(force=True)
 
         # rather than tying this behaviour to the probe, this is executed at the dispatcher level.
@@ -188,9 +189,9 @@ class dispatcher:
             #
             # every 15 seconds update the list of unlocked ships with a DB query
             #
-            for _, agent_symbol in self.agents:
+            for token, agent_symbol in self.agents:
                 self.client.current_agent_symbol = agent_symbol
-
+                self.client.set_current_agent(agent_symbol, token)
                 if (
                     agents_and_last_checkeds.get(
                         agent_symbol, datetime.now() - (check_frequency * 2)
@@ -538,6 +539,23 @@ class dispatcher:
 
         api_systems = status.total_systems
 
+        agent = st.view_my_self()
+        headquarters = agent.headquarters
+        hq_system = st.systems_view_one(waypoint_slicer(headquarters), True)
+        for waypoint in hq_system.waypoints:
+            waypoint = st.waypoints_view_one(hq_system.symbol, waypoint.symbol)
+            if len(waypoint.traits) == 0 or waypoint.type != "JUMP_GATE":
+                # refresh the traits
+                waypoint = st.waypoints_view_one(
+                    hq_system.symbol, waypoint.symbol, True
+                )
+            traits = [trait.symbol for trait in waypoint.traits]
+            if "SHIPYARD" in traits:
+                st.system_shipyard(waypoint)
+            if "MARKETPLACE" in traits:
+                st.system_market(waypoint)
+            if waypoint.type == "JUMP_GATE":
+                st.system_jumpgate(waypoint)
         if got_em_all:
             return
         for i in range(1, math.ceil(api_systems / 20) + 1):
