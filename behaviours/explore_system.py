@@ -83,7 +83,7 @@ class ExploreSystem(Behaviour):
 
         arrived = True
         if ship.nav.system_symbol != d_sys.symbol:
-            arrived = self.ship_extrasolar(d_sys, path.route)
+            arrived = self.ship_extrasolar(d_sys, path)
         if arrived:
             self.scan_local_system()
         else:
