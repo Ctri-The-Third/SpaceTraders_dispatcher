@@ -218,7 +218,10 @@ class Conductor:
                 "cargo_to_transfer": [best_extractable[0]],
             }
             set_behaviour(
-                self.connection, extractor.name, BHVR_EXTRACT_AND_SELL, params
+                self.connection,
+                extractor.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                params,
             )
         # determine current starting asteroid
         # determine top 2 goods to export
