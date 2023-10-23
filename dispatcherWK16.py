@@ -16,7 +16,6 @@ from behaviours.generic_behaviour import Behaviour
 import signal
 import math
 import random
-from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import (
     ExtractAndTransferOrSell_8,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
@@ -50,6 +49,10 @@ from behaviours.extract_and_fulfill import (
 from behaviours.upgrade_ship_to_specs import (
     FindMountsAndEquip,
     BEHAVIOUR_NAME as BHVR_UPGRADE_TO_SPEC,
+)
+from behaviours.chill_and_survey import (
+    ChillAndSurvey,
+    BEHAVIOUR_NAME as BHVR_CHILL_AND_SURVEY,
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -443,93 +446,35 @@ class dispatcher:
         bhvr_params = behaviour_params
         bhvr = None
         if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = ExtractAndSell(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
-                aname,
-                sname,
-                behaviour_params,
-                session=self.session,
-                connection=self.get_connection(),
+                aname, sname, behaviour_params, session=self.session
             )
         elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
             bhvr = ExtractAndTransferOrSell_8(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
+                aname, sname, bhvr_params, session=self.session
             )
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
-            bhvr = RemoteScanWaypoints(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXPLORE_SYSTEM:
-            bhvr = ExploreSystem(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = ExploreSystem(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_MONITOR_CHEAPEST_PRICE:
-            bhvr = MonitorPrices(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = MonitorPrices(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
             bhvr = BuyAndDeliverOrSell_6(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
+                aname, sname, bhvr_params, session=self.session
             )
         elif id == BHVR_EXTRACT_AND_FULFILL:
-            bhvr = ExtractAndFulfill_7(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = ExtractAndFulfill_7(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_RECEIVE_AND_REFINE:
-            bhvr = ReceiveAndRefine(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = ReceiveAndRefine(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXTRACT_AND_FULFILL:
-            bhvr = ExtractAndFulfill_7(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = ExtractAndFulfill_7(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_UPGRADE_TO_SPEC:
-            bhvr = FindMountsAndEquip(
-                aname,
-                sname,
-                bhvr_params,
-                session=self.session,
-                connection=self.get_connection(),
-            )
+            bhvr = FindMountsAndEquip(aname, sname, bhvr_params, session=self.session)
+        elif id == BHVR_CHILL_AND_SURVEY:
+            bhvr = ChillAndSurvey(aname, sname, bhvr_params, session=self.session)
         else:
             pass
         return bhvr
