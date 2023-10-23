@@ -18,7 +18,7 @@ from straders_sdk.utils import (
     try_execute_select,
     try_execute_upsert,
 )
-from dispatcherWK12 import (
+from dispatcherWK16 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_RECEIVE_AND_REFINE,
@@ -26,6 +26,7 @@ from dispatcherWK12 import (
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
     BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+    BHVR_CHILL_AND_SURVEY,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -257,7 +258,7 @@ class Conductor:
             new_behaviour = BHVR_EXTRACT_AND_SELL
             self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
         # stage 4
-        elif len(hounds) <= 50 or len(refiners) < 1 or len(haulers) < 3:
+        elif len(hounds) <= 50 or len(refiners) < 1 or len(haulers) < 10:
             self.ships_we_might_buy = [
                 "SHIP_PROBE",
                 "SHIP_ORE_HOUND",
@@ -271,7 +272,7 @@ class Conductor:
             elif len(refiners) < 1:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_REFINERY")
                 new_behaviour = BHVR_RECEIVE_AND_REFINE
-            elif len(haulers) < 3:
+            elif len(haulers) < 10:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_HEAVY_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             pass
@@ -418,7 +419,7 @@ and agent_symbol = %s"""
 
 def switch_to_surveying(connection, ship_symbol):
     sql = """update ship_behaviours set behaviour_id = %s where ship_symbol = %s"""
-    try_execute_upsert(connection, sql, (BHVR_REMOTE_SCAN_AND_SURV, ship_symbol))
+    try_execute_upsert(connection, sql, (BHVR_CHILL_AND_SURVEY, ship_symbol))
 
 
 if __name__ == "__main__":
