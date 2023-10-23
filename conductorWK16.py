@@ -410,6 +410,7 @@ def clear_to_upgrade(agent: Agent, connection) -> bool:
 
     sql = """select * from ship_tasks
 where behaviour_id = 'UPGRADE_TO_SPEC' and (not completed or completed is null)
+and expiry > now() 
 and agent_symbol = %s"""
     rows = try_execute_select(connection, sql, (agent.symbol,))
     return len(rows) == 0
