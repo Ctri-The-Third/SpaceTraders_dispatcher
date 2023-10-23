@@ -59,7 +59,7 @@ class ExploreSystem(Behaviour):
             d_sys = self.find_unexplored_jumpgate()
             if d_sys:
                 d_sys = st.systems_view_one(d_sys)
-                path = self.pathfinder(o_sys, d_sys, bypass_check=True)
+                path = self.pathfinder.astar(o_sys, d_sys, bypass_check=True)
             else:
                 tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
                     FROM public.mkt_shpyrds_systems_last_updated_jumpgates j
@@ -77,12 +77,12 @@ class ExploreSystem(Behaviour):
 
                 # target = try_execute_select(self.connection, tar_sys_sql, ())[0]
                 d_sys = System(target[0], "", "", target[1], target[2], [])
-                path = self.astar(self.graph, o_sys, d_sys, bypass_check=True)
+                path = self.pathfinder.astar(o_sys, d_sys, bypass_check=True)
             self.logger.debug("Random destination selected: target %s", d_sys.symbol)
 
         arrived = True
         if ship.nav.system_symbol != d_sys.symbol:
-            arrived = self.ship_extrasolar(d_sys, path)
+            arrived = self.ship_extrasolar(d_sys, path.route)
         if arrived:
             self.scan_local_system()
         else:

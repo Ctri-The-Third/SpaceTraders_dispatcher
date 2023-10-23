@@ -148,10 +148,11 @@ class Conductor:
                     log_task(
                         self.connection,
                         BHVR_EXPLORE_SYSTEM,
-                        ["drone"],
+                        ["DRONE"],
                         dest_system_wp,
                         priority=5,
                         behaviour_params={"target_sys": dest_system_wp},
+                        expiry=self.next_hourly_update,
                     )
 
                     # if we've found one that can be visited by drone, stop logging tasks.
