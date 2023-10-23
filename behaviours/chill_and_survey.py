@@ -32,7 +32,7 @@ class ChillAndSurvey(Behaviour):
             connection,
         )
         st = self.st
-        ship = self.ship
+        ship = self.ship = st.ships_view_one(ship_name)
         self.target_wp_s = behaviour_params["asteroid_wp"]
         target_sys = st.systems_view_one(waypoint_slicer(self.target_wp_s))
         target_wp = st.waypoints_view_one(
@@ -45,7 +45,7 @@ class ChillAndSurvey(Behaviour):
         self.ship_extrasolar(target_sys)
         self.ship_intrasolar(target_wp.symbol)
         self.sleep_until_ready()
-        resp = st.ship_survey(ship.name)
+        resp = st.ship_survey(ship)
         if not resp:
             time.sleep(SAFETY_PADDING)
             self.end()
