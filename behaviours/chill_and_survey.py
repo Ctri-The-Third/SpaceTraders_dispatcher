@@ -33,6 +33,9 @@ class ChillAndSurvey(Behaviour):
         )
         st = self.st
         ship = self.ship = st.ships_view_one(ship_name)
+        agent = st.view_my_self()
+        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+
         self.target_wp_s = behaviour_params["asteroid_wp"]
         target_sys = st.systems_view_one(waypoint_slicer(self.target_wp_s))
         target_wp = st.waypoints_view_one(
