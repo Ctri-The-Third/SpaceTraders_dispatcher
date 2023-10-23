@@ -239,6 +239,7 @@ class Conductor:
             );
             delete from waypoint_traits WT where wt.trait_symbol = 'UNCHARTED';"""
         try_execute_upsert(self.connection, sql, [])
+        self.pathfinder.clear_graph()
 
     def minutely_update(self):
         """This method handles ship scaling and assigning default behaviours."""
@@ -267,15 +268,16 @@ class Conductor:
                 "SHIP_ORE_HOUND",
                 "SHIP_HEAVY_FREIGHTER",
                 "SHIP_COMMAND_FRIGATE",
-                "SHIP_REFINERY",
+                "SHIP_REFINING_FREIGHTER",
             ]
+            new_ship = None
             if len(hounds) < 50:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
                 new_behaviour = BHVR_EXTRACT_AND_SELL
-            elif len(refiners) < 1:
-                new_ship = maybe_buy_ship_sys(st, "SHIP_REFINERY")
+            if len(refiners) < 1 and not new_ship:
+                new_ship = maybe_buy_ship_sys(st, "SHIP_REFINING_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_REFINE
-            elif len(haulers) < 10:
+            if len(haulers) < 10 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_HEAVY_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             pass

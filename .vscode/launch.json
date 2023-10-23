@@ -13,7 +13,7 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK13.py",
+            "program": "conductorWK16.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },
@@ -21,7 +21,7 @@
             "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK12.py",
+            "program": "dispatcherWK16.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
