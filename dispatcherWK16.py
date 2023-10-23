@@ -2,6 +2,9 @@
 # It will get unlocked ships from the DB, check their behaviour ID and if it matches a known behaviour, lock the ship and execute the behaviour.
 import json
 import logging
+import signal
+import math
+import random
 import psycopg2
 import sys, threading, os, uuid, time
 from requests_ratelimiter import LimiterSession
@@ -13,9 +16,6 @@ from straders_sdk.utils import set_logging, waypoint_slicer
 from behaviours.extract_and_sell import ExtractAndSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
-import signal
-import math
-import random
 from behaviours.extract_and_transfer_or_sell import (
     ExtractAndTransferOrSell_8,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
