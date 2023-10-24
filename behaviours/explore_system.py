@@ -114,11 +114,17 @@ class ExploreSystem(Behaviour):
 
 
 if __name__ == "__main__":
+    from dispatcherWK16 import lock_ship
+
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-V-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    behaviour_params = {"target_sys": "X1-CS80"}
+    behaviour_params = {"target_sys": "X1-TF72"}  # X1-TF72 X1-YF83
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
+
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
     bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)

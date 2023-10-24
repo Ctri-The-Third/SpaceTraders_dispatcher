@@ -552,7 +552,7 @@ order by 1 desc """
             {
                 "origin_system": o_sys.symbol,
                 "destination_system": destination_system.symbol,
-                "route_length": f"{len(route)}",
+                "route_length": f"{len(route.route)}",
             },
         )
         if current_wp.type != "JUMP_GATE":
