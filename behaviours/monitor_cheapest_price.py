@@ -190,9 +190,9 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2C"
     ship = f"{agent}-{ship_suffix}"
-    params = {"ship_type": "SHIP_PROBE"}
+    params = {"ship_type": "SHIP_HEAVY_FREIGHTER"}
     bhvr = MonitorPrices(agent, f"{ship}", params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)

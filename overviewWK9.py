@@ -114,17 +114,17 @@ order by agent_name, cph desc"""
 
 
 def transaction_summary():
-    sql = """select agent_name, credits_earned as cr, utilisation as util, event_hour 
+    sql = """select agent_name, credits_earned as cr, rpm as util, event_hour 
     from agent_credits_per_hour 
     where event_hour >= now() at time zone 'utc' - interval '8 hours'
     order by event_hour desc, agent_name asc
 """
     rows = try_execute_select(connection, sql, ())
-    df = pd.DataFrame(rows, columns=["agent_name", "cr", "util", "event_hour"])
+    df = pd.DataFrame(rows, columns=["agent_name", "cr", "rpm", "event_hour"])
     pivot_df = pd.pivot(
         index="event_hour",
         columns="agent_name",
-        values=["cr", "util"],
+        values=["cr", "rpm"],
         data=df,
     )
     out_str = pivot_df.to_markdown()
