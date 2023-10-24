@@ -72,6 +72,8 @@ class MonitorPrices(Behaviour):
                 break
         if not route:
             print(f"Couldn't find a route to any shipyards that sell {rows[0][1]}!")
+            time.sleep(60)
+            return
         else:
             print(
                 f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
