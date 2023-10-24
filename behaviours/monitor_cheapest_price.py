@@ -70,9 +70,12 @@ class MonitorPrices(Behaviour):
             if new_route:
                 route = new_route
                 break
-        print(
-            f"Searching for ship {rows[0][1]} at  system {new_route.end_system.symbol} "
-        )
+        if not route:
+            print(f"Couldn't find a route to any shipyards that sell {rows[0][1]}!")
+        else:
+            print(
+                f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
+            )
 
         target_wp = row[0]
         target_sys_sym = waypoint_slicer(target_wp)
@@ -182,12 +185,12 @@ order by random()"""
 if __name__ == "__main__":
     from dispatcherWK12 import lock_ship
 
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-V-"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_suffix}"
-    params = {"ship_type": "SHIP_ORE_HOUND"}
+    params = {"ship_type": "SHIP_PROBE"}
     bhvr = MonitorPrices(agent, f"{ship}", params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
