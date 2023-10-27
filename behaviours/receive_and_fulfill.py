@@ -64,15 +64,21 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             )
             # markets is a tuple, where the items are waypoint_s, system, price
             paths = {
-                system[0]: self.astar(self.graph, start_sys, system[1])
+                system[0]: self.pathfinder.astar(start_sys, system[1])
                 for system in markets
             }
             best_cpr = 0
             best_cpr_system = None
             for wp_s, _, price in markets:
+                path = paths.get(wp_s, None)
+                if not path:
+                    continue
                 request_count = (
-                    len(paths[wp_s]) + 8
-                )  # this is my guesstimate for receive offset, undocking, navigatting, [jumps] navigating, selling, undocking
+                    path.jumps + 6
+                )  # this is my guesstimate for receive offset,  navigatting, [jumps] navigating, docking, selling, undocking
+                print(
+                    f"request count for {wp_s} is {request_count}, price is {price}, cpr is {price / request_count}"
+                )
                 cpr = price / request_count
                 if cpr > best_cpr:
                     best_cpr = cpr
@@ -159,10 +165,14 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 
 if __name__ == "__main__":
+    from dispatcherWK16 import lock_ship
+
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3A"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
+    behaviour_params = {"asteroid_wp": "X1-RV57-69965Z"}
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})
+    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
+    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
