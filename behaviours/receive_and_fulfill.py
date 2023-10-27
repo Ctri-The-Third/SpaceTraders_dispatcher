@@ -49,6 +49,11 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
         market_wp_s = self.behaviour_params.get("market_wp", None)
+        exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
+
+        #
+        # 1. DEFAULT BEHAVIOUR (for if we've not got active orders)
+        #
 
         if not market_wp_s and not fulfil_wp_s and ship.cargo_units_used > 0:
             # sell to the best market, based on CPR
@@ -85,6 +90,10 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                     best_cpr_system = wp_s
             market_wp_s = best_cpr_system  # find_market_in_system?
 
+        #
+        # 2. preflight checks (refuel and desintation checking)
+        #
+
         destination_sys = st.systems_view_one(
             waypoint_slicer(market_wp_s or fulfil_wp_s or start_wp_s)
         )
@@ -97,7 +106,20 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             st.ship_orbit(ship)
         if ship.can_survey:
             st.ship_survey(ship)
-        # we're full, prep and deploy
+        # Check we're full, prep and deploy
+
+        #
+        # 3. JETTISON UNWANTED CARGO
+        #
+
+        if exclusive_cargo_items:
+            for cargo_item in ship.cargo_inventory:
+                if cargo_item.symbol not in exclusive_cargo_items:
+                    st.ship_jettison_cargo(ship, cargo_item.symbol, cargo_item.units)
+
+        #
+        # 4. NAVIGATE AND DELIVER/ SELL CARGO
+        #
 
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             # are we doing a sell, or a contract?
