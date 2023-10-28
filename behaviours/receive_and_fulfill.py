@@ -38,8 +38,11 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
     def run(self):
         super().run()
+
         st = self.st
-        ship = self.ship
+        # we have to use the API call since we don't have inventory in the DB
+        ship = self.ship = st.ships_view_one(self.ship.name, True)
+
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()

@@ -76,8 +76,9 @@ class Behaviour:
         return self._connection
 
     def run(self):
-        self.ship = self.st.ships_view_one(self.ship_name, force=True)
         if not self.ship:
+            self.ship = self.st.ships_view_one(self.ship_name, force=True)
+
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
             raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
