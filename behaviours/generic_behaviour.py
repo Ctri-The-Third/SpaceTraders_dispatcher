@@ -544,16 +544,17 @@ order by 1 desc """
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         if ship.nav.travel_time_remaining > 0 or ship.seconds_until_cooldown > 0:
-            sleep(max(ship.nav.travel_time_remaining, ship.seconds_until_cooldown))
+            self.sleep_until_ready()
         current_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
         self.st.logging_client.log_custom_event(
             "BEGIN_EXTRASOLAR_NAVIGATION",
+            ship.name,
             {
                 "origin_system": o_sys.symbol,
                 "destination_system": destination_system.symbol,
-                "route_length": f"{len(route.route)}",
+                "route_length": (route.jumps),
             },
         )
         if current_wp.type != "JUMP_GATE":
