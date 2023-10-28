@@ -36,7 +36,7 @@ class Behaviour:
 
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
-        self.ship_name = ship_name
+
         self._connection = connection
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
@@ -62,7 +62,8 @@ class Behaviour:
             connection=connection,
         )
         self.pathfinder = PathFinder(connection=self.connection)
-
+        self.ship_name = ship_name
+        self.ship = self.st.ships_view_one(ship_name)
         self._graph = None
         self.ships = None
         self.agent = None
