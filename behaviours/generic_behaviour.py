@@ -501,33 +501,6 @@ order by 1 desc """
     def sleep_until_ready(self):
         sleep_until_ready(self.ship)
 
-    def determine_fuel_cost(self, ship: "Ship", target_wp: "Waypoint") -> int:
-        st = self.st
-        source = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
-
-        speed = {"CRUISE": 1, "DRIFT": 0, "BURN": 2, "STEALTH": 1}
-        return int(
-            max(
-                self.pathfinder.get_distance_between(source, target_wp)
-                * speed[ship.nav.flight_mode],
-                1,
-            )
-        )
-
-    def determine_travel_time(self, ship: "Ship", target_wp: "Waypoint") -> int:
-        st = self.st
-        source = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
-
-        distance = math.sqrt(
-            (target_wp.x - source.x) ** 2 + (target_wp.y - source.y) ** 2
-        )
-        multiplier = {"CRUISE": 15, "DRIFT": 150, "BURN": 7.5, "STEALTH": 30}
-        (
-            math.floor(round(max(1, distance)))
-            * (multiplier[ship.nav.flight_mode] / ship.engine.speed)
-            + 15
-        )
-
     def distance_from_ship(self, ship: Ship, target_wp: Waypoint) -> float:
         source = self.st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
