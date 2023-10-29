@@ -66,7 +66,7 @@ class Conductor:
         self.hounds = []
         self.extractors = []
         self.surveyors = []
-        self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
+        self.ships_we_might_buy = ["SHIP_MINING_DRONE"]
         self.satellites = []
         self.refiners = []
         self.pathfinder = PathFinder(connection=self.connection)
@@ -116,10 +116,39 @@ class Conductor:
             self.starting_system = st.systems_view_one(hq_sys)
 
         if not self.asteroid_wp:
-            resp = st.find_waypoints_by_type_one(
-                self.starting_system.symbol, "ASTEROID_FIELD"
+            resp = st.find_waypoints_by_trait_one(
+                self.starting_system.symbol, "COMMON_METAL_DEPOSITS"
             )
             self.asteroid_wp = resp
+
+        for ship in self.extractors:
+            set_behaviour(
+                self.connection,
+                ship.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                {"asteroid_wp": self.asteroid_wp.symbol},
+            )
+        for hauler in self.haulers:
+            set_behaviour(
+                self.connection,
+                hauler.name,
+                BHVR_RECEIVE_AND_FULFILL,
+                {"asteroid_wp": self.asteroid_wp.symbol},
+            )
+        for surveyor in self.surveyors:
+            set_behaviour(
+                self.connection,
+                surveyor.name,
+                BHVR_REMOTE_SCAN_AND_SURV,
+                {"asteroid_wp": self.asteroid_wp.symbol},
+            )
+        for commander in self.commanders:
+            set_behaviour(
+                self.connection,
+                commander.name,
+                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                {"asteroid_wp": self.asteroid_wp.symbol},
+            )
         # find unvisited shipyards
 
         #
@@ -257,11 +286,29 @@ class Conductor:
         # this can be its own "scale up" method
         #
         behaviour_params = {"asteroid_wp": self.asteroid_wp.symbol}
-        # stage
-        if len(hounds) < 40:
-            new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
-            new_behaviour = BHVR_EXTRACT_AND_SELL
-            self.ships_we_might_buy = ["SHIP_ORE_HOUND"]
+        # stage 0 - pre warpgate.
+
+        if (
+            len(self.extractors) < 10
+            or len(self.surveyors) < 1
+            or len(self.haulers) < 1
+        ):
+            if len(self.haulers) < 1:
+                new_ship = maybe_buy_ship_sys(st, "SHIP_LIGHT_HAULER")
+                new_behaviour = BHVR_RECEIVE_AND_FULFILL
+            if len(self.extractors) < 10 and not new_ship:
+                new_ship = maybe_buy_ship_sys(st, "SHIP_MINING_DRONE")
+                new_behaviour = BHVR_EXTRACT_AND_TRANSFER_OR_SELL
+            if len(self.surveyors) < 1 and not new_ship:
+                new_ship = maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
+                new_behaviour = BHVR_REMOTE_SCAN_AND_SURV
+
+            self.ships_we_might_buy = [
+                "SHIP_MINING_DRONE",
+                "SHIP_SURVEYOR",
+                "SHIP_LIGHT_HAULER",
+            ]
+
         # stage 4
         elif len(hounds) <= 50 or len(refiners) < 1 or len(haulers) < 10:
             self.ships_we_might_buy = [
@@ -311,6 +358,7 @@ class Conductor:
 
     def maybe_upgrade_ship(self):
         # surveyors first, then extractors
+        return False
         max_mining_strength = 60
         max_survey_strength = self.max_survey_strength() * 3
         best_surveyor = (
@@ -387,26 +435,14 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
 
     def populate_ships(self):
         "Set the conductor's ship lists, and subdivides them into roles."
-        ships = self.st.ships_view()
-        self.satellites = [ship for ship in ships.values() if ship.role == "SATELLITE"]
-        self.haulers = [ship for ship in ships.values() if ship.role == "HAULER"]
-        self.haulers.sort(key=lambda ship: ship.index)
-        self.commanders = [ship for ship in ships.values() if ship.role == "COMMAND"]
-        self.commanders.sort(key=lambda ship: ship.index)
-        hounds = [ship for ship in ships.values() if ship.frame.symbol == "FRAME_MINER"]
-        hounds.sort(key=lambda ship: ship.index)
-        # for every 6.6667 hounds, make one a surveyor. ignore the first one.
-        self.hounds = hounds
-        # surveyors are every 6th hound, starting with the second one.
-        # however - if we have spare commanders, they should replace these surveyors, and those surveyors should be made into extractors
-        self.surveyors = hounds[1::6]
-
-        # extractors are all hounds that aren't surveyors
-        self.extractors = [ship for ship in hounds if ship not in self.surveyors]
-        if len(self.extractors) < 5:
-            self.extractors = self.extractors + self.commanders
-
-        self.refiners = [ship for ship in ships.values() if ship.role == "REFINERY"]
+        ships = list(self.st.ships_view().values())
+        ships.sort(key=lambda ship: ship.index)
+        self.satellites = [ship for ship in ships if ship.role == "SATELLITE"]
+        self.haulers = [ship for ship in ships if ship.role == "HAULER"]
+        self.commanders = [ship for ship in ships if ship.role == "COMMAND"]
+        self.hounds = [ship for ship in ships if ship.frame.symbol == "FRAME_MINER"]
+        self.extractors = [ship for ship in ships if ship.role == "EXTRACTOR"]
+        self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:
