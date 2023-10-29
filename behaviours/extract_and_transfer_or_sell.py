@@ -41,8 +41,9 @@ class ExtractAndTransferOrSell_8(Behaviour):
 
         starting_credts = self.st.view_my_self().credits
         self.logger.info("NEEDLESS REQUEST - get inventory into DB")
-        ship = self.ship
+
         st = self.st
+        ship = self.ship = st.ships_view_one(self.ship.name, True)
         agent = st.view_my_self()
 
         #
@@ -57,8 +58,8 @@ class ExtractAndTransferOrSell_8(Behaviour):
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:
-                target_wp = st.find_waypoints_by_type(
-                    ship.nav.system_symbol, "ASTEROID_FIELD"
+                target_wp = st.find_waypoints_by_trait_one(
+                    ship.nav.system_symbol, "COMMON_METAL_DEPOSITS"
                 )
                 if target_wp:
                     target_wp_sym = target_wp[0].symbol
@@ -178,14 +179,14 @@ if __name__ == "__main__":
     ship_suffix = "4"
     ship = f"{agent_symbol}-{ship_suffix}"
     params = {
-        "fulfill_wp": "X1-CN90-22412Z",
-        "asteroid_wp": "X1-CN90-02905X",
-        "cargo_to_transfer": ["ALUMINUM_ORE"],
+        # "fulfill_wp": "X1-CN90-22412Z",
+        "asteroid_wp": "X1-QV47-B25",
+        # "cargo_to_transfer": ["ALUMINUM_ORE"],
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     bhvr = ExtractAndTransferOrSell_8(agent_symbol, f"{ship}", params)
 
-    from dispatcherWK12 import lock_ship
+    from dispatcherWK16 import lock_ship
 
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
