@@ -126,9 +126,7 @@ class Conductor:
                     self.pathfinder.calc_distance_between, self.starting_planet
                 )
                 resp = sorted(resp, key=partial_calc_dist)
-            for wayp in resp:
-                dist = self.pathfinder.calc_distance_between(self.starting_planet, wayp)
-                print(f"wp = {wayp.symbol} dist = {dist}")
+                self.asteroid_wps = resp
         for ship in self.extractors:
             set_behaviour(
                 self.connection,
