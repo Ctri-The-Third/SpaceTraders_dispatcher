@@ -453,7 +453,7 @@ order by 1 desc """
         st = self.st
         ship = self.ship
         current_system_sym = self.ship.nav.system_symbol
-        flight_mode = "CRUISE" if ship.fuel_capacity > 0 else "BURN"
+
         # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
         # QUESTION
         st.waypoints_view(current_system_sym, True)
