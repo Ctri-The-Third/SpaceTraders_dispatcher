@@ -51,15 +51,22 @@ class ExtractAndSell(Behaviour):
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:
                 target_wp = st.find_waypoints_by_type_one(
-                    ship.nav.system_symbol, "ASTEROID_FIELD"
+                    ship.nav.system_symbol, "ASTEROID"
                 )
 
                 target_wp_sym = target_wp.symbol
 
             market_wp_sym = self.behaviour_params.get(
                 "market_waypoint",
-                target_wp_sym,
+                None,
             )
+
+            if not market_wp_sym:
+                # find a market that buys all the cargo we're selling
+                market_wp_syms = []
+                for tradegood in ship.cargo_inventory:
+                    goods = self.find_best_market_systems_to_sell(tradegood.symbol)
+
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
@@ -95,10 +102,15 @@ class ExtractAndSell(Behaviour):
 
 
 if __name__ == "__main__":
+    from dispatcherWK16 import lock_ship
+
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1E"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {}  # {"asteroid_wp": "X1-QB20-13975F"}
     bhvr = ExtractAndSell(agent, ship, behaviour_params)
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
     bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)
