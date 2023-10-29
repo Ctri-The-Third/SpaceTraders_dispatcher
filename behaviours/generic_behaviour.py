@@ -142,7 +142,9 @@ class Behaviour:
             target_wp_symbol = target_wp_symbol.symbol
         st = self.st
         ship = self.ship
-
+        origin_waypoint = st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
         if ship.nav.system_symbol != target_sys_symbol:
             return LocalSpaceTradersRespose(
@@ -153,11 +155,12 @@ class Behaviour:
             )
         wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
 
-        fuel_cost = self.determine_fuel_cost(self.ship, wp)
+        fuel_cost = self.pathfinder.determine_fuel_cost(origin_waypoint, wp)
         if (
             flight_mode != "DRIFT"
             and fuel_cost >= ship.fuel_current
             and ship.fuel_capacity > 0
+            and fuel_cost < ship.fuel_capacity
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.go_and_refuel()
@@ -282,7 +285,10 @@ class Behaviour:
         if nearest_refuel_wp is not None:
             flight_mode = ship.nav.flight_mode
 
-            if self.determine_fuel_cost(ship, nearest_refuel_wp) > ship.fuel_current:
+            if (
+                self.pathfinder.determine_fuel_cost(ship, nearest_refuel_wp)
+                > ship.fuel_current
+            ):
                 flight_mode = "DRIFT"
             self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
             self.st.ship_dock(ship)
@@ -396,6 +402,7 @@ order by 1 desc """
             sys = System(row[2], row[3], row[4], row[5], row[6], [])
             price = row[0]
             waypoint_symbol = row[1]
+
             return_obj.append((waypoint_symbol, sys, price))
         return return_obj
 
@@ -505,7 +512,7 @@ order by 1 desc """
         source = self.st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
-        return self.pathfinder.get_distance_between(source, target_wp)
+        return self.pathfinder.calc_distance_between(source, target_wp)
 
     def ship_extrasolar(self, destination_system: System, route: JumpGateRoute = None):
         if isinstance(destination_system, str):
@@ -571,7 +578,7 @@ order by 1 desc """
             #   return the minimum value of those returned by the function.
             next_waypoint = min(
                 unplotted,
-                key=lambda wp: self.pathfinder.get_distance_between(current, wp),
+                key=lambda wp: self.pathfinder.calc_distance_between(current, wp),
             )
             path.append(next_waypoint.symbol)
             unplotted.remove(next_waypoint)
@@ -585,7 +592,7 @@ order by 1 desc """
         while unplotted:
             next_system = min(
                 unplotted,
-                key=lambda sys: self.pathfinder.get_distance_between(current, sys),
+                key=lambda sys: self.pathfinder.calc_distance_between(current, sys),
             )
             path.append(next_system.symbol)
             unplotted.remove(next_system)
