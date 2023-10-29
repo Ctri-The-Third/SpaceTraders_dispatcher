@@ -198,7 +198,7 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
-        if current_wayp.type != "ASTEROID_FIELD":
+        if current_wayp.type != "ASTEROID":
             self.logger.error(
                 "Ship is not in an asteroid field, sleeping then aborting"
             )
