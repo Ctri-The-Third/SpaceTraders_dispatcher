@@ -62,7 +62,7 @@ class ExtractAndTransferOrSell_8(Behaviour):
                     ship.nav.system_symbol, "COMMON_METAL_DEPOSITS"
                 )
                 if target_wp:
-                    target_wp_sym = target_wp[0].symbol
+                    target_wp_sym = target_wp.symbol
             if not target_wp_sym:
                 raise AttributeError(
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
@@ -147,7 +147,9 @@ class ExtractAndTransferOrSell_8(Behaviour):
         #
         # sell all remaining cargo now we're full note - if no haulers are around, might as well sell it - so no exclusions here.
         #
-        self.sell_all_cargo()
+
+        if "MARKETPLACE" in target_wp.traits:
+            self.sell_all_cargo()
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
             time.sleep(300)
