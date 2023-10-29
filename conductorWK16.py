@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import logging
 import json
 from time import sleep
+from functools import partial
 
 import psycopg2.sql
 
@@ -19,7 +20,7 @@ from straders_sdk.utils import (
     try_execute_upsert,
 )
 from dispatcherWK16 import (
-    BHVR_EXTRACT_AND_SELL,
+    BHVR_EXTRACT_AND_GO_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_RECEIVE_AND_REFINE,
     BHVR_REMOTE_SCAN_AND_SURV,
@@ -60,7 +61,7 @@ class Conductor:
             current_agent_symbol=self.current_agent_symbol,
         )
         self.connection = client.db_client.connection
-        self.asteroid_wp: Waypoint = None
+        self.asteroid_wps: list[Waypoint] = []
         self.haulers = []
         self.commanders = []
         self.hounds = []
@@ -110,44 +111,51 @@ class Conductor:
     def hourly_update(self):
         st = self.st
 
-        if not self.starting_system:
-            hq = st.view_my_self().headquarters
-            hq_sys = waypoint_slicer(hq)
-            self.starting_system = st.systems_view_one(hq_sys)
+        hq = st.view_my_self().headquarters
 
-        if not self.asteroid_wp:
-            resp = st.find_waypoints_by_trait_one(
+        hq_sys = waypoint_slicer(hq)
+
+        self.starting_system = st.systems_view_one(hq_sys)
+        self.starting_planet = st.waypoints_view_one(hq_sys, hq)
+        if not self.asteroid_wps:
+            resp = st.find_waypoints_by_trait(
                 self.starting_system.symbol, "COMMON_METAL_DEPOSITS"
             )
-            self.asteroid_wp = resp
-
+            if resp:
+                partial_calc_dist = partial(
+                    self.pathfinder.calc_distance_between, self.starting_planet
+                )
+                resp = sorted(resp, key=partial_calc_dist)
+            for wayp in resp:
+                dist = self.pathfinder.calc_distance_between(self.starting_planet, wayp)
+                print(f"wp = {wayp.symbol} dist = {dist}")
         for ship in self.extractors:
             set_behaviour(
                 self.connection,
                 ship.name,
                 BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for hauler in self.haulers:
             set_behaviour(
                 self.connection,
                 hauler.name,
                 BHVR_RECEIVE_AND_FULFILL,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for surveyor in self.surveyors:
             set_behaviour(
                 self.connection,
                 surveyor.name,
                 BHVR_REMOTE_SCAN_AND_SURV,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for commander in self.commanders:
             set_behaviour(
                 self.connection,
                 commander.name,
                 BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         # find unvisited shipyards
 
@@ -215,14 +223,14 @@ class Conductor:
 
         # send refiners to asteroid
         for refiner in self.refiners:
-            params = {"asteroid_wp": self.asteroid_wp.symbol}
+            params = {"asteroid_wp": self.asteroid_wps[0].symbol}
             set_behaviour(
                 self.connection, refiner.name, BHVR_RECEIVE_AND_REFINE, params
             )
 
         # send haulers to asteroid
         for hauler in self.haulers:
-            params = {"asteroid_wp": self.asteroid_wp.symbol}
+            params = {"asteroid_wp": self.asteroid_wps[0].symbol}
             BHVR_RECEIVE_AND_FULFILL
             set_behaviour(
                 self.connection, hauler.name, BHVR_RECEIVE_AND_FULFILL, params
@@ -231,7 +239,7 @@ class Conductor:
         # send ore hounds to asteroid and tell them to extract and transfer
         for extractor in self.extractors[0 : len(self.refiners)]:
             params = {
-                "asteroid_wp": self.asteroid_wp.symbol,
+                "asteroid_wp": self.asteroid_wps[0].symbol,
                 "cargo_to_transfer": [best_refinable[0]],
             }
             set_behaviour(
@@ -244,7 +252,7 @@ class Conductor:
         # send other haulers to extract and sell.
         for extractor in self.extractors[len(self.refiners) :]:
             params = {
-                "asteroid_wp": self.asteroid_wp.symbol,
+                "asteroid_wp": self.asteroid_wps[0].symbol,
                 "cargo_to_transfer": [best_extractable[0]],
             }
             set_behaviour(
@@ -285,7 +293,7 @@ class Conductor:
         #
         # this can be its own "scale up" method
         #
-        behaviour_params = {"asteroid_wp": self.asteroid_wp.symbol}
+        behaviour_params = {"asteroid_wp": self.asteroid_wps[0].symbol}
         # stage 0 - pre warpgate.
 
         if (
@@ -321,7 +329,7 @@ class Conductor:
             new_ship = None
             if len(hounds) < 50:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
-                new_behaviour = BHVR_EXTRACT_AND_SELL
+                new_behaviour = BHVR_EXTRACT_AND_GO_SELL
             if len(refiners) < 1 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_REFINING_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_REFINE
