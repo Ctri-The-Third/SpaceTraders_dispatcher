@@ -167,8 +167,8 @@ class Behaviour:
             and ship.nav.flight_mode != "DRIFT"
         ):
             st.ship_patch_nav(ship, "DRIFT")
-        elif ship.fuel_capacity == 0 and ship.nav.flight_mode != "BURN":
-            st.ship_patch_nav(ship, "BURN")
+        elif ship.nav.flight_mode != flight_mode:
+            st.ship_patch_nav(ship, flight_mode)
 
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
@@ -259,21 +259,26 @@ class Behaviour:
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
-        refuel_points = self.st.find_waypoints_by_trait(
+        maybe_refuel_points = self.st.find_waypoints_by_trait(
             self.ship.nav.system_symbol, "MARKETPLACE"
         )
-        if not refuel_points:
+
+        if not maybe_refuel_points:
             self.st.waypoints_view(self.ship.nav.system_symbol, True)
             return LocalSpaceTradersRespose(
                 "No refuel points found in system. We should go extrasolar", 0, 0, ""
             )
         nearest_refuel_wp = None
         nearest_refuel_distance = 99999
-        for refuel_point in refuel_points:
+        for refuel_point in maybe_refuel_points:
             distance = self.distance_from_ship(ship, refuel_point)
             if distance < nearest_refuel_distance:
-                nearest_refuel_distance = distance
-                nearest_refuel_wp = refuel_point
+                market = self.st.system_market(refuel_point)
+                if "FUEL" in [
+                    listing.symbol for listing in market.listings
+                ] or "FUEL" in [exchange.symbol for exchange in market.exchange]:
+                    nearest_refuel_distance = distance
+                    nearest_refuel_wp = refuel_point
         if nearest_refuel_wp is not None:
             flight_mode = ship.nav.flight_mode
 

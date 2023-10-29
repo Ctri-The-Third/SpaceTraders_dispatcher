@@ -178,7 +178,7 @@ class ExtractAndTransferOrSell_8(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "4"
+    ship_suffix = "1"
     ship = f"{agent_symbol}-{ship_suffix}"
     params = {
         # "fulfill_wp": "X1-CN90-22412Z",
