@@ -10,7 +10,7 @@ from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging
-from behaviours.extract_and_sell import ExtractAndSell
+from behaviours.extract_and_sell import ExtractAndGoSell
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
 import signal
@@ -432,7 +432,7 @@ class dispatcher:
         bhvr_params = behaviour_params
         bhvr = None
         if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(
+            bhvr = ExtractAndGoSell(
                 aname,
                 sname,
                 bhvr_params,

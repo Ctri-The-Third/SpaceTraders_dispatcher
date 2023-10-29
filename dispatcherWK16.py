@@ -13,7 +13,10 @@ from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer
-from behaviours.extract_and_sell import ExtractAndSell
+from behaviours.extract_and_sell import (
+    ExtractAndGoSell,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_GO_SELL,
+)
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer_or_sell import (
@@ -59,7 +62,6 @@ from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
 from datetime import datetime, timedelta
 
-BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
@@ -445,8 +447,8 @@ class dispatcher:
         sname = ship_symbol
         bhvr_params = behaviour_params
         bhvr = None
-        if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(aname, sname, bhvr_params, session=self.session)
+        if id == BHVR_EXTRACT_AND_GO_SELL:
+            bhvr = ExtractAndGoSell(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
                 aname, sname, behaviour_params, session=self.session
