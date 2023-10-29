@@ -483,10 +483,10 @@ class dispatcher:
         st = self.client
         sql = """select count(distinct system_symbol) from systems"""
         row = try_execute_select(self.connection, sql, [])
-        got_em_all = row[0][0]
         status = st.game_status()
 
         api_systems = status.total_systems
+        got_em_all = row[0][0] == api_systems
 
         agent = st.view_my_self()
         headquarters = agent.headquarters
