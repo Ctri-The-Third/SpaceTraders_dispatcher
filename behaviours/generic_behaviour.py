@@ -475,7 +475,7 @@ order by 1 desc """
         for wayp_sym in path:
             waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
 
-            self.ship_intrasolar(wayp_sym, flight_mode=flight_mode)
+            self.ship_intrasolar(wayp_sym)
 
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             if "MARKETPLACE" in trait_symbols:
@@ -483,7 +483,7 @@ order by 1 desc """
                 if market:
                     for listing in market.listings:
                         print(
-                            f"item: {listing.symbol}, buy: {listing.purchase} sell: {listing.sell_price} - supply available {listing.supply}"
+                            f"item: {listing.symbol}, buy: {listing.purchase_price} sell: {listing.sell_price} - supply available {listing.supply}"
                         )
             if "SHIPYARD" in trait_symbols:
                 shipyard = st.system_shipyard(waypoint, True)
