@@ -82,6 +82,7 @@ class MonitorPrices(Behaviour):
         target_wp = row[0]
         target_sys_sym = waypoint_slicer(target_wp)
         target_sys = st.systems_view_one(target_sys_sym)
+        self.sleep_until_ready()
         self.ship_extrasolar(target_sys)
         self.ship_intrasolar(target_wp)
 
