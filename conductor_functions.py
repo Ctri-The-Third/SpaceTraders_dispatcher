@@ -85,11 +85,12 @@ def get_prices_for(connection, tradegood: str, agent_symbol="@"):
     select max(purchase_price),max(sell_price) from results  
 """
     rows = try_execute_select(connection, sql, (tradegood, tradegood, agent_symbol))
-    if rows:
+    if rows and len(rows) > 0:
         row = rows[0]
         average_price_buy = row[0]
         average_price_sell = row[1]
-        return [int(average_price_buy), int(average_price_sell)]
+        if average_price_buy and average_price_sell:
+            return [int(average_price_buy), int(average_price_sell)]
     return None
 
 
