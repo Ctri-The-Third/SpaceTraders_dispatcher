@@ -55,11 +55,12 @@ class ExploreSystem(Behaviour):
         path = None
         if self.behaviour_params and "target_sys" in self.behaviour_params:
             d_sys = st.systems_view_one(self.behaviour_params["target_sys"])
+            path = self.pathfinder.astar(o_sys, d_sys)
         else:
             d_sys = self.find_unexplored_jumpgate()
             if d_sys:
                 d_sys = st.systems_view_one(d_sys)
-                path = self.pathfinder(o_sys, d_sys, bypass_check=True)
+                path = self.pathfinder.astar(o_sys, d_sys)
             else:
                 tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
                     FROM public.mkt_shpyrds_systems_last_updated_jumpgates j
@@ -77,7 +78,7 @@ class ExploreSystem(Behaviour):
 
                 # target = try_execute_select(self.connection, tar_sys_sql, ())[0]
                 d_sys = System(target[0], "", "", target[1], target[2], [])
-                path = self.astar(self.graph, o_sys, d_sys, bypass_check=True)
+                path = self.pathfinder.astar(o_sys, d_sys, bypass_check=True)
             self.logger.debug("Random destination selected: target %s", d_sys.symbol)
 
         arrived = True
@@ -113,11 +114,17 @@ class ExploreSystem(Behaviour):
 
 
 if __name__ == "__main__":
+    from dispatcherWK16 import lock_ship
+
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-V-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    behaviour_params = {"target_sys": "X1-CS80"}
+    behaviour_params = {"target_sys": "X1-TF72"}  # X1-TF72 X1-YF83
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
+
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    set_logging(logging.DEBUG)
     bhvr.run()
+    lock_ship(ship, "", bhvr.connection, duration=0)

@@ -39,7 +39,7 @@ class MonitorPrices(Behaviour):
         agent = st.view_my_self()
         # check all markets in the system
         scan_thread = threading.Thread(
-            target=self.scan, daemon=False, name="scan_thread"
+            target=self.scan_waypoints, daemon=False, name="scan_thread"
         )
         scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
@@ -70,13 +70,19 @@ class MonitorPrices(Behaviour):
             if new_route:
                 route = new_route
                 break
-        print(
-            f"Searching for ship {rows[0][1]} at  system {new_route.end_system.symbol} "
-        )
+        if not route:
+            print(f"Couldn't find a route to any shipyards that sell {rows[0][1]}!")
+            time.sleep(60)
+            return
+        else:
+            print(
+                f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
+            )
 
         target_wp = row[0]
         target_sys_sym = waypoint_slicer(target_wp)
         target_sys = st.systems_view_one(target_sys_sym)
+        self.sleep_until_ready()
         self.ship_extrasolar(target_sys)
         self.ship_intrasolar(target_wp)
 
@@ -89,29 +95,9 @@ class MonitorPrices(Behaviour):
         scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-    def scan(self):
+    def scan_waypoints(self):
         st = self.st
         ship = self.ship
-        systems_sweep = self.have_we_all_the_systems()
-        if not systems_sweep[0]:
-            for i in range(1, math.ceil(systems_sweep[1] / 20) + 1):
-                print(i)
-                resp = st.systems_view_twenty(i, True)
-                while not resp:
-                    time.sleep(20)
-                    resp = st.systems_view_twenty(i, True)
-                    self.logger.warn("Failed to get system - page %s - retrying", i)
-                if not resp:
-                    self.logger.error(
-                        "Failed to get system - page %s - redo this later!", i
-                    )
-                if ship.seconds_until_cooldown > 0:
-                    continue
-                if ship.nav.travel_time_remaining > 0:
-                    continue
-                if ship.can_survey:
-                    st.ship_survey(ship)
-                time.sleep(1.2)
         #
         # get 20 unscanned waypoints, focusing on stations, asteroids, and gates
         #
@@ -176,17 +162,6 @@ class MonitorPrices(Behaviour):
                 resp = st.system_shipyard(wp, True)
                 time.sleep(1.2)
 
-    def have_we_all_the_systems(self):
-        sql = """select count(distinct system_symbol) from systems"""
-        cursor = self.st.db_client.connection.cursor()
-        cursor.execute(sql, ())
-        row = cursor.fetchone()
-        db_systems = row[0]
-
-        status = self.st.game_status()
-        api_systems = status.total_systems
-        return (db_systems >= api_systems, status.total_systems)
-
     def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[str]:
         sql = """
         select * from waypoints_not_scanned
@@ -213,12 +188,12 @@ order by random()"""
 if __name__ == "__main__":
     from dispatcherWK12 import lock_ship
 
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-V-"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2C"
     ship = f"{agent}-{ship_suffix}"
-    params = {"ship_type": "SHIP_ORE_HOUND"}
+    params = {"ship_type": "SHIP_HEAVY_FREIGHTER"}
     bhvr = MonitorPrices(agent, f"{ship}", params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)

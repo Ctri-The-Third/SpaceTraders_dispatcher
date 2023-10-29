@@ -37,7 +37,9 @@ class ExtractAndSell(Behaviour):
         # all  threads should have this.
         self.logger.info("Beginning...")
         starting_credts = self.agent.credits
-        ship = self.ship
+
+        # this behaviour involves inventory, which isn't stashed in the SDK yet
+        ship = self.ship = self.st.ships_view_one(self.ship.name, True)
         st = self.st
         agent = self.agent
         if not ship.can_extract:

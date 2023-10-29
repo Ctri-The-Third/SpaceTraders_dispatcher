@@ -52,11 +52,16 @@ where type = 'SELL'
 group by 1;
 
 --requests (excluding 429 responses)
-select msbt.agent_name, count(*)
-from mat_Session_behaviour_types msbt
-join logging l on msbt.session_id = l.session_id
+
+with session_and_agents as (
+  select distinct l.session_id, s.agent_name 
+	from logging l join ships s on l.ship_symbol = s.ship_symbol
+)
+select saa.agent_name, count(*), avg(duration_seconds)
+from logging l  join session_and_agents saa on l.session_id = saa.session_id
  where status_code >= 200 and status_code < 500
-and status_code != 429
+  and status_code != 429
 group by 1 
+
 
 ```

@@ -128,6 +128,9 @@ class FindMountsAndEquip(Behaviour):
                 st.ship_dock(ship)
 
                 resp = st.ship_purchase_cargo(ship, target_mount, 1)
+                if not resp:
+                    time.sleep(SAFETY_PADDING)
+                    return
                 for mount in ship_mounts:  # sell the unwanted stuff
                     resp = st.ship_sell(ship, mount, 1)
 
@@ -227,7 +230,7 @@ order by purchase_price asc """
         for market in destination_wps_and_prices:
             dest_system = st.systems_view_one(waypoint_slicer(market[0]))
             calced_nav = self.pathfinder.astar(start_system, dest_system)
-            if calced_nav.jumps < 0:
+            if not calced_nav or calced_nav.jumps < 0:
                 continue
             obj = (market[0], market[1], calced_nav.jumps)
             markets.append(obj)
@@ -252,7 +255,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "3"
     ship = f"{agent}-{ship_suffix}"
 
     bhvr = FindMountsAndEquip(

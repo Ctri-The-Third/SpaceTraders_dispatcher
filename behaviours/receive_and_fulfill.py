@@ -38,8 +38,11 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
     def run(self):
         super().run()
+
         st = self.st
-        ship = self.ship
+        # we have to use the API call since we don't have inventory in the DB
+        ship = self.ship = st.ships_view_one(self.ship.name, True)
+
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
@@ -49,6 +52,11 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
         market_wp_s = self.behaviour_params.get("market_wp", None)
+        exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
+
+        #
+        # 1. DEFAULT BEHAVIOUR (for if we've not got active orders)
+        #
 
         if not market_wp_s and not fulfil_wp_s and ship.cargo_units_used > 0:
             # sell to the best market, based on CPR
@@ -64,20 +72,30 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             )
             # markets is a tuple, where the items are waypoint_s, system, price
             paths = {
-                system[0]: self.astar(self.graph, start_sys, system[1])
+                system[0]: self.pathfinder.astar(start_sys, system[1])
                 for system in markets
             }
             best_cpr = 0
             best_cpr_system = None
             for wp_s, _, price in markets:
+                path = paths.get(wp_s, None)
+                if not path:
+                    continue
                 request_count = (
-                    len(paths[wp_s]) + 8
-                )  # this is my guesstimate for receive offset, undocking, navigatting, [jumps] navigating, selling, undocking
+                    path.jumps + 6
+                )  # this is my guesstimate for receive offset,  navigatting, [jumps] navigating, docking, selling, undocking
+                print(
+                    f"request count for {wp_s} is {request_count}, price is {price}, cpr is {price / request_count}"
+                )
                 cpr = price / request_count
                 if cpr > best_cpr:
                     best_cpr = cpr
                     best_cpr_system = wp_s
             market_wp_s = best_cpr_system  # find_market_in_system?
+
+        #
+        # 2. preflight checks (refuel and desintation checking)
+        #
 
         destination_sys = st.systems_view_one(
             waypoint_slicer(market_wp_s or fulfil_wp_s or start_wp_s)
@@ -91,7 +109,20 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             st.ship_orbit(ship)
         if ship.can_survey:
             st.ship_survey(ship)
-        # we're full, prep and deploy
+        # Check we're full, prep and deploy
+
+        #
+        # 3. JETTISON UNWANTED CARGO
+        #
+
+        if exclusive_cargo_items:
+            for cargo_item in ship.cargo_inventory:
+                if cargo_item.symbol not in exclusive_cargo_items:
+                    st.ship_jettison_cargo(ship, cargo_item.symbol, cargo_item.units)
+
+        #
+        # 4. NAVIGATE AND DELIVER/ SELL CARGO
+        #
 
         if ship.cargo_units_used >= ship.cargo_capacity - 10:
             # are we doing a sell, or a contract?
@@ -159,10 +190,14 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
 
 if __name__ == "__main__":
+    from dispatcherWK16 import lock_ship
+
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3A"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"asteroid_wp": "X1-QB20-13975F"}
+    behaviour_params = {"asteroid_wp": "X1-RV57-69965Z"}
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})
+    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
+    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)

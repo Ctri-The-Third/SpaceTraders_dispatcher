@@ -103,8 +103,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
         for sym in target_waypoints:
             target_waypoint = st.waypoints_view_one(waypoint_slicer(sym), sym)
             target_system = st.systems_view_one(waypoint_slicer(sym))
-            path = self.astar(self.graph, start_system, target_system)
-            if path:
+            route = self.pathfinder.astar(start_system, target_system)
+            if route:
+                path = route.route
                 break
 
         if not path:

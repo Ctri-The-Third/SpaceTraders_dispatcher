@@ -36,7 +36,7 @@ class Behaviour:
 
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
-        self.ship_name = ship_name
+
         self._connection = connection
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
@@ -62,7 +62,8 @@ class Behaviour:
             connection=connection,
         )
         self.pathfinder = PathFinder(connection=self.connection)
-
+        self.ship_name = ship_name
+        self.ship = self.st.ships_view_one(ship_name)
         self._graph = None
         self.ships = None
         self.agent = None
@@ -71,12 +72,13 @@ class Behaviour:
     def connection(self):
         if not self._connection or self._connection.closed > 0:
             self._connection = self.st.db_client.connection
-        self.logger.debug("connection socket: %s", self._connection.info.socket)
+        self.logger.debug("connection PID: %s", self._connection.get_backend_pid())
         return self._connection
 
     def run(self):
-        self.ship = self.st.ships_view_one(self.ship_name, force=True)
         if not self.ship:
+            self.ship = self.st.ships_view_one(self.ship_name, force=True)
+
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
             raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
@@ -196,7 +198,7 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
-        if current_wayp.type != "ASTEROID_FIELD":
+        if current_wayp.type != "ASTEROID":
             self.logger.error(
                 "Ship is not in an asteroid field, sleeping then aborting"
             )
@@ -543,16 +545,17 @@ order by 1 desc """
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
         if ship.nav.travel_time_remaining > 0 or ship.seconds_until_cooldown > 0:
-            sleep(max(ship.nav.travel_time_remaining, ship.seconds_until_cooldown))
+            self.sleep_until_ready()
         current_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
         self.st.logging_client.log_custom_event(
             "BEGIN_EXTRASOLAR_NAVIGATION",
+            ship.name,
             {
                 "origin_system": o_sys.symbol,
                 "destination_system": destination_system.symbol,
-                "route_length": f"{len(route)}",
+                "route_length": (route.jumps),
             },
         )
         if current_wp.type != "JUMP_GATE":
