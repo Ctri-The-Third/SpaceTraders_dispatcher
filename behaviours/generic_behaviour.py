@@ -466,6 +466,8 @@ order by 1 desc """
         target_wayps.extend(marketplaces)
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
+        target_wayps = list(set(target_wayps))
+        # remove dupes from target_wayps
 
         start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
         path = self.nearest_neighbour(target_wayps, start)
