@@ -10,8 +10,10 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 import time
 
+BEHAVIOUR_NAME = "EXTRACT_AND_GO_SELL"
 
-class ExtractAndSell(Behaviour):
+
+class ExtractAndGoSell(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -63,9 +65,27 @@ class ExtractAndSell(Behaviour):
 
             if not market_wp_sym:
                 # find a market that buys all the cargo we're selling
-                market_wp_syms = []
                 for tradegood in ship.cargo_inventory:
-                    goods = self.find_best_market_systems_to_sell(tradegood.symbol)
+                    # start simple, find the best market for each good, in terms of CPH
+
+                    options = self.find_best_market_systems_to_sell(tradegood.symbol)
+                    best_option = None
+                    best_cph = 0
+                    for option in options:
+                        distance = self.pathfinder.calc_distance_between(
+                            target_wp, option[1]
+                        )
+                        time_to_target = self.pathfinder.calc_travel_time_between_wps(
+                            target_wp, option[1], ship.engine.speed or 30
+                        )
+                        cph = option[2] / time_to_target + 60
+                        if cph > best_cph:
+                            best_option = option
+                            best_cph = cph
+                market_wp_sym = best_option[0]
+                market_wp = best_option[1]
+                # go through each option, determine CPH and pick the best one.
+                # Throw in a 1 minute offset   so that selling at distance 0 isn't always best.
 
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
@@ -109,7 +129,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {}  # {"asteroid_wp": "X1-QB20-13975F"}
-    bhvr = ExtractAndSell(agent, ship, behaviour_params)
+    bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()
