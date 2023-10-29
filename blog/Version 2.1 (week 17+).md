@@ -13,6 +13,7 @@ I've noticed that everything breaking has triggered the "setback effect", which 
 ## Step One - Build the jump gate
 -  ✅ Our first step is to get the Dispatcher and Conductor working without crashing.
 - Secondly we'll want a very rudimentary drone based solution to get credits flowing in.
+  - we should target the nearest asteroid, not the first one returned by the DB.
   - I've decided our fleet goal will be 10 extractors, 2 surveyors, 1 transporter. will need to do analytics on the effectiveness of this.
   - I'm going to skip upgrading behaviour for now and turn that off. Specifically all the values have changed and I want to make it less hard coded and more compatible with an aribtrary ship configuration coming in.
 - Our "ships we might buy" assumes multiple shipyards automatically. In the early game, only one probe is needed, buying 2 extra has negatively impacted things.
