@@ -37,7 +37,7 @@ class ExtractAndGoSell(Behaviour):
     def run(self):
         super().run()
         # all  threads should have this.
-        self.logger.info("Beginning...")
+
         starting_credts = self.agent.credits
 
         # this behaviour involves inventory, which isn't stashed in the SDK yet
@@ -57,13 +57,15 @@ class ExtractAndGoSell(Behaviour):
                 )
 
                 target_wp_sym = target_wp.symbol
-
+            else:
+                target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
             market_wp_sym = self.behaviour_params.get(
                 "market_waypoint",
                 None,
             )
 
             if not market_wp_sym:
+                best_option = [None, None]
                 # find a market that buys all the cargo we're selling
                 for tradegood in ship.cargo_inventory:
                     # start simple, find the best market for each good, in terms of CPH
@@ -78,7 +80,7 @@ class ExtractAndGoSell(Behaviour):
                         time_to_target = self.pathfinder.calc_travel_time_between_wps(
                             target_wp, option[1], ship.engine.speed or 30
                         )
-                        cph = option[2] / time_to_target + 60
+                        cph = (option[2] * tradegood.units) / time_to_target + 60
                         if cph > best_cph:
                             best_option = option
                             best_cph = cph
@@ -100,7 +102,6 @@ class ExtractAndGoSell(Behaviour):
 
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
-        time.sleep(ship.seconds_until_cooldown)
         if ship.can_survey:
             st.ship_survey(ship)
 
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    behaviour_params = {}  # {"asteroid_wp": "X1-QB20-13975F"}
+    behaviour_params = {"asteroid_wp": "X1-QV47-BA4Z"}
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
