@@ -26,7 +26,7 @@ from dispatcherWK16 import (
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+    BHVR_EXTRACT_AND_TRANSFER,
     BHVR_CHILL_AND_SURVEY,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
@@ -131,7 +131,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 ship.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for hauler in self.haulers:
@@ -152,7 +152,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 commander.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_GO_SELL,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         # find unvisited shipyards
@@ -243,7 +243,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 params,
             )
 
@@ -256,7 +256,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 params,
             )
         # determine current starting asteroid
@@ -304,7 +304,7 @@ class Conductor:
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             if len(self.extractors) < 10 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_MINING_DRONE")
-                new_behaviour = BHVR_EXTRACT_AND_TRANSFER_OR_SELL
+                new_behaviour = BHVR_EXTRACT_AND_TRANSFER
             if len(self.surveyors) < 1 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
                 new_behaviour = BHVR_REMOTE_SCAN_AND_SURV
@@ -447,7 +447,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.haulers = [ship for ship in ships if ship.role == "HAULER"]
         self.commanders = [ship for ship in ships if ship.role == "COMMAND"]
         self.hounds = [ship for ship in ships if ship.frame.symbol == "FRAME_MINER"]
-        self.extractors = [ship for ship in ships if ship.role == "EXTRACTOR"]
+        self.extractors = [ship for ship in ships if ship.role == "EXCAVATOR"]
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
 
 

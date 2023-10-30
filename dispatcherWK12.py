@@ -16,9 +16,9 @@ from behaviours.generic_behaviour import Behaviour
 import signal
 import random
 from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer_or_sell import (
-    ExtractAndTransferOrSell_8,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+from behaviours.extract_and_transfer import (
+    ExtractAndTransfer_8,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER,
 )
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
@@ -447,8 +447,8 @@ class dispatcher:
                 session=self.session,
                 connection=self.get_connection(),
             )
-        elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
-            bhvr = ExtractAndTransferOrSell_8(
+        elif id == BHVR_EXTRACT_AND_TRANSFER:
+            bhvr = ExtractAndTransfer_8(
                 aname,
                 sname,
                 bhvr_params,
