@@ -114,7 +114,7 @@ class ExtractAndTransfer_8(Behaviour):
         cutoff_cargo_limit = None
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
-        # self.extract_till_full(cargo_to_transfer, cutoff_cargo_limit)
+        self.extract_till_full(cargo_to_transfer, cutoff_cargo_limit)
 
         #
         # find a hauler from any of the matching agents, use a commander if we have zero dedicated haulers
