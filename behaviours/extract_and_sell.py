@@ -71,7 +71,7 @@ class ExtractAndGoSell(Behaviour):
                     # start simple, find the best market for each good, in terms of CPH
 
                     options = self.find_best_market_systems_to_sell(tradegood.symbol)
-                    best_option = None
+                    best_option = [None, None]
                     best_cph = 0
                     for option in options:
                         distance = self.pathfinder.calc_distance_between(

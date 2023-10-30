@@ -44,6 +44,7 @@ class ExtractAndTransfer_8(Behaviour):
 
         st = self.st
         ship = self.ship = st.ships_view_one(self.ship.name, True)
+        st.ship_cooldown(ship)
         self.ships = st.ships_view()
         agent = st.view_my_self()
 
@@ -84,7 +85,7 @@ class ExtractAndTransfer_8(Behaviour):
         #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.
         #
 
-        cargo_to_transfer = self.behaviour_params.get("cargo_to_transfer", [])
+        cargo_to_transfer = self.behaviour_params.get("cargo_to_transfer", ["*"])
         if isinstance(cargo_to_transfer, str):
             cargo_to_transfer = [cargo_to_transfer]
 
@@ -128,7 +129,7 @@ class ExtractAndTransfer_8(Behaviour):
 
         refiners = self.find_refiners(ship.nav.waypoint_symbol)
         for cargo in ship.cargo_inventory:
-            if cargo.symbol in cargo_to_transfer:
+            if cargo.symbol in cargo_to_transfer or cargo_to_transfer == ["*"]:
                 for hauler in refiners + haulers:
                     hauler: Ship
                     hauler_space = hauler.cargo_capacity - hauler.cargo_units_used

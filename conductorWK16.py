@@ -307,7 +307,7 @@ class Conductor:
                 new_behaviour = BHVR_EXTRACT_AND_TRANSFER
             if len(self.surveyors) < 1 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
-                new_behaviour = BHVR_REMOTE_SCAN_AND_SURV
+                new_behaviour = BHVR_CHILL_AND_SURVEY
 
             self.ships_we_might_buy = [
                 "SHIP_MINING_DRONE",
