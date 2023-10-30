@@ -10,7 +10,7 @@ from straders_sdk.utils import set_logging, waypoint_slicer
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL_8"
 
 
-class ExtractAndTransferOrSell_8(Behaviour):
+class ExtractAndTransfer_8(Behaviour):
     """Expects the following behaviour_params
 
     Optional:
@@ -44,6 +44,7 @@ class ExtractAndTransferOrSell_8(Behaviour):
 
         st = self.st
         ship = self.ship = st.ships_view_one(self.ship.name, True)
+        self.ships = st.ships_view()
         agent = st.view_my_self()
 
         #
@@ -68,14 +69,17 @@ class ExtractAndTransferOrSell_8(Behaviour):
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
                 )
             target_sys_sym = waypoint_slicer(target_wp_sym)
+            target_wp = st.waypoints_view_one(target_sys_sym, target_wp_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
+        self.sleep_until_ready()
         self.ship_extrasolar(st.systems_view_one(target_sys_sym))
         self.ship_intrasolar(target_wp_sym)
+
         #
         #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.
         #
@@ -85,7 +89,6 @@ class ExtractAndTransferOrSell_8(Behaviour):
             cargo_to_transfer = [cargo_to_transfer]
 
         if cargo_to_transfer == []:
-            self.logger.info("st.view_my_contracts() is triggering a needless request")
             contracts = st.view_my_contracts()
             if contracts:
                 for contract in contracts:
@@ -111,20 +114,26 @@ class ExtractAndTransferOrSell_8(Behaviour):
         cutoff_cargo_limit = None
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
-        self.extract_till_full(cargo_to_transfer, cutoff_cargo_limit)
+        # self.extract_till_full(cargo_to_transfer, cutoff_cargo_limit)
 
         #
-        # find a hauler from any of the matching agents.
+        # find a hauler from any of the matching agents, use a commander if we have zero dedicated haulers
         #
+
+        total_haulers = [s for s in self.ships.values() if s.role == "HAULER"]
+        if len(total_haulers) > 0:
+            haulers = self.find_haulers(ship.nav.waypoint_symbol)
+        else:
+            haulers = self.find_adjacent_ships(ship.nav.waypoint_symbol, ["COMMAND"])
 
         refiners = self.find_refiners(ship.nav.waypoint_symbol)
-        haulers = self.find_haulers(ship.nav.waypoint_symbol)
         for cargo in ship.cargo_inventory:
             if cargo.symbol in cargo_to_transfer:
                 for hauler in refiners + haulers:
                     hauler: Ship
                     hauler_space = hauler.cargo_capacity - hauler.cargo_units_used
-
+                    if hauler_space == 0:
+                        continue
                     qty_to_transfer = min(
                         hauler.cargo_capacity - hauler.cargo_units_used, cargo.units
                     )
@@ -151,8 +160,10 @@ class ExtractAndTransferOrSell_8(Behaviour):
         if "MARKETPLACE" in target_wp.traits:
             self.sell_all_cargo()
         if ship.cargo_units_used == ship.cargo_capacity:
-            self.logger.info("Ship unable to do anything, sleeping for 300s")
-            time.sleep(300)
+            self.logger.info(
+                "Ship unable to do anything, sleeping for 1 minute - hoping for a transport."
+            )
+            time.sleep(60)
 
         #
         # end of script.
@@ -178,15 +189,15 @@ class ExtractAndTransferOrSell_8(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "1"
+    ship_suffix = "3"
     ship = f"{agent_symbol}-{ship_suffix}"
     params = {
         # "fulfill_wp": "X1-CN90-22412Z",
-        "asteroid_wp": "X1-QV47-B25",
+        "asteroid_wp": "X1-QV47-BA4Z",
         # "cargo_to_transfer": ["ALUMINUM_ORE"],
     }
     # params = {"asteroid_wp": "X1-JX88-51095C"}
-    bhvr = ExtractAndTransferOrSell_8(agent_symbol, f"{ship}", params)
+    bhvr = ExtractAndTransfer_8(agent_symbol, f"{ship}", params)
 
     from dispatcherWK16 import lock_ship
 
