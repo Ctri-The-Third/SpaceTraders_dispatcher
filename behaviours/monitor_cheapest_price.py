@@ -41,7 +41,7 @@ class MonitorPrices(Behaviour):
         scan_thread = threading.Thread(
             target=self.scan_waypoints, daemon=False, name="scan_thread"
         )
-        scan_thread.start()
+        # scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 

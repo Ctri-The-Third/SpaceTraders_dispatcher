@@ -20,7 +20,7 @@ import time
 from dispatcherWK12 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
-    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+    BHVR_EXTRACT_AND_TRANSFER,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_RECEIVE_AND_REFINE,
@@ -111,7 +111,7 @@ def run(client: SpaceTraders):
         set_behaviour(
             connection,
             excavator.name,
-            BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+            BHVR_EXTRACT_AND_TRANSFER,
             extraction_params,
         )
     for hauler in haulers:
