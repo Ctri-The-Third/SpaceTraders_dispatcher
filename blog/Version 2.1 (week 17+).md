@@ -9,11 +9,17 @@ I've decided that I'm going to match the SDK models to the new changes, even if 
 
 I've noticed that everything breaking has triggered the "setback effect", which was identifed as the primary risk to this project losing momentum and wandiner off. Therefore the response to this patch, which is happening in the middle of tumultuous life events, is going to be key to whether or not we continue playing SpaceTraders or not.
 
+## Step Zero - Afford a Hauler
+- Looking at earning credits, fuel _seems_ like it'll be a large impact, with refuels needing to happen repeatedly.
+- I think we can buy hydrocarbon and sell it to the refinery, which will give us a place to buy fuel that's reliably cheap
+- no I'm getting off target. We can just consider jettisonning the things that aren't worth the CPS to sell.
+- then we'll be able to get a siphoner drone and use that to increase our rate of getting hydrocarbons
+- then we'll be able to get a hauler and use the command frigate for mining
 
 ## Step One - Build the jump gate
 -  ✅ Our first step is to get the Dispatcher and Conductor working without crashing.
 - Secondly we'll want a very rudimentary drone based solution to get credits flowing in.
-  - we should target the nearest asteroid, not the first one returned by the DB.
+  - ✅ we should target the nearest asteroid, not the first one returned by the DB.
   - fairly sure my first extractor is drifting to the target asteroid - need set in some behaviour for flight-mode handling for drones.
   - I've decided our fleet goal will be 10 extractors, 2 surveyors, 1 transporter. will need to do analytics on the effectiveness of this.
   - I'm going to skip upgrading behaviour for now and turn that off. Specifically all the values have changed and I want to make it less hard coded and more compatible with an aribtrary ship configuration coming in.

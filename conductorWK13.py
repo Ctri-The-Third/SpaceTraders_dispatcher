@@ -25,7 +25,7 @@ from dispatcherWK12 import (
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+    BHVR_EXTRACT_AND_TRANSFER,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -191,7 +191,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 params,
             )
 
