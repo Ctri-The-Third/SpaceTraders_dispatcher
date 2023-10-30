@@ -19,9 +19,9 @@ from behaviours.extract_and_sell import (
 )
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer_or_sell import (
-    ExtractAndTransferOrSell_8,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+from behaviours.extract_and_transfer import (
+    ExtractAndTransfer_8,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER,
 )
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
@@ -96,7 +96,7 @@ class dispatcher:
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
-        self.session = LimiterSession(per_second=3, per_hour=10800)
+        self.session = LimiterSession(per_second=2, per_hour=10800)
         self.session.mount(
             "https://api.spacetraders.io",
             HTTPAdapter(pool_maxsize=self.max_connections),
@@ -191,7 +191,7 @@ class dispatcher:
         ships_and_threads["scan_thread"] = threading.Thread(
             target=self.maybe_scan_all_systems, daemon=True
         )
-        ships_and_threads["scan_thread"].start()
+        # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
             # if we've been running for more than 12 hours, terminate. important for profiling.
@@ -453,10 +453,8 @@ class dispatcher:
             bhvr = ReceiveAndFulfillOrSell_3(
                 aname, sname, behaviour_params, session=self.session
             )
-        elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
-            bhvr = ExtractAndTransferOrSell_8(
-                aname, sname, bhvr_params, session=self.session
-            )
+        elif id == BHVR_EXTRACT_AND_TRANSFER:
+            bhvr = ExtractAndTransfer_8(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
             bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXPLORE_SYSTEM:
@@ -495,6 +493,8 @@ class dispatcher:
         hq_system = st.systems_view_one(waypoint_slicer(headquarters), True)
         for waypoint in hq_system.waypoints:
             waypoint = st.waypoints_view_one(hq_system.symbol, waypoint.symbol)
+            if not waypoint:
+                continue
             if len(waypoint.traits) == 0 or waypoint.type != "JUMP_GATE":
                 # refresh the traits
                 waypoint = st.waypoints_view_one(
