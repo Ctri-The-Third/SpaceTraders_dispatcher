@@ -92,7 +92,8 @@ class MonitorPrices(Behaviour):
             self.end()
 
             time.sleep(30)
-        scan_thread.join()
+        if scan_thread.is_alive():
+            scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
     def scan_waypoints(self):
