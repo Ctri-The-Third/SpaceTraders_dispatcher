@@ -188,9 +188,10 @@ class dispatcher:
         self.client.ships_view(force=True)
 
         # rather than tying this behaviour to the probe, this is executed at the dispatcher level.
-        ships_and_threads["scan_thread"] = threading.Thread(
-            target=self.maybe_scan_all_systems, daemon=True
-        )
+
+        # ships_and_threads["scan_thread"] = threading.Thread(
+        #    target=self.maybe_scan_all_systems, daemon=True
+        # )
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
