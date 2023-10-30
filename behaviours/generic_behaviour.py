@@ -140,6 +140,7 @@ class Behaviour:
     ):
         if isinstance(target_wp_symbol, Waypoint):
             target_wp_symbol = target_wp_symbol.symbol
+
         st = self.st
         ship = self.ship
         origin_waypoint = st.waypoints_view_one(
@@ -153,7 +154,7 @@ class Behaviour:
                 error_code=4202,
                 url=f"{__name__}.ship_intrasolar",
             )
-        wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
+        wp = self.st.waypoints_view_one(target_sys_symbol, target_wp_symbol)
 
         fuel_cost = self.pathfinder.determine_fuel_cost(origin_waypoint, wp)
         if (
@@ -201,7 +202,7 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
-        if current_wayp.type != "ASTEROID":
+        if "ASTEROID" not in current_wayp.type:
             self.logger.error(
                 "Ship is not in an asteroid field, sleeping then aborting"
             )
@@ -220,7 +221,6 @@ class Behaviour:
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
-        cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
 
         if len(cargo_to_target) > 0:
             survey = (
@@ -231,7 +231,10 @@ class Behaviour:
         else:
             survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
+        cutoff_cargo_units_used = ship.cargo_capacity
         while ship.cargo_units_used < cutoff_cargo_units_used:
+            cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
+
             # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
             self.sleep_until_ready()
 
@@ -262,6 +265,9 @@ class Behaviour:
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
+        current_wayp = self.st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
         maybe_refuel_points = self.st.find_waypoints_by_trait(
             self.ship.nav.system_symbol, "MARKETPLACE"
         )
@@ -286,7 +292,7 @@ class Behaviour:
             flight_mode = ship.nav.flight_mode
 
             if (
-                self.pathfinder.determine_fuel_cost(ship, nearest_refuel_wp)
+                self.pathfinder.determine_fuel_cost(current_wayp, nearest_refuel_wp)
                 > ship.fuel_current
             ):
                 flight_mode = "DRIFT"
