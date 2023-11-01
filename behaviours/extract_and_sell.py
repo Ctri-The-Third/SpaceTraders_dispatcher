@@ -65,14 +65,15 @@ class ExtractAndGoSell(Behaviour):
             )
 
             if not market_wp_sym:
-                best_option = [None, None]
+                best_tradegood_option = [None, None]
                 # find a market that buys all the cargo we're selling
+                best_total_cph = 0
                 for tradegood in ship.cargo_inventory:
                     # start simple, find the best market for each good, in terms of CPH
 
                     options = self.find_best_market_systems_to_sell(tradegood.symbol)
-                    best_option = [None, None]
-                    best_cph = 0
+                    best_tradegood_option = [None, None]
+                    best_tradegood_cph = 0
                     for option in options:
                         distance = self.pathfinder.calc_distance_between(
                             target_wp, option[1]
@@ -81,11 +82,13 @@ class ExtractAndGoSell(Behaviour):
                             target_wp, option[1], ship.engine.speed or 30
                         )
                         cph = (option[2] * tradegood.units) / time_to_target + 60
-                        if cph > best_cph:
-                            best_option = option
-                            best_cph = cph
-                market_wp_sym = best_option[0]
-                market_wp = best_option[1]
+                        if cph > best_tradegood_cph:
+                            best_tradegood_option = option
+                            best_tradegood_cph = cph
+                    if best_tradegood_cph > best_total_cph:
+                        best_total_cph = best_tradegood_cph
+                        market_wp_sym = best_tradegood_option[0]
+                        market_wp = best_tradegood_option[1]
                 # go through each option, determine CPH and pick the best one.
                 # Throw in a 1 minute offset   so that selling at distance 0 isn't always best.
 
@@ -102,6 +105,7 @@ class ExtractAndGoSell(Behaviour):
 
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
+        self.sleep_until_ready()
         if ship.can_survey:
             st.ship_survey(ship)
 
@@ -111,6 +115,7 @@ class ExtractAndGoSell(Behaviour):
         self.extract_till_full([], cutoff_cargo_limit)
         self.ship_intrasolar(market_wp_sym)
         self.sell_all_cargo()
+
         st.system_market(current_wp, True)
 
         self.end()
