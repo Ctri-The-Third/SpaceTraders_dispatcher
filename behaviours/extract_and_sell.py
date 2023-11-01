@@ -42,6 +42,7 @@ class ExtractAndGoSell(Behaviour):
 
         # this behaviour involves inventory, which isn't stashed in the SDK yet
         ship = self.ship = self.st.ships_view_one(self.ship.name, True)
+        self.st.ship_cooldown(ship)
         st = self.st
         agent = self.agent
         if not ship.can_extract:
@@ -64,34 +65,6 @@ class ExtractAndGoSell(Behaviour):
                 None,
             )
 
-            if not market_wp_sym:
-                best_tradegood_option = [None, None]
-                # find a market that buys all the cargo we're selling
-                best_total_cph = 0
-                for tradegood in ship.cargo_inventory:
-                    # start simple, find the best market for each good, in terms of CPH
-
-                    options = self.find_best_market_systems_to_sell(tradegood.symbol)
-                    best_tradegood_option = [None, None]
-                    best_tradegood_cph = 0
-                    for option in options:
-                        distance = self.pathfinder.calc_distance_between(
-                            target_wp, option[1]
-                        )
-                        time_to_target = self.pathfinder.calc_travel_time_between_wps(
-                            target_wp, option[1], ship.engine.speed or 30
-                        )
-                        cph = (option[2] * tradegood.units) / time_to_target + 60
-                        if cph > best_tradegood_cph:
-                            best_tradegood_option = option
-                            best_tradegood_cph = cph
-                    if best_tradegood_cph > best_total_cph:
-                        best_total_cph = best_tradegood_cph
-                        market_wp_sym = best_tradegood_option[0]
-                        market_wp = best_tradegood_option[1]
-                # go through each option, determine CPH and pick the best one.
-                # Throw in a 1 minute offset   so that selling at distance 0 isn't always best.
-
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
@@ -113,8 +86,14 @@ class ExtractAndGoSell(Behaviour):
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
         self.extract_till_full([], cutoff_cargo_limit)
-        self.ship_intrasolar(market_wp_sym)
-        self.sell_all_cargo()
+
+        if not market_wp_sym:
+            market_wp_sym = self.get_market_wp(ship, st, current_wp.symbol)
+        if market_wp_sym:
+            self.ship_intrasolar(market_wp_sym)
+            self.sell_all_cargo()
+        else:
+            self.jettison_all_cargo()
 
         st.system_market(current_wp, True)
 
@@ -125,6 +104,34 @@ class ExtractAndGoSell(Behaviour):
             agent.credits,
             agent.credits - starting_credts,
         )
+
+    def get_market_wp(self, ship: Ship, client: SpaceTraders, starting_wp: str) -> str:
+        market_wp_sym = None
+        best_tradegood_option = [None, None]
+        # find a market that buys all the cargo we're selling
+        target_wp = client.waypoints_view_one(waypoint_slicer(starting_wp), starting_wp)
+        best_total_cph = 0
+        for tradegood in ship.cargo_inventory:
+            # start simple, find the best market for each good, in terms of CPH
+
+            options = self.find_best_market_systems_to_sell(tradegood.symbol)
+            best_tradegood_option = [None, None]
+            best_tradegood_cph = 0
+            for option in options:
+                distance = self.pathfinder.calc_distance_between(target_wp, option[1])
+                time_to_target = self.pathfinder.calc_travel_time_between_wps(
+                    target_wp, option[1], ship.engine.speed or 30
+                )
+                cph = (option[2] * tradegood.units) / time_to_target + 60
+                if cph > best_tradegood_cph:
+                    best_tradegood_option = option
+                    best_tradegood_cph = cph
+            if best_tradegood_cph > best_total_cph:
+                best_total_cph = best_tradegood_cph
+                market_wp_sym = best_tradegood_option[0]
+        return market_wp_sym
+        # go through each option, determine CPH and pick the best one.
+        # Throw in a 1 minute offset   so that selling at distance 0 isn't always best.
 
 
 if __name__ == "__main__":
