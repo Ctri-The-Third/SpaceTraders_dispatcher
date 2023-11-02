@@ -229,7 +229,10 @@ class Conductor:
             )
 
         # send haulers to go buy things
-        self.assign_traderoutes_to_ships(self.haulers)
+        if len(self.haulers) > 0:
+            self.assign_traderoutes_to_ships(self.haulers)
+        else: 
+            self.assign_traderoutes_to_ships(self.commanders)
         # for hauler in self.haulers:
         #    params = {"asteroid_wp": self.asteroid_wps[0].symbol}
         #    BHVR_RECEIVE_AND_FULFILL
@@ -259,7 +262,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER,
+                BHVR_EXTRACT_AND_GO_SELL,
                 params,
             )
         # determine current starting asteroid
@@ -367,17 +370,17 @@ class Conductor:
 
     def assign_traderoutes_to_ships(self, ships: list[Ship]):
         routes = self.get_trade_routes(len(ships))
-        for i in enumerate(len(ships)):
-            ship = ships[i]
-            route = routes[i]
+        for i, ship in enumerate(ships):
+            
+            tradegood, buy_wp, sell_wp = routes[i]
             set_behaviour(
                 self.connection,
                 ship.name,
                 BHVR_BUY_AND_DELIVER_OR_SELL,
                 behaviour_params={
-                    "buy_wp": route["buy_wp"],
-                    "sell_wp": route["sell_wp"],
-                    "tradegood": route["tradegood"],
+                    "buy_wp": buy_wp,
+                    "sell_wp": sell_wp,
+                    "tradegood": tradegood
                 },
             )
 
@@ -469,7 +472,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.extractors = [ship for ship in ships if ship.role == "EXCAVATOR"]
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
 
-    def get_trade_routes(self, limit=None) -> list[dict]:
+    def get_trade_routes(self, limit=None) -> list[tuple]:
         if not limit:
             limit = len(self.haulers)
         sql = """select route_value, system_symbol, trade_symbol, profit_per_unit, export_market, import_market, market_depth
@@ -478,10 +481,11 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         routes = try_execute_select(self.connection, sql, (limit,))
         if not routes:
             return []
-        for route in routes:
-            route = {}
+        return [(r[2], r[4],r[5]) for r in routes]
+            
 
-            # tradegood, quantity
+            # tradegood
+            # buy_wp
             # sell_wp
 
 
