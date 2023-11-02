@@ -310,7 +310,11 @@ class Conductor:
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             if len(self.extractors) < 10 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_MINING_DRONE")
-                new_behaviour = BHVR_EXTRACT_AND_TRANSFER
+                new_behaviour = (
+                    BHVR_EXTRACT_AND_GO_SELL
+                    if len(self.haulers) == 0
+                    else BHVR_EXTRACT_AND_TRANSFER
+                )
             if len(self.surveyors) < 1 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
                 new_behaviour = BHVR_CHILL_AND_SURVEY
@@ -472,6 +476,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.hounds = [ship for ship in ships if ship.frame.symbol == "FRAME_MINER"]
         self.extractors = [ship for ship in ships if ship.role == "EXCAVATOR"]
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
+        self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
 
     def get_trade_routes(self, limit=None) -> list[tuple]:
         if not limit:
