@@ -306,7 +306,7 @@ class Behaviour:
             self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
             self.st.ship_dock(ship)
             self.st.ship_refuel(ship)
-            if flight_mode:
+            if flight_mode and flight_mode != ship.nav.flight_mode:
                 self.st.ship_patch_nav(ship, flight_mode)
 
     def sell_all_cargo(self, exceptions: list = [], market: Market = None):
