@@ -41,6 +41,7 @@ However in version 2.1 you need to visit multiple markets to sell everything.
 Problem: The behaviour only supports a single sell point per execution
 Problem: The behaviour has no support for jettisonning unsellable cargo
 Problem: The behaviour is not smart about which cargo to prioritise extracting and selling. 
+Problem: Haulers sitting idle at waypoints waiting to receive cargo
 
 Solution: Conductor should look at markets, proximity of source, and value of cargo to determine where to mine, where to sell, and what to sell.
 ```
@@ -51,4 +52,5 @@ Record each asteroid's sell CPS, and assign to fleet groupings accordingly.
 ```
 Solution: Default behaviour should try and sell everything, and jettison anything it can't.
 Solution: Update the "Sell All" behaviour to only sell cargo the marketplace will accept.
+Solution: Get inventory info into the DB & 
 
