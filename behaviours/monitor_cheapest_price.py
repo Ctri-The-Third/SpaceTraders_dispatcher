@@ -75,9 +75,10 @@ class MonitorPrices(Behaviour):
             time.sleep(60)
             return
         else:
-            print(
-                f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
-            )
+            # print(
+            #    f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
+            # )
+            pass
 
         target_wp = row[0]
         target_sys_sym = waypoint_slicer(target_wp)
