@@ -231,7 +231,7 @@ class Conductor:
         # send haulers to go buy things
         if len(self.haulers) > 0:
             self.assign_traderoutes_to_ships(self.haulers)
-        else: 
+        else:
             self.assign_traderoutes_to_ships(self.commanders)
         # for hauler in self.haulers:
         #    params = {"asteroid_wp": self.asteroid_wps[0].symbol}
@@ -370,8 +370,9 @@ class Conductor:
 
     def assign_traderoutes_to_ships(self, ships: list[Ship]):
         routes = self.get_trade_routes(len(ships))
+        if not routes:
+            return
         for i, ship in enumerate(ships):
-            
             tradegood, buy_wp, sell_wp = routes[i]
             set_behaviour(
                 self.connection,
@@ -380,7 +381,7 @@ class Conductor:
                 behaviour_params={
                     "buy_wp": buy_wp,
                     "sell_wp": sell_wp,
-                    "tradegood": tradegood
+                    "tradegood": tradegood,
                 },
             )
 
@@ -481,12 +482,11 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         routes = try_execute_select(self.connection, sql, (limit,))
         if not routes:
             return []
-        return [(r[2], r[4],r[5]) for r in routes]
-            
+        return [(r[2], r[4], r[5]) for r in routes]
 
-            # tradegood
-            # buy_wp
-            # sell_wp
+        # tradegood
+        # buy_wp
+        # sell_wp
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:
