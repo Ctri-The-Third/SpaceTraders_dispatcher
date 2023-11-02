@@ -251,7 +251,7 @@ class Conductor:
         for extractor in self.extractors[len(self.refiners) :]:
             params = {
                 "asteroid_wp": self.asteroid_wps[0].symbol,
-                "cargo_to_transfer": [best_extractable[0]],
+                "cargo_to_transfer": ["*"],  # transfer everything
             }
             set_behaviour(
                 self.connection,
