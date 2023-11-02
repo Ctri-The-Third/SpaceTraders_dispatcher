@@ -147,6 +147,13 @@ class Behaviour:
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
+        if ship.nav.waypoint_symbol == target_wp_symbol:
+            return LocalSpaceTradersRespose(
+                error="Ship is already at the target waypoint",
+                status_code=0,
+                error_code=4204,
+                url=f"{__name__}.ship_intrasolar",
+            )
         if ship.nav.system_symbol != target_sys_symbol:
             return LocalSpaceTradersRespose(
                 error="Ship is not in the same system as the target waypoint",
