@@ -88,7 +88,9 @@ class ExtractAndGoSell(Behaviour):
         self.extract_till_full([], cutoff_cargo_limit)
 
         if not market_wp_sym:
-            market_wp_sym = self.get_market_wp(ship, st, current_wp.symbol)
+            market_wp_sym = self.get_market_and_jettison_waste(
+                ship, st, current_wp.symbol
+            )
         if market_wp_sym:
             self.ship_intrasolar(market_wp_sym)
             self.sell_all_cargo()
@@ -105,7 +107,9 @@ class ExtractAndGoSell(Behaviour):
             agent.credits - starting_credts,
         )
 
-    def get_market_wp(self, ship: Ship, client: SpaceTraders, starting_wp: str) -> str:
+    def get_market_and_jettison_waste(
+        self, ship: Ship, client: SpaceTraders, starting_wp: str
+    ) -> str:
         market_wp_sym = None
         best_tradegood_option = [None, None]
         # find a market that buys all the cargo we're selling
@@ -115,6 +119,8 @@ class ExtractAndGoSell(Behaviour):
             # start simple, find the best market for each good, in terms of CPH
 
             options = self.find_best_market_systems_to_sell(tradegood.symbol)
+            if len(options) == 0:
+                client.ship_jettison_cargo(ship, tradegood.symbol, tradegood.units)
             best_tradegood_option = [None, None]
             best_tradegood_cph = 0
             for option in options:
