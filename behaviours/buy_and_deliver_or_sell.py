@@ -10,7 +10,8 @@ from behaviours.generic_behaviour import Behaviour
 import logging
 import time
 import math
-
+from straders_sdk.responses import SpaceTradersResponse
+from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "BUY_AND_DELIVER_OR_SELL"
@@ -138,9 +139,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 )
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-        self.end()
+        self.jettison_all_cargo([target_tradegood])
 
-        time.sleep(SAFETY_PADDING)
+        self.end()
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings
@@ -163,7 +164,7 @@ order by purchase_price asc """
         path: list,
         max_to_buy: int,
         target_tradegood: str,
-    ):
+    ) -> LocalSpaceTradersRespose:
         ship = self.ship
         st = self.st
         if ship.nav.system_symbol != target_system.symbol:
@@ -178,7 +179,7 @@ order by purchase_price asc """
                 "No market found at waypoint %s", ship.nav.waypoint_symbol
             )
             time.sleep(SAFETY_PADDING)
-            return
+            return current_market
 
         # empty anything that's not the goal.
         self.sell_all_cargo([target_tradegood], current_market)
@@ -215,8 +216,9 @@ order by purchase_price asc """
                     "Couldn't buy any %s, are we full? Is our market data out of date? Did we have enough money? I've done a refresh.  Manual intervention maybe required."
                 )
                 time.sleep(SAFETY_PADDING)
-                return
+                return resp
         self.st.system_market(target_waypoint, True)
+        return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
 
     def deliver_half(
         self, target_system, target_waypoint: "Waypoint", target_tradegood: str

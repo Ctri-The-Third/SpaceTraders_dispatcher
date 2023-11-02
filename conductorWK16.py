@@ -28,6 +28,7 @@ from dispatcherWK16 import (
     BHVR_EXPLORE_SYSTEM,
     BHVR_EXTRACT_AND_TRANSFER,
     BHVR_CHILL_AND_SURVEY,
+    BHVR_BUY_AND_DELIVER_OR_SELL,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -127,11 +128,12 @@ class Conductor:
                 )
                 resp = sorted(resp, key=partial_calc_dist)
                 self.asteroid_wps = resp
+
         for ship in self.extractors:
             set_behaviour(
                 self.connection,
                 ship.name,
-                BHVR_EXTRACT_AND_TRANSFER,
+                BHVR_EXTRACT_AND_GO_SELL,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for hauler in self.haulers:
@@ -145,7 +147,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 surveyor.name,
-                BHVR_REMOTE_SCAN_AND_SURV,
+                BHVR_CHILL_AND_SURVEY,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for commander in self.commanders:
@@ -226,13 +228,14 @@ class Conductor:
                 self.connection, refiner.name, BHVR_RECEIVE_AND_REFINE, params
             )
 
-        # send haulers to asteroid
-        for hauler in self.haulers:
-            params = {"asteroid_wp": self.asteroid_wps[0].symbol}
-            BHVR_RECEIVE_AND_FULFILL
-            set_behaviour(
-                self.connection, hauler.name, BHVR_RECEIVE_AND_FULFILL, params
-            )
+        # send haulers to go buy things
+        self.assign_traderoutes_to_ships(self.haulers)
+        # for hauler in self.haulers:
+        #    params = {"asteroid_wp": self.asteroid_wps[0].symbol}
+        #    BHVR_RECEIVE_AND_FULFILL
+        #    set_behaviour(
+        #        self.connection, hauler.name, BHVR_RECEIVE_AND_FULFILL, params
+        #    )
 
         # send ore hounds to asteroid and tell them to extract and transfer
         for extractor in self.extractors[0 : len(self.refiners)]:
@@ -361,6 +364,22 @@ class Conductor:
                 behaviour_params={"ship_type": self.ships_we_might_buy[i]},
             )
         self.maybe_upgrade_ship()
+
+    def assign_traderoutes_to_ships(self, ships: list[Ship]):
+        routes = self.get_trade_routes(len(ships))
+        for i in enumerate(len(ships)):
+            ship = ships[i]
+            route = routes[i]
+            set_behaviour(
+                self.connection,
+                ship.name,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                behaviour_params={
+                    "buy_wp": route["buy_wp"],
+                    "sell_wp": route["sell_wp"],
+                    "tradegood": route["tradegood"],
+                },
+            )
 
     def maybe_upgrade_ship(self):
         # surveyors first, then extractors
