@@ -26,5 +26,29 @@ I've noticed that everything breaking has triggered the "setback effect", which 
 - Our "ships we might buy" assumes multiple shipyards automatically. In the early game, only one probe is needed, buying 2 extra has negatively impacted things.
 
 
-Points 
-- 🏆 cargo cuttoff in behaviour 8 is already pegged to the mining strength and cargo size of the ship. 👏
+
+# Difficulties & Solutions
+The problems we faced, the reasoning behidn the solution, and the observed outcomes.
+
+
+
+
+### disparate sell points
+
+In version 2.0, you could sell pretty much everything you extracted at a single marketplace.  
+However in version 2.1 you need to visit multiple markets to sell everything.
+
+Problem: The behaviour only supports a single sell point per execution
+Problem: The behaviour has no support for jettisonning unsellable cargo
+Problem: The behaviour is not smart about which cargo to prioritise extracting and selling. 
+
+Solution: Conductor should look at markets, proximity of source, and value of cargo to determine where to mine, where to sell, and what to sell.
+```
+Select all asteroids in system.
+For each asteroid, determine the things it CAN supply based on traits. 
+For each supplyable, determine CPS of travel time (assume immediate and perfect extraction)
+Record each asteroid's sell CPS, and assign to fleet groupings accordingly.
+```
+Solution: Default behaviour should try and sell everything, and jettison anything it can't.
+Solution: Update the "Sell All" behaviour to only sell cargo the marketplace will accept.
+
