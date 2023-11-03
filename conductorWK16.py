@@ -451,25 +451,12 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         if not routes:
             return []
         return_obj = []
-        for r in routes:
-            sql = """select trade_symbol from trade_routes_intrasystem tris 
-            where import_market = %s 
-            and export_market = %s
-            and profit_per_unit > 0"""
-            rows = try_execute_select(self.connection, sql, (r[4], r[5]))
-            if rows:
-                return_obj.append((r[2], r[4], r[5], rows[0][0]))
-            else:
-                return_obj.append((r[2], r[4], r[5], ""))
-        return return_obj
-        # tradegood
-        # buy_wp
-        # sell_wp
+        return [(r[2], r[4], r[5], r[3]) for r in routes]
 
     def log_shallow_trade_tasks(self):
         routes = self.get_shallow_trades()
         for route in routes:
-            trade_symbol, export_market, import_market, _ = route
+            trade_symbol, export_market, import_market, profit_per_unit = route
             log_task(
                 self.connection,
                 BHVR_BUY_AND_DELIVER_OR_SELL,
@@ -482,6 +469,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
                     "sell_wp": import_market,
                     "quantity": 35,
                     "tradegood": trade_symbol,
+                    "safety_profit_threshold": profit_per_unit / 2,
                 },
                 expiry=self.next_quarterly_update,
             )
@@ -495,7 +483,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         routes = try_execute_select(self.connection, sql, (limit,))
         if not routes:
             return []
-        return [(r[0], r[3], r[4], "") for r in routes]
+        return [(r[0], r[3], r[4], r[2]) for r in routes]
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:

@@ -66,8 +66,10 @@ class BuyAndDeliverOrSell_6(Behaviour):
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         target_tradegood = self.behaviour_params["tradegood"]
         start_system = st.systems_view_one(ship.nav.system_symbol)
-
-        self.jettison_all_cargo([target_tradegood, return_tradegood])
+        safety_profit_margin = self.behaviour_params.get(
+            "safety_profit_threshold", None
+        )
+        self.jettison_all_cargo([target_tradegood])
 
         max_to_buy = self.behaviour_params.get("quantity", ship.cargo_space_remaining)
 
@@ -82,6 +84,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 waypoint_slicer(self.behaviour_params["buy_wp"]),
                 self.behaviour_params["buy_wp"],
             )
+            source_market = st.system_market(source_wp)
+            source_listing = source_market.get_tradegood(target_tradegood)
         if "sell_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["sell_wp"])
@@ -89,6 +93,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_waypoint = st.waypoints_view_one(
                 end_system.symbol, self.behaviour_params["sell_wp"]
             )
+            end_market = st.system_market(end_waypoint)
+            end_listing = end_market.get_tradegood(target_tradegood)
         if "fulfil_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["fulfil_wp"])
@@ -102,6 +108,29 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_waypoint = st.waypoints_view_one(
                 end_system.symbol, receive_ship.nav.waypoint_symbol
             )
+        if "safety_profit_threshold" in self.behaviour_params:
+            if source_listing and end_listing:
+                projected_profit = (
+                    end_listing.sell_price - source_listing.purchase_price
+                )
+                if projected_profit < safety_profit_margin:
+                    self.logger.error(
+                        "Safety profit margin not met for %s", target_tradegood
+                    )
+
+                    self.st.logging_client.log_custom_event(
+                        "TRADER_SAFETY_MARGIN",
+                        ship.name,
+                        {
+                            "tradegood": target_tradegood,
+                            "margin": safety_profit_margin,
+                            "profit": source_listing.sell_price
+                            - end_listing.purchase_price,
+                        },
+                    )
+                    self.end()
+
+                    return
 
         if not target_waypoints:
             time.sleep(SAFETY_PADDING)
@@ -141,8 +170,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
                     resp.error,
                 )
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
+        self.jettison_all_cargo([target_tradegood])
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-        self.jettison_all_cargo([target_tradegood, return_tradegood])
+        self.end()
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings
