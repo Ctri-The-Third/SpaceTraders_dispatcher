@@ -41,7 +41,7 @@ class MonitorPrices(Behaviour):
         scan_thread = threading.Thread(
             target=self.scan_waypoints, daemon=False, name="scan_thread"
         )
-        scan_thread.start()
+        # scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
@@ -75,9 +75,10 @@ class MonitorPrices(Behaviour):
             time.sleep(60)
             return
         else:
-            print(
-                f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
-            )
+            # print(
+            #    f"Searching for ship {rows[0][1]} at system {route.end_system.symbol}"
+            # )
+            pass
 
         target_wp = row[0]
         target_sys_sym = waypoint_slicer(target_wp)
@@ -92,7 +93,8 @@ class MonitorPrices(Behaviour):
             self.end()
 
             time.sleep(30)
-        scan_thread.join()
+        if scan_thread.is_alive():
+            scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
     def scan_waypoints(self):

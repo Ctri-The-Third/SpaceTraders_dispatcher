@@ -11,7 +11,7 @@ import json
 from straders_sdk.utils import try_execute_select
 from flask import Flask, request
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 config_file_name = "user.json"
 saved_data = json.load(open(config_file_name, "r+"))
@@ -178,25 +178,35 @@ def commander_overview():
     return response
 
 
+def chop_ms(time: timedelta):
+    return time - timedelta(microseconds=time.microseconds)
+
+
 def ship_overview(ship_id):
-    sql = """select agent_name, ship_symbol
-, ship_role
-, frame_symbol
-, waypoint_symbol
-, cargo_in_use
-, cargo_capacity
-, behaviour_id
-, last_updated 
-, cooldown_nav
-, behaviour_params
-from ship_overview
-where ship_symbol = %s
-order by agent_name, ship_role, frame_symbol, ship_symbol
+    sql = """select so.agent_name, so.ship_symbol
+, so.ship_role
+, so.frame_symbol
+, so.waypoint_symbol
+, so.cargo_in_use
+, so.cargo_capacity
+, so.behaviour_id
+, so.last_updated 
+, so.cooldown_nav
+, so.behaviour_params
+, snt.remaining_time 
+, sc.remaining
+from ship_overview so 
+left join ship_cooldown sc on so.ship_symbol = sc.ship_symbol
+left join ship_nav_time snt on so.ship_symbol = snt.ship_symbol
+where so.ship_symbol = %s
+order by so.agent_name, so.ship_role, so.frame_symbol, so.ship_symbol
 
     """
     rows = try_execute_select(connection, sql, (ship_id,))
 
     output_str = f"""
+
+    
 
 ## Ship {ship_id} 
 
@@ -211,6 +221,9 @@ order by agent_name, ship_role, frame_symbol, ship_symbol
 * Behaviour_id: {rows[0][7]} 
 
 * Behaviour_params {rows[0][10]}
+ 
+* Cooldown {chop_ms(rows[0][12])} & travel time {chop_ms(rows[0][11])}  
+
 
 ## logs 
 """

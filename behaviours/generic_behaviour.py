@@ -16,6 +16,7 @@ import logging
 import math
 import networkx
 import heapq
+import threading
 
 
 class Behaviour:
@@ -67,12 +68,13 @@ class Behaviour:
         self._graph = None
         self.ships = None
         self.agent = None
+        self.termination_event = threading.Event()
 
     @property
     def connection(self):
         if not self._connection or self._connection.closed > 0:
             self._connection = self.st.db_client.connection
-        self.logger.debug("connection PID: %s", self._connection.get_backend_pid())
+        # self.logger.debug("connection PID: %s", self._connection.get_backend_pid())
         return self._connection
 
     def run(self):
@@ -140,10 +142,20 @@ class Behaviour:
     ):
         if isinstance(target_wp_symbol, Waypoint):
             target_wp_symbol = target_wp_symbol.symbol
+
         st = self.st
         ship = self.ship
-
+        origin_waypoint = st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
+        if ship.nav.waypoint_symbol == target_wp_symbol:
+            return LocalSpaceTradersRespose(
+                error="Ship is already at the target waypoint",
+                status_code=0,
+                error_code=4204,
+                url=f"{__name__}.ship_intrasolar",
+            )
         if ship.nav.system_symbol != target_sys_symbol:
             return LocalSpaceTradersRespose(
                 error="Ship is not in the same system as the target waypoint",
@@ -151,13 +163,14 @@ class Behaviour:
                 error_code=4202,
                 url=f"{__name__}.ship_intrasolar",
             )
-        wp = self.st.waypoints_view_one(target_wp_symbol, target_wp_symbol)
+        wp = self.st.waypoints_view_one(target_sys_symbol, target_wp_symbol)
 
-        fuel_cost = self.determine_fuel_cost(self.ship, wp)
+        fuel_cost = self.pathfinder.determine_fuel_cost(origin_waypoint, wp)
         if (
             flight_mode != "DRIFT"
             and fuel_cost >= ship.fuel_current
             and ship.fuel_capacity > 0
+            and fuel_cost < ship.fuel_capacity
         ):
             # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
             self.go_and_refuel()
@@ -167,8 +180,8 @@ class Behaviour:
             and ship.nav.flight_mode != "DRIFT"
         ):
             st.ship_patch_nav(ship, "DRIFT")
-        elif ship.fuel_capacity == 0 and ship.nav.flight_mode != "BURN":
-            st.ship_patch_nav(ship, "BURN")
+        elif ship.nav.flight_mode != flight_mode:
+            st.ship_patch_nav(ship, flight_mode)
 
         if ship.nav.waypoint_symbol != target_wp_symbol:
             if ship.nav.status == "DOCKED":
@@ -198,7 +211,7 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
-        if current_wayp.type != "ASTEROID":
+        if "ASTEROID" not in current_wayp.type:
             self.logger.error(
                 "Ship is not in an asteroid field, sleeping then aborting"
             )
@@ -217,7 +230,6 @@ class Behaviour:
         st = self.st
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
-        cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
 
         if len(cargo_to_target) > 0:
             survey = (
@@ -228,7 +240,10 @@ class Behaviour:
         else:
             survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
+        cutoff_cargo_units_used = ship.cargo_capacity
         while ship.cargo_units_used < cutoff_cargo_units_used:
+            cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
+
             # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
             self.sleep_until_ready()
 
@@ -259,30 +274,41 @@ class Behaviour:
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
-        refuel_points = self.st.find_waypoints_by_trait(
+        current_wayp = self.st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
+        maybe_refuel_points = self.st.find_waypoints_by_trait(
             self.ship.nav.system_symbol, "MARKETPLACE"
         )
-        if not refuel_points:
+
+        if not maybe_refuel_points:
             self.st.waypoints_view(self.ship.nav.system_symbol, True)
             return LocalSpaceTradersRespose(
                 "No refuel points found in system. We should go extrasolar", 0, 0, ""
             )
         nearest_refuel_wp = None
         nearest_refuel_distance = 99999
-        for refuel_point in refuel_points:
+        for refuel_point in maybe_refuel_points:
             distance = self.distance_from_ship(ship, refuel_point)
             if distance < nearest_refuel_distance:
-                nearest_refuel_distance = distance
-                nearest_refuel_wp = refuel_point
+                market = self.st.system_market(refuel_point)
+                if "FUEL" in [
+                    listing.symbol for listing in market.listings
+                ] or "FUEL" in [exchange.symbol for exchange in market.exchange]:
+                    nearest_refuel_distance = distance
+                    nearest_refuel_wp = refuel_point
         if nearest_refuel_wp is not None:
             flight_mode = ship.nav.flight_mode
 
-            if self.determine_fuel_cost(ship, nearest_refuel_wp) > ship.fuel_current:
+            if (
+                self.pathfinder.determine_fuel_cost(current_wayp, nearest_refuel_wp)
+                > ship.fuel_current
+            ):
                 flight_mode = "DRIFT"
             self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
             self.st.ship_dock(ship)
             self.st.ship_refuel(ship)
-            if flight_mode:
+            if flight_mode and flight_mode != ship.nav.flight_mode:
                 self.st.ship_patch_nav(ship, flight_mode)
 
     def sell_all_cargo(self, exceptions: list = [], market: Market = None):
@@ -305,8 +331,13 @@ class Behaviour:
             trade_volume = cargo.units
             if listing:
                 trade_volume = listing.trade_volume
+            remaining_units = cargo.units
             for i in range(0, math.ceil(cargo.units / trade_volume)):
-                resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
+                resp = st.ship_sell(
+                    ship, cargo.symbol, min(remaining_units, trade_volume)
+                )
+                remaining_units = remaining_units - trade_volume
+
                 if not resp:
                     pass
                     # try the next cargo bit
@@ -391,6 +422,7 @@ order by 1 desc """
             sys = System(row[2], row[3], row[4], row[5], row[6], [])
             price = row[0]
             waypoint_symbol = row[1]
+
             return_obj.append((waypoint_symbol, sys, price))
         return return_obj
 
@@ -449,11 +481,66 @@ order by 1 desc """
                 return resp
         return True
 
+    def purchase_what_you_can(self, cargo_symbol: str, quantity: int):
+        # check current waypoint has a market that sells the tradegood
+        # check we have enough cargo space
+        # check we have enough credits
+
+        ship = self.ship
+        current_waypoint = self.st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
+        if "MARKETPLACE" not in [trait.symbol for trait in current_waypoint.traits]:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} is not a marketplace",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+
+        cargo_to_buy = min(quantity, ship.cargo_space_remaining)
+
+        current_market = self.st.system_market(current_waypoint)
+        if len(current_market.listings) == 0:
+            current_market = self.st.system_market(current_waypoint, True)
+        if cargo_symbol not in [l.symbol for l in current_market.listings]:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} does not have a listing for {cargo_symbol}",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+        found_listing = current_market.get_tradegood(cargo_symbol)
+
+        current_credits = self.st.view_my_self().credits
+        cargo_to_buy = min(
+            cargo_to_buy, math.floor(current_credits / found_listing.purchase_price)
+        )
+        if cargo_to_buy == 0:
+            return LocalSpaceTradersRespose(
+                f"Ship {ship.name} cannot buy cargo because we're too poor",
+                0,
+                0,
+                "generic_behaviour.purchase_what_you_can",
+            )
+        trade_volume = found_listing.trade_volume
+
+        for i in range(math.ceil(cargo_to_buy / trade_volume)):
+            resp = self.st.ship_purchase_cargo(
+                ship, cargo_symbol, min(trade_volume, cargo_to_buy)
+            )
+            cargo_to_buy -= trade_volume
+            if not resp:
+                return resp
+        return LocalSpaceTradersRespose(
+            None, 0, 0, "generic_behaviour.purchase_what_you_can"
+        )
+
     def scan_local_system(self):
         st = self.st
         ship = self.ship
         current_system_sym = self.ship.nav.system_symbol
-        flight_mode = "CRUISE" if ship.fuel_capacity > 0 else "BURN"
+
         # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
         # QUESTION
         st.waypoints_view(current_system_sym, True)
@@ -466,6 +553,8 @@ order by 1 desc """
         target_wayps.extend(marketplaces)
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
+        target_wayps = list(set(target_wayps))
+        # remove dupes from target_wayps
 
         start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
         path = self.nearest_neighbour(target_wayps, start)
@@ -473,7 +562,7 @@ order by 1 desc """
         for wayp_sym in path:
             waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
 
-            self.ship_intrasolar(wayp_sym, flight_mode=flight_mode)
+            self.ship_intrasolar(wayp_sym)
 
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             if "MARKETPLACE" in trait_symbols:
@@ -481,7 +570,7 @@ order by 1 desc """
                 if market:
                     for listing in market.listings:
                         print(
-                            f"item: {listing.symbol}, buy: {listing.purchase} sell: {listing.sell_price} - supply available {listing.supply}"
+                            f"item: {listing.symbol}, buy: {listing.purchase_price} sell: {listing.sell_price} - supply available {listing.supply}"
                         )
             if "SHIPYARD" in trait_symbols:
                 shipyard = st.system_shipyard(waypoint, True)
@@ -494,38 +583,11 @@ order by 1 desc """
     def sleep_until_ready(self):
         sleep_until_ready(self.ship)
 
-    def determine_fuel_cost(self, ship: "Ship", target_wp: "Waypoint") -> int:
-        st = self.st
-        source = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
-
-        speed = {"CRUISE": 1, "DRIFT": 0, "BURN": 2, "STEALTH": 1}
-        return int(
-            max(
-                self.pathfinder.get_distance_between(source, target_wp)
-                * speed[ship.nav.flight_mode],
-                1,
-            )
-        )
-
-    def determine_travel_time(self, ship: "Ship", target_wp: "Waypoint") -> int:
-        st = self.st
-        source = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
-
-        distance = math.sqrt(
-            (target_wp.x - source.x) ** 2 + (target_wp.y - source.y) ** 2
-        )
-        multiplier = {"CRUISE": 15, "DRIFT": 150, "BURN": 7.5, "STEALTH": 30}
-        (
-            math.floor(round(max(1, distance)))
-            * (multiplier[ship.nav.flight_mode] / ship.engine.speed)
-            + 15
-        )
-
     def distance_from_ship(self, ship: Ship, target_wp: Waypoint) -> float:
         source = self.st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
-        return self.pathfinder.get_distance_between(source, target_wp)
+        return self.pathfinder.calc_distance_between(source, target_wp)
 
     def ship_extrasolar(self, destination_system: System, route: JumpGateRoute = None):
         if isinstance(destination_system, str):
@@ -591,7 +653,7 @@ order by 1 desc """
             #   return the minimum value of those returned by the function.
             next_waypoint = min(
                 unplotted,
-                key=lambda wp: self.pathfinder.get_distance_between(current, wp),
+                key=lambda wp: self.pathfinder.calc_distance_between(current, wp),
             )
             path.append(next_waypoint.symbol)
             unplotted.remove(next_waypoint)
@@ -605,7 +667,7 @@ order by 1 desc """
         while unplotted:
             next_system = min(
                 unplotted,
-                key=lambda sys: self.pathfinder.get_distance_between(current, sys),
+                key=lambda sys: self.pathfinder.calc_distance_between(current, sys),
             )
             path.append(next_system.symbol)
             unplotted.remove(next_system)

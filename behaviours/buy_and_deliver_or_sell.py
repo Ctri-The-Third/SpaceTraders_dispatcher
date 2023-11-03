@@ -10,7 +10,8 @@ from behaviours.generic_behaviour import Behaviour
 import logging
 import time
 import math
-
+from straders_sdk.responses import SpaceTradersResponse
+from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "BUY_AND_DELIVER_OR_SELL"
@@ -21,11 +22,13 @@ class BuyAndDeliverOrSell_6(Behaviour):
     """Requires a parameter blob containing
 
     `tradegood`: the symbol of the tradegood to buy\n
-    `quantity`: the quantity to buy\n
     optional:\n
+    `buy_wp`: if you want to specify a source market, provide the symbol.\n
+    `quantity`: the quantity to buy (defaults to max)\n
     `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
     `transfer_ship`: if you want the ship to transfer the cargo, set which ship\n
-    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint"""
+    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint
+    """
 
     def __init__(
         self,
@@ -49,7 +52,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
     def run(self):
         super().run()
         st = self.st
-        ship = self.ship
+        ship = self.ship = self.st.ships_view_one(self.ship.name, True)
         agent = self.agent
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
@@ -61,17 +64,28 @@ class BuyAndDeliverOrSell_6(Behaviour):
             time.sleep(SAFETY_PADDING)
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
-        if "quantity" not in self.behaviour_params:
-            time.sleep(SAFETY_PADDING)
-            self.logger.error("No quantity specified for ship %s", ship.name)
-            raise ValueError("No quantity specified for ship %s" % ship.name)
         target_tradegood = self.behaviour_params["tradegood"]
         start_system = st.systems_view_one(ship.nav.system_symbol)
-        max_to_buy = self.behaviour_params["quantity"]
+        safety_profit_margin = self.behaviour_params.get(
+            "safety_profit_threshold", None
+        )
+        self.jettison_all_cargo([target_tradegood])
+
+        max_to_buy = self.behaviour_params.get("quantity", ship.cargo_space_remaining)
 
         end_system = None
         end_waypoint = None
         receive_ship = None
+        if "buy_wp" in self.behaviour_params:
+            target_waypoints = [
+                self.behaviour_params["buy_wp"],
+            ]
+            source_wp = st.waypoints_view_one(
+                waypoint_slicer(self.behaviour_params["buy_wp"]),
+                self.behaviour_params["buy_wp"],
+            )
+            source_market = st.system_market(source_wp)
+            source_listing = source_market.get_tradegood(target_tradegood)
         if "sell_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["sell_wp"])
@@ -79,6 +93,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_waypoint = st.waypoints_view_one(
                 end_system.symbol, self.behaviour_params["sell_wp"]
             )
+            end_market = st.system_market(end_waypoint)
+            end_listing = end_market.get_tradegood(target_tradegood)
         if "fulfil_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["fulfil_wp"])
@@ -92,53 +108,43 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_waypoint = st.waypoints_view_one(
                 end_system.symbol, receive_ship.nav.waypoint_symbol
             )
+        if "safety_profit_threshold" in self.behaviour_params:
+            if source_listing and end_listing:
+                projected_profit = (
+                    end_listing.sell_price - source_listing.purchase_price
+                )
+                if projected_profit < safety_profit_margin:
+                    self.logger.error(
+                        "Safety profit margin not met for %s", target_tradegood
+                    )
 
-        target_waypoints = self.find_cheapest_markets_for_good(target_tradegood)
+                    self.st.logging_client.log_custom_event(
+                        "TRADER_SAFETY_MARGIN",
+                        ship.name,
+                        {
+                            "tradegood": target_tradegood,
+                            "margin": safety_profit_margin,
+                            "profit": source_listing.sell_price
+                            - end_listing.purchase_price,
+                        },
+                    )
+                    self.end()
+
+                    return
 
         if not target_waypoints:
             time.sleep(SAFETY_PADDING)
             self.logger.error("No waypoint found for tradegood %s", target_tradegood)
             raise ValueError("No waypoint found for tradegood %s" % target_tradegood)
-        path = []
-        for sym in target_waypoints:
-            target_waypoint = st.waypoints_view_one(waypoint_slicer(sym), sym)
-            target_system = st.systems_view_one(waypoint_slicer(sym))
-            route = self.pathfinder.astar(start_system, target_system)
-            if route:
-                path = route.route
-                break
-
-        if not path:
-            self.logger.error(
-                "No jump gate route found to any of the markets that stock %s",
-                target_tradegood,
-            )
-        if len(start_system.waypoints) == 0:
-            start_system = st.systems_view_one(start_system.symbol, True)
-
-        resp = st.find_waypoints_by_type(start_system.symbol, "JUMP_GATE")
-        if not resp:
-            self.logger.error("No jump gate found in system %s", start_system.symbol)
-            time.sleep(SAFETY_PADDING)
-            return
-        local_jumpgate = resp[0]
 
         # vent any spare stuff before deploying.
-        self.sell_all_cargo()
-        self.jettison_all_cargo([target_tradegood])
 
         #
         # we know where we're going, we know what we're getting. Deployment.
         #
-        if target_tradegood not in [item.symbol for item in ship.cargo_inventory]:
-            self.fetch_half(
-                local_jumpgate,
-                target_system,
-                target_waypoint,
-                path,
-                max_to_buy,
-                target_tradegood,
-            )
+
+        # check the prices at the destination and the origin
+
         quantity = 0
         for ship_inventory_item in ship.cargo_inventory:
             if ship_inventory_item.symbol == target_tradegood:
@@ -146,11 +152,27 @@ class BuyAndDeliverOrSell_6(Behaviour):
 
         if quantity > 0 and end_waypoint is not None:
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
-
+        else:
+            resp = self.fetch_half(
+                None,
+                start_system,
+                source_wp,
+                [],
+                max_to_buy,
+                target_tradegood,
+            )
+            if not resp:
+                time.sleep(SAFETY_PADDING)
+                self.logger.error(
+                    "Couldn't fetch any %s from %s, because %s",
+                    target_tradegood,
+                    ship.name,
+                    resp.error,
+                )
+            resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
+        self.jettison_all_cargo([target_tradegood])
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         self.end()
-
-        time.sleep(SAFETY_PADDING)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings
@@ -173,57 +195,36 @@ order by purchase_price asc """
         path: list,
         max_to_buy: int,
         target_tradegood: str,
-    ):
+    ) -> LocalSpaceTradersRespose:
+        #
+        # this needs to validate that we're going to make a profit with current prices.
+        # if we're not, sleep for 15 minutes, and return false. By the time it picks up, either the market goods will have shuffled (hopefully) or there'll be a new contract assigned.
+        #
         ship = self.ship
         st = self.st
+        current_market = st.system_market(target_waypoint)
         if ship.nav.system_symbol != target_system.symbol:
             self.ship_intrasolar(local_jumpgate.symbol)
             self.ship_extrasolar(target_waypoint, path)
         self.ship_intrasolar(target_waypoint.symbol)
 
         st.ship_dock(ship)
-        current_market = st.system_market(target_waypoint)
         if not current_market:
             self.logger.error(
                 "No market found at waypoint %s", ship.nav.waypoint_symbol
             )
             time.sleep(SAFETY_PADDING)
-            return
+            return current_market
 
         # empty anything that's not the goal.
         self.sell_all_cargo([target_tradegood], current_market)
         target_price = 1
-        for listing in current_market.listings:
-            if listing.symbol == target_tradegood:
-                target_price = listing.purchase
-                trade_volume = listing.trade_volume
-                break
 
-        space = ship.cargo_capacity - ship.cargo_units_used
-
-        amount = min(
-            space,
-            max_to_buy,
-            math.floor(self.agent.credits / target_price),
+        self.purchase_what_you_can(
+            target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
         )
-        # do this X times where X is the amount to buy divided by the trade volume
-        for i in range(math.ceil(amount / trade_volume)):
-            resp = st.ship_purchase_cargo(ship, target_tradegood, trade_volume)
-
-            if not resp:
-                # couldn't buy anything.
-                if resp.error_code in (
-                    4604,
-                    4600,
-                ):  # our info about tradevolume is out of date
-                    st.system_market(target_waypoint, True)
-
-                self.logger.warning(
-                    "Couldn't buy any %s, are we full? Is our market data out of date? Did we have enough money? I've done a refresh.  Manual intervention maybe required."
-                )
-                time.sleep(SAFETY_PADDING)
-                return
         self.st.system_market(target_waypoint, True)
+        return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
 
     def deliver_half(
         self, target_system, target_waypoint: "Waypoint", target_tradegood: str
@@ -232,35 +233,67 @@ order by purchase_price asc """
         if not resp:
             return False
         resp = self.ship_intrasolar(target_waypoint)
-        if not resp:
+        if not resp and resp.error_code != 4204:
             return False
         # now that we're here, decide what to do. Options are:
         # transfer (skip for now, throw in a warning)
         # fulfill
         # sell
         self.st.ship_dock(self.ship)
-        resp = self.fulfil_any_relevant()
-        if resp:
-            time.sleep(SAFETY_PADDING * 2)  # long sleep to avoid conductor changes
+        if "fulfil_wp" in self.behaviour_params:
+            resp = self.fulfil_any_relevant()
+        elif "sell_wp" in self.behaviour_params:
+            resp = self.sell_all_cargo()
+
         return resp
-        pass
+
+    def check_traderoute_validity(
+        self, origin_market: str, destination_market: str, tradegood: str
+    ) -> bool:
+        sql = """with pp as ( 
+select purchase_price from market_tradegood_listings 
+	where market_symbol = %s
+	and trade_symbol = %s
+select sell_price from market_tradegood_listings 
+	where market_symbol = %s
+	and trade_symbol = %s
+	
+	) 	
+	select *, (sell_price - purchase_price) as profit_per_unit, (sell_price - purchase_price) > 0 as still_good  from pp join sp on true """
+        results = try_execute_select(
+            self.connection,
+            sql,
+            (
+                origin_market,
+                tradegood,
+                destination_market,
+                tradegood,
+            ),
+        )
+        if results:
+            return results[4]
+
+        return False
 
 
 if __name__ == "__main__":
-    from dispatcherWK7 import lock_ship
+    from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "D"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndDeliverOrSell_6(
         agent,
         ship,
         behaviour_params={
-            "quantity": 9,
-            "fulfil_wp": "X1-QB20-99657C",
-            "tradegood": "MODULE_CREW_QUARTERS_I",
+            "buy_wp": "X1-QV47-H56",
+            "sell_wp": "X1-QV47-A3",
+            "tradegood": "IRON",
+            "return_tradegood": "",
         },
     )
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
     set_logging(logging.DEBUG)
+
     bhvr.run()
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=0)

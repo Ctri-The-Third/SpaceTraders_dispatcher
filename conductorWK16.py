@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import logging
 import json
 from time import sleep
+from functools import partial
 
 import psycopg2.sql
 
@@ -19,14 +20,15 @@ from straders_sdk.utils import (
     try_execute_upsert,
 )
 from dispatcherWK16 import (
-    BHVR_EXTRACT_AND_SELL,
+    BHVR_EXTRACT_AND_GO_SELL,
     BHVR_RECEIVE_AND_FULFILL,
     BHVR_RECEIVE_AND_REFINE,
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
-    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+    BHVR_EXTRACT_AND_TRANSFER,
     BHVR_CHILL_AND_SURVEY,
+    BHVR_BUY_AND_DELIVER_OR_SELL,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -60,7 +62,7 @@ class Conductor:
             current_agent_symbol=self.current_agent_symbol,
         )
         self.connection = client.db_client.connection
-        self.asteroid_wp: Waypoint = None
+        self.asteroid_wps: list[Waypoint] = []
         self.haulers = []
         self.commanders = []
         self.hounds = []
@@ -77,8 +79,8 @@ class Conductor:
         #
         # * scale regularly and set defaults
         # * progress missions
-        self.next_hourly_update = datetime.now() + timedelta(hours=1)
-        last_hourly_update = datetime.now() - timedelta(hours=2)
+        self.next_quarterly_update = datetime.now() + timedelta(hours=1)
+        last_quarterly_update = datetime.now() - timedelta(hours=2)
         last_daily_update = datetime.now() - timedelta(days=2)
         #
         # hourly calculations of profitable things, assign behaviours and tasks
@@ -95,59 +97,65 @@ class Conductor:
                 self.daily_update()
                 last_daily_update = datetime.now()
 
-            if last_hourly_update < datetime.now() - timedelta(hours=1):
-                self.hourly_update()
-                last_hourly_update = datetime.now()
-                self.next_hourly_update = datetime.now() + timedelta(hours=1)
+            if last_quarterly_update < datetime.now() - timedelta(minutes=15):
+                self.quarterly_update()
+                last_quarterly_update = datetime.now()
+                self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
 
             self.minutely_update()
             if starting_run:
                 self.daily_update()
-                self.hourly_update()
+                self.quarterly_update()
                 starting_run = False
             sleep(60)
 
-    def hourly_update(self):
+    def quarterly_update(self):
         st = self.st
 
-        if not self.starting_system:
-            hq = st.view_my_self().headquarters
-            hq_sys = waypoint_slicer(hq)
-            self.starting_system = st.systems_view_one(hq_sys)
+        hq = st.view_my_self().headquarters
 
-        if not self.asteroid_wp:
-            resp = st.find_waypoints_by_trait_one(
+        hq_sys = waypoint_slicer(hq)
+
+        self.starting_system = st.systems_view_one(hq_sys)
+        self.starting_planet = st.waypoints_view_one(hq_sys, hq)
+        if not self.asteroid_wps:
+            resp = st.find_waypoints_by_trait(
                 self.starting_system.symbol, "COMMON_METAL_DEPOSITS"
             )
-            self.asteroid_wp = resp
+            if resp:
+                partial_calc_dist = partial(
+                    self.pathfinder.calc_distance_between, self.starting_planet
+                )
+                resp = sorted(resp, key=partial_calc_dist)
+                self.asteroid_wps = resp
 
         for ship in self.extractors:
             set_behaviour(
                 self.connection,
                 ship.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                BHVR_EXTRACT_AND_GO_SELL,
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for hauler in self.haulers:
             set_behaviour(
                 self.connection,
                 hauler.name,
                 BHVR_RECEIVE_AND_FULFILL,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for surveyor in self.surveyors:
             set_behaviour(
                 self.connection,
                 surveyor.name,
-                BHVR_REMOTE_SCAN_AND_SURV,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                BHVR_CHILL_AND_SURVEY,
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for commander in self.commanders:
             set_behaviour(
                 self.connection,
                 commander.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
-                {"asteroid_wp": self.asteroid_wp.symbol},
+                BHVR_EXTRACT_AND_GO_SELL,
+                {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         # find unvisited shipyards
 
@@ -181,7 +189,7 @@ class Conductor:
                         dest_system_wp,
                         priority=5,
                         behaviour_params={"target_sys": dest_system_wp},
-                        expiry=self.next_hourly_update,
+                        expiry=self.next_quarterly_update,
                     )
 
                     # if we've found one that can be visited by drone, stop logging tasks.
@@ -215,52 +223,18 @@ class Conductor:
 
         # send refiners to asteroid
         for refiner in self.refiners:
-            params = {"asteroid_wp": self.asteroid_wp.symbol}
+            params = {"asteroid_wp": self.asteroid_wps[0].symbol}
             set_behaviour(
                 self.connection, refiner.name, BHVR_RECEIVE_AND_REFINE, params
             )
 
-        # send haulers to asteroid
-        for hauler in self.haulers:
-            params = {"asteroid_wp": self.asteroid_wp.symbol}
-            BHVR_RECEIVE_AND_FULFILL
-            set_behaviour(
-                self.connection, hauler.name, BHVR_RECEIVE_AND_FULFILL, params
-            )
+        # send haulers to go buy things
+        if len(self.haulers) > 1:
+            self.assign_traderoutes_to_ships(self.haulers)
+        else:
+            self.assign_traderoutes_to_ships(self.commanders + self.haulers)
 
-        # send ore hounds to asteroid and tell them to extract and transfer
-        for extractor in self.extractors[0 : len(self.refiners)]:
-            params = {
-                "asteroid_wp": self.asteroid_wp.symbol,
-                "cargo_to_transfer": [best_refinable[0]],
-            }
-            set_behaviour(
-                self.connection,
-                extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
-                params,
-            )
-
-        # send other haulers to extract and sell.
-        for extractor in self.extractors[len(self.refiners) :]:
-            params = {
-                "asteroid_wp": self.asteroid_wp.symbol,
-                "cargo_to_transfer": [best_extractable[0]],
-            }
-            set_behaviour(
-                self.connection,
-                extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
-                params,
-            )
-        # determine current starting asteroid
-        # determine top 2 goods to export
-        # assign a single trader to buy/sell behaviour
-        # assign a single extractor to extract/sell locally
-        # assign a single extractor to extract/sell remotely
-        # if there is a refiner, assign a single extractor to extract/transfer
-
-        # how do we decide on surveyors?
+        self.log_shallow_trade_tasks()
 
     def daily_update(self):
         sql = """
@@ -285,7 +259,7 @@ class Conductor:
         #
         # this can be its own "scale up" method
         #
-        behaviour_params = {"asteroid_wp": self.asteroid_wp.symbol}
+        behaviour_params = {"asteroid_wp": self.asteroid_wps[0].symbol}
         # stage 0 - pre warpgate.
 
         if (
@@ -298,10 +272,14 @@ class Conductor:
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             if len(self.extractors) < 10 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_MINING_DRONE")
-                new_behaviour = BHVR_EXTRACT_AND_TRANSFER_OR_SELL
+                new_behaviour = (
+                    BHVR_EXTRACT_AND_GO_SELL
+                    if len(self.haulers) == 0
+                    else BHVR_EXTRACT_AND_TRANSFER
+                )
             if len(self.surveyors) < 1 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
-                new_behaviour = BHVR_REMOTE_SCAN_AND_SURV
+                new_behaviour = BHVR_CHILL_AND_SURVEY
 
             self.ships_we_might_buy = [
                 "SHIP_MINING_DRONE",
@@ -321,7 +299,7 @@ class Conductor:
             new_ship = None
             if len(hounds) < 50:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_ORE_HOUND")
-                new_behaviour = BHVR_EXTRACT_AND_SELL
+                new_behaviour = BHVR_EXTRACT_AND_GO_SELL
             if len(refiners) < 1 and not new_ship:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_REFINING_FREIGHTER")
                 new_behaviour = BHVR_RECEIVE_AND_REFINE
@@ -355,6 +333,24 @@ class Conductor:
                 behaviour_params={"ship_type": self.ships_we_might_buy[i]},
             )
         self.maybe_upgrade_ship()
+
+    def assign_traderoutes_to_ships(self, ships: list[Ship]):
+        routes = self.get_trade_routes(len(ships))
+        if not routes:
+            return
+        for i, ship in enumerate(ships):
+            tradegood, buy_wp, sell_wp, return_good = routes[i]
+            set_behaviour(
+                self.connection,
+                ship.name,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                behaviour_params={
+                    "buy_wp": buy_wp,
+                    "sell_wp": sell_wp,
+                    "tradegood": tradegood,
+                    "return_tradegood": "",
+                },
+            )
 
     def maybe_upgrade_ship(self):
         # surveyors first, then extractors
@@ -408,7 +404,7 @@ class Conductor:
             self.st.current_agent_symbol,
             params,
             specific_ship_symbol=ship_to_upgrade.name,
-            expiry=self.next_hourly_update,
+            expiry=self.next_quarterly_update,
         )
 
     def max_mining_strength(self):
@@ -441,8 +437,53 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.haulers = [ship for ship in ships if ship.role == "HAULER"]
         self.commanders = [ship for ship in ships if ship.role == "COMMAND"]
         self.hounds = [ship for ship in ships if ship.frame.symbol == "FRAME_MINER"]
-        self.extractors = [ship for ship in ships if ship.role == "EXTRACTOR"]
+        self.extractors = [ship for ship in ships if ship.role == "EXCAVATOR"]
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
+        self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
+
+    def get_trade_routes(self, limit=None) -> list[tuple]:
+        if not limit:
+            limit = len(self.haulers)
+        sql = """select route_value, system_symbol, trade_symbol, profit_per_unit, export_market, import_market, market_depth
+        from trade_routes_intrasystem tris
+        limit %s"""
+        routes = try_execute_select(self.connection, sql, (limit,))
+        if not routes:
+            return []
+        return_obj = []
+        return [(r[2], r[4], r[5], r[3]) for r in routes]
+
+    def log_shallow_trade_tasks(self):
+        routes = self.get_shallow_trades()
+        for route in routes:
+            trade_symbol, export_market, import_market, profit_per_unit = route
+            log_task(
+                self.connection,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                ["35_CARGO"],
+                waypoint_slicer(import_market),
+                5,
+                self.current_agent_symbol,
+                {
+                    "buy_wp": export_market,
+                    "sell_wp": import_market,
+                    "quantity": 35,
+                    "tradegood": trade_symbol,
+                    "safety_profit_threshold": profit_per_unit / 2,
+                },
+                expiry=self.next_quarterly_update,
+            )
+
+    def get_shallow_trades(self, limit=50) -> list[tuple]:
+        sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth
+        from trade_routes_intrasystem tris
+        where market_depth = 10 
+        limit %s"""
+
+        routes = try_execute_select(self.connection, sql, (limit,))
+        if not routes:
+            return []
+        return [(r[0], r[3], r[4], r[2]) for r in routes]
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:

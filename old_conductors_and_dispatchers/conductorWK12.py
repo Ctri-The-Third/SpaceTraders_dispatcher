@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from dispatcherWK12 import (
     BHVR_EXTRACT_AND_SELL,
     BHVR_RECEIVE_AND_FULFILL,
-    BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+    BHVR_EXTRACT_AND_TRANSFER,
     BHVR_EXPLORE_SYSTEM,
     BHVR_REMOTE_SCAN_AND_SURV,
     BHVR_MONITOR_CHEAPEST_PRICE,
@@ -166,7 +166,7 @@ def stage_1(client: SpaceTraders):
         )
 
     for ship in extractors:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER, extractor_params)
 
     prices = get_ship_prices_in_hq_system(client)
     # if prices["SHIP_ORE_HOUND"] < 175000:
@@ -227,7 +227,7 @@ def stage_2(client: SpaceTraders):
     for ship in commanders:
         set_behaviour(ship.name, BHVR_EXTRACT_AND_FULFILL, extractor_params)
     for ship in excavators:
-        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params)
+        set_behaviour(ship.name, BHVR_EXTRACT_AND_TRANSFER, extractor_params)
     for ship in satelites:
         set_behaviour(ship.name, BHVR_REMOTE_SCAN_AND_SURV, extractor_params)
 
@@ -330,9 +330,7 @@ def stage_3(client: SpaceTraders):
     #
 
     for excavator in excavators:
-        set_behaviour(
-            excavator.name, BHVR_EXTRACT_AND_TRANSFER_OR_SELL, extractor_params
-        )
+        set_behaviour(excavator.name, BHVR_EXTRACT_AND_TRANSFER, extractor_params)
     for satelite in satelites:
         set_behaviour(
             satelite.name,
@@ -421,7 +419,7 @@ def stage_4(client: SpaceTraders):
         if ship:
             set_behaviour(
                 ship.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 {"asteroid_wp": asteroid_wp.symbol},
             )
 
@@ -498,7 +496,7 @@ def stage_5(client: SpaceTraders):
         if ship:
             set_behaviour(
                 ship.name,
-                BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 {"asteroid_wp": asteroid_wp.symbol},
             )
 

@@ -13,12 +13,15 @@ from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer
-from behaviours.extract_and_sell import ExtractAndSell
+from behaviours.extract_and_sell import (
+    ExtractAndGoSell,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_GO_SELL,
+)
 from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
 from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer_or_sell import (
-    ExtractAndTransferOrSell_8,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER_OR_SELL,
+from behaviours.extract_and_transfer import (
+    ExtractAndTransfer_8,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER,
 )
 from behaviours.remote_scan_and_survey import (
     RemoteScanWaypoints,
@@ -59,7 +62,6 @@ from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
 from datetime import datetime, timedelta
 
-BHVR_EXTRACT_AND_SELL = "EXTRACT_AND_SELL"
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
 BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
@@ -94,7 +96,7 @@ class dispatcher:
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
-        self.session = LimiterSession(per_second=3, per_hour=10800)
+        self.session = LimiterSession(per_second=2, per_hour=10800)
         self.session.mount(
             "https://api.spacetraders.io",
             HTTPAdapter(pool_maxsize=self.max_connections),
@@ -186,10 +188,11 @@ class dispatcher:
         self.client.ships_view(force=True)
 
         # rather than tying this behaviour to the probe, this is executed at the dispatcher level.
-        ships_and_threads["scan_thread"] = threading.Thread(
-            target=self.maybe_scan_all_systems, daemon=True
-        )
-        ships_and_threads["scan_thread"].start()
+
+        # ships_and_threads["scan_thread"] = threading.Thread(
+        #    target=self.maybe_scan_all_systems, daemon=True
+        # )
+        # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
             # if we've been running for more than 12 hours, terminate. important for profiling.
@@ -412,7 +415,11 @@ class dispatcher:
                         ):
                             valid_for_ship = False
                             break
-
+                        if (requirement == "35_CARGO"
+                            and ship.cargo_capacity < 35
+                        ):
+                            valid_for_ship = False
+                            break
                 if valid_for_ship:
                     if task["priority"] < highest_priority:
                         highest_priority = task["priority"]
@@ -445,16 +452,14 @@ class dispatcher:
         sname = ship_symbol
         bhvr_params = behaviour_params
         bhvr = None
-        if id == BHVR_EXTRACT_AND_SELL:
-            bhvr = ExtractAndSell(aname, sname, bhvr_params, session=self.session)
+        if id == BHVR_EXTRACT_AND_GO_SELL:
+            bhvr = ExtractAndGoSell(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_RECEIVE_AND_FULFILL:
             bhvr = ReceiveAndFulfillOrSell_3(
                 aname, sname, behaviour_params, session=self.session
             )
-        elif id == BHVR_EXTRACT_AND_TRANSFER_OR_SELL:
-            bhvr = ExtractAndTransferOrSell_8(
-                aname, sname, bhvr_params, session=self.session
-            )
+        elif id == BHVR_EXTRACT_AND_TRANSFER:
+            bhvr = ExtractAndTransfer_8(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_REMOTE_SCAN_AND_SURV:
             bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_EXPLORE_SYSTEM:
@@ -493,6 +498,8 @@ class dispatcher:
         hq_system = st.systems_view_one(waypoint_slicer(headquarters), True)
         for waypoint in hq_system.waypoints:
             waypoint = st.waypoints_view_one(hq_system.symbol, waypoint.symbol)
+            if not waypoint:
+                continue
             if len(waypoint.traits) == 0 or waypoint.type != "JUMP_GATE":
                 # refresh the traits
                 waypoint = st.waypoints_view_one(

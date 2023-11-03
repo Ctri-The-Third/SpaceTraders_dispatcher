@@ -57,7 +57,7 @@ class ExtractAndFulfill_7(Behaviour):
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         #
-        # -- navigate to target waypoint - if not set, go for nearest asteroid field
+        # -- navigate to target waypoint - if not set, go for first asteroid field
         #
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
@@ -65,6 +65,7 @@ class ExtractAndFulfill_7(Behaviour):
                 target_wp = st.find_waypoints_by_type(
                     ship.nav.system_symbol, "ASTEROID_FIELD"
                 )
+
                 if target_wp:
                     target_wp_sym = target_wp[0].symbol
             if not target_wp_sym:
@@ -102,9 +103,11 @@ class ExtractAndFulfill_7(Behaviour):
 
         self.extract_till_full(cargo_to_transfer)
 
-        # refresh the ship from the DB - ship likely has received lots of cargo from other ships
+        # refresh the ship from the DB - ship possibly has received lots of cargo from other ships
         self.ship = st.ships_view_one(self.ship_name)
-        self.sell_all_cargo(cargo_to_transfer)
+
+        if "MARKETPLACE" in target_wp[0].traits:
+            self.sell_all_cargo(cargo_to_transfer)
 
         #
         # check remaining cargo after selling spillover
