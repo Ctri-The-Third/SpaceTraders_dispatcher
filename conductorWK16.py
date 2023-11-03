@@ -233,46 +233,7 @@ class Conductor:
             self.assign_traderoutes_to_ships(self.haulers)
         else:
             self.assign_traderoutes_to_ships(self.commanders + self.haulers)
-        # for hauler in self.haulers:
-        #    params = {"asteroid_wp": self.asteroid_wps[0].symbol}
-        #    BHVR_RECEIVE_AND_FULFILL
-        #    set_behaviour(
-        #        self.connection, hauler.name, BHVR_RECEIVE_AND_FULFILL, params
-        #    )
 
-        # send ore hounds to asteroid and tell them to extract and transfer
-        for extractor in self.extractors[0 : len(self.refiners)]:
-            params = {
-                "asteroid_wp": self.asteroid_wps[0].symbol,
-                "cargo_to_transfer": [best_refinable[0]],
-            }
-            set_behaviour(
-                self.connection,
-                extractor.name,
-                BHVR_EXTRACT_AND_TRANSFER,
-                params,
-            )
-
-        # send other haulers to extract and sell.
-        for extractor in self.extractors[len(self.refiners) :]:
-            params = {
-                "asteroid_wp": self.asteroid_wps[0].symbol,
-                "cargo_to_transfer": ["*"],  # transfer everything
-            }
-            set_behaviour(
-                self.connection,
-                extractor.name,
-                BHVR_EXTRACT_AND_GO_SELL,
-                params,
-            )
-        # determine current starting asteroid
-        # determine top 2 goods to export
-        # assign a single trader to buy/sell behaviour
-        # assign a single extractor to extract/sell locally
-        # assign a single extractor to extract/sell remotely
-        # if there is a refiner, assign a single extractor to extract/transfer
-
-        # how do we decide on surveyors?
         self.log_shallow_trade_tasks()
 
     def daily_update(self):
