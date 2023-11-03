@@ -415,7 +415,11 @@ class dispatcher:
                         ):
                             valid_for_ship = False
                             break
-
+                        if (requirement == "35_CARGO"
+                            and ship.cargo_capacity < 35
+                        ):
+                            valid_for_ship = False
+                            break
                 if valid_for_ship:
                     if task["priority"] < highest_priority:
                         highest_priority = task["priority"]
