@@ -79,8 +79,8 @@ class Conductor:
         #
         # * scale regularly and set defaults
         # * progress missions
-        self.next_hourly_update = datetime.now() + timedelta(hours=1)
-        last_hourly_update = datetime.now() - timedelta(hours=2)
+        self.next_quarterly_update = datetime.now() + timedelta(hours=1)
+        last_quarterly_update = datetime.now() - timedelta(hours=2)
         last_daily_update = datetime.now() - timedelta(days=2)
         #
         # hourly calculations of profitable things, assign behaviours and tasks
@@ -97,19 +97,19 @@ class Conductor:
                 self.daily_update()
                 last_daily_update = datetime.now()
 
-            if last_hourly_update < datetime.now() - timedelta(hours=1):
-                self.hourly_update()
-                last_hourly_update = datetime.now()
-                self.next_hourly_update = datetime.now() + timedelta(hours=1)
+            if last_quarterly_update < datetime.now() - timedelta(minutes=15):
+                self.quarterly_update()
+                last_quarterly_update = datetime.now()
+                self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
 
             self.minutely_update()
             if starting_run:
                 self.daily_update()
-                self.hourly_update()
+                self.quarterly_update()
                 starting_run = False
             sleep(60)
 
-    def hourly_update(self):
+    def quarterly_update(self):
         st = self.st
 
         hq = st.view_my_self().headquarters
@@ -189,7 +189,7 @@ class Conductor:
                         dest_system_wp,
                         priority=5,
                         behaviour_params={"target_sys": dest_system_wp},
-                        expiry=self.next_hourly_update,
+                        expiry=self.next_quarterly_update,
                     )
 
                     # if we've found one that can be visited by drone, stop logging tasks.
@@ -404,7 +404,7 @@ class Conductor:
             self.st.current_agent_symbol,
             params,
             specific_ship_symbol=ship_to_upgrade.name,
-            expiry=self.next_hourly_update,
+            expiry=self.next_quarterly_update,
         )
 
     def max_mining_strength(self):
