@@ -488,6 +488,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         routes = try_execute_select(self.connection, sql, (limit,))
         if not routes:
             return []
+        return_obj = []
         for r in routes:
             sql = """select trade_symbol from trade_routes_intrasystem tris 
             where import_market = %s 
@@ -495,9 +496,10 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             and profit_per_unit > 0"""
             rows = try_execute_select(self.connection, sql, (r[4], r[5]))
             if rows:
-                return (r[2], r[4], r[5], rows[0][0])
+                return_obj.append((r[2], r[4], r[5], rows[0][0]))
             else:
-                return (r[2], r[4], r[5], "")
+                return_obj.append((r[2], r[4], r[5], ""))
+        return return_obj
         # tradegood
         # buy_wp
         # sell_wp
