@@ -127,7 +127,7 @@ def log_task(
     priority=5,
     agent_symbol=None,
     behaviour_params=None,
-    expiry=None,
+    expiry: datetime = None,
     specific_ship_symbol=None,
 ):
     behaviour_params = {} if not behaviour_params else behaviour_params

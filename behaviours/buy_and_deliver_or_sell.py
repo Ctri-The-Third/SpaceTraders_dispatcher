@@ -204,39 +204,10 @@ order by purchase_price asc """
         # empty anything that's not the goal.
         self.sell_all_cargo([target_tradegood], current_market)
         target_price = 1
-        for listing in current_market.listings:
-            if listing.symbol == target_tradegood:
-                target_price = listing.purchase_price
-                trade_volume = listing.trade_volume
-                break
 
-        space = ship.cargo_capacity - ship.cargo_units_used
-
-        amount = min(
-            space,
-            max_to_buy,
-            math.floor(self.agent.credits / target_price),
+        self.purchase_what_you_can(
+            target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
         )
-        # do this X times where X is the amount to buy divided by the trade volume
-        remaining_to_buy = amount
-        for i in range(math.ceil(amount / trade_volume)):
-            resp = self.purchase_what_you_can(
-                target_tradegood, min(remaining_to_buy, trade_volume)
-            )
-            remaining_to_buy -= trade_volume
-            if not resp:
-                # couldn't buy anything.
-                if resp.error_code in (
-                    4604,
-                    4600,
-                ):  # our info about tradevolume is out of date
-                    st.system_market(target_waypoint, True)
-
-                self.logger.warning(
-                    "Couldn't buy any %s, are we full? Is our market data out of date? Did we have enough money? I've done a refresh.  Manual intervention maybe required."
-                )
-                time.sleep(SAFETY_PADDING)
-                return resp
         self.st.system_market(target_waypoint, True)
         return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
 
