@@ -28,7 +28,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
     `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
     `transfer_ship`: if you want the ship to transfer the cargo, set which ship\n
     `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint
-    `return_tradegood`: if you want the ship to return to the beginning with cargo, set which cargo
     """
 
     def __init__(
@@ -66,7 +65,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         target_tradegood = self.behaviour_params["tradegood"]
-        return_tradegood = self.behaviour_params.get("return_tradegood", None)
         start_system = st.systems_view_one(ship.nav.system_symbol)
 
         self.jettison_all_cargo([target_tradegood, return_tradegood])
@@ -145,19 +143,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         self.jettison_all_cargo([target_tradegood, return_tradegood])
-
-        if return_tradegood and return_tradegood != "":
-            resp = self.fetch_half(
-                None,
-                end_system,
-                end_waypoint,
-                [],
-                max_to_buy,
-                self.behaviour_params["return_tradegood"],
-            )
-            if resp:
-                resp = self.deliver_half(start_system, source_wp, target_tradegood)
-        self.end()
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings

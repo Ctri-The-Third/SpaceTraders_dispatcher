@@ -348,7 +348,7 @@ class Conductor:
                     "buy_wp": buy_wp,
                     "sell_wp": sell_wp,
                     "tradegood": tradegood,
-                    "return_tradegood": return_good,
+                    "return_tradegood": "",
                 },
             )
 
