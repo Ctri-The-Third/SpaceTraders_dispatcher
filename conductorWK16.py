@@ -229,10 +229,10 @@ class Conductor:
             )
 
         # send haulers to go buy things
-        if len(self.haulers) > 0:
+        if len(self.haulers) > 1:
             self.assign_traderoutes_to_ships(self.haulers)
         else:
-            self.assign_traderoutes_to_ships(self.commanders)
+            self.assign_traderoutes_to_ships(self.commanders + self.haulers)
         # for hauler in self.haulers:
         #    params = {"asteroid_wp": self.asteroid_wps[0].symbol}
         #    BHVR_RECEIVE_AND_FULFILL
@@ -377,7 +377,7 @@ class Conductor:
         if not routes:
             return
         for i, ship in enumerate(ships):
-            tradegood, buy_wp, sell_wp = routes[i]
+            tradegood, buy_wp, sell_wp, return_good = routes[i]
             set_behaviour(
                 self.connection,
                 ship.name,
@@ -386,6 +386,7 @@ class Conductor:
                     "buy_wp": buy_wp,
                     "sell_wp": sell_wp,
                     "tradegood": tradegood,
+                    "return_tradegood": return_good,
                 },
             )
 
@@ -487,8 +488,16 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         routes = try_execute_select(self.connection, sql, (limit,))
         if not routes:
             return []
-        return [(r[2], r[4], r[5]) for r in routes]
-
+        for r in routes:
+            sql = """select trade_symbol from trade_routes_intrasystem tris 
+            where import_market = %s 
+            and export_market = %s
+            and profit_per_unit > 0"""
+            rows = try_execute_select(self.connection, sql, (r[4], r[5]))
+            if rows:
+                return (r[2], r[4], r[5], rows[0][0])
+            else:
+                return (r[2], r[4], r[5], "")
         # tradegood
         # buy_wp
         # sell_wp

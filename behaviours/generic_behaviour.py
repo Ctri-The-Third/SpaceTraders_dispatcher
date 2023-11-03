@@ -16,6 +16,7 @@ import logging
 import math
 import networkx
 import heapq
+import threading
 
 
 class Behaviour:
@@ -67,6 +68,7 @@ class Behaviour:
         self._graph = None
         self.ships = None
         self.agent = None
+        self.termination_event = threading.Event()
 
     @property
     def connection(self):
