@@ -66,9 +66,10 @@ class BuyAndDeliverOrSell_6(Behaviour):
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         target_tradegood = self.behaviour_params["tradegood"]
+        return_tradegood = self.behaviour_params.get("return_tradegood", None)
         start_system = st.systems_view_one(ship.nav.system_symbol)
 
-        self.jettison_all_cargo([target_tradegood])
+        self.jettison_all_cargo([target_tradegood, return_tradegood])
 
         max_to_buy = self.behaviour_params.get("quantity", ship.cargo_space_remaining)
 
@@ -141,12 +142,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 )
             resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-        self.jettison_all_cargo([target_tradegood])
+        self.jettison_all_cargo([target_tradegood, return_tradegood])
 
-        if (
-            "return_tradegood" in self.behaviour_params
-            and self.behaviour_params["return_tradegood"] != ""
-        ):
+        if return_tradegood and return_tradegood != "":
             resp = self.fetch_half(
                 None,
                 end_system,
@@ -268,9 +266,10 @@ if __name__ == "__main__":
         agent,
         ship,
         behaviour_params={
-            "buy_wp": "X1-QV47-A1",
-            "sell_wp": "X1-QV47-A3",
-            "tradegood": "MACHINERY",
+            "buy_wp": "X1-QV47-C42",
+            "sell_wp": "X1-QV47-E47",
+            "tradegood": "HYDROCARBON",
+            "return_tradegood": "FUEL",
         },
     )
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)

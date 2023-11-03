@@ -331,8 +331,13 @@ class Behaviour:
             trade_volume = cargo.units
             if listing:
                 trade_volume = listing.trade_volume
+            remaining_units = cargo.units
             for i in range(0, math.ceil(cargo.units / trade_volume)):
-                resp = st.ship_sell(ship, cargo.symbol, min(cargo.units, trade_volume))
+                resp = st.ship_sell(
+                    ship, cargo.symbol, min(remaining_units, trade_volume)
+                )
+                remaining_units = remaining_units - trade_volume
+
                 if not resp:
                     pass
                     # try the next cargo bit
