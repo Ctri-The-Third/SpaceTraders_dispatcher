@@ -11,7 +11,7 @@ I've noticed that everything breaking has triggered the "setback effect", which 
 
 ## Step Zero - Afford a Hauler
 - Looking at earning credits, fuel _seems_ like it'll be a large impact, with refuels needing to happen repeatedly.
-- I think we can buy hydrocarbon and sell it to the refinery, which will give us a place to buy fuel that's reliably cheap
+- ✅ I think we can buy hydrocarbon and sell it to the refinery, which will give us a place to buy fuel that's reliably cheap
 - no I'm getting off target. We can just consider jettisonning the things that aren't worth the CPS to sell.
 - then we'll be able to get a siphoner drone and use that to increase our rate of getting hydrocarbons
 - then we'll be able to get a hauler and use the command frigate for mining
@@ -59,12 +59,23 @@ Presently we're asumming that the best time spend for us is extracting and selli
 However, I think at this early stage of the game with small markets and small cargo bays, we should be using the command ship for trading.
 
 Problem: Trade opportunities definitely exist, but we're not taking them.
-Solution: Switch drones to "Extract and go sell" behaviour 
-Solution: Switch haulers to free "trade_intrasolar" behaviour
+Solution: ✅ Switch drones to "Extract and go sell" behaviour 
+Solution: ✅ Switch haulers to free "trade_intrasolar" behaviour
 Solution: Switch "Receive and fulfill" behaviour to **take** desirable materials from nearby extractors / refineries - lets conductor send haulers to extractors when they're nearly full.
 
 
 
 Problem: Haulers sitting idle at waypoints waiting to receive cargo
-Solution: Get inventory info into the DB & 
+Solution: Get inventory info into the DB & forcibly extract desirable cargo from haulers.
 
+
+### We started trading but made bad trades
+
+Problem: I woke up this morning with no money, and the command ship isn't able to execute trades anymore because of this.
+
+Looking at the numbers overnight it seems that the money went to buy surveyors that shouldn't have been bought - a conductor issue.
+Additionally, it doesn't actually seem like we made bad trades after all, just that the surveyor purchases undercut the operating capital requirements for the trade.
+
+Solution: When assigning trades, keep track of the assigned ship's cargo capacity & current trading costs, and ensure that there's a minimum operating capital kept in the bank.
+Solution: Quick solution - have the buy/sell behaviour check if a trade is still going to be profitable _at all_ before making the trade. 
+Solution: Proper solution - Dispatcher overhaul, behaviours get termination events, infinite loops after setup, and the dispatcher sets the terination event if the behaviour changes.
