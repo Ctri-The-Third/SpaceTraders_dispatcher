@@ -481,6 +481,59 @@ order by 1 desc """
                 return resp
         return True
 
+    def purchase_what_you_can(self, cargo_symbol: str, quantity: int):
+        # check current waypoint has a market that sells the tradegood
+        # check we have enough cargo space
+        # check we have enough credits
+
+        ship = self.ship
+        current_waypoint = self.st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
+        if "MARKETPLACE" not in [trait.symbol for trait in current_waypoint.traits]:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} is not a marketplace",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+
+        cargo_to_buy = min(quantity, ship.cargo_space_remaining)
+
+        current_market = self.st.system_market(current_waypoint)
+        if len(current_market.listings) == 0:
+            current_market = self.st.system_market(current_waypoint, True)
+        if cargo_symbol not in [l.symbol for l in current_market.listings]:
+            return LocalSpaceTradersRespose(
+                f"Waypoint {current_waypoint.symbol} does not have a listing for {cargo_symbol}",
+                0,
+                0,
+                "generic_behaviour.buy_cargo",
+            )
+        found_listing = None
+        for listing in current_market.listings:
+            if listing.symbol == cargo_symbol:
+                found_listing = listing
+        current_credits = self.st.view_my_self().credits
+        cargo_to_buy = min(
+            cargo_to_buy, math.floor(current_credits / found_listing.purchase_price)
+        )
+        if cargo_to_buy == 0:
+            return LocalSpaceTradersRespose(
+                f"Ship {ship.name} cannot buy cargo because we're too poor",
+                0,
+                0,
+                "generic_behaviour.purchase_what_you_can",
+            )
+        trade_volume = found_listing.trade_volume
+        for i in range(math.ceil(cargo_to_buy / trade_volume)):
+            resp = self.st.ship_purchase_cargo(ship, cargo_symbol, trade_volume)
+            if not resp:
+                return resp
+        return LocalSpaceTradersRespose(
+            None, 0, 0, "generic_behaviour.purchase_what_you_can"
+        )
+
     def scan_local_system(self):
         st = self.st
         ship = self.ship

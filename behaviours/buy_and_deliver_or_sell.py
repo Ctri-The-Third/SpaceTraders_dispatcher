@@ -218,8 +218,8 @@ order by purchase_price asc """
         # do this X times where X is the amount to buy divided by the trade volume
         remaining_to_buy = amount
         for i in range(math.ceil(amount / trade_volume)):
-            resp = st.ship_purchase_cargo(
-                ship, target_tradegood, min(remaining_to_buy, trade_volume)
+            resp = self.purchase_what_you_can(
+                target_tradegood, min(remaining_to_buy, trade_volume)
             )
             remaining_to_buy -= trade_volume
             if not resp:
