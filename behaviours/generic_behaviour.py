@@ -510,11 +510,8 @@ order by 1 desc """
                 0,
                 "generic_behaviour.buy_cargo",
             )
-        found_listing = None
-        for listing in current_market.listings:
-            if listing.symbol == cargo_symbol:
-                found_listing = listing
-                break
+        found_listing = current_market.get_tradegood(cargo_symbol)
+
         current_credits = self.st.view_my_self().credits
         cargo_to_buy = min(
             cargo_to_buy, math.floor(current_credits / found_listing.purchase_price)
@@ -529,7 +526,9 @@ order by 1 desc """
         trade_volume = found_listing.trade_volume
 
         for i in range(math.ceil(cargo_to_buy / trade_volume)):
-            resp = self.st.ship_purchase_cargo(ship, cargo_symbol, trade_volume)
+            resp = self.st.ship_purchase_cargo(
+                ship, cargo_symbol, min(trade_volume, cargo_to_buy)
+            )
             cargo_to_buy -= trade_volume
             if not resp:
                 return resp
