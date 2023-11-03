@@ -179,6 +179,10 @@ order by purchase_price asc """
         max_to_buy: int,
         target_tradegood: str,
     ) -> LocalSpaceTradersRespose:
+        #
+        # this needs to validate that we're going to make a profit with current prices.
+        # if we're not, sleep for a bit.
+        #
         ship = self.ship
         st = self.st
         if ship.nav.system_symbol != target_system.symbol:
