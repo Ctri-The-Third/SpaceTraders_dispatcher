@@ -116,6 +116,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
         # we know where we're going, we know what we're getting. Deployment.
         #
 
+        # check the prices at the destination and the origin
+
         quantity = 0
         for ship_inventory_item in ship.cargo_inventory:
             if ship_inventory_item.symbol == target_tradegood:
@@ -181,17 +183,17 @@ order by purchase_price asc """
     ) -> LocalSpaceTradersRespose:
         #
         # this needs to validate that we're going to make a profit with current prices.
-        # if we're not, sleep for a bit.
+        # if we're not, sleep for 15 minutes, and return false. By the time it picks up, either the market goods will have shuffled (hopefully) or there'll be a new contract assigned.
         #
         ship = self.ship
         st = self.st
+        current_market = st.system_market(target_waypoint)
         if ship.nav.system_symbol != target_system.symbol:
             self.ship_intrasolar(local_jumpgate.symbol)
             self.ship_extrasolar(target_waypoint, path)
         self.ship_intrasolar(target_waypoint.symbol)
 
         st.ship_dock(ship)
-        current_market = st.system_market(target_waypoint)
         if not current_market:
             self.logger.error(
                 "No market found at waypoint %s", ship.nav.waypoint_symbol
@@ -259,6 +261,34 @@ order by purchase_price asc """
 
         return resp
 
+    def check_traderoute_validity(
+        self, origin_market: str, destination_market: str, tradegood: str
+    ) -> bool:
+        sql = """with pp as ( 
+select purchase_price from market_tradegood_listings 
+	where market_symbol = %s
+	and trade_symbol = %s
+select sell_price from market_tradegood_listings 
+	where market_symbol = %s
+	and trade_symbol = %s
+	
+	) 	
+	select *, (sell_price - purchase_price) as profit_per_unit, (sell_price - purchase_price) > 0 as still_good  from pp join sp on true """
+        results = try_execute_select(
+            self.connection,
+            sql,
+            (
+                origin_market,
+                tradegood,
+                destination_market,
+                tradegood,
+            ),
+        )
+        if results:
+            return results[4]
+
+        return False
+
 
 if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
@@ -270,10 +300,10 @@ if __name__ == "__main__":
         agent,
         ship,
         behaviour_params={
-            "buy_wp": "X1-QV47-C42",
-            "sell_wp": "X1-QV47-E47",
-            "tradegood": "HYDROCARBON",
-            "return_tradegood": "FUEL",
+            "buy_wp": "X1-QV47-H56",
+            "sell_wp": "X1-QV47-A3",
+            "tradegood": "IRON",
+            "return_tradegood": "",
         },
     )
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
