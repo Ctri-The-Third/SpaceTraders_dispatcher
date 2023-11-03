@@ -27,7 +27,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
     `quantity`: the quantity to buy (defaults to max)\n
     `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
     `transfer_ship`: if you want the ship to transfer the cargo, set which ship\n
-    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint"""
+    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint
+    `return_tradegood`: if you want the ship to return to the beginning with cargo, set which cargo
+    """
 
     def __init__(
         self,
@@ -141,6 +143,20 @@ class BuyAndDeliverOrSell_6(Behaviour):
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         self.jettison_all_cargo([target_tradegood])
 
+        if (
+            "return_tradegood" in self.behaviour_params
+            and self.behaviour_params["return_tradegood"] != ""
+        ):
+            resp = self.fetch_half(
+                None,
+                end_system,
+                end_waypoint,
+                [],
+                max_to_buy,
+                self.behaviour_params["return_tradegood"],
+            )
+            if resp:
+                resp = self.deliver_half(start_system, source_wp, target_tradegood)
         self.end()
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
