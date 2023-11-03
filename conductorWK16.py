@@ -273,6 +273,7 @@ class Conductor:
         # if there is a refiner, assign a single extractor to extract/transfer
 
         # how do we decide on surveyors?
+        self.log_shallow_trade_tasks()
 
     def daily_update(self):
         sql = """
@@ -503,6 +504,37 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         # tradegood
         # buy_wp
         # sell_wp
+
+    def log_shallow_trade_tasks(self):
+        routes = self.get_shallow_trades()
+        for route in routes:
+            trade_symbol, export_market, import_market, _ = route
+            log_task(
+                self.connection,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                ["35_CARGO"],
+                waypoint_slicer(import_market),
+                5,
+                self.current_agent_symbol,
+                {
+                    "buy_wp": export_market,
+                    "sell_wp": import_market,
+                    "quantity": 35,
+                    "tradegood": trade_symbol,
+                },
+                expiry=self.next_quarterly_update,
+            )
+
+    def get_shallow_trades(self, limit=50) -> list[tuple]:
+        sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth
+        from trade_routes_intrasystem tris
+        where market_depth = 10 
+        limit %s"""
+
+        routes = try_execute_select(self.connection, sql, (limit,))
+        if not routes:
+            return []
+        return [(r[0], r[3], r[4], "") for r in routes]
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:
