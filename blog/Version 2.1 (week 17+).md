@@ -12,7 +12,7 @@ I've noticed that everything breaking has triggered the "setback effect", which 
 ## Step Zero - Afford a Hauler
 - ✅ Looking at earning credits, fuel _seems_ like it'll be a large impact, with refuels needing to happen repeatedly.
 - ✅ I think we can buy hydrocarbon and sell it to the refinery, which will give us a place to buy fuel that's reliably cheap
-- no I'm getting off target. We can just consider jettisonning the things that aren't worth the CPS to sell.
+- ~~no I'm getting off target. We can just consider jettisonning the things that aren't worth the CPS to sell.~~
 - then we'll be able to get a siphoner drone and use that to increase our rate of getting hydrocarbons
   - On later reflection I've decided that the value add from a siphoner is less than the value add of a hauler being able to meet the waypoint trade requirements.
    - A player on the discord mentioned they were seeing substantial reward from balancing all the need from the markets in the system, so I'm exploring that option as my foudnational strategy.
