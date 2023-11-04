@@ -437,9 +437,9 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             limit = len(self.haulers)
         sql = """select route_value, system_symbol, trade_symbol, profit_per_unit, export_market, import_market, market_depth
         from trade_routes_intrasystem tris
-        where market_depth > %s
+        where market_depth >= %s
         limit %s"""
-        routes = try_execute_select(self.connection, sql, (limit, min_market_depth))
+        routes = try_execute_select(self.connection, sql, (min_market_depth, limit))
         if not routes:
             return []
 
