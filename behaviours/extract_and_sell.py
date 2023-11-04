@@ -108,12 +108,14 @@ class ExtractAndGoSell(Behaviour):
         )
 
     def get_market_and_jettison_waste(
-        self, ship: Ship, client: SpaceTraders, starting_wp: str
+        self, ship: Ship, client: SpaceTraders, starting_wp_s: str
     ) -> str:
         market_wp_sym = None
         best_tradegood_option = [None, None]
         # find a market that buys all the cargo we're selling
-        target_wp = client.waypoints_view_one(waypoint_slicer(starting_wp), starting_wp)
+        starting_wp = client.waypoints_view_one(
+            waypoint_slicer(starting_wp_s), starting_wp_s
+        )
         best_total_cph = 0
         for tradegood in ship.cargo_inventory:
             # start simple, find the best market for each good, in terms of CPH
@@ -124,12 +126,32 @@ class ExtractAndGoSell(Behaviour):
             best_tradegood_option = [None, None]
             best_tradegood_cph = 0
             for option in options:
-                distance = self.pathfinder.calc_distance_between(target_wp, option[1])
-                time_to_target = self.pathfinder.calc_travel_time_between_wps(
-                    target_wp, option[1], ship.engine.speed or 30
+                end_system = option[1]
+                end_wp = self.st.waypoints_view_one(end_system, option[0])
+                start_system = client.systems_view_one(
+                    waypoint_slicer(starting_wp_s), starting_wp_s
                 )
-                cph = (option[2] * tradegood.units) / time_to_target + 60
+                distance_to_market = self.pathfinder.calc_distance_between(
+                    start_system, end_system
+                )
+                time_to_target = self.pathfinder.calc_travel_time_between_wps(
+                    start_system, end_system, ship.engine.speed
+                )
+                if distance_to_market == 0:
+                    distance_to_market = self.pathfinder.calc_distance_between(
+                        starting_wp, end_wp
+                    )
+                    time_to_target = self.pathfinder.calc_travel_time_between_wps(
+                        starting_wp, end_wp, ship.engine.speed
+                    )
+
+                cph = (option[2] * tradegood.units) / (time_to_target + 60)
                 if cph > best_tradegood_cph:
+                    if start_system != end_system:
+                        # check we can go there
+                        route = self.pathfinder.astar(start_system, end_system)
+                        if not route:
+                            continue
                     best_tradegood_option = option
                     best_tradegood_cph = cph
             if best_tradegood_cph > best_total_cph:
@@ -147,7 +169,7 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    behaviour_params = {"asteroid_wp": "X1-QV47-BA4Z"}
+    behaviour_params = {"asteroid_wp": "X1-U49-FA4A"}
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
