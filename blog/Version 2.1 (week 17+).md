@@ -19,12 +19,13 @@ I've noticed that everything breaking has triggered the "setback effect", which 
 - ✅ then we'll be able to get a hauler and use the command frigate for mining
 
 ## Step One - Scale up mining
-- now we have a hauler doing trades around the system, we can use the command frigate to mine.
-- buy extraction drones and transfer cargo to the command ship
+- ✅ now we have a hauler doing trades around the system, we can use the command frigate to mine.
+- ✅ buy extraction drones and transfer cargo to the command ship
 - command ship should take desirable goods and sell all of them, and jettison the rest.
 - conductor should have a "come collect resources" behaviour that will summon a trading ship to collect everything, for if the commander isn't present. 
+  - I think we use a standard "receive and deliver" behaviour for this and have it be overridden by tasks.
 - We should check if asteroids are becoming unstable
-- Once an asteroid is unstable, we should send new drones to different asteroids with different material deposits.
+- Once an asteroid is unstable, we should send some drones to different asteroids with different material deposits until it restabilises.
 
 ## Step Two - Dedicated fuel handling
 - We require a second hauler for this stage.
@@ -56,31 +57,31 @@ The problems we faced, the reasoning behidn the solution, and the observed outco
 In version 2.0, you could sell pretty much everything you extracted at a single marketplace.  
 However in version 2.1 you need to visit multiple markets to sell everything.
 
-Problem: The behaviour only supports a single sell point per execution
-Problem: The behaviour has no support for jettisonning unsellable cargo
-Problem: The behaviour is not smart about which cargo to prioritise extracting and selling. 
+Problem: The behaviour only supports a single sell point per execution  
+Problem: The behaviour has no support for jettisonning unsellable cargo  
+Problem: The behaviour is not smart about which cargo to prioritise extracting and selling.  
 
 
-Solution: Conductor should look at markets, proximity of source, and value of cargo to determine where to mine, where to sell, and what to sell.
+Solution: Conductor should look at markets, proximity of source, and value of cargo to determine where to mine, where to sell, and what to sell.  
 ```
-Select all asteroids in system.
-For each asteroid, determine the things it CAN supply based on traits. 
+Select all asteroids in system.  
+For each asteroid, determine the things it CAN supply based on traits.  
 For each supplyable, determine CPS of travel time (assume immediate and perfect extraction)
 Record each asteroid's sell CPS, and assign to fleet groupings accordingly.
 ```
-Solution: Default behaviour should try and sell everything, and jettison anything it can't.
-Solution: Update the "Sell All" behaviour to only sell cargo the marketplace will accept.
+Solution: Default behaviour should try and sell everything, and jettison anything it can't.  
+Solution: Update the "Sell All" behaviour to only sell cargo the marketplace will accept.  
 
 ### We never actually trade
  
-Presently we're asumming that the best time spend for us is extracting and selling.
-However, I think at this early stage of the game with small markets and small cargo bays, we should be using the command ship for trading.
+Presently we're asumming that the best time spend for us is extracting and selling.  
+However, I think at this early stage of the game with small markets and small cargo bays, we should be using the command ship for trading.  
 
-Problem: ✅ Trade opportunities definitely exist, but we're not taking them.
-Solution: ✅ Switch drones to "Extract and go sell" behaviour 
-Solution: ✅ Switch haulers to free "trade_intrasolar" behaviour
-Solution: ✅ Identify trade routes that are stable and profitable (behaviours)
-Solution: ✅ Identify shallow trades that shouldn't be executed repeatedly (tasks)
+Problem: ✅ Trade opportunities definitely exist, but we're not taking them.  
+Solution: ✅ Switch drones to "Extract and go sell" behaviour  
+Solution: ✅ Switch haulers to free "trade_intrasolar" behaviour  
+Solution: ✅ Identify trade routes that are stable and profitable (behaviours)  
+Solution: ✅ Identify shallow trades that shouldn't be executed repeatedly (tasks)  
 
 
 Problem: Haulers sitting idle at waypoints waiting to receive cargo
