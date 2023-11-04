@@ -13,12 +13,28 @@ I've noticed that everything breaking has triggered the "setback effect", which 
 - ✅ Looking at earning credits, fuel _seems_ like it'll be a large impact, with refuels needing to happen repeatedly.
 - ✅ I think we can buy hydrocarbon and sell it to the refinery, which will give us a place to buy fuel that's reliably cheap
 - ~~no I'm getting off target. We can just consider jettisonning the things that aren't worth the CPS to sell.~~
-- then we'll be able to get a siphoner drone and use that to increase our rate of getting hydrocarbons
-  - On later reflection I've decided that the value add from a siphoner is less than the value add of a hauler being able to meet the waypoint trade requirements.
-   - A player on the discord mentioned they were seeing substantial reward from balancing all the need from the markets in the system, so I'm exploring that option as my foudnational strategy.
+- ❌ then we'll be able to get a siphoner drone and use that to increase our rate of getting hydrocarbons
+  - ✅ On later reflection I've decided that the value add from a siphoner is less than the value add of a hauler being able to meet the waypoint trade requirements.
+  - ✅A player on the discord mentioned they were seeing substantial reward from balancing all the need from the markets in the system, so I'm exploring that option as my foudnational strategy.
 - ✅ then we'll be able to get a hauler and use the command frigate for mining
 
-## Step One - Build the jump gate
+## Step One - Scale up mining
+- now we have a hauler doing trades around the system, we can use the command frigate to mine.
+- buy extraction drones and transfer cargo to the command ship
+- command ship should take desirable goods and sell all of them, and jettison the rest.
+- conductor should have a "come collect resources" behaviour that will summon a trading ship to collect everything, for if the commander isn't present. 
+- We should check if asteroids are becoming unstable
+- Once an asteroid is unstable, we should send new drones to different asteroids with different material deposits.
+
+## Step Two - Dedicated fuel handling
+- We require a second hauler for this stage.
+- The second hauler should focus on moving hydrocarbons to the refinery planet, and then take fuel around the different waypoints keeping refuel prices as low as possible.
+- If they add a "refuel from cargo" behvaiour we could in theory use unwanted cargo space to let ships take fuel from fuel drones.
+- We need some mechanism by which ships are ineligible to be given tasks - we don't want the refuel hauler to start making shallow trades, or the commander to stop mining and go back to stage zero. Same for assigning behaviours if we want to do manual orchestration in the future.
+
+
+
+## Step Three - Build the jump gate
 -  ✅ Our first step is to get the Dispatcher and Conductor working without crashing.
 - Secondly we'll want a very rudimentary drone based solution to get credits flowing in.
   - ✅ we should target the nearest asteroid, not the first one returned by the DB.
@@ -60,11 +76,11 @@ Solution: Update the "Sell All" behaviour to only sell cargo the marketplace wil
 Presently we're asumming that the best time spend for us is extracting and selling.
 However, I think at this early stage of the game with small markets and small cargo bays, we should be using the command ship for trading.
 
-Problem: Trade opportunities definitely exist, but we're not taking them.
+Problem: ✅ Trade opportunities definitely exist, but we're not taking them.
 Solution: ✅ Switch drones to "Extract and go sell" behaviour 
 Solution: ✅ Switch haulers to free "trade_intrasolar" behaviour
-Solution: Switch "Receive and fulfill" behaviour to **take** desirable materials from nearby extractors / refineries - lets conductor send haulers to extractors when they're nearly full.
-
+Solution: ✅ Identify trade routes that are stable and profitable (behaviours)
+Solution: ✅ Identify shallow trades that shouldn't be executed repeatedly (tasks)
 
 
 Problem: Haulers sitting idle at waypoints waiting to receive cargo
@@ -73,11 +89,25 @@ Solution: Get inventory info into the DB & forcibly extract desirable cargo from
 
 ### We started trading but made bad trades
 
-Problem: I woke up this morning with no money, and the command ship isn't able to execute trades anymore because of this.
+Problem:  I woke up this morning with no money, and the command ship isn't able to execute trades anymore because of this.
 
 Looking at the numbers overnight it seems that the money went to buy surveyors that shouldn't have been bought - a conductor issue.
 Additionally, it doesn't actually seem like we made bad trades after all, just that the surveyor purchases undercut the operating capital requirements for the trade.
 
 Solution: When assigning trades, keep track of the assigned ship's cargo capacity & current trading costs, and ensure that there's a minimum operating capital kept in the bank.
-Solution: Quick solution - have the buy/sell behaviour check if a trade is still going to be profitable _at all_ before making the trade. 
-Solution: Proper solution - Dispatcher overhaul, behaviours get termination events, infinite loops after setup, and the dispatcher sets the terination event if the behaviour changes.
+Solution: Determine the minimum allowable profit before skipping a trade behaviour.
+Solution: ✅ Quick solution - have the buy/sell behaviour check if a trade is still going to be profitable _at all_ before making the trade. 
+
+
+End of week stats
+
+| stat         | Experimental | Production | best historical | 
+| ---          | ------------ | ---------- | --------------- |
+| total uptime |  75.11h |           
+| total ships  | 16      |
+| contracts    | 0       |
+| earnings     | 597,486 |
+| requests     | 226,515 |
+| average delay| 0.33s   |
+| CPH          | 7954.51 |
+| CPR          | 2.6     |
