@@ -10,11 +10,13 @@ I've decided that I'm going to match the SDK models to the new changes, even if 
 I've noticed that everything breaking has triggered the "setback effect", which was identifed as the primary risk to this project losing momentum and wandiner off. Therefore the response to this patch, which is happening in the middle of tumultuous life events, is going to be key to whether or not we continue playing SpaceTraders or not.
 
 ## Step Zero - Afford a Hauler
-- Looking at earning credits, fuel _seems_ like it'll be a large impact, with refuels needing to happen repeatedly.
+- ✅ Looking at earning credits, fuel _seems_ like it'll be a large impact, with refuels needing to happen repeatedly.
 - ✅ I think we can buy hydrocarbon and sell it to the refinery, which will give us a place to buy fuel that's reliably cheap
 - no I'm getting off target. We can just consider jettisonning the things that aren't worth the CPS to sell.
 - then we'll be able to get a siphoner drone and use that to increase our rate of getting hydrocarbons
-- then we'll be able to get a hauler and use the command frigate for mining
+  - On later reflection I've decided that the value add from a siphoner is less than the value add of a hauler being able to meet the waypoint trade requirements.
+   - A player on the discord mentioned they were seeing substantial reward from balancing all the need from the markets in the system, so I'm exploring that option as my foudnational strategy.
+- ✅ then we'll be able to get a hauler and use the command frigate for mining
 
 ## Step One - Build the jump gate
 -  ✅ Our first step is to get the Dispatcher and Conductor working without crashing.

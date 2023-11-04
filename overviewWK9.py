@@ -179,6 +179,8 @@ def commander_overview():
 
 
 def chop_ms(time: timedelta):
+    if not time:
+        return timedelta(seconds=0)
     return time - timedelta(microseconds=time.microseconds)
 
 
