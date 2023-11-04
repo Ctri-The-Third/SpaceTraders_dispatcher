@@ -432,12 +432,12 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
         self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
 
-    def get_trade_routes(self, limit=None, min_market_depth=1000) -> list[tuple]:
+    def get_trade_routes(self, limit=None, min_market_depth=100) -> list[tuple]:
         if not limit:
             limit = len(self.haulers)
         sql = """select route_value, system_symbol, trade_symbol, profit_per_unit, export_market, import_market, market_depth
         from trade_routes_intrasystem tris
-        where min_market_depth > %s
+        where market_depth > %s
         limit %s"""
         routes = try_execute_select(self.connection, sql, (limit, min_market_depth))
         if not routes:
