@@ -330,7 +330,7 @@ class Conductor:
         if not routes:
             return
         for i, ship in enumerate(ships):
-            tradegood, buy_wp, sell_wp, return_good = routes[i]
+            tradegood, buy_wp, sell_wp, profit_per_unit = routes[i]
             set_behaviour(
                 self.connection,
                 ship.name,
@@ -339,7 +339,7 @@ class Conductor:
                     "buy_wp": buy_wp,
                     "sell_wp": sell_wp,
                     "tradegood": tradegood,
-                    "return_tradegood": "",
+                    "safety_profit_threshold": profit_per_unit / 2,
                 },
             )
 
@@ -432,16 +432,17 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
         self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
 
-    def get_trade_routes(self, limit=None) -> list[tuple]:
+    def get_trade_routes(self, limit=None, min_market_depth=1000) -> list[tuple]:
         if not limit:
             limit = len(self.haulers)
         sql = """select route_value, system_symbol, trade_symbol, profit_per_unit, export_market, import_market, market_depth
         from trade_routes_intrasystem tris
+        where min_market_depth > %s
         limit %s"""
-        routes = try_execute_select(self.connection, sql, (limit,))
+        routes = try_execute_select(self.connection, sql, (limit, min_market_depth))
         if not routes:
             return []
-        return_obj = []
+
         return [(r[2], r[4], r[5], r[3]) for r in routes]
 
     def log_shallow_trade_tasks(self):
