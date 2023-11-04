@@ -75,11 +75,17 @@ class Conductor:
         self.next_quarterly_update = None
         self.next_daily_update = None
         self.starting_system = None
+        self.starting_planet = None
 
     def run(self):
         #
         # * scale regularly and set defaults
         # * progress missions
+        hq = self.st.view_my_self().headquarters
+        hq_sys = waypoint_slicer(hq)
+        self.starting_system = self.st.systems_view_one(hq_sys)
+        self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
+
         self.next_quarterly_update = datetime.now() + timedelta(hours=1)
         last_quarterly_update = datetime.now() - timedelta(hours=2)
         last_daily_update = datetime.now() - timedelta(days=2)
@@ -119,8 +125,6 @@ class Conductor:
 
         hq_sys = waypoint_slicer(hq)
 
-        self.starting_system = st.systems_view_one(hq_sys)
-        self.starting_planet = st.waypoints_view_one(hq_sys, hq)
         if not self.asteroid_wps:
             resp = st.find_waypoints_by_trait(
                 self.starting_system.symbol, "COMMON_METAL_DEPOSITS"
