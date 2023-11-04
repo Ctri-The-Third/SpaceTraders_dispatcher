@@ -133,14 +133,7 @@ class Conductor:
             set_behaviour(
                 self.connection,
                 ship.name,
-                BHVR_EXTRACT_AND_GO_SELL,
-                {"asteroid_wp": self.asteroid_wps[0].symbol},
-            )
-        for hauler in self.haulers:
-            set_behaviour(
-                self.connection,
-                hauler.name,
-                BHVR_RECEIVE_AND_FULFILL,
+                BHVR_EXTRACT_AND_TRANSFER,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
         for surveyor in self.surveyors:
@@ -157,6 +150,9 @@ class Conductor:
                 BHVR_EXTRACT_AND_GO_SELL,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
+        self.assign_traderoutes_to_ships(self.haulers)
+        self.log_shallow_trade_tasks()
+
         # find unvisited shipyards
 
         #
@@ -229,12 +225,6 @@ class Conductor:
             )
 
         # send haulers to go buy things
-        if len(self.haulers) > 1:
-            self.assign_traderoutes_to_ships(self.haulers)
-        else:
-            self.assign_traderoutes_to_ships(self.commanders + self.haulers)
-
-        self.log_shallow_trade_tasks()
 
     def daily_update(self):
         sql = """
