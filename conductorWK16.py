@@ -72,7 +72,8 @@ class Conductor:
         self.satellites = []
         self.refiners = []
         self.pathfinder = PathFinder(connection=self.connection)
-
+        self.next_quarterly_update = None
+        self.next_daily_update = None
         self.starting_system = None
 
     def run(self):
@@ -82,6 +83,7 @@ class Conductor:
         self.next_quarterly_update = datetime.now() + timedelta(hours=1)
         last_quarterly_update = datetime.now() - timedelta(hours=2)
         last_daily_update = datetime.now() - timedelta(days=2)
+        self.next_daily_update = datetime.now() + timedelta(days=1)
         #
         # hourly calculations of profitable things, assign behaviours and tasks
         #
@@ -96,6 +98,7 @@ class Conductor:
             if last_daily_update < datetime.now() - timedelta(days=1):
                 self.daily_update()
                 last_daily_update = datetime.now()
+                self.next_daily_update = datetime.now() + timedelta(days=1)
 
             if last_quarterly_update < datetime.now() - timedelta(minutes=15):
                 self.quarterly_update()
@@ -234,6 +237,18 @@ class Conductor:
             delete from waypoint_traits WT where wt.trait_symbol = 'UNCHARTED';"""
         try_execute_upsert(self.connection, sql, [])
         self.pathfinder.clear_graph()
+
+        log_task(
+            self.connection,
+            BHVR_EXPLORE_SYSTEM,
+            [],
+            self.starting_system.symbol,
+            1,
+            self.st.current_agent_symbol,
+            {"target_sys": self.starting_system.symbol},
+            expiry=self.next_daily_update,
+            specific_ship_symbol=self.satellites[0].name,
+        )
 
     def minutely_update(self):
         """This method handles ship scaling and assigning default behaviours."""
