@@ -257,6 +257,7 @@ class Conductor:
             or len(self.surveyors) < 1
             or len(self.haulers) < 1
         ):
+            new_ship = None
             if len(self.haulers) < 1:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_LIGHT_HAULER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
