@@ -138,7 +138,7 @@ def log_task(
     sql = """ INSERT INTO public.ship_tasks(
 	task_hash, requirements, expiry, priority, agent_symbol, claimed_by, behaviour_id, target_system, behaviour_params)
 	VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-    on conflict(task_hash) DO set completed = False 
+    on conflict(task_hash) DO UPDATE set completed = False 
     """
 
     resp = try_execute_upsert(
