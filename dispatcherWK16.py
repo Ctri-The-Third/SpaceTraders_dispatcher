@@ -186,13 +186,13 @@ class dispatcher:
         self.client: SpaceTraders
         self.client.set_current_agent(self.agents[0][1], self.agents[0][0])
         self.client.ships_view(force=True)
-
+        
         # rather than tying this behaviour to the probe, this is executed at the dispatcher level.
 
-        # ships_and_threads["scan_thread"] = threading.Thread(
-        #    target=self.maybe_scan_all_systems, daemon=True
-        # )
-        # ships_and_threads["scan_thread"].start()
+        ships_and_threads["scan_thread"] = threading.Thread(
+           target=self.maybe_scan_all_systems, daemon=True
+        )
+        ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
             # if we've been running for more than 12 hours, terminate. important for profiling.
@@ -512,6 +512,8 @@ class dispatcher:
                 st.system_market(waypoint)
             if waypoint.type == "JUMP_GATE":
                 st.system_jumpgate(waypoint)
+        
+        return 
         if got_em_all:
             return
         for i in range(1, math.ceil(api_systems / 20) + 1):
