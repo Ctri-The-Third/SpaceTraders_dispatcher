@@ -272,7 +272,7 @@ class dispatcher:
                             ships_and_threads,
                             ship_and_behaviour["name"],
                             bhvr,
-                            ship_and_behaviour["behaviour_id"],
+                            task["behaviour_id"],
                         )
 
                         if doing_task:
@@ -415,9 +415,7 @@ class dispatcher:
                         ):
                             valid_for_ship = False
                             break
-                        if (requirement == "35_CARGO"
-                            and ship.cargo_capacity < 35
-                        ):
+                        if requirement == "35_CARGO" and ship.cargo_capacity < 35:
                             valid_for_ship = False
                             break
                 if valid_for_ship:
@@ -500,7 +498,7 @@ class dispatcher:
             waypoint = st.waypoints_view_one(hq_system.symbol, waypoint.symbol)
             if not waypoint:
                 continue
-            if len(waypoint.traits) == 0 or waypoint.type != "JUMP_GATE":
+            if len(waypoint.traits) == 0 or waypoint.type == "JUMP_GATE":
                 # refresh the traits
                 waypoint = st.waypoints_view_one(
                     hq_system.symbol, waypoint.symbol, True
