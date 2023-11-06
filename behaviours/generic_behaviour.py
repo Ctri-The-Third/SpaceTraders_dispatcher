@@ -204,6 +204,31 @@ class Behaviour:
             return resp
         return True
 
+    def siphon_till_full(self, cutoff_cargo_units_used=None) -> Ship or bool:
+        ship = self.ship
+        st = self.st
+        current_wayp = self.st.waypoints_view_one(
+            self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
+        )
+        if current_wayp.type not in ("GAS_GIANT"):
+            self.logger.error(
+                "Ship is not at an siphonable location, sleeping then aborting"
+            )
+            sleep(300)
+            return False
+        cutoff_cargo_units_used = ship.cargo_capacity
+        while ship.cargo_units_used < cutoff_cargo_units_used:
+            cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
+
+            # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
+            self.sleep_until_ready()
+
+            resp = st.ship_siphon(ship)
+
+            # extract. if we're full, return without refreshing the survey (as we won't use it)
+            if ship.cargo_units_used >= cutoff_cargo_units_used:
+                return ship
+
     def extract_till_full(
         self, cargo_to_target: list = None, cutoff_cargo_units_used=None
     ) -> Ship or bool:
@@ -211,9 +236,9 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
-        if "ASTEROID" not in current_wayp.type:
+        if current_wayp.type not in ("ASTEROID"):
             self.logger.error(
-                "Ship is not in an asteroid field, sleeping then aborting"
+                "Ship is not at an extractable location, sleeping then aborting"
             )
             sleep(300)
             return False
