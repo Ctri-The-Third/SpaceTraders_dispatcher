@@ -101,7 +101,7 @@ class ExtractAndGoSell(Behaviour):
         else:
             self.jettison_all_cargo()
 
-        st.system_market(current_wp, True)
+        new_market = st.system_market(current_wp, True)
 
         self.end()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)

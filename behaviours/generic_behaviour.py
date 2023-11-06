@@ -314,12 +314,10 @@ class Behaviour:
         nearest_refuel_wp = None
         nearest_refuel_distance = 99999
         for refuel_point in maybe_refuel_points:
-            distance = self.distance_from_ship(ship, refuel_point)
+            distance = self.pathfinder.calc_distance_between(current_wayp, refuel_point)
             if distance < nearest_refuel_distance:
                 market = self.st.system_market(refuel_point)
-                if "FUEL" in [
-                    listing.symbol for listing in market.listings
-                ] or "FUEL" in [exchange.symbol for exchange in market.exchange]:
+                if market.get_tradegood("FUEL") is not None:
                     nearest_refuel_distance = distance
                     nearest_refuel_wp = refuel_point
         if nearest_refuel_wp is not None:
@@ -607,12 +605,6 @@ order by 1 desc """
 
     def sleep_until_ready(self):
         sleep_until_ready(self.ship)
-
-    def distance_from_ship(self, ship: Ship, target_wp: Waypoint) -> float:
-        source = self.st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
-        return self.pathfinder.calc_distance_between(source, target_wp)
 
     def ship_extrasolar(self, destination_system: System, route: JumpGateRoute = None):
         if isinstance(destination_system, str):
