@@ -57,6 +57,10 @@ from behaviours.chill_and_survey import (
     ChillAndSurvey,
     BEHAVIOUR_NAME as BHVR_CHILL_AND_SURVEY,
 )
+from behaviours.refuel_all_fuel_exchanges_in_system import (
+    RefuelAllExchanges,
+    BEHAVIOUR_NAME as BHVR_REFUEL_ALL_IN_SYSTEM,
+)
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
@@ -186,11 +190,11 @@ class dispatcher:
         self.client: SpaceTraders
         self.client.set_current_agent(self.agents[0][1], self.agents[0][0])
         self.client.ships_view(force=True)
-        
+
         # rather than tying this behaviour to the probe, this is executed at the dispatcher level.
 
         ships_and_threads["scan_thread"] = threading.Thread(
-           target=self.maybe_scan_all_systems, daemon=True
+            target=self.maybe_scan_all_systems, daemon=True
         )
         ships_and_threads["scan_thread"].start()
         startime = datetime.now()
@@ -478,6 +482,8 @@ class dispatcher:
             bhvr = FindMountsAndEquip(aname, sname, bhvr_params, session=self.session)
         elif id == BHVR_CHILL_AND_SURVEY:
             bhvr = ChillAndSurvey(aname, sname, bhvr_params, session=self.session)
+        elif id == BHVR_REFUEL_ALL_IN_SYSTEM:
+            bhvr = RefuelAllExchanges(aname, sname, bhvr_params, session=self.session)
         else:
             pass
         return bhvr
@@ -510,8 +516,8 @@ class dispatcher:
                 st.system_market(waypoint)
             if waypoint.type == "JUMP_GATE":
                 st.system_jumpgate(waypoint)
-        
-        return 
+
+        return
         if got_em_all:
             return
         for i in range(1, math.ceil(api_systems / 20) + 1):

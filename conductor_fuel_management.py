@@ -29,6 +29,7 @@ from dispatcherWK16 import (
     BHVR_EXTRACT_AND_TRANSFER,
     BHVR_CHILL_AND_SURVEY,
     BHVR_BUY_AND_DELIVER_OR_SELL,
+    BHVR_REFUEL_ALL_IN_SYSTEM,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -120,10 +121,10 @@ class FuelManagementConductor:
 
     def daily_update(self):
         possible_ships = self.haulers + self.commanders
-        gas_giant = self.st.find_waypoints_by_type_one(
+        self.gas_giant = gas_giant = self.st.find_waypoints_by_type_one(
             self.starting_system.symbol, "GAS_GIANT"
         )
-        fuel_refinery = self.find_fuel_refineries(gas_giant)
+        self.fuel_refinery = fuel_refinery = self.find_fuel_refineries(gas_giant)
         hydrocarbon_shipper = self.commanders[0]
 
         # set behaviour - hydrocarbon shipper siphons hydrocarbon from export and sells to fuel refinery
@@ -138,9 +139,42 @@ class FuelManagementConductor:
             # if we have a fuel shipper, give it all the fuel shipping tasks possible
         pass
 
+        #
+        # daily recon task
+        #
+
+        log_task(
+            self.connection,
+            BHVR_EXPLORE_SYSTEM,
+            [],
+            self.starting_system.symbol,
+            1,
+            self.current_agent_symbol,
+            {},
+            expiry=self.next_daily_update,
+            specific_ship_symbol=self.satellites[0].name,
+        )
+
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
         # if not, give the exporter a refuel task for 1 (maybe 2) points.
+        possible_ships = self.haulers + self.commanders
+        refueler = possible_ships[min(1, len(possible_ships) - 1)]
+        fuel_refinery = self.st.system_market(self.fuel_refinery)
+        fuel = fuel_refinery.get_tradegood("FUEL")
+        if fuel.supply in ("ABUNDANT", "HIGH"):
+            if self.any_refuels_needed():
+                log_task(
+                    self.connection,
+                    BHVR_REFUEL_ALL_IN_SYSTEM,
+                    ["35_CARGO"],
+                    waypoint_slicer(self.gas_giant),
+                    4,
+                    self.current_agent_symbol,
+                    {},
+                    expiry=self.next_quarterly_update,
+                    specific_ship_symbol=refueler.name,
+                )
         pass
 
     def minutely_update(self):
@@ -169,6 +203,17 @@ class FuelManagementConductor:
                 closest_refinery = wp
 
         return closest_refinery
+
+    def any_refuels_needed(self):
+        waypoints = self.st.find_waypoints_by_trait(
+            self.starting_system.symbol, "MARKETPLACE"
+        )
+        markets = [self.st.system_market(wp) for wp in waypoints]
+        for market in markets:
+            fuel = market.get_tradegood("FUEL")
+            if fuel.type == "EXCHANGE" and fuel.supply != "ABUNDANT":
+                return True
+        return False
 
     def maybe_upgrade_ship(self):
         # surveyors first, then extractors
