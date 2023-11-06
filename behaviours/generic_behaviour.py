@@ -328,7 +328,8 @@ class Behaviour:
                 > ship.fuel_current
             ):
                 flight_mode = "DRIFT"
-            self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
+            if distance >= 0:
+                self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
             self.st.ship_dock(ship)
             self.st.ship_refuel(ship)
             if flight_mode and flight_mode != ship.nav.flight_mode:
@@ -703,4 +704,4 @@ order by 1 desc """
 
 
 def sleep_until_ready(ship: "Ship"):
-    sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+    sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining) + 0.5)
