@@ -61,7 +61,7 @@ class ExtractAndGoSell(Behaviour):
             else:
                 target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
             market_wp_sym = self.behaviour_params.get(
-                "market_waypoint",
+                "market_wp",
                 None,
             )
 
@@ -75,17 +75,21 @@ class ExtractAndGoSell(Behaviour):
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
         # in a circumstance where the ship isn't in the specified system, it will go.
-
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
         self.sleep_until_ready()
-        if ship.can_survey:
+        if (
+            ship.can_survey and target_wp.type == "ASTEROID"
+        ):  # this isn't appropriate for siphoning.
             st.ship_survey(ship)
 
         cutoff_cargo_limit = None
-        if ship.extract_strength > 0:
+        if ship.extract_strength > 0 and target_wp.type == "ASTEROID":
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
-        self.extract_till_full([], cutoff_cargo_limit)
+
+            self.extract_till_full([], cutoff_cargo_limit)
+        if ship.can_siphon > 0 and target_wp.type == "GAS_GIANT":
+            self.siphon_till_full(cutoff_cargo_limit)
 
         if not market_wp_sym:
             market_wp_sym = self.get_market_and_jettison_waste(
@@ -117,6 +121,10 @@ class ExtractAndGoSell(Behaviour):
             waypoint_slicer(starting_wp_s), starting_wp_s
         )
         best_total_cph = 0
+        start_system = client.systems_view_one(
+            waypoint_slicer(starting_wp_s), starting_wp_s
+        )
+
         for tradegood in ship.cargo_inventory:
             # start simple, find the best market for each good, in terms of CPH
 
@@ -128,9 +136,6 @@ class ExtractAndGoSell(Behaviour):
             for option in options:
                 end_system = option[1]
                 end_wp = self.st.waypoints_view_one(end_system, option[0])
-                start_system = client.systems_view_one(
-                    waypoint_slicer(starting_wp_s), starting_wp_s
-                )
                 distance_to_market = self.pathfinder.calc_distance_between(
                     start_system, end_system
                 )
@@ -169,7 +174,7 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    behaviour_params = {"asteroid_wp": "X1-U49-FA4A"}
+    behaviour_params = {"market_wp": "X1-U49-G52", "asteroid_wp": "X1-U49-C42"}
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
