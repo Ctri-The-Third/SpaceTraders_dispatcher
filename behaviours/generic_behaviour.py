@@ -563,7 +563,7 @@ order by 1 desc """
             waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
 
             self.ship_intrasolar(wayp_sym)
-
+            self.sleep_until_ready()
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             if "MARKETPLACE" in trait_symbols:
                 market = st.system_market(waypoint, True)

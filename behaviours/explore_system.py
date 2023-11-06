@@ -118,10 +118,10 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    behaviour_params = {"target_sys": "X1-QV47"}  # X1-TF72 X1-YF83
+    behaviour_params = {"target_sys": "X1-U49"}  # X1-TF72 X1-YF83
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
 
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
