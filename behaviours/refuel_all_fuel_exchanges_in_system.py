@@ -13,7 +13,10 @@ SAFETY_PADDING = 60
 
 
 class RefuelAllExchanges(Behaviour):
-    """Expects a parameter blob containing 'asteroid_wp'"""
+    """Expects a parameter blob containing 'asteroid_wp'
+
+    `safety_profit_threshold`: if you want a safety cut out (15 minutes) if profits drop\n
+    """
 
     def __init__(
         self,
@@ -53,15 +56,15 @@ class RefuelAllExchanges(Behaviour):
         supply_price = 9999999
 
         for w in all_markets:
-            w = st.system_market(w)
-            w: Market
-            for l in w.listings:
+            m = st.system_market(w)
+            m: Market
+            for l in m.listings:
                 if (
                     l.symbol == "FUEL"
                     and l.purchase_price < supply_price
                     and l.type == "EXPORT"
                 ):
-                    fuel_market = w
+                    fuel_market = m
                     supply_price = l.purchase_price
 
         if not fuel_market:
@@ -72,8 +75,8 @@ class RefuelAllExchanges(Behaviour):
             return
         needing_refueled = []
         for w in all_markets:
-            w = st.system_market(w)
-            for t in w.listings:
+            m = st.system_market(w)
+            for t in m.listings:
                 t: MarketTradeGoodListing
                 if (
                     t.symbol == "FUEL"
@@ -92,17 +95,30 @@ class RefuelAllExchanges(Behaviour):
             m = self.st.system_market(w)
             fuel = m.get_tradegood("FUEL")
             trips = 0
-            while fuel.supply != "ABUNDANT" or trips < 5:
+            while (fuel.supply != "ABUNDANT" or trips < 5) and self.still_profitable(
+                fuel_market, m
+            ):
                 self.ship_intrasolar(fuel_market.symbol)
-
                 self.buy_cargo("FUEL", self.ship.cargo_space_remaining)
+
                 w: Waypoint
                 self.ship_intrasolar(w.symbol)
                 self.sell_all_cargo([])
-                m = self.st.system_market(w, True)
+                m = self.st.system_market(w)
                 fuel = m.get_tradegood("FUEL")
                 trips += 1
         self.end()
+
+    def still_profitable(
+        self, fuel_market_wp: Waypoint, dest_market_wp: Waypoint
+    ) -> bool:
+        fuel_market = self.st.system_market(fuel_market_wp)
+        dest_market = self.st.system_market(dest_market_wp)
+
+        fuel_price = fuel_market.get_tradegood("FUEL").purchase_price
+        dest_price = dest_market.get_tradegood("FUEL").sell_price
+
+        return dest_price > fuel_price
 
 
 if __name__ == "__main__":
