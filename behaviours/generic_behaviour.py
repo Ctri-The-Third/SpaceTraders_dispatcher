@@ -145,7 +145,7 @@ class Behaviour:
 
         st = self.st
         ship = self.ship
-        origin_waypoint = st.waypoints_view_one(
+        origin_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
@@ -163,45 +163,50 @@ class Behaviour:
                 error_code=4202,
                 url=f"{__name__}.ship_intrasolar",
             )
-        wp = self.st.waypoints_view_one(target_sys_symbol, target_wp_symbol)
+        dest_wp = self.st.waypoints_view_one(target_sys_symbol, target_wp_symbol)
+        route = self.pathfinder.plot_system_nav(
+            ship.nav.system_symbol, origin_wp, dest_wp, self.ship.fuel_capacity
+        )
+        for point in route.route:
+            route: Waypoint
 
-        fuel_cost = self.pathfinder.determine_fuel_cost(origin_waypoint, wp)
-        if (
-            flight_mode != "DRIFT"
-            and fuel_cost >= ship.fuel_current
-            and ship.fuel_capacity > 0
-            and fuel_cost < ship.fuel_capacity
-        ):
-            # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
-            self.go_and_refuel()
-        if (
-            fuel_cost >= ship.fuel_current
-            and ship.fuel_capacity > 0
-            and ship.nav.flight_mode != "DRIFT"
-        ):
-            st.ship_patch_nav(ship, "DRIFT")
-        elif ship.nav.flight_mode != flight_mode:
-            st.ship_patch_nav(ship, flight_mode)
+            fuel_cost = self.pathfinder.determine_fuel_cost(origin_wp, point)
+            if (
+                flight_mode != "DRIFT"
+                and fuel_cost >= ship.fuel_current
+                and ship.fuel_capacity > 0
+                and fuel_cost < ship.fuel_capacity
+            ):
+                # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
+                self.go_and_refuel()
+            if (
+                fuel_cost >= ship.fuel_current
+                and ship.fuel_capacity > 0
+                and ship.nav.flight_mode != "DRIFT"
+            ):
+                st.ship_patch_nav(ship, "DRIFT")
+            elif ship.nav.flight_mode != flight_mode:
+                st.ship_patch_nav(ship, flight_mode)
 
-        if ship.nav.waypoint_symbol != target_wp_symbol:
-            if ship.nav.status == "DOCKED":
-                st.ship_orbit(self.ship)
+            if ship.nav.waypoint_symbol != point.symbol:
+                if ship.nav.status == "DOCKED":
+                    st.ship_orbit(self.ship)
 
-            resp = st.ship_move(self.ship, target_wp_symbol)
-            if not resp:
-                return False
-            if sleep_till_done:
-                sleep_until_ready(self.ship)
-                ship.nav.status = "IN_ORBIT"
-                ship.nav.waypoint_symbol = target_wp_symbol
-                ship.nav_dirty = True
-                st.update(ship)
-            self.logger.debug(
-                "moved to %s, time to destination %s",
-                ship.name,
-                ship.nav.travel_time_remaining,
-            )
-            return resp
+                resp = st.ship_move(self.ship, point.symbol)
+                if not resp:
+                    return False
+                if sleep_till_done:
+                    sleep_until_ready(self.ship)
+                    ship.nav.status = "IN_ORBIT"
+                    ship.nav.waypoint_symbol = point.symbol
+                    ship.nav_dirty = True
+                    st.update(ship)
+                self.logger.debug(
+                    "moved to %s, time to destination %s",
+                    ship.name,
+                    ship.nav.travel_time_remaining,
+                )
+
         return True
 
     def siphon_till_full(self, cutoff_cargo_units_used=None) -> Ship or bool:
@@ -497,10 +502,12 @@ order by 1 desc """
             )
 
         times_to_buy = math.ceil(quantity / found_listing.trade_volume)
+        amount_to_buy = min(quantity, ship.cargo_space_remaining)
         for i in range(0, times_to_buy):
             resp = st.ship_purchase_cargo(
-                ship, cargo_symbol, found_listing.trade_volume
+                ship, cargo_symbol, min(amount_to_buy, found_listing.trade_volume)
             )
+            amount_to_buy -= found_listing.trade_volume
             if not resp:
                 return resp
         return True
