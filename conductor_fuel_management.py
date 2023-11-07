@@ -39,6 +39,7 @@ from conductor_functions import (
     set_behaviour,
     maybe_buy_ship_sys,
     log_task,
+    log_shallow_trade_tasks,
 )
 
 
@@ -134,10 +135,18 @@ class FuelManagementConductor:
             BHVR_EXTRACT_AND_GO_SELL,
             {"asteroid_wp": gas_giant.symbol, "market_wp": fuel_refinery.symbol},
         )
+
+        set_behaviour(
+            self.connection,
+            self.satellites[0].name,
+            BHVR_MONITOR_CHEAPEST_PRICE,
+            {"ship_type": "SHIP_LIGHT_FREIGHTER"},
+        )
         if len(possible_ships) > 1:
             fuel_shipper = possible_ships[1]
             # if we have a fuel shipper, give it all the fuel shipping tasks possible
-        pass
+        else:
+            pass
 
         #
         # daily recon task
@@ -158,6 +167,7 @@ class FuelManagementConductor:
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
         # if not, give the exporter a refuel task for 1 (maybe 2) points.
+        self.safety_margin = 0
         possible_ships = self.haulers + self.commanders
         refueler = possible_ships[min(1, len(possible_ships) - 1)]
         fuel_refinery = self.st.system_market(self.fuel_refinery)
@@ -176,10 +186,19 @@ class FuelManagementConductor:
                     specific_ship_symbol=refueler.name,
                 )
             else:
-                self.log_shallow_trade_tasks()
+                self.safety_margin = log_shallow_trade_tasks(
+                    self.connection,
+                    self.st.view_my_self().credits,
+                    BHVR_BUY_AND_DELIVER_OR_SELL,
+                    self.current_agent_symbol,
+                    self.next_quarterly_update,
+                    1,
+                )
         pass
 
     def minutely_update(self):
+        if len(self.haulers) == 0:
+            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         pass
 
     def find_hydrocarbon_exporter(self) -> Market:
@@ -318,38 +337,6 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             return []
 
         return [(r[2], r[4], r[5], r[3]) for r in routes]
-
-    def log_shallow_trade_tasks(self):
-        routes = self.get_shallow_trades()
-        for route in routes:
-            trade_symbol, export_market, import_market, profit_per_unit = route
-            log_task(
-                self.connection,
-                BHVR_BUY_AND_DELIVER_OR_SELL,
-                ["35_CARGO"],
-                waypoint_slicer(import_market),
-                5,
-                self.current_agent_symbol,
-                {
-                    "buy_wp": export_market,
-                    "sell_wp": import_market,
-                    "quantity": 35,
-                    "tradegood": trade_symbol,
-                    "safety_profit_threshold": profit_per_unit / 2,
-                },
-                expiry=self.next_quarterly_update,
-            )
-
-    def get_shallow_trades(self, limit=50) -> list[tuple]:
-        sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth
-        from trade_routes_intrasystem tris
-        where market_depth = 10 
-        limit %s"""
-
-        routes = try_execute_select(self.connection, sql, (limit,))
-        if not routes:
-            return []
-        return [(r[0], r[3], r[4], r[2]) for r in routes]
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:
