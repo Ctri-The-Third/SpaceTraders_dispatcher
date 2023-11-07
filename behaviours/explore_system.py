@@ -60,6 +60,12 @@ class ExploreSystem(Behaviour):
             d_sys = self.find_unexplored_jumpgate()
             if d_sys:
                 d_sys = st.systems_view_one(d_sys)
+                if not d_sys:
+                    self.logger.error("Couldn't find system %s", d_sys)
+                    self.end()
+                    self.st.logging_client.log_ending(
+                        BEHAVIOUR_NAME, ship.name, agent.credits
+                    )
                 path = self.pathfinder.astar(o_sys, d_sys)
             else:
                 tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
@@ -121,7 +127,7 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    behaviour_params = {"target_sys": "X1-U49"}  # X1-TF72 X1-YF83
+    # behaviour_params = {"target_sys": "X1-U49"}  # X1-TF72 X1-YF83
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
 
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
