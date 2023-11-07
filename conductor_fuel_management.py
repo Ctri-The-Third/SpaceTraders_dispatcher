@@ -175,6 +175,8 @@ class FuelManagementConductor:
                     expiry=self.next_quarterly_update,
                     specific_ship_symbol=refueler.name,
                 )
+            else:
+                self.log_shallow_trade_tasks()
         pass
 
     def minutely_update(self):

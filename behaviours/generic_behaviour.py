@@ -194,7 +194,7 @@ class Behaviour:
 
                 resp = st.ship_move(self.ship, point.symbol)
                 if not resp:
-                    return False
+                    return resp
                 if sleep_till_done:
                     sleep_until_ready(self.ship)
                     ship.nav.status = "IN_ORBIT"
@@ -712,3 +712,15 @@ order by 1 desc """
 
 def sleep_until_ready(ship: "Ship"):
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining) + 0.5)
+
+
+if __name__ == "__main__":
+    import sys
+
+    set_logging(level=logging.DEBUG)
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship = f"{agent}-{ship_number}"
+    bhvr = Behaviour(agent, ship, {})
+
+    bhvr.ship_intrasolar("X1-U49-C42")
