@@ -76,6 +76,7 @@ class Conductor:
         self.next_daily_update = None
         self.starting_system = None
         self.starting_planet = None
+        self.capital_reserve = 0
 
     def run(self):
         #
@@ -121,6 +122,7 @@ class Conductor:
     def quarterly_update(self):
         st = self.st
 
+        self.capital_reserve = 0
         hq = st.view_my_self().headquarters
 
         hq_sys = waypoint_slicer(hq)
@@ -157,7 +159,7 @@ class Conductor:
                 BHVR_EXTRACT_AND_GO_SELL,
                 {"asteroid_wp": self.asteroid_wps[0].symbol},
             )
-        self.assign_traderoutes_to_ships(self.haulers)
+        # self.assign_traderoutes_to_ships(self.haulers)
         self.log_shallow_trade_tasks()
 
         # find unvisited shipyards
@@ -240,7 +242,7 @@ class Conductor:
             );
             delete from waypoint_traits WT where wt.trait_symbol = 'UNCHARTED';"""
         try_execute_upsert(self.connection, sql, [])
-        self.pathfinder.clear_graph()
+        self.pathfinder.clear_jump_graph()
 
         log_task(
             self.connection,
@@ -465,9 +467,18 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         return [(r[2], r[4], r[5], r[3]) for r in routes]
 
     def log_shallow_trade_tasks(self):
-        routes = self.get_shallow_trades()
+        working_capital = self.st.view_my_self().credits
+        routes = self.get_shallow_trades(working_capital)
+
         for route in routes:
-            trade_symbol, export_market, import_market, profit_per_unit = route
+            (
+                trade_symbol,
+                export_market,
+                import_market,
+                profit_per_unit,
+                cost_to_execute,
+            ) = route
+            self.capital_reserve += cost_to_execute
             log_task(
                 self.connection,
                 BHVR_BUY_AND_DELIVER_OR_SELL,
@@ -485,16 +496,27 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
                 expiry=self.next_quarterly_update,
             )
 
-    def get_shallow_trades(self, limit=50) -> list[tuple]:
-        sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth
+    def get_shallow_trades(
+        self,
+        working_capital: int,
+        limit=50,
+    ) -> list[tuple]:
+        sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 35
         from trade_routes_intrasystem tris
-        where market_depth = 10 
+        where market_depth = 10 and purchase_price * 35 < %s
         limit %s"""
 
-        routes = try_execute_select(self.connection, sql, (limit,))
+        routes = try_execute_select(
+            self.connection,
+            sql,
+            (
+                working_capital,
+                limit,
+            ),
+        )
         if not routes:
             return []
-        return [(r[0], r[3], r[4], r[2]) for r in routes]
+        return [(r[0], r[3], r[4], r[2], r[6]) for r in routes]
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:
