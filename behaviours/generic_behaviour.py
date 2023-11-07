@@ -635,8 +635,10 @@ order by 1 desc """
                 continue
             if nt.purchase_price != t.purchase_price:
                 changes["purchase_price_change"] = nt.purchase_price - t.purchase_price
+                changes["new_purchase_price"] = nt.purchase_price
             if nt.sell_price != t.sell_price:
                 changes["sell_price_change"] = nt.sell_price - t.sell_price
+                changes["new_sell_price"] = nt.sell_price
             if nt.supply != t.supply:
                 changes["new_supply"] = nt.supply
                 changes["old_supply"] = t.supply
