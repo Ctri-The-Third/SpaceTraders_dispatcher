@@ -648,6 +648,7 @@ order by 1 desc """
                 changes["old_trade_volume"] = t.trade_volume
 
             if len(changes) > 0:
+                changes["trade_symbol"] = t.symbol
                 changes["market_symbol"] = market_s
                 self.st.logging_client.log_custom_event(
                     "MARKET_CHANGES", self.ship.name, changes

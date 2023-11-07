@@ -194,7 +194,16 @@ class FuelManagementConductor:
                     self.next_quarterly_update,
                     1,
                 )
-        pass
+        else:
+            logger.info("Fuel is not abundant, doing a shallow trade")
+            self.safety_margin = log_shallow_trade_tasks(
+                self.connection,
+                self.st.view_my_self().credits,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                self.current_agent_symbol,
+                self.next_quarterly_update,
+                1,
+            )
 
     def minutely_update(self):
         if len(self.haulers) == 0:
