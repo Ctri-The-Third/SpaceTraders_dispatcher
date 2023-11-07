@@ -159,7 +159,9 @@ def log_task(
     return resp or True
 
 
-def maybe_buy_ship_sys(client: SpaceTraders, ship_symbol) -> "Ship" or None:
+def maybe_buy_ship_sys(
+    client: SpaceTraders, ship_symbol, safety_margin: int = 0
+) -> "Ship" or None:
     location_sql = """select distinct shipyard_symbol, ship_cost from shipyard_types st 
 join ship_nav sn on  st.shipyard_symbol = sn.waypoint_symbol
 join ships s on s.ship_symbol = sn.ship_symbol
@@ -178,10 +180,12 @@ order by ship_cost desc """
 
     wayp = client.waypoints_view_one(waypoint_slicer(best_waypoint), best_waypoint)
     shipyard = client.system_shipyard(wayp)
-    return _maybe_buy_ship(client, shipyard, ship_symbol)
+    return _maybe_buy_ship(client, shipyard, ship_symbol, safety_margin)
 
 
-def _maybe_buy_ship(client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str):
+def _maybe_buy_ship(
+    client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str, safety_margin: int = 0
+):
     agent = client.view_my_self()
 
     if not shipyard:
@@ -199,7 +203,7 @@ def _maybe_buy_ship(client: SpaceTraders, shipyard: "Shipyard", ship_symbol: str
                     0,
                     "conductorWK7.maybe_buy_ship",
                 )
-            if agent.credits > detail.purchase_price:
+            if agent.credits > (detail.purchase_price + safety_margin):
                 resp = client.ships_purchase(ship_symbol, shipyard.waypoint)
                 if resp:
                     return resp[0]
@@ -265,3 +269,69 @@ order by 1 desc """
         waypoint_symbol = row[1]
         return_obj.append((waypoint_symbol, sys, price))
     return return_obj
+
+
+def log_shallow_trade_tasks(
+    connection,
+    credits_available: int,
+    trade_task_id: str,
+    current_agent_symbol: str,
+    task_expiry: datetime.datetime,
+    max_tasks: int,
+) -> int:
+    capital_reserve = 0
+    routes = get_shallow_trades(
+        connection,
+        credits_available,
+        limit=max_tasks,
+    )
+
+    for route in routes:
+        (
+            trade_symbol,
+            export_market,
+            import_market,
+            profit_per_unit,
+            cost_to_execute,
+        ) = route
+        capital_reserve += cost_to_execute
+        log_task(
+            connection,
+            trade_task_id,
+            ["35_CARGO"],
+            waypoint_slicer(import_market),
+            5,
+            current_agent_symbol,
+            {
+                "buy_wp": export_market,
+                "sell_wp": import_market,
+                "quantity": 35,
+                "tradegood": trade_symbol,
+                "safety_profit_threshold": profit_per_unit / 2,
+            },
+            expiry=task_expiry,
+        )
+    return capital_reserve
+
+
+def get_shallow_trades(
+    connection,
+    working_capital: int,
+    limit=50,
+) -> list[tuple]:
+    sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 35
+    from trade_routes_intrasystem tris
+    where market_depth = 10 and purchase_price * 35 < %s
+    limit %s"""
+
+    routes = try_execute_select(
+        connection,
+        sql,
+        (
+            working_capital,
+            limit,
+        ),
+    )
+    if not routes:
+        return []
+    return [(r[0], r[3], r[4], r[2], r[6]) for r in routes]
