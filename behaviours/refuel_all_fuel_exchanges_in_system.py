@@ -89,7 +89,7 @@ class RefuelAllExchanges(Behaviour):
             # sell fuel until abundant
             # rtb and refuel
             # repeat
-            m = self.st.system_market(w.symbol)
+            m = self.st.system_market(w)
             fuel = m.get_tradegood("FUEL")
             trips = 0
             while fuel.supply != "ABUNDANT" or trips < 5:
@@ -99,7 +99,7 @@ class RefuelAllExchanges(Behaviour):
                 w: Waypoint
                 self.ship_intrasolar(w.symbol)
                 self.sell_all_cargo([])
-                m = self.st.system_market(w.symbol, True)
+                m = self.st.system_market(w, True)
                 fuel = m.get_tradegood("FUEL")
                 trips += 1
         self.end()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    bhvr = ChillAndSurvey(agent, ship, {})
+    bhvr = RefuelAllExchanges(agent, ship, {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
