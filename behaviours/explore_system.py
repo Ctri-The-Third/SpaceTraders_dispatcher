@@ -66,6 +66,7 @@ class ExploreSystem(Behaviour):
                     self.st.logging_client.log_ending(
                         BEHAVIOUR_NAME, ship.name, agent.credits
                     )
+                    return
                 path = self.pathfinder.astar(o_sys, d_sys)
             else:
                 tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
