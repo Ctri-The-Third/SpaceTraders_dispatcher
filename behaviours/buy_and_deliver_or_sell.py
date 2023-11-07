@@ -27,7 +27,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
     `quantity`: the quantity to buy (defaults to max)\n
     `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
     `transfer_ship`: if you want the ship to transfer the cargo, set which ship\n
-    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint
+    `fulfil_wp`: if you want the ship to deliver the cargo, set which waypoint\n
+    `safety_profit_threshold`: if you want a safety cut out (15 minutes) if profits drop\n
     """
 
     def __init__(

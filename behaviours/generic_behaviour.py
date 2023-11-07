@@ -2,7 +2,7 @@ import json
 from straders_sdk import SpaceTraders
 from time import sleep
 from straders_sdk.ship import Ship
-from straders_sdk.models import Waypoint, System, Market
+from straders_sdk.models import Waypoint, System, Market, MarketTradeGoodListing
 from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.utils import (
     set_logging,
@@ -150,12 +150,15 @@ class Behaviour:
         )
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
         if ship.nav.waypoint_symbol == target_wp_symbol:
-            return LocalSpaceTradersRespose(
-                error="Ship is already at the target waypoint",
-                status_code=0,
-                error_code=4204,
-                url=f"{__name__}.ship_intrasolar",
-            )
+            if ship.nav.status == "IN_TRANSIT":
+                self.sleep_until_ready()
+            else:
+                return LocalSpaceTradersRespose(
+                    error="Ship is already at the target waypoint",
+                    status_code=0,
+                    error_code=4204,
+                    url=f"{__name__}.ship_intrasolar",
+                )
         if ship.nav.system_symbol != target_sys_symbol:
             return LocalSpaceTradersRespose(
                 error="Ship is not in the same system as the target waypoint",
@@ -370,7 +373,7 @@ class Behaviour:
                 if not resp:
                     pass
                     # try the next cargo bit
-
+        self.log_market_changes(ship.nav.waypoint_symbol)
         return True
 
     def find_adjacent_ships(self, waypoint_symbol: str, matching_roles: list):
@@ -460,57 +463,7 @@ order by 1 desc """
         # check the market has the cargo symbol we're seeking
         # check the market_depth is sufficient, buy until quantity hit.
 
-        ship = self.ship
-        st = self.st
-        current_waypoint = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
-        if "MARKETPLACE" not in [trait.symbol for trait in current_waypoint.traits]:
-            return LocalSpaceTradersRespose(
-                f"Waypoint {current_waypoint.symbol} is not a marketplace",
-                0,
-                0,
-                "generic_behaviour.buy_cargo",
-            )
-
-        if ship.nav.status != "DOCKED":
-            st.ship_dock(ship)
-
-        current_market = st.system_market(current_waypoint)
-        if len(current_market.listings) == 0:
-            current_market = st.system_market(current_waypoint, True)
-
-        found_listing = None
-        for listing in current_market.listings:
-            if listing.symbol == cargo_symbol:
-                found_listing = listing
-
-        if not found_listing:
-            return LocalSpaceTradersRespose(
-                f"Waypoint {current_waypoint.symbol} does not have a listing for {cargo_symbol}",
-                0,
-                0,
-                "generic_behaviour.buy_cargo",
-            )
-        amount_to_buy = ship.cargo_capacity - ship.cargo_units_used
-        if amount_to_buy == 0:
-            return LocalSpaceTradersRespose(
-                f"Ship {ship.name} has no cargo capacity remaining",
-                0,
-                0,
-                "generic_behaviour.buy_cargo",
-            )
-
-        times_to_buy = math.ceil(quantity / found_listing.trade_volume)
-        amount_to_buy = min(quantity, ship.cargo_space_remaining)
-        for i in range(0, times_to_buy):
-            resp = st.ship_purchase_cargo(
-                ship, cargo_symbol, min(amount_to_buy, found_listing.trade_volume)
-            )
-            amount_to_buy -= found_listing.trade_volume
-            if not resp:
-                return resp
-        return True
+        return self.purchase_what_you_can(cargo_symbol, quantity)
 
     def purchase_what_you_can(self, cargo_symbol: str, quantity: int):
         # check current waypoint has a market that sells the tradegood
@@ -528,6 +481,8 @@ order by 1 desc """
                 0,
                 "generic_behaviour.buy_cargo",
             )
+        if ship.nav.status == "IN_ORBIT":
+            self.st.ship_dock(ship)
 
         cargo_to_buy = min(quantity, ship.cargo_space_remaining)
 
@@ -562,7 +517,10 @@ order by 1 desc """
             )
             cargo_to_buy -= trade_volume
             if not resp:
-                return resp
+                break
+
+        self.log_market_changes(current_waypoint.symbol)
+
         return LocalSpaceTradersRespose(
             None, 0, 0, "generic_behaviour.purchase_what_you_can"
         )
@@ -665,6 +623,36 @@ order by 1 desc """
         # Then, hit it.care
         return True
 
+    def log_market_changes(self, market_s: str):
+        wp = self.st.waypoints_view_one(waypoint_slicer(market_s), market_s)
+        pre_market = self.st.system_market(wp)
+        post_market = self.st.system_market(wp, True)
+
+        for t in pre_market.listings:
+            changes = {}
+            nt = post_market.get_tradegood(t.symbol)
+            if not isinstance(nt, MarketTradeGoodListing):
+                continue
+            if nt.purchase_price != t.purchase_price:
+                changes["purchase_price_change"] = nt.purchase_price - t.purchase_price
+            if nt.sell_price != t.sell_price:
+                changes["sell_price_change"] = nt.sell_price - t.sell_price
+            if nt.supply != t.supply:
+                changes["new_supply"] = nt.supply
+                changes["old_supply"] = t.supply
+            if nt.activity != t.activity:
+                changes["new_activity"] = nt.activity
+                changes["old_activity"] = t.activity
+            if nt.trade_volume != t.trade_volume:
+                changes["new_trade_volume"] = nt.trade_volume
+                changes["old_trade_volume"] = t.trade_volume
+
+            if len(changes) > 0:
+                changes["market_symbol"] = market_s
+                self.st.logging_client.log_custom_event(
+                    "MARKET_CHANGES", self.ship.name, changes
+                )
+
     def nearest_neighbour(self, waypoints: list[Waypoint], start: Waypoint):
         path = []
         unplotted = waypoints
@@ -722,5 +710,5 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
-
-    bhvr.ship_intrasolar("X1-U49-C42")
+    bhvr.ship_intrasolar("X1-U49-G52")
+    bhvr.sell_all_cargo()
