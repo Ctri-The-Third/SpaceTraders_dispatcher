@@ -168,7 +168,7 @@ class FuelManagementConductor:
                     self.connection,
                     BHVR_REFUEL_ALL_IN_SYSTEM,
                     ["35_CARGO"],
-                    waypoint_slicer(self.gas_giant),
+                    waypoint_slicer(self.gas_giant.symbol),
                     4,
                     self.current_agent_symbol,
                     {},
@@ -211,7 +211,7 @@ class FuelManagementConductor:
         markets = [self.st.system_market(wp) for wp in waypoints]
         for market in markets:
             fuel = market.get_tradegood("FUEL")
-            if fuel.type == "EXCHANGE" and fuel.supply != "ABUNDANT":
+            if fuel and fuel.type == "EXCHANGE" and fuel.supply != "ABUNDANT":
                 return True
         return False
 
