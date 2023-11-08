@@ -156,7 +156,8 @@ def log_task(
             param_s,
         ),
     )
-    return resp or True
+
+    return hash_str if resp else resp
 
 
 def maybe_buy_ship_sys(
@@ -285,7 +286,10 @@ def log_shallow_trade_tasks(
         credits_available,
         limit=max_tasks,
     )
-
+    if len(routes) == 0:
+        logging.warning(
+            f"No shallow trades found {credits_available} cr, limit of {max_tasks}"
+        )
     for route in routes:
         (
             trade_symbol,
@@ -295,7 +299,7 @@ def log_shallow_trade_tasks(
             cost_to_execute,
         ) = route
         capital_reserve += cost_to_execute
-        log_task(
+        task_id = log_task(
             connection,
             trade_task_id,
             ["35_CARGO"],
@@ -311,6 +315,10 @@ def log_shallow_trade_tasks(
             },
             expiry=task_expiry,
         )
+        logging.info(
+            f"logged a shallow trade task {trade_symbol} {export_market}->{import_market} | {profit_per_unit * 35} profit | for {cost_to_execute} cr - {task_id}"
+        )
+
     return capital_reserve
 
 

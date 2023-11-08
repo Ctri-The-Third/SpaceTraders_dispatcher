@@ -77,6 +77,7 @@ class FuelManagementConductor:
         self.next_quarterly_update = None
         self.next_daily_update = None
         self.starting_system = None
+        self.safety_margin = 0
         self.starting_planet = None
 
     def run(self):
@@ -88,8 +89,8 @@ class FuelManagementConductor:
         self.starting_system = self.st.systems_view_one(hq_sys)
         self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
 
-        self.next_quarterly_update = datetime.now() + timedelta(hours=1)
-        last_quarterly_update = datetime.now() - timedelta(hours=2)
+        self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
+        last_quarterly_update = datetime.now() - timedelta(minutes=30)
         last_daily_update = datetime.now() - timedelta(days=2)
         self.next_daily_update = datetime.now() + timedelta(days=1)
         #
@@ -103,15 +104,14 @@ class FuelManagementConductor:
             self.populate_ships()
             # daily reset uncharted waypoints.
 
-            if last_daily_update < datetime.now() - timedelta(days=1):
+            if self.next_daily_update < datetime.now():
+                self.next_daily_update = datetime.now() + timedelta(days=1)
                 self.daily_update()
                 last_daily_update = datetime.now()
-                self.next_daily_update = datetime.now() + timedelta(days=1)
 
-            if last_quarterly_update < datetime.now() - timedelta(minutes=15):
-                self.quarterly_update()
-                last_quarterly_update = datetime.now()
+            if self.next_quarterly_update < datetime.now():
                 self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
+                self.quarterly_update()
 
             self.minutely_update()
             if starting_run:
