@@ -144,25 +144,16 @@ class FuelManagementConductor:
         )
         if len(possible_ships) > 1:
             fuel_shipper = possible_ships[1]
-            # if we have a fuel shipper, give it all the fuel shipping tasks possible
+            set_behaviour(
+                self.connection, fuel_shipper.name, BHVR_REFUEL_ALL_IN_SYSTEM, {}
+            )
+            # if we have a fuel shipper,  it all the fuel shipping tasks possible
         else:
             pass
 
         #
         # daily recon task
         #
-
-        log_task(
-            self.connection,
-            BHVR_EXPLORE_SYSTEM,
-            [],
-            self.starting_system.symbol,
-            1,
-            self.current_agent_symbol,
-            {},
-            expiry=self.next_daily_update,
-            specific_ship_symbol=self.satellites[0].name,
-        )
 
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
@@ -171,13 +162,14 @@ class FuelManagementConductor:
         possible_ships = self.haulers + self.commanders
         refueler = possible_ships[min(1, len(possible_ships) - 1)]
         fuel_refinery = self.st.system_market(self.fuel_refinery)
+        cargo_requirement = 35 if len(self.haulers) > 0 else 70
         fuel = fuel_refinery.get_tradegood("FUEL")
         if fuel.supply in ("ABUNDANT", "HIGH"):
             if self.any_refuels_needed():
                 log_task(
                     self.connection,
                     BHVR_REFUEL_ALL_IN_SYSTEM,
-                    ["35_CARGO"],
+                    [f"{cargo_requirement}_CARGO"],
                     waypoint_slicer(self.gas_giant.symbol),
                     4,
                     self.current_agent_symbol,
@@ -192,7 +184,7 @@ class FuelManagementConductor:
                     BHVR_BUY_AND_DELIVER_OR_SELL,
                     self.current_agent_symbol,
                     self.next_quarterly_update,
-                    1,
+                    5,
                 )
         else:
             logger.info("Fuel is not abundant, doing a shallow trade")
@@ -334,14 +326,19 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
         self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
 
-    def get_trade_routes(self, limit=None, min_market_depth=100) -> list[tuple]:
+    def get_trade_routes(
+        self, limit=None, min_market_depth=100, max_market_depth=1000000
+    ) -> list[tuple]:
         if not limit:
             limit = len(self.haulers)
         sql = """select route_value, system_symbol, trade_symbol, profit_per_unit, export_market, import_market, market_depth
         from trade_routes_intrasystem tris
         where market_depth >= %s
+        and market_depth <= %s
         limit %s"""
-        routes = try_execute_select(self.connection, sql, (min_market_depth, limit))
+        routes = try_execute_select(
+            self.connection, sql, (min_market_depth, max_market_depth, limit)
+        )
         if not routes:
             return []
 
