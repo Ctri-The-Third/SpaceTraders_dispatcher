@@ -12,7 +12,7 @@ BEHAVIOUR_NAME = "REFUEL_ALL_IN_SYSTEM"
 SAFETY_PADDING = 60
 
 
-class RefuelAllExchanges(Behaviour):
+class RefuelAnExchange(Behaviour):
     """Expects a parameter blob containing 'asteroid_wp'
 
     `safety_profit_threshold`: if you want a safety cut out (15 minutes) if profits drop\n
@@ -87,26 +87,27 @@ class RefuelAllExchanges(Behaviour):
                     needing_refueled.append(w)
                     break
 
-        for w in needing_refueled:
-            # travel to market
-            # sell fuel until abundant
-            # rtb and refuel
-            # repeat
+        # we changed this to be "just the first one" to avoid a ship getting tied up for hours
+        w = needing_refueled.pop()
+        # travel to market
+        # sell fuel until abundant
+        # rtb and refuel
+        # repeat
+        m = self.st.system_market(w)
+        fuel = m.get_tradegood("FUEL")
+        trips = 0
+        while (fuel.supply != "ABUNDANT" or trips < 5) and self.still_profitable(
+            fuel_market, m
+        ):
+            self.ship_intrasolar(fuel_market.symbol)
+            self.buy_cargo("FUEL", self.ship.cargo_space_remaining)
+
+            w: Waypoint
+            self.ship_intrasolar(w.symbol)
+            self.sell_all_cargo([])
             m = self.st.system_market(w)
             fuel = m.get_tradegood("FUEL")
-            trips = 0
-            while (fuel.supply != "ABUNDANT" or trips < 5) and self.still_profitable(
-                fuel_market, m
-            ):
-                self.ship_intrasolar(fuel_market.symbol)
-                self.buy_cargo("FUEL", self.ship.cargo_space_remaining)
-
-                w: Waypoint
-                self.ship_intrasolar(w.symbol)
-                self.sell_all_cargo([])
-                m = self.st.system_market(w)
-                fuel = m.get_tradegood("FUEL")
-                trips += 1
+            trips += 1
         self.end()
 
     def still_profitable(
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    bhvr = RefuelAllExchanges(agent, ship, {})
+    bhvr = RefuelAnExchange(agent, ship, {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
