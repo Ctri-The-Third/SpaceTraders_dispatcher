@@ -30,6 +30,7 @@ from dispatcherWK16 import (
     BHVR_CHILL_AND_SURVEY,
     BHVR_BUY_AND_DELIVER_OR_SELL,
     BHVR_REFUEL_ALL_IN_SYSTEM,
+    BHVR_SINGLE_STABLE_TRADE,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -126,7 +127,7 @@ class FuelManagementConductor:
             self.starting_system.symbol, "GAS_GIANT"
         )
         self.fuel_refinery = fuel_refinery = self.find_fuel_refineries(gas_giant)
-        hydrocarbon_shipper = self.commanders[0]
+        hydrocarbon_shipper = possible_ships[0]
 
         # set behaviour - hydrocarbon shipper siphons hydrocarbon from export and sells to fuel refinery
         set_behaviour(
@@ -148,9 +149,11 @@ class FuelManagementConductor:
                 self.connection, fuel_shipper.name, BHVR_REFUEL_ALL_IN_SYSTEM, {}
             )
             # if we have a fuel shipper,  it all the fuel shipping tasks possible
-        else:
-            pass
-
+        if len(self.haulers) >= 2:
+            for h in possible_ships[2:]:
+                set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
+            # spare haulers all get told to trade tasks
+            # ander gets set on siphoner duty
         #
         # daily recon task
         #
@@ -196,11 +199,48 @@ class FuelManagementConductor:
                 self.next_quarterly_update,
                 1,
             )
+        if len(self.haulers) > 2:
+            log_shallow_trade_tasks(
+                self.connection,
+                self.st.view_my_self().credits,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                self.current_agent_symbol,
+                self.next_quarterly_update,
+                len(self.haulers) - 2,
+            )
 
     def minutely_update(self):
-        if len(self.haulers) == 0:
+        if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         pass
+
+        for s in self.find_unassigned_ships():
+            if s.role == "SATELLITE":
+                set_behaviour(self.connection, s.name, BHVR_REMOTE_SCAN_AND_SURV, {})
+            elif s.role == "EXCAVATOR":
+                set_behaviour(self.connection, s.name, BHVR_EXTRACT_AND_TRANSFER, {})
+            elif s.role == "SURVEYOR":
+                set_behaviour(self.connection, s.name, BHVR_CHILL_AND_SURVEY, {})
+            elif s.role == "REFINERY":
+                set_behaviour(self.connection, s.name, BHVR_RECEIVE_AND_REFINE, {})
+            elif s.role == "HAULER":
+                set_behaviour(self.connection, s.name, BHVR_SINGLE_STABLE_TRADE, {})
+            elif s.role == "COMMAND":
+                set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
+
+    def find_unassigned_ships(self) -> list[Ship]:
+        symbols = self.find_unassigned_ship_symbols()
+        return [self.st.ships_view_one(s) for s in symbols]
+
+    def find_unassigned_ship_symbols(self) -> list[str]:
+        sql = """select ship_symbol from ship_behaviours 
+        where behaviour_id is null
+        and ship_symbol ilike %s"""
+
+        results = try_execute_select(
+            self.connection, sql, (f"{self.current_agent_symbol}-%",)
+        )
+        return [r[0] for r in results]
 
     def find_hydrocarbon_exporter(self) -> Market:
         pass
