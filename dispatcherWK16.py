@@ -6,6 +6,7 @@ import signal
 import math
 import random
 import psycopg2
+import re
 import sys, threading, os, uuid, time
 from requests_ratelimiter import LimiterSession
 from requests.adapters import HTTPAdapter
@@ -58,8 +59,12 @@ from behaviours.chill_and_survey import (
     BEHAVIOUR_NAME as BHVR_CHILL_AND_SURVEY,
 )
 from behaviours.refuel_all_fuel_exchanges_in_system import (
-    RefuelAllExchanges,
+    RefuelAnExchange,
     BEHAVIOUR_NAME as BHVR_REFUEL_ALL_IN_SYSTEM,
+)
+from behaviours.single_stable_trade import (
+    SingleStableTrade,
+    BEHAVIOUR_NAME as BHVR_SINGLE_STABLE_TRADE,
 )
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -72,6 +77,21 @@ BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
 
+behaviours_and_classes = {
+    BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
+    BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
+    BHVR_EXTRACT_AND_TRANSFER: ExtractAndTransfer_8,
+    BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
+    BHVR_EXPLORE_SYSTEM: ExploreSystem,
+    BHVR_MONITOR_CHEAPEST_PRICE: MonitorPrices,
+    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
+    BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
+    BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
+    BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
+    BHVR_CHILL_AND_SURVEY: ChillAndSurvey,
+    BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
+    BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
+}
 
 logger = logging.getLogger("dispatcher")
 
@@ -419,7 +439,9 @@ class dispatcher:
                         ):
                             valid_for_ship = False
                             break
-                        if requirement == "35_CARGO" and ship.cargo_capacity < 35:
+                        if "_CARGO" in requirement and ship.cargo_capacity < int(
+                            re.findall(r"\d+", requirement)[0]
+                        ):
                             valid_for_ship = False
                             break
                 if valid_for_ship:
@@ -454,39 +476,11 @@ class dispatcher:
         sname = ship_symbol
         bhvr_params = behaviour_params
         bhvr = None
-        if id == BHVR_EXTRACT_AND_GO_SELL:
-            bhvr = ExtractAndGoSell(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_RECEIVE_AND_FULFILL:
-            bhvr = ReceiveAndFulfillOrSell_3(
-                aname, sname, behaviour_params, session=self.session
-            )
-        elif id == BHVR_EXTRACT_AND_TRANSFER:
-            bhvr = ExtractAndTransfer_8(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_REMOTE_SCAN_AND_SURV:
-            bhvr = RemoteScanWaypoints(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_EXPLORE_SYSTEM:
-            bhvr = ExploreSystem(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_MONITOR_CHEAPEST_PRICE:
-            bhvr = MonitorPrices(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_BUY_AND_DELIVER_OR_SELL:
-            bhvr = BuyAndDeliverOrSell_6(
+        if id in behaviours_and_classes:
+            bhvr = behaviours_and_classes[id](
                 aname, sname, bhvr_params, session=self.session
             )
-        elif id == BHVR_EXTRACT_AND_FULFILL:
-            bhvr = ExtractAndFulfill_7(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_RECEIVE_AND_REFINE:
-            bhvr = ReceiveAndRefine(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_EXTRACT_AND_FULFILL:
-            bhvr = ExtractAndFulfill_7(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_UPGRADE_TO_SPEC:
-            bhvr = FindMountsAndEquip(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_CHILL_AND_SURVEY:
-            bhvr = ChillAndSurvey(aname, sname, bhvr_params, session=self.session)
-        elif id == BHVR_REFUEL_ALL_IN_SYSTEM:
-            bhvr = RefuelAllExchanges(aname, sname, bhvr_params, session=self.session)
-        else:
-            pass
-        return bhvr
+            return bhvr
 
     def maybe_scan_all_systems(self):
         st = self.client
