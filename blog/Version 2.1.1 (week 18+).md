@@ -20,9 +20,14 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
   - ❗ we did succeed in deploying a task but it bought too much and drained the market, refuel command needs a safety cut-off!
   - with the safety cut off, we can anticipate that this will encourage a strong market depth.
 - ✅ once this is complete (and thus fuel is completely topped up), we can log marginal trades that we can afford.
-- For help in tracking
-## Step One - Buy a ship
-- either a hauler (to distribute fuel) or a siphoner (to increase fuel production) 
+- ✅ For help in tracking this, we've created the 'market_changes' view, which extracts event_params into a more convenient view.
+## Step One - Expand the fleet
+- ✅ either a hauler (to distribute fuel) or a siphoner (to increase fuel production) 
+- Identifing how many trade routes our trade volumes can withstand and scale appropriately. A trade volume of 1 or 10 needs a single visit whenever it's profitable. A trade volume of 100 needs a single hauler, and 1000 probably needs 5+ haulers.
+
+## Step Two - begin evolving markets with intention
+Activity seems to be the primary driver of market evolution (and stability), primarily focusing on exports.
+An experiment will be to try and buy 1x the trade volume of a specific route every 15 minutes until full, and then 
 
 # Difficulties & Solutions
 The problems we faced, the reasoning behidn the solution, and the observed outcomes.

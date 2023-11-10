@@ -47,6 +47,12 @@ class SingleStableTrade(Behaviour):
             limit=5, min_market_depth=target_trade_depth
         )
         selected_random_route = random.choice(trade_routes)
+        if not selected_random_route:
+            # no profitable trade routes at the moment! Pause and let the conductor give us a new behaviour
+            time.sleep(SAFETY_PADDING)
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            self.end()
+            return
         (
             trade_symbol,
             export_market_s,
@@ -109,7 +115,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "7"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {}
     bhvr = SingleStableTrade(agent, ship, behaviour_params or {})
