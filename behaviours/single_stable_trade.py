@@ -9,7 +9,7 @@ import logging
 from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
 from straders_sdk.models import Waypoint, System
 
-BEHAVIOUR_NAME = "SingleStableTrade"
+BEHAVIOUR_NAME = "SINGLE_STABLE_TRADE"
 SAFETY_PADDING = 60
 
 

@@ -713,5 +713,5 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
-    bhvr.ship_intrasolar("X1-U49-G52")
+    bhvr.ship_intrasolar("X1-U49-A2")
     bhvr.sell_all_cargo()
