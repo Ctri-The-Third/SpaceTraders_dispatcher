@@ -76,11 +76,21 @@ class SingleStableTrade(Behaviour):
             return
 
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(export_market_s)))
-        self.ship_intrasolar(export_market_s)
+        resp = self.ship_intrasolar(export_market_s)
+        if not resp:
+            time.sleep(SAFETY_PADDING)
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            self.end()
+            return
         self.st.ship_dock(ship)
         self.purchase_what_you_can(trade_symbol, ship.cargo_space_remaining)
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(import_market_s)))
-        self.ship_intrasolar(import_market_s)
+        resp = self.ship_intrasolar(import_market_s)
+        if not resp:
+            time.sleep(SAFETY_PADDING)
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            self.end()
+            return
         self.sell_all_cargo([], import_market)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         self.end()
@@ -92,9 +102,12 @@ class SingleStableTrade(Behaviour):
         from trade_routes_intrasystem tris
         where market_depth >= %s
         and market_depth <= %s
+        and system_symbol = %s
         limit %s"""
         routes = try_execute_select(
-            self.connection, sql, (min_market_depth, max_market_depth, limit)
+            self.connection,
+            sql,
+            (min_market_depth, max_market_depth, self.ship.nav.system_symbol, limit),
         )
         if not routes:
             return []
@@ -115,7 +128,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "7"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "8"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {}
     bhvr = SingleStableTrade(agent, ship, behaviour_params or {})
