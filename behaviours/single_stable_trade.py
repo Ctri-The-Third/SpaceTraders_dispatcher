@@ -46,13 +46,13 @@ class SingleStableTrade(Behaviour):
         trade_routes = self.get_trade_routes(
             limit=5, min_market_depth=target_trade_depth
         )
-        selected_random_route = random.choice(trade_routes)
-        if not selected_random_route:
-            # no profitable trade routes at the moment! Pause and let the conductor give us a new behaviour
+        if not trade_routes:
             time.sleep(SAFETY_PADDING)
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
             self.end()
             return
+        selected_random_route = random.choice(trade_routes)
+
         (
             trade_symbol,
             export_market_s,
