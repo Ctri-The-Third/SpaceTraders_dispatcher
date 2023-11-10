@@ -42,7 +42,14 @@ class MonitorPrices(Behaviour):
         ship = self.ship
         st = self.st
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, self.agent.credits)
-        destination = self.behaviour_params["waypoint"]
+        destination = self.behaviour_params.get("waypoint", None)
+        if not destination:
+            logging.error("No destination specified")
+            self.end()
+            self.st.logging_client.log_ending(
+                BEHAVIOUR_NAME, ship.name, self.agent.credits
+            )
+            return
         waypoint = st.waypoints_view_one(waypoint_slicer(destination), destination)
         waypoint: Waypoint
 
