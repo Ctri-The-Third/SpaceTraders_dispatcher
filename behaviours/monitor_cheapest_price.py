@@ -85,14 +85,17 @@ class MonitorPrices(Behaviour):
         target_sys = st.systems_view_one(target_sys_sym)
         self.sleep_until_ready()
         self.ship_extrasolar(target_sys)
-        self.ship_intrasolar(target_wp)
-
+        resp = self.ship_intrasolar(target_wp)
+        if not resp:
+            time.sleep(60)
+            self.end()
+            self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         wp = st.waypoints_view_one(target_sys_sym, target_wp)
         if wp.has_shipyard:
             st.system_shipyard(wp, True)
             self.end()
 
-            time.sleep(30)
+            time.sleep(60)
         if scan_thread.is_alive():
             scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -193,9 +196,9 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
-    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2C"
+    ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_suffix}"
-    params = {"ship_type": "SHIP_HEAVY_FREIGHTER"}
+    params = {"ship_type": "SHIP_PROBE"}
     bhvr = MonitorPrices(agent, f"{ship}", params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)

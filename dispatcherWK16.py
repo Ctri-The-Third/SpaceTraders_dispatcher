@@ -66,6 +66,10 @@ from behaviours.single_stable_trade import (
     SingleStableTrade,
     BEHAVIOUR_NAME as BHVR_SINGLE_STABLE_TRADE,
 )
+from behaviours.monitor_specific_location import (
+    MonitorPrices,
+    BEHAVIOUR_NAME as BHVR_MONITOR_SPECIFIC_LOCATION,
+)
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
@@ -91,6 +95,7 @@ behaviours_and_classes = {
     BHVR_CHILL_AND_SURVEY: ChillAndSurvey,
     BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
     BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
+    BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
 }
 
 logger = logging.getLogger("dispatcher")
