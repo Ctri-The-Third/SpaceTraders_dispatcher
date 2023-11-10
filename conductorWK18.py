@@ -49,6 +49,7 @@ from dispatcherWK16 import (
     BHVR_BUY_AND_DELIVER_OR_SELL,
     BHVR_REFUEL_ALL_IN_SYSTEM,
     BHVR_SINGLE_STABLE_TRADE,
+    BHVR_MONITOR_SPECIFIC_LOCATION,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -178,6 +179,8 @@ class FuelManagementConductor:
                 len(self.haulers) - 2,
             )
 
+        self.set_satellite_behaviours()
+
     def minutely_update(self):
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
@@ -196,6 +199,55 @@ class FuelManagementConductor:
                 set_behaviour(self.connection, s.name, BHVR_SINGLE_STABLE_TRADE, {})
             elif s.role == "COMMAND":
                 set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
+
+    def set_satellite_behaviours(self):
+        "ensures that each distinct celestial body (excluding moons etc...) has a satellite, and a shipyard for each ship"
+
+        market_places = self.st.find_waypoints_by_trait(
+            self.starting_system.symbol, "MARKETPLACE"
+        )
+        coordinates = {}
+
+        coordinates = {(wp.x, wp.y): wp for wp in market_places}
+        ship_types_sql = """select distinct ship_type  from shipyard_types"""
+        types = try_execute_select(self.connection, ship_types_sql, ())
+        types = [t[0] for t in types]
+        if "SHIP_PROBE" in types:
+            types.remove("SHIP_PROBE")
+            set_behaviour(
+                self.connection,
+                self.satellites[0].name,
+                BHVR_MONITOR_CHEAPEST_PRICE,
+                {"ship_type": "SHIP_PROBE"},
+            )
+        total_satellites_needed = len(coordinates) + len(types)
+        if len(self.satellites) < total_satellites_needed:
+            for i in range(total_satellites_needed - len(self.satellites)):
+                ship = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
+                if not ship:
+                    break
+
+        i = -1
+        for satellite in self.satellites[1 : len(types) + 1]:
+            try:
+                i += 1
+                set_behaviour(
+                    self.connection,
+                    satellite.name,
+                    BHVR_MONITOR_CHEAPEST_PRICE,
+                    {"ship_type": types[i]},
+                )
+            except:
+                pass
+        i = 0
+        for satellite in self.satellites[len(types) + 1 :]:
+            set_behaviour(
+                self.connection,
+                satellite.name,
+                BHVR_MONITOR_SPECIFIC_LOCATION,
+                {"waypoint": list(coordinates.values())[i].symbol},
+            )
+            i += 1
 
     def set_refinery_behaviours(self, possible_ships):
         hydrocarbon_shipper = possible_ships[0]
