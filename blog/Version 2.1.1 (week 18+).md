@@ -18,16 +18,26 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
   - an abundant supply and heavy exports will trigger market growth to a greater depth.
   - to trigger growth we may have to operate at a slight loss for a while (keep exports SCARCE and supply ABUNDANT)
   - ❗ we did succeed in deploying a task but it bought too much and drained the market, refuel command needs a safety cut-off!
-  - with the safety cut off, we can anticipate that this will encourage a strong market depth.
+  - ❌ with the safety cut off, we can anticipate that this will encourage a strong market depth.
 - ✅ once this is complete (and thus fuel is completely topped up), we can log marginal trades that we can afford.
 - ✅ For help in tracking this, we've created the 'market_changes' view, which extracts event_params into a more convenient view.
 ## Step One - Expand the fleet
 - ✅ either a hauler (to distribute fuel) or a siphoner (to increase fuel production) 
-- Identifing how many trade routes our trade volumes can withstand and scale appropriately. A trade volume of 1 or 10 needs a single visit whenever it's profitable. A trade volume of 100 needs a single hauler, and 1000 probably needs 5+ haulers.
+- ✅ Identifing how many trade routes our trade volumes can withstand and scale appropriately. A trade volume of 1 or 10 needs a single visit whenever it's profitable. A trade volume of 100 needs a single hauler, and 1000 probably needs 5+ haulers.
+  - ✅ with 4 haulers, we've exhausted continual trades from 100+ trade routes, and were getting negative values from shallow trades.
+  - ✅ We've added a minimum profit _percentage_ to trade routes which are shallow. This will decrease the likelihood of tipping into negative trades.
+  - deep trades have run dry, but shallow trades remain an option - going to run things overnight and see how they behave.
 
 ## Step Two - begin evolving markets with intention
-Activity seems to be the primary driver of market evolution (and stability), primarily focusing on exports.
-An experiment will be to try and buy 1x the trade volume of a specific route every 15 minutes until full, and then 
+* we've observed some market evolutions but these occur in extreme (And usually unprofitable) market conditions, so once markets enter into these situations we rarely go back and check.
+- Deploy satellites to each planet (to monitor all adjacent markets) with a 15 minute sentinel ping.
+- create a behaviour that holds IMPORT markets in the ABUNDANT state, and EXPORT markets in the SCARCE state. This can be a less profit restricted version of the existing buy and sell behaviour, that uses drip-feeding to avoid massive losses. 
+- QUESTIONS TO BE ANSWERED BY SATELLITES 
+  - does the price change at a faster / slower rate if the matching import/export is abundant or scarce (this would suggest there is a cached supply and it's being consumed)
+  - how much the price change in any given supply state? is it a percentage or a fixed rate (does it change more when it's in extreme states?)
+  - does the price change at a faster or slower rate when the trade_volumes are higher (expect faster)
+  - does the price change faster when the market is GROWING or STRONG? 
+
 
 # Difficulties & Solutions
 The problems we faced, the reasoning behidn the solution, and the observed outcomes.
