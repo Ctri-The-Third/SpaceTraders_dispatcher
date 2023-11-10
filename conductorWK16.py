@@ -283,14 +283,14 @@ class Conductor:
                 new_ship = maybe_buy_ship_sys(st, "SHIP_LIGHT_HAULER")
                 new_behaviour = BHVR_RECEIVE_AND_FULFILL
             if len(self.extractors) < 10 and not new_ship:
-                new_ship = maybe_buy_ship_sys(st, "SHIP_MINING_DRONE")
+                new_ship = None  # maybe_buy_ship_sys(st, "SHIP_MINING_DRONE")
                 new_behaviour = (
                     BHVR_EXTRACT_AND_GO_SELL
                     if len(self.haulers) == 0
                     else BHVR_EXTRACT_AND_TRANSFER
                 )
             if len(self.surveyors) < 1 and not new_ship:
-                new_ship = maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
+                new_ship = None  # maybe_buy_ship_sys(st, "SHIP_SURVEYOR")
                 new_behaviour = BHVR_CHILL_AND_SURVEY
 
             self.ships_we_might_buy = [
@@ -466,9 +466,9 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
 
         return [(r[2], r[4], r[5], r[3]) for r in routes]
 
-    def log_shallow_trade_tasks(self):
+    def log_shallow_trade_tasks(self) -> int:
         working_capital = self.st.view_my_self().credits
-        routes = self.get_shallow_trades(working_capital)
+        routes = self.get_shallow_trades(working_capital, limit=1)
 
         for route in routes:
             (
@@ -495,6 +495,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
                 },
                 expiry=self.next_quarterly_update,
             )
+        return self.capital_reserve
 
     def get_shallow_trades(
         self,

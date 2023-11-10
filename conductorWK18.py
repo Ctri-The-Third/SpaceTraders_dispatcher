@@ -1,3 +1,21 @@
+"""
+Strategy for week 18 
+
+## behaviours to manage
+# siphon and transfer
+# refuel in system
+# stable trades
+# extract and transfer
+# drip-feed trades
+
+## ships to scale to
+# command
+# 2 haulers
+# siphon fleet
+# extractor fleet + transfer
+
+"""
+
 from datetime import datetime, timedelta
 import logging
 import json
@@ -122,6 +140,8 @@ class FuelManagementConductor:
             sleep(60)
 
     def daily_update(self):
+        # here's the priority of behaviours (not tasks)
+
         possible_ships = self.haulers + self.commanders
         self.gas_giant = gas_giant = self.st.find_waypoints_by_type_one(
             self.starting_system.symbol, "GAS_GIANT"
@@ -130,25 +150,7 @@ class FuelManagementConductor:
         hydrocarbon_shipper = possible_ships[0]
 
         # set behaviour - hydrocarbon shipper siphons hydrocarbon from export and sells to fuel refinery
-        set_behaviour(
-            self.connection,
-            hydrocarbon_shipper.name,
-            BHVR_EXTRACT_AND_GO_SELL,
-            {"asteroid_wp": gas_giant.symbol, "market_wp": fuel_refinery.symbol},
-        )
-
-        set_behaviour(
-            self.connection,
-            self.satellites[0].name,
-            BHVR_MONITOR_CHEAPEST_PRICE,
-            {"ship_type": "SHIP_LIGHT_FREIGHTER"},
-        )
-        if len(possible_ships) > 1:
-            fuel_shipper = possible_ships[1]
-            set_behaviour(
-                self.connection, fuel_shipper.name, BHVR_REFUEL_ALL_IN_SYSTEM, {}
-            )
-            # if we have a fuel shipper,  it all the fuel shipping tasks possible
+        # if we have a fuel shipper,  it all the fuel shipping tasks possible
         if len(self.haulers) >= 2:
             for h in possible_ships[2:]:
                 set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
@@ -162,43 +164,10 @@ class FuelManagementConductor:
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
         # if not, give the exporter a refuel task for 1 (maybe 2) points.
         self.safety_margin = 0
+
         possible_ships = self.haulers + self.commanders
-        refueler = possible_ships[min(1, len(possible_ships) - 1)]
-        fuel_refinery = self.st.system_market(self.fuel_refinery)
-        cargo_requirement = 35 if len(self.haulers) > 0 else 70
-        fuel = fuel_refinery.get_tradegood("FUEL")
-        if fuel.supply in ("ABUNDANT", "HIGH"):
-            if self.any_refuels_needed():
-                log_task(
-                    self.connection,
-                    BHVR_REFUEL_ALL_IN_SYSTEM,
-                    [f"{cargo_requirement}_CARGO"],
-                    waypoint_slicer(self.gas_giant.symbol),
-                    4,
-                    self.current_agent_symbol,
-                    {},
-                    expiry=self.next_quarterly_update,
-                    specific_ship_symbol=refueler.name,
-                )
-            else:
-                self.safety_margin = log_shallow_trade_tasks(
-                    self.connection,
-                    self.st.view_my_self().credits,
-                    BHVR_BUY_AND_DELIVER_OR_SELL,
-                    self.current_agent_symbol,
-                    self.next_quarterly_update,
-                    5,
-                )
-        else:
-            logger.info("Fuel is not abundant, doing a shallow trade")
-            self.safety_margin = log_shallow_trade_tasks(
-                self.connection,
-                self.st.view_my_self().credits,
-                BHVR_BUY_AND_DELIVER_OR_SELL,
-                self.current_agent_symbol,
-                self.next_quarterly_update,
-                1,
-            )
+        self.set_refinery_behaviours(possible_ships)
+
         if len(self.haulers) > 2:
             log_shallow_trade_tasks(
                 self.connection,
@@ -227,6 +196,94 @@ class FuelManagementConductor:
                 set_behaviour(self.connection, s.name, BHVR_SINGLE_STABLE_TRADE, {})
             elif s.role == "COMMAND":
                 set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
+
+    def set_refinery_behaviours(self, possible_ships):
+        hydrocarbon_shipper = possible_ships[0]
+        hydrocarbon_shipper: Ship
+        refueler = possible_ships[min(1, len(possible_ships) - 1)]
+
+        fuel_refinery = self.st.system_market(self.fuel_refinery)
+        cargo_requirement = 35 if len(self.haulers) > 0 else 70
+        fuel = fuel_refinery.get_tradegood("FUEL")
+
+        # if we've enough fuel , send a refuel task, otherwise log a shallow trade
+        log_trade = False
+        if fuel.supply in ("ABUNDANT", "HIGH"):
+            if self.any_refuels_needed():
+                log_task(
+                    self.connection,
+                    BHVR_REFUEL_ALL_IN_SYSTEM,
+                    [f"{cargo_requirement}_CARGO"],
+                    waypoint_slicer(self.gas_giant.symbol),
+                    4,
+                    self.current_agent_symbol,
+                    {},
+                    expiry=self.next_quarterly_update,
+                    specific_ship_symbol=refueler.name,
+                )
+            else:
+                log_trade = True
+                trades_to_log = 5
+        else:
+            log_trade = True
+            trades_to_log = 1
+
+        if log_trade:
+            log_shallow_trade_tasks(
+                self.connection,
+                self.st.view_my_self().credits,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                self.current_agent_symbol,
+                self.next_quarterly_update,
+                trades_to_log,
+            )
+
+        # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
+        set_behaviour(
+            self.connection,
+            hydrocarbon_shipper.name,
+            BHVR_EXTRACT_AND_GO_SELL
+            if hydrocarbon_shipper.role == "COMMAND"
+            else BHVR_RECEIVE_AND_FULFILL,
+            {"asteroid_wp": self.gas_giant.symbol, "market_wp": fuel_refinery.symbol},
+        )
+
+        set_behaviour(
+            self.connection,
+            self.satellites[0].name,
+            BHVR_MONITOR_CHEAPEST_PRICE,
+            {"ship_type": "SHIP_LIGHT_FREIGHTER"},
+        )
+        if len(possible_ships) > 1:
+            fuel_shipper = possible_ships[1]
+            set_behaviour(
+                self.connection, fuel_shipper.name, BHVR_REFUEL_ALL_IN_SYSTEM, {}
+            )
+
+    def scale_and_set_siphoning(self, possible_ships):
+        # should be a quarterly or hourly behaviour
+        if len(possible_ships) > 2:
+            command_role = BHVR_EXTRACT_AND_TRANSFER
+        else:
+            command_role = BHVR_EXTRACT_AND_GO_SELL
+
+        if len(self.siphoners <= 10):
+            ship = maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
+            if ship:
+                self.siphoners.append(ship)
+            set_behaviour(
+                self.connection,
+                self.commanders[0].name,
+                command_role,
+                {"asteroid_wp": self.gas_giant, "cargo_to_transfer": ["*"]},
+            )
+        for s in self.siphoners:
+            set_behaviour(
+                self.connection,
+                s.name,
+                BHVR_EXTRACT_AND_TRANSFER,
+                {"asteroid_wp": self.gas_giant, "cargo_to_transfer": ["*"]},
+            )
 
     def find_unassigned_ships(self) -> list[Ship]:
         symbols = self.find_unassigned_ship_symbols()
@@ -365,6 +422,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.extractors = [ship for ship in ships if ship.role == "EXCAVATOR"]
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
         self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
+        self.siphoners = [ship for ship in ships if ship.role == "SIPHONER"]
 
     def get_trade_routes(
         self, limit=None, min_market_depth=100, max_market_depth=1000000
