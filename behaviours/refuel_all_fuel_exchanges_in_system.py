@@ -86,7 +86,10 @@ class RefuelAnExchange(Behaviour):
                 ):
                     needing_refueled.append(w)
                     break
-
+        if not needing_refueled:
+            time.sleep(SAFETY_PADDING)
+            self.end()
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
         # we changed this to be "just the first one" to avoid a ship getting tied up for hours
         w = needing_refueled.pop()
         # travel to market
