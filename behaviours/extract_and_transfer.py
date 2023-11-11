@@ -192,11 +192,7 @@ if __name__ == "__main__":
     agent_symbol = "CTRI-U-"
     ship_suffix = "3"
     ship = f"{agent_symbol}-{ship_suffix}"
-    params = {
-        # "fulfill_wp": "X1-CN90-22412Z",
-        "asteroid_wp": "X1-QV47-BA4Z",
-        # "cargo_to_transfer": ["ALUMINUM_ORE"],
-    }
+    params = {"asteroid_wp": "X1-U49-FA4A", "cargo_to_transfer": ["*"]}
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     bhvr = ExtractAndTransfer_8(agent_symbol, f"{ship}", params)
 

@@ -244,7 +244,7 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
-        if current_wayp.type not in ("ASTEROID"):
+        if current_wayp.type not in ("ASTEROID", "ENGINEERED_ASTEROID"):
             self.logger.error(
                 "Ship is not at an extractable location, sleeping then aborting"
             )
