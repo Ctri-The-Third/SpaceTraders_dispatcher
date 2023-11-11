@@ -110,8 +110,9 @@ class FuelManagementConductor:
         self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
 
         self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
-        last_quarterly_update = datetime.now() - timedelta(minutes=30)
-        last_daily_update = datetime.now() - timedelta(days=2)
+        self.next_hourly_update = datetime.now() + timedelta(hours=1)
+        last_quarterly_update = datetime.now()
+        last_daily_update = datetime.now()
         self.next_daily_update = datetime.now() + timedelta(days=1)
         #
         # hourly calculations of profitable things, assign behaviours and tasks
@@ -123,11 +124,18 @@ class FuelManagementConductor:
             logging.info("Conductor is running")
             self.populate_ships()
             # daily reset uncharted waypoints.
-
+            # hourly set ship behaviours
+            # quarterly set ship tasks
+            # minutely try and buy new ships
             if self.next_daily_update < datetime.now():
                 self.next_daily_update = datetime.now() + timedelta(days=1)
                 self.daily_update()
                 last_daily_update = datetime.now()
+
+            if self.next_hourly_update < datetime.now():
+                self.next_hourly_update = datetime.now() + timedelta(hours=1)
+                self.hourly_update()
+                last_hourly_update = datetime.now()
 
             if self.next_quarterly_update < datetime.now():
                 self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
@@ -136,30 +144,48 @@ class FuelManagementConductor:
             self.minutely_update()
             if starting_run:
                 self.daily_update()
+                self.hourly_update()
                 self.quarterly_update()
                 starting_run = False
             sleep(60)
 
     def daily_update(self):
-        # here's the priority of behaviours (not tasks)
-
+        """Reset uncharted waypoints and refresh materialised views."""
         possible_ships = self.haulers + self.commanders
-        self.gas_giant = gas_giant = self.st.find_waypoints_by_type_one(
+        self.gas_giant = self.st.find_waypoints_by_type_one(
             self.starting_system.symbol, "GAS_GIANT"
         )
-        self.fuel_refinery = fuel_refinery = self.find_fuel_refineries(gas_giant)
-        hydrocarbon_shipper = possible_ships[0]
+        self.fuel_refinery = self.find_fuel_refineries(self.gas_giant)
 
-        # set behaviour - hydrocarbon shipper siphons hydrocarbon from export and sells to fuel refinery
-        # if we have a fuel shipper,  it all the fuel shipping tasks possible
+        self.set_satellite_behaviours()
+        self.set_drone_behaviours()
+
+    def hourly_update(self):
+        # if we have a fuel shipper, give it all the fuel shipping tasks possible
+        # if not, give the exporter a refuel task for 1 (maybe 2) points.
+        self.safety_margin = 0
+
+        possible_ships = self.haulers + self.commanders
+
+        available_routes = self.get_trade_routes(50, 100)
+        mining_sites = self.get_mining_sites(
+            self.starting_system.symbol, len(self.haulers), 10, 100
+        )
+
         if len(self.haulers) >= 2:
-            for h in possible_ships[2:]:
+            for h in possible_ships[2 : len(available_routes)]:
                 set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
-            # spare haulers all get told to trade tasks
-            # ander gets set on siphoner duty
-        #
-        # daily recon task
-        #
+            for h in possible_ships[2 + len(available_routes) :]:
+                site = mining_sites.pop()
+                set_behaviour(
+                    self.connection,
+                    h.name,
+                    BHVR_RECEIVE_AND_FULFILL,
+                    {"asteroid_wp": site[1], "market_wp": site[2]},
+                )
+
+        self.set_refinery_behaviours(possible_ships)
+        self.set_satellite_behaviours()
 
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
@@ -168,7 +194,8 @@ class FuelManagementConductor:
 
         possible_ships = self.haulers + self.commanders
         self.set_refinery_behaviours(possible_ships)
-
+        self.set_satellite_behaviours()
+        return
         if len(self.haulers) > 2:
             log_shallow_trade_tasks(
                 self.connection,
@@ -179,13 +206,14 @@ class FuelManagementConductor:
                 len(self.haulers) - 2,
             )
 
-        self.set_satellite_behaviours()
-
     def minutely_update(self):
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         pass
-
+        if len(self.extractors) < 40:
+            maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
+        if len(self.siphoners) < 10:
+            maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
         for s in self.find_unassigned_ships():
             if s.role == "SATELLITE":
                 set_behaviour(self.connection, s.name, BHVR_REMOTE_SCAN_AND_SURV, {})
@@ -199,6 +227,50 @@ class FuelManagementConductor:
                 set_behaviour(self.connection, s.name, BHVR_SINGLE_STABLE_TRADE, {})
             elif s.role == "COMMAND":
                 set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
+
+    def set_drone_behaviours(self):
+        for siphoner in self.siphoners:
+            set_behaviour(
+                self.connection,
+                siphoner.name,
+                BHVR_EXTRACT_AND_TRANSFER,
+                {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
+            )
+        sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
+
+        # set 10 extractors to go to site 1 and extract
+        if len(self.extractors) > 0:
+            for extractor in self.extractors[:10]:
+                set_behaviour(
+                    self.connection,
+                    extractor.name,
+                    BHVR_EXTRACT_AND_TRANSFER,
+                    {"asteroid_wp": sites[0][1], "cargo_to_transfer": ["*"]},
+                )
+        if len(self.extractors) > 10:
+            for extractor in self.extractors[10:19]:
+                set_behaviour(
+                    self.connection,
+                    extractor.name,
+                    BHVR_EXTRACT_AND_TRANSFER,
+                    {"asteroid_wp": sites[1][1], "cargo_to_transfer": ["*"]},
+                )
+        if len(self.extractors) > 19:
+            for extractor in self.extractors[19:30]:
+                set_behaviour(
+                    self.connection,
+                    extractor.name,
+                    BHVR_EXTRACT_AND_TRANSFER,
+                    {"asteroid_wp": sites[2][1], "cargo_to_transfer": ["*"]},
+                )
+        if len(self.extractors) > 30:
+            for extractor in self.extractors[30:40]:
+                set_behaviour(
+                    self.connection,
+                    extractor.name,
+                    BHVR_EXTRACT_AND_TRANSFER,
+                    {"asteroid_wp": sites[3][1], "cargo_to_transfer": ["*"]},
+                )
 
     def set_satellite_behaviours(self):
         "ensures that each distinct celestial body (excluding moons etc...) has a satellite, and a shipyard for each ship"
@@ -281,6 +353,7 @@ class FuelManagementConductor:
             trades_to_log = 1
 
         if log_trade:
+            return
             log_shallow_trade_tasks(
                 self.connection,
                 self.st.view_my_self().credits,
@@ -485,14 +558,46 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         from trade_routes_intrasystem tris
         where market_depth >= %s
         and market_depth <= %s
+        and system_symbol = %s
         limit %s"""
         routes = try_execute_select(
-            self.connection, sql, (min_market_depth, max_market_depth, limit)
+            self.connection,
+            sql,
+            (min_market_depth, max_market_depth, self.starting_system.symbol, limit),
         )
         if not routes:
             return []
 
-        return [(r[2], r[4], r[5], r[3]) for r in routes]
+        return [(r[2], r[4], r[5], r[3], r[1]) for r in routes]
+
+    def get_mining_sites(
+        self,
+        system_sym: str,
+        limit=None,
+        min_market_depth=100,
+        max_market_depth=1000000,
+    ) -> list[tuple]:
+        if not limit:
+            limit = 10
+        sql = """select avg(route_value)
+, extraction_waypoint
+, import_market 
+
+from trade_routes_extraction_intrasystem
+where market_depth >= %s
+and market_depth <= %s
+and system_symbol = %s
+group by 2,3
+order by 1 desc 
+limit %s"""
+        routes = try_execute_select(
+            self.connection,
+            sql,
+            (min_market_depth, max_market_depth, system_sym, limit),
+        )
+        if not routes:
+            return []
+        return routes
 
 
 def clear_to_upgrade(agent: Agent, connection) -> bool:

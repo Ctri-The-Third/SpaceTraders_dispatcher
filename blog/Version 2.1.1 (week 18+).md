@@ -28,6 +28,11 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
   - ✅ We've added a minimum profit _percentage_ to trade routes which are shallow. This will decrease the likelihood of tipping into negative trades.
   - deep trades have run dry, but shallow trades remain an option - going to run things overnight and see how they behave.
 
+## Step Two - Filling the idle time
+- I did an analysis of the haulers doing steady trades. It seems like of the 14 active hours in my experiment, only 2.5 hours were used performing trades. So, I need to programatically identify this, and set up extractor/ siphoning efforts to stimulate the production chain.
+- In order to support market evolution and understanding, I'm going to switch all trading behaviours off and buy a tonne of extractors.  
+
+
 ## Step Two - begin evolving markets with intention
 * we've observed some market evolutions but these occur in extreme (And usually unprofitable) market conditions, so once markets enter into these situations we rarely go back and check.
 - Deploy satellites to each planet (to monitor all adjacent markets) with a 15 minute sentinel ping.
