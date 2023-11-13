@@ -18,6 +18,8 @@ import networkx
 import heapq
 import threading
 
+SAFETY_PADDING = 60
+
 
 class Behaviour:
     st: SpaceTraders
@@ -343,7 +345,42 @@ class Behaviour:
             if flight_mode and flight_mode != ship.nav.flight_mode:
                 self.st.ship_patch_nav(ship, flight_mode)
 
+    def sell_cargo(self, cargo_symbol: str, quantity: int, market: Market = None):
+        ship = self.ship
+        st = self.st
+
+        cargo = [ci for ci in ship.cargo_inventory if ci.symbol == cargo_symbol]
+        cargo_inventory = cargo[0] if len(cargo) > 0 else None
+        if not cargo_inventory:
+            return LocalSpaceTradersRespose(
+                f"Ship does not have any {cargo_symbol} to sell",
+                0,
+                0,
+                "generic_behaviour.sell_cargo",
+            )
+        if not market:
+            market = self.st.system_market(
+                st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+            )
+        if market:
+            listings = {listing.symbol: listing for listing in market.listings}
+        if ship.nav.status != "DOCKED":
+            st.ship_dock(ship)
+        listing = market.get_tradegood(cargo_symbol)
+        trade_volume = listing.trade_volume
+        remaining_units = min(cargo_inventory.units, quantity)
+        for i in range(0, math.ceil(cargo_inventory.units / trade_volume)):
+            resp = st.ship_sell(
+                ship, cargo_symbol, min(remaining_units, trade_volume, quantity)
+            )
+            remaining_units = remaining_units - trade_volume
+
+            if not resp:
+                pass
+        self.log_market_changes(ship.nav.waypoint_symbol)
+
     def sell_all_cargo(self, exceptions: list = [], market: Market = None):
+        # needs reworked to use the sell_cargo
         ship = self.ship
         st = self.st
         listings = {}
@@ -481,7 +518,7 @@ order by 1 desc """
                 0,
                 "generic_behaviour.buy_cargo",
             )
-        if ship.nav.status == "IN_ORBIT":
+        if ship.nav.status != "DOCKED":
             self.st.ship_dock(ship)
 
         cargo_to_buy = min(quantity, ship.cargo_space_remaining)
@@ -690,7 +727,7 @@ order by 1 desc """
             current = next_system
         return path
 
-    def end(self):
+    def end(self, error: str = None):
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(
