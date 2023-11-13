@@ -14,11 +14,18 @@ from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer
+from behaviours.buy_and_sell_dripfeed import (
+    BuyAndSellDripfeed,
+    BEHAVIOUR_NAME as BHVR_BUY_AND_SELL_DRIPFEED,
+)
 from behaviours.extract_and_sell import (
     ExtractAndGoSell,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_GO_SELL,
 )
-from behaviours.receive_and_fulfill import ReceiveAndFulfillOrSell_3
+from behaviours.receive_and_fulfill import (
+    ReceiveAndFulfillOrSell_3,
+    BEHAVIOUR_NAME as BHVR_RECEIVE_AND_FULFILL,
+)
 from behaviours.generic_behaviour import Behaviour
 from behaviours.extract_and_transfer import (
     ExtractAndTransfer_8,
@@ -77,7 +84,6 @@ from datetime import datetime, timedelta
 
 BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
 BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-BHVR_RECEIVE_AND_FULFILL = "RECEIVE_AND_FULFILL"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
 
@@ -88,7 +94,7 @@ behaviours_and_classes = {
     BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
     BHVR_EXPLORE_SYSTEM: ExploreSystem,
     BHVR_MONITOR_CHEAPEST_PRICE: MonitorPrices,
-    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
+    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndSellDripfeed,
     BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
     BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
     BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
@@ -96,6 +102,7 @@ behaviours_and_classes = {
     BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
     BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
     BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
+    BHVR_BUY_AND_SELL_DRIPFEED: BuyAndSellDripfeed,
 }
 
 logger = logging.getLogger("dispatcher")
