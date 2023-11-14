@@ -132,6 +132,11 @@ class BuyAndSellDripfeed(Behaviour):
                 self.max_purchase_price > 0
                 and tradegood.purchase_price > self.max_purchase_price
             ):
+                self.logger.debug(
+                    "purchase price (%s) too high (above %s), sleeping",
+                    tradegood.purchase_price,
+                    self.max_purchase_price,
+                )
                 time.sleep(300)
                 return False
             amount_to_buy = min(ship.cargo_space_remaining, tradegood.trade_volume)
@@ -140,6 +145,9 @@ class BuyAndSellDripfeed(Behaviour):
                 if ship.cargo_units_used > 0:
                     return True
                 else:
+                    self.logger.debug(
+                        "Couldn't buy cargo, none in inventory (can't afford?) - sleeping"
+                    )
                     time.sleep(300)
         return True
 
@@ -159,7 +167,12 @@ class BuyAndSellDripfeed(Behaviour):
         while ship.cargo_units_used > 0:
             sell_market_mkt = self.st.system_market(sell_market_wp)
             tradegood = sell_market_mkt.get_tradegood(self.target_tradegood)
-            if self.min_sell_price > 0 and tradegood.sell_price > self.min_sell_price:
+            if self.min_sell_price > 0 and tradegood.sell_price < self.min_sell_price:
+                self.logger.debug(
+                    "sell price (%s) too low (below %s), sleeping",
+                    tradegood.sell_price,
+                    self.min_sell_price,
+                )
                 time.sleep(300)
                 return
             amount_to_sell = min(ship.cargo_units_used, tradegood.trade_volume)
@@ -192,17 +205,17 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "7"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "5"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndSellDripfeed(
         agent,
         ship,
         behaviour_params={
-            "buy_wp": "X1-U49-F51",
-            "sell_wp": "X1-U49-D45",
-            "tradegood": "ELECTRONICS",
-            "max_buy_price": 1617.00,
-            "min_sell_price": 5010.00,
+            "tradegood": "ADVANCED_CIRCUITRY",
+            "buy_wp": "X1-U49-D45",
+            "sell_wp": "X1-U49-A1",
+            "max_buy_price": 18000,
+            "min_sell_price": 18200,
         },
     )
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
