@@ -137,13 +137,10 @@ class BuyAndSellDripfeed(Behaviour):
             amount_to_buy = min(ship.cargo_space_remaining, tradegood.trade_volume)
             resp = self.buy_cargo(self.target_tradegood, amount_to_buy)
             if not resp:
-                self.logger.error(
-                    "Couldn't buy %d units of %s at %s",
-                    amount_to_buy,
-                    self.target_tradegood,
-                    self.purchase_market,
-                )
-                return ship.cargo_units_used > 0
+                if ship.cargo_units_used > 0:
+                    return True
+                else:
+                    time.sleep(300)
         return True
 
     def sell_half(self):
