@@ -559,7 +559,7 @@ order by 1 desc """
         self.log_market_changes(current_waypoint.symbol)
 
         return LocalSpaceTradersRespose(
-            None, 0, 0, "generic_behaviour.purchase_what_you_can"
+            None, 0, None, "generic_behaviour.purchase_what_you_can"
         )
 
     def scan_local_system(self):

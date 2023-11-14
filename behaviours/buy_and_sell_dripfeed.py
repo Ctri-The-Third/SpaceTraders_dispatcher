@@ -13,6 +13,7 @@ import math
 from straders_sdk.responses import SpaceTradersResponse
 from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
+from datetime import datetime, timedelta
 
 BEHAVIOUR_NAME = "BUY_AND_SELL_DRIPFEED"
 SAFETY_PADDING = 300
@@ -118,6 +119,12 @@ class BuyAndSellDripfeed(Behaviour):
         purchase_market_wp = self.st.waypoints_view_one(
             waypoint_slicer(self.purchase_market), self.purchase_market
         )
+        tradegood = self.st.system_market(purchase_market_wp).get_tradegood(
+            self.target_tradegood
+        )
+        if tradegood.recorded_ts < datetime.now() - timedelta(minutes=15):
+            self.log_market_changes(self.purchase_market)
+
         while ship.cargo_space_remaining > 0:
             purchase_market_mkt = self.st.system_market(purchase_market_wp)
             tradegood = purchase_market_mkt.get_tradegood(self.target_tradegood)
@@ -128,7 +135,15 @@ class BuyAndSellDripfeed(Behaviour):
                 time.sleep(300)
                 return False
             amount_to_buy = min(ship.cargo_space_remaining, tradegood.trade_volume)
-            self.buy_cargo(self.target_tradegood, amount_to_buy)
+            resp = self.buy_cargo(self.target_tradegood, amount_to_buy)
+            if not resp:
+                self.logger.error(
+                    "Couldn't buy %d units of %s at %s",
+                    amount_to_buy,
+                    self.target_tradegood,
+                    self.purchase_market,
+                )
+                return ship.cargo_units_used > 0
         return True
 
     def sell_half(self):
@@ -139,10 +154,15 @@ class BuyAndSellDripfeed(Behaviour):
         sell_market_wp = self.st.waypoints_view_one(
             waypoint_slicer(self.sell_market), self.sell_market
         )
+        tradegood = self.st.system_market(sell_market_wp).get_tradegood(
+            self.target_tradegood
+        )
+        if tradegood.recorded_ts < datetime.now() - timedelta(minutes=15):
+            self.log_market_changes(self.sell_market)
         while ship.cargo_units_used > 0:
             sell_market_mkt = self.st.system_market(sell_market_wp)
             tradegood = sell_market_mkt.get_tradegood(self.target_tradegood)
-            if self.min_sell_price > 0 and tradegood.sell_price < self.min_sell_price:
+            if self.min_sell_price > 0 and tradegood.sell_price > self.min_sell_price:
                 time.sleep(300)
                 return
             amount_to_sell = min(ship.cargo_units_used, tradegood.trade_volume)
@@ -175,17 +195,17 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "7"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndSellDripfeed(
         agent,
         ship,
         behaviour_params={
-            "buy_wp": "X1-U49-D45",
-            "max_buy_price": 18180.00,
-            "sell_wp": "X1-U49-A1",
-            "min_sell_price": 26995.32,
-            "tradegood": "ADVANCED_CIRCUITRY",
+            "buy_wp": "X1-U49-F51",
+            "sell_wp": "X1-U49-D45",
+            "tradegood": "ELECTRONICS",
+            "max_buy_price": 1617.00,
+            "min_sell_price": 5010.00,
         },
     )
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
