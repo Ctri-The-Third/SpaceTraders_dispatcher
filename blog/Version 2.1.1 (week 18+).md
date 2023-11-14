@@ -30,18 +30,25 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
 
 ## Step Two - Filling the idle time
 - I did an analysis of the haulers doing steady trades. It seems like of the 14 active hours in my experiment, only 2.5 hours were used performing trades. So, I need to programatically identify this, and set up extractor/ siphoning efforts to stimulate the production chain.
+- If I want to run the extractors alongside the more profitable trading behaviours, I will need to complete the priorities system in request handling.
 - In order to support market evolution and understanding, I'm going to switch all trading behaviours off and buy a tonne of extractors.  
 
 
 ## Step Two - begin evolving markets with intention
 * we've observed some market evolutions but these occur in extreme (And usually unprofitable) market conditions, so once markets enter into these situations we rarely go back and check.
-- Deploy satellites to each planet (to monitor all adjacent markets) with a 15 minute sentinel ping.
+- ✅ Deploy satellites to each planet (to monitor all adjacent markets) with a 15 minute sentinel ping.
 - create a behaviour that holds IMPORT markets in the ABUNDANT state, and EXPORT markets in the SCARCE state. This can be a less profit restricted version of the existing buy and sell behaviour, that uses drip-feeding to avoid massive losses. 
 - QUESTIONS TO BE ANSWERED BY SATELLITES 
-  - does the price change at a faster / slower rate if the matching import/export is abundant or scarce (this would suggest there is a cached supply and it's being consumed)
-  - how much the price change in any given supply state? is it a percentage or a fixed rate (does it change more when it's in extreme states?)
-  - does the price change at a faster or slower rate when the trade_volumes are higher (expect faster)
-  - does the price change faster when the market is GROWING or STRONG? 
+  - ✅ does the price change at a faster / slower rate if the matching import/export is abundant or scarce (this would suggest there is a cached supply and it's being consumed) (no, price changes are predictable)
+  - ✅ how much the price change in any given supply state? is it a percentage or a fixed rate (does it change more when it's in extreme states?) tradevolume 10, the difference from baseline halfs every 3.5 hours.
+  - ✅ does the price change at a faster or slower rate when the trade_volumes are higher (expect faster), yes, much faster in low volumes. 
+  - ✅ does the price change faster when the market is GROWING or STRONG?  no it does not
+- STRATEGY 
+  - when buying or selling to a tradevolume 10, use dripfeed strategy.
+  - the import markets tend to be higher depth than the export markets, so we should focus on the export prices over the import prices (whilst having a profit protection mechanism)
+  -  current experiment, dripfeed export of ADVANCED_CIRCUITRY, and dripfeed import of ELECTRONICS and MICROPROCESSORS
+  - market is already in "growing" state already
+
 
 
 # Difficulties & Solutions
