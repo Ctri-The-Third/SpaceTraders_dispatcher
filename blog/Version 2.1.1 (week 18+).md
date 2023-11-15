@@ -26,9 +26,13 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
 - ✅ Identifing how many trade routes our trade volumes can withstand and scale appropriately. A trade volume of 1 or 10 needs a single visit whenever it's profitable. A trade volume of 100 needs a single hauler, and 1000 probably needs 5+ haulers.
   - ✅ with 4 haulers, we've exhausted continual trades from 100+ trade routes, and were getting negative values from shallow trades.
   - ✅ We've added a minimum profit _percentage_ to trade routes which are shallow. This will decrease the likelihood of tipping into negative trades.
-  - deep trades have run dry, but shallow trades remain an option - going to run things overnight and see how they behave.
+  - ✅ deep trades have run dry, but shallow trades remain an option - going to run things overnight and see how they behave.
 
 ## Step Two - Filling the idle time
+- Begin building the pyramid of production. Start with the earliest bits of the production chain
+  - extractors' requests should be on a much lower priority than haulers' requests. (-2, e.g. 5 vs 3)
+  - additionally, cooldown and move requests should be a higher priority than others. (+1 e.g. 4 for extractors and 2 for haulers)
+  - we should use the dripfeed technology to evolve the simplest metal EXPORTS
 - I did an analysis of the haulers doing steady trades. It seems like of the 14 active hours in my experiment, only 2.5 hours were used performing trades. So, I need to programatically identify this, and set up extractor/ siphoning efforts to stimulate the production chain.
 - If I want to run the extractors alongside the more profitable trading behaviours, I will need to complete the priorities system in request handling.
 - In order to support market evolution and understanding, I'm going to switch all trading behaviours off and buy a tonne of extractors.  
