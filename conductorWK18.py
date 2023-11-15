@@ -50,6 +50,7 @@ from dispatcherWK16 import (
     BHVR_REFUEL_ALL_IN_SYSTEM,
     BHVR_SINGLE_STABLE_TRADE,
     BHVR_MONITOR_SPECIFIC_LOCATION,
+    BHVR_BUY_AND_SELL_DRIPFEED,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -195,6 +196,13 @@ class FuelManagementConductor:
         possible_ships = self.haulers + self.commanders
         self.set_refinery_behaviours(possible_ships)
         self.set_satellite_behaviours()
+
+        # we should drip feed the most prominent trade routes to the haulers - ensuring that we don't double dip any of the exports.
+        # drip feeding should specify the target purchase price, or the target sell price, or both. This will primarily stress the exports.
+        # if we set the target price, then we'll end up buying/ selling once every 1h 3m, which is optimal.
+
+        # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
+
         return
         if len(self.haulers) > 2:
             log_shallow_trade_tasks(
@@ -229,6 +237,9 @@ class FuelManagementConductor:
                 set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
 
     def set_drone_behaviours(self):
+        for ship in self.siphoners + self.extractors:
+            set_behaviour(self.connection, ship.name, "DISABLED", {})
+            return
         for siphoner in self.siphoners:
             set_behaviour(
                 self.connection,
@@ -626,4 +637,74 @@ if __name__ == "__main__":
     logger.info("Connected to database")
     agents = []
     agents_and_clients: dict[str:SpaceTraders] = {}
-    FuelManagementConductor(user).run()
+
+    #    `tradegood`: the symbol of the tradegood to buy\n
+    # optional:\n
+    # `buy_wp`: if you want to specify a source market, provide the symbol.\n
+    # `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
+    # `max_buy_price`: if you want to limit the purchase price, set it here\n
+    # `min_sell_price`: if you want to limit the sell price, set it here\n
+    conductor = FuelManagementConductor(user)
+    for ship in conductor.st.ships_view().values():
+        set_behaviour(conductor.connection, ship.name, "DISABLED", {})
+    params = {
+        "tradegood": "ADVANCED_CIRCUITRY",
+        "buy_wp": "X1-U49-D45",
+        "sell_wp": "X1-U49-A1",
+        "max_buy_price": 18000,
+        "min_sell_price": 18200,
+    }
+    set_behaviour(conductor.connection, "CTRI-U--5", BHVR_BUY_AND_SELL_DRIPFEED, params)
+
+    # "MICROPROCESSORS"	1644.0	2700.0 "X1-U49-A3"  "X1-U49-D45"
+    params = {
+        "tradegood": "MICROPROCESSORS",
+        "buy_wp": "X1-U49-A3",
+        "sell_wp": "X1-U49-D45",
+        "max_buy_price": 1800 * 1.01,
+        # "min_sell_price": 3288
+    }
+    set_behaviour(conductor.connection, "CTRI-U--6", BHVR_BUY_AND_SELL_DRIPFEED, params)
+
+    # "ELECTRONICS"	1481.0	2310.0 "X1-U49-F51 " "X1-U49-D45"
+    params = {
+        "buy_wp": "X1-U49-F51",
+        "sell_wp": "X1-U49-D45",
+        "tradegood": "ELECTRONICS",
+        "max_buy_price": 1617.00,
+        # "min_sell_price": 5010.00,
+    }
+    set_behaviour(conductor.connection, "CTRI-U--7", BHVR_BUY_AND_SELL_DRIPFEED, params)
+
+    set_behaviour(
+        conductor.connection,
+        "CTRI-U--8",
+        BHVR_RECEIVE_AND_FULFILL,
+        {"asteroid_wp": "X1-U49-B41"},
+    )
+    params = {
+        "asteroid_wp": "X1-U49-B41",
+        "cargo_to_transfer": ["*"],
+    }
+    for ship_symbol in [
+        "CTRI-U--38",
+        "CTRI-U--39",
+        "CTRI-U--3A",
+        "CTRI-U--3B",
+        "CTRI-U--3C",
+        "CTRI-U--35",
+        "CTRI-U--3D",
+        "CTRI-U--36",
+        "CTRI-U--37",
+        "CTRI-U--3",
+    ]:
+        set_behaviour(
+            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_TRANSFER, params
+        )
+
+    set_behaviour(
+        conductor.connection,
+        "CTRI-U--1",
+        BHVR_CHILL_AND_SURVEY,
+        {"asteroid_wp": "X1-U49-B41"},
+    )

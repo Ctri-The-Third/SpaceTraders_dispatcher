@@ -12,6 +12,7 @@ from requests_ratelimiter import LimiterSession
 from requests.adapters import HTTPAdapter
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
+from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer
 from behaviours.buy_and_sell_dripfeed import (
@@ -132,6 +133,7 @@ class dispatcher:
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
+        self.consumer = RequestConsumer(False)
         self.session = LimiterSession(per_second=2, per_hour=10800)
         self.session.mount(
             "https://api.spacetraders.io",
@@ -214,7 +216,7 @@ class dispatcher:
 
     def run(self):
         print(f"-----  DISPATCHER [{self.lock_id}] ACTIVATED ------")
-
+        self.consumer.start()
         ships_and_threads: dict[str : threading.Thread] = {}
         check_frequency = timedelta(seconds=15 * len(self.agents))
         agents_and_last_checkeds = {}
@@ -354,6 +356,7 @@ class dispatcher:
                 ships_and_threads.pop(ship_id)
                 last_exec = len(ships_and_threads) == 0
             time.sleep(1)
+        self.consumer.stop()
 
     def lock_and_execute(
         self, ships_and_threads: dict, ship_symbol: str, bhvr: Behaviour, bhvr_id
