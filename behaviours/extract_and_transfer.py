@@ -110,6 +110,7 @@ class ExtractAndTransfer_8(Behaviour):
                 agent.credits,
                 agent.credits - starting_credts,
             )
+            time.sleep(60)
             return
 
         cutoff_cargo_limit = None

@@ -2,7 +2,7 @@
 # therefore, we have to get the current ship each time it boots up.
 # survey, and if less than 10 cargo items remaining, sell all except contract deliverables
 # if full (less than 10 space remaining), RTB and fulfill.
-
+import time
 import sys
 
 sys.path.append(".")
@@ -13,6 +13,7 @@ from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 from straders_sdk.utils import waypoint_slicer, set_logging
 
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
+SAFETY_PADDING = 60
 
 
 class ReceiveAndFulfillOrSell_3(Behaviour):
@@ -84,9 +85,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                 request_count = (
                     path.jumps + 6
                 )  # this is my guesstimate for receive offset,  navigatting, [jumps] navigating, docking, selling, undocking
-                print(
-                    f"request count for {wp_s} is {request_count}, price is {price}, cpr is {price / request_count}"
-                )
+                # print(
+                #    f"request count for {wp_s} is {request_count}, price is {price}, cpr is {price / request_count}"
+                # )
                 cpr = price / request_count
                 if cpr > best_cpr:
                     best_cpr = cpr
@@ -101,10 +102,6 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             waypoint_slicer(market_wp_s or fulfil_wp_s or start_wp_s)
         )
 
-        if ship.fuel_current < min(ship.fuel_capacity, 200):
-            st.ship_dock(ship)
-            st.ship_refuel(ship)
-            st.ship_orbit(ship)
         if ship.nav.status != "IN_ORBIT":
             st.ship_orbit(ship)
         if ship.can_survey:
@@ -179,8 +176,12 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                 self.ship_intrasolar(start_wp_s)
 
         else:
-            self.ship_extrasolar(start_sys)
-            self.ship_intrasolar(start_wp_s)
+            if ship.nav.waypoint_symbol != start_wp_s:
+                self.ship_extrasolar(start_sys)
+                self.ship_intrasolar(start_wp_s)
+            else:
+                time.sleep(SAFETY_PADDING)
+            # sleep for 60 seconds
 
         self.sleep_until_ready()
         self.end()
@@ -194,9 +195,9 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3A"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "9"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"asteroid_wp": "X1-RV57-69965Z"}
+    behaviour_params = {"asteroid_wp": "X1-U49-FA4A"}
     bhvr = ReceiveAndFulfillOrSell_3(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()

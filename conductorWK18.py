@@ -687,16 +687,11 @@ if __name__ == "__main__":
         "cargo_to_transfer": ["*"],
     }
     for ship_symbol in [
-        "CTRI-U--38",
-        "CTRI-U--39",
-        "CTRI-U--3A",
-        "CTRI-U--3B",
-        "CTRI-U--3C",
-        "CTRI-U--35",
-        "CTRI-U--3D",
-        "CTRI-U--36",
-        "CTRI-U--37",
         "CTRI-U--3",
+        "CTRI-U--26",
+        "CTRI-U--28",
+        "CTRI-U--2A",
+        "CTRI-U--24",
     ]:
         set_behaviour(
             conductor.connection, ship_symbol, BHVR_EXTRACT_AND_TRANSFER, params
@@ -707,4 +702,26 @@ if __name__ == "__main__":
         "CTRI-U--1",
         BHVR_CHILL_AND_SURVEY,
         {"asteroid_wp": "X1-U49-B41"},
+    )
+
+    params = {
+        "asteroid_wp": "X1-U49-FA4A",
+        "cargo_to_transfer": ["*"],
+    }
+
+    for ship_symbol in [
+        "CTRI-U--1C",
+        "CTRI-U--20",
+        "CTRI-U--1A",
+        "CTRI-U--1E",
+        "CTRI-U--22",
+    ]:
+        set_behaviour(
+            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_TRANSFER, params
+        )
+    set_behaviour(
+        conductor.connection,
+        "CTRI-U--9",
+        BHVR_RECEIVE_AND_FULFILL,
+        {"asteroid_wp": "X1-U49-FA4A"},
     )
