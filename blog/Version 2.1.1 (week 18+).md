@@ -44,11 +44,12 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
   - ✅ does the price change at a faster or slower rate when the trade_volumes are higher (expect faster), yes, much faster in low volumes. 
   - ✅ does the price change faster when the market is GROWING or STRONG?  no it does not
 - STRATEGY 
-  - when buying or selling to a tradevolume 10, use dripfeed strategy.
-  - the import markets tend to be higher depth than the export markets, so we should focus on the export prices over the import prices (whilst having a profit protection mechanism)
-  -  current experiment, dripfeed export of ADVANCED_CIRCUITRY, and dripfeed import of ELECTRONICS and MICROPROCESSORS
-  - market is already in "growing" state already
-
+  - when buying or selling to a tradevolume 10, use dripfeed strategy. Our quarterly tasks should specifically target those at peak prices.
+  - the import markets tend to be higher depth than the export markets, so if going 1->10 or 10-> 100 etc... we should focus on the export prices over the import prices (whilst maintaining a profit protection mechanism)
+  -  current experiment, dripfeed export of ADVANCED_CIRCUITRY, and dripfeed import of ELECTRONICS and MICROPROCESSORS. 
+    - market is already in "growing" state already
+  - if the above experiment does not yield growth before the profit margin tanks, then we will need to start by evolving the extractor based markets instead, wide base.
+  
 
 
 # Difficulties & Solutions

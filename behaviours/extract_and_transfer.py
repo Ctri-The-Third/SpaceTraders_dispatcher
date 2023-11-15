@@ -190,9 +190,9 @@ class ExtractAndTransfer_8(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "3"
+    ship_suffix = "38"
     ship = f"{agent_symbol}-{ship_suffix}"
-    params = {"asteroid_wp": "X1-U49-FA4A", "cargo_to_transfer": ["*"]}
+    params = {"asteroid_wp": "X1-U49-D45", "cargo_to_transfer": ["*"]}
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     bhvr = ExtractAndTransfer_8(agent_symbol, f"{ship}", params)
 
