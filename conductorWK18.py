@@ -653,6 +653,7 @@ if __name__ == "__main__":
         "sell_wp": "X1-U49-A1",
         "max_buy_price": 18000,
         "min_sell_price": 18200,
+        "priority": 4,
     }
     set_behaviour(conductor.connection, "CTRI-U--5", BHVR_BUY_AND_SELL_DRIPFEED, params)
 
@@ -662,6 +663,7 @@ if __name__ == "__main__":
         "buy_wp": "X1-U49-A3",
         "sell_wp": "X1-U49-D45",
         "max_buy_price": 1800 * 1.01,
+        "priority": 4
         # "min_sell_price": 3288
     }
     set_behaviour(conductor.connection, "CTRI-U--6", BHVR_BUY_AND_SELL_DRIPFEED, params)
@@ -672,6 +674,7 @@ if __name__ == "__main__":
         "sell_wp": "X1-U49-D45",
         "tradegood": "ELECTRONICS",
         "max_buy_price": 1617.00,
+        "priority": 4
         # "min_sell_price": 5010.00,
     }
     set_behaviour(conductor.connection, "CTRI-U--7", BHVR_BUY_AND_SELL_DRIPFEED, params)
@@ -680,7 +683,7 @@ if __name__ == "__main__":
         conductor.connection,
         "CTRI-U--8",
         BHVR_RECEIVE_AND_FULFILL,
-        {"asteroid_wp": "X1-U49-B41"},
+        {"asteroid_wp": "X1-U49-B41", "priority": 4},
     )
     params = {
         "asteroid_wp": "X1-U49-B41",
@@ -701,7 +704,7 @@ if __name__ == "__main__":
         conductor.connection,
         "CTRI-U--1",
         BHVR_CHILL_AND_SURVEY,
-        {"asteroid_wp": "X1-U49-B41"},
+        {"asteroid_wp": "X1-U49-B41", "priority": 4.5},
     )
 
     params = {
@@ -723,5 +726,5 @@ if __name__ == "__main__":
         conductor.connection,
         "CTRI-U--9",
         BHVR_RECEIVE_AND_FULFILL,
-        {"asteroid_wp": "X1-U49-FA4A"},
+        {"asteroid_wp": "X1-U49-FA4A", "priority": 4},
     )

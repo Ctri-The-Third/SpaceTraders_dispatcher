@@ -39,7 +39,7 @@ class Behaviour:
 
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
-
+        self.priority = self.behaviour_params.get("priority", 5)
         self._connection = connection
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
@@ -63,6 +63,7 @@ class Behaviour:
             current_agent_symbol=agent_name,
             session=session,
             connection=connection,
+            priority=self.priority,
         )
         self.pathfinder = PathFinder(connection=self.connection)
         self.ship_name = ship_name
