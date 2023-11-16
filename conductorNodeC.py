@@ -205,7 +205,6 @@ class FuelManagementConductor:
 
         # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
 
-        return
         if len(self.haulers) > 2:
             log_shallow_trade_tasks(
                 self.connection,
@@ -366,7 +365,6 @@ class FuelManagementConductor:
             trades_to_log = 1
 
         if log_trade:
-            return
             log_shallow_trade_tasks(
                 self.connection,
                 self.st.view_my_self().credits,
@@ -651,97 +649,4 @@ if __name__ == "__main__":
     # `max_buy_price`: if you want to limit the purchase price, set it here\n
     # `min_sell_price`: if you want to limit the sell price, set it here\n
     conductor = FuelManagementConductor(user)
-    for ship in conductor.st.ships_view().values():
-        set_behaviour(conductor.connection, ship.name, "DISABLED", {})
-    params = {
-        "tradegood": "ADVANCED_CIRCUITRY",
-        "buy_wp": "X1-U49-D45",
-        "sell_wp": "X1-U49-A1",
-        "max_buy_price": 18000,
-        "min_sell_price": 18200,
-        "priority": 4,
-    }
-    set_behaviour(conductor.connection, "CTRI-U--5", BHVR_BUY_AND_SELL_DRIPFEED, params)
-
-    # "MICROPROCESSORS"	1644.0	2700.0 "X1-U49-A3"  "X1-U49-D45"
-    params = {
-        "tradegood": "MICROPROCESSORS",
-        "buy_wp": "X1-U49-A3",
-        "sell_wp": "X1-U49-D45",
-        "max_buy_price": 1800 * 1.01,
-        "priority": 4
-        # "min_sell_price": 3288
-    }
-    set_behaviour(conductor.connection, "CTRI-U--6", BHVR_BUY_AND_SELL_DRIPFEED, params)
-
-    # "ELECTRONICS"	1481.0	2310.0 "X1-U49-F51 " "X1-U49-D45"
-    params = {
-        "buy_wp": "X1-U49-F51",
-        "sell_wp": "X1-U49-D45",
-        "tradegood": "ELECTRONICS",
-        "max_buy_price": 1617.00,
-        "priority": 4
-        # "min_sell_price": 5010.00,
-    }
-    set_behaviour(conductor.connection, "CTRI-U--7", BHVR_BUY_AND_SELL_DRIPFEED, params)
-
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--8",
-        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-        {
-            "asteroid_wp": "X1-U49-B41",
-            "priority": 4,
-            "market_wp": "X1-U49-B6",
-            "cargo_to_receive": ["PLATINUM_ORE", "GOLD_ORE", "SILVER_ORE"],
-        },
-    )
-    params = {
-        "asteroid_wp": "X1-U49-B41",
-        "cargo_to_transfer": ["*"],
-        "cargo_to_jettison": ["QUARTZ_SAND", "ICE_WATER", "SILICON_CRYSTALS"],
-    }
-    for ship_symbol in [
-        "CTRI-U--3",
-        "CTRI-U--26",
-        "CTRI-U--28",
-        "CTRI-U--2A",
-        "CTRI-U--24",
-    ]:
-        set_behaviour(conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params)
-
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--1",
-        BHVR_CHILL_AND_SURVEY,
-        {"asteroid_wp": "X1-U49-B41", "priority": 4.5},
-    )
-
-    #
-    # common metals near home
-    #
-    params = {
-        "asteroid_wp": "X1-U49-FA4A",
-        "cargo_to_transfer": ["*"],
-        "cargo_to_jettison": ["QUARTZ_SAND", "ICE_WATER", "SILICON_CRYSTALS"],
-    }
-
-    for ship_symbol in [
-        "CTRI-U--1C",
-        "CTRI-U--20",
-        "CTRI-U--1A",
-        "CTRI-U--1E",
-        "CTRI-U--22",
-    ]:
-        set_behaviour(conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params)
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--9",
-        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-        {
-            "asteroid_wp": "X1-U49-FA4A",
-            "priority": 4,
-            "market_wp": "X1-U49-H53",
-            "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINUM_ORE"],
-        },
-    )
+    conductor.run()
