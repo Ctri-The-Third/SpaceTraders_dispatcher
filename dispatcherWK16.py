@@ -15,6 +15,10 @@ from straders_sdk import SpaceTraders
 from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer
+from behaviours.extract_and_chill import (
+    ExtractAndChill,
+    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_CHILL,
+)
 from behaviours.buy_and_sell_dripfeed import (
     BuyAndSellDripfeed,
     BEHAVIOUR_NAME as BHVR_BUY_AND_SELL_DRIPFEED,
@@ -78,6 +82,10 @@ from behaviours.monitor_specific_location import (
     MonitorPrices,
     BEHAVIOUR_NAME as BHVR_MONITOR_SPECIFIC_LOCATION,
 )
+from behaviours.take_from_extractors_and_fulfill import (
+    TakeFromExactorsAndFulfillOrSell_9,
+    BEHAVIOUR_NAME as BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+)
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
@@ -92,18 +100,20 @@ behaviours_and_classes = {
     BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
     BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
     BHVR_EXTRACT_AND_TRANSFER: ExtractAndTransfer_8,
-    BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
+    # BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
     BHVR_EXPLORE_SYSTEM: ExploreSystem,
-    BHVR_MONITOR_CHEAPEST_PRICE: MonitorPrices,
+    # BHVR_MONITOR_CHEAPEST_PRICE: MonitorPrices,
     BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndSellDripfeed,
-    BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
+    # BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
     BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
     BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
     BHVR_CHILL_AND_SURVEY: ChillAndSurvey,
     BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
     BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
-    BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
     BHVR_BUY_AND_SELL_DRIPFEED: BuyAndSellDripfeed,
+    BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
+    BHVR_EXTRACT_AND_CHILL: ExtractAndChill,
+    BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
 }
 
 logger = logging.getLogger("dispatcher")

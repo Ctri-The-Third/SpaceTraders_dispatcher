@@ -241,7 +241,10 @@ class Behaviour:
                 return ship
 
     def extract_till_full(
-        self, cargo_to_target: list = None, cutoff_cargo_units_used=None
+        self,
+        cargo_to_target: list = None,
+        cargo_to_discard: list = None,
+        cutoff_cargo_units_used=None,
     ) -> Ship or bool:
         # need to validate that the ship'  s current WP is a valid location
         current_wayp = self.st.waypoints_view_one(
@@ -284,7 +287,10 @@ class Behaviour:
             self.sleep_until_ready()
 
             resp = st.ship_extract(ship, survey)
-
+            if cargo_to_discard:
+                for cargo in ship.cargo_inventory:
+                    if cargo.symbol in cargo_to_discard:
+                        st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
             # extract. if we're full, return without refreshing the survey (as we won't use it)
             if ship.cargo_units_used >= cutoff_cargo_units_used:
                 return ship

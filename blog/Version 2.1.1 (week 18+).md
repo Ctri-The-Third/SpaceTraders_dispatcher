@@ -29,17 +29,18 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
   - ✅ deep trades have run dry, but shallow trades remain an option - going to run things overnight and see how they behave.
 
 ## Step Two - Filling the idle time
-- Begin building the pyramid of production. Start with the earliest bits of the production chain.
-  - extractors' requests should be on a much lower priority than haulers' requests. (-2, e.g. 5 vs 3)
-  - additionally, cooldown and move requests should be a higher priority than others. (+1 e.g. 4 for extractors and 2 for haulers)
+- ✅ Begin building the pyramid of production. Start with the earliest bits of the production chain.
+  - ✅ extractors' requests should be on a much lower priority than haulers' requests. (-2, e.g. 5 vs 3)
+  - ✅ additionally, cooldown and move requests should be a higher priority than others. (+1 e.g. 4 for extractors and 2 for haulers)
   - we should use the dripfeed technology to evolve the simplest metal EXPORTS
-  - unless we're dedicating a growth cycle, we should just use the ship task solution.
+    - having conversed with the developers, it seems that before an EXPORT can be evolved, the IMPORTs must be. Therefore, our focus should be on expanding the number of concurrent extractors, and their material focuses. 
+  - unless we're trying to force a growth cycle, we should just use the existing ship task solution and keep all markets at their optimal feeding level, and have haulers default behaviour be extractor related.
 - I did an analysis of the haulers doing steady trades. It seems like of the 14 active hours in my experiment, only 2.5 hours were used performing trades. So, I need to programatically identify this, and set up extractor/ siphoning efforts to stimulate the production chain.
 - ✅ If I want to run the extractors alongside the more profitable trading behaviours, I will need to complete the priorities system in request handling.
 - In order to support market evolution and understanding, I'm going to switch all trading behaviours off and buy a tonne of extractors.  
 
 
-## Step Two - begin evolving markets with intention
+## Step Three - begin evolving markets with intention
 * we've observed some market evolutions but these occur in extreme (And usually unprofitable) market conditions, so once markets enter into these situations we rarely go back and check.
 - ✅ Deploy satellites to each planet (to monitor all adjacent markets) with a 15 minute sentinel ping.
 - create a behaviour that holds IMPORT markets in the ABUNDANT state, and EXPORT markets in the SCARCE state. This can be a less profit restricted version of the existing buy and sell behaviour, that uses drip-feeding to avoid massive losses. 
@@ -49,16 +50,18 @@ This week, prices are WAY up, including fuel being prohibitive. This appears to 
   - ✅ does the price change at a faster or slower rate when the trade_volumes are higher (expect faster), yes, much faster in low volumes. 
   - ✅ does the price change faster when the market is GROWING or STRONG?  no it does not
 - STRATEGY 
-  - when buying or selling to a tradevolume 10, use dripfeed strategy. Our quarterly tasks should specifically target those at peak prices.
-  - the import markets tend to be higher depth than the export markets, so if going 1->10 or 10-> 100 etc... we should focus on the export prices over the import prices (whilst maintaining a profit protection mechanism)
-  -  current experiment, dripfeed export of ADVANCED_CIRCUITRY, and dripfeed import of ELECTRONICS and MICROPROCESSORS. 
-    - market is already in "growing" state already
+  - ✅  when buying or selling to a tradevolume 10, use dripfeed strategy. Our quarterly tasks should specifically target those at peak prices.
+  - ❌ the import markets tend to be higher depth than the export markets, so if going 1->10 or 10-> 100 etc... we should focus on the export prices over the import prices (whilst maintaining a profit protection mechanism)
+  - ❌ current experiment, dripfeed export of ADVANCED_CIRCUITRY, and dripfeed import of ELECTRONICS and MICROPROCESSORS. 
+    - ❌ market is already in "growing" state already
   - if the above experiment does not yield growth before the profit margin tanks, then we will need to start by evolving the extractor based markets instead, wide base.
   
+## EXPERIMENT 
+CTRI-C vs CTRI-V 
+single commander - check we're not sharing systems.
+C - trade whenever there is any profit to be made
+V - trade only whenever there are maximum margins to be made. 
 
-
-# Difficulties & Solutions
-The problems we faced, the reasoning behidn the solution, and the observed outcomes.
 
 ### Fuel costs
 Problem: Fuel is absurdly high, and unexpected latency intolerance meant that my initial EXPLORE command didn't execute overnight.
@@ -66,5 +69,5 @@ Problem: Fuel is absurdly high, and unexpected latency intolerance meant that my
 
 
 ### projects paused mid development
-We started on a new event throttler, which is paused for the time being.
-We also started trying to do pathfinding for intrasolar, so
+✅🥇We started on a new event throttler, which is paused for the time being.
+We also started trying to do pathfinding for intrasolar, it's kind of done but in some cases ships still go drifting when they shouldn't.

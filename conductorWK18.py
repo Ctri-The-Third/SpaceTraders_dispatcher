@@ -51,6 +51,7 @@ from dispatcherWK16 import (
     BHVR_SINGLE_STABLE_TRADE,
     BHVR_MONITOR_SPECIFIC_LOCATION,
     BHVR_BUY_AND_SELL_DRIPFEED,
+    BHVR_EXTRACT_AND_CHILL,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -697,7 +698,7 @@ if __name__ == "__main__":
         "CTRI-U--24",
     ]:
         set_behaviour(
-            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_TRANSFER, params
+            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params
         )
 
     set_behaviour(
@@ -720,7 +721,7 @@ if __name__ == "__main__":
         "CTRI-U--22",
     ]:
         set_behaviour(
-            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_TRANSFER, params
+            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params
         )
     set_behaviour(
         conductor.connection,
