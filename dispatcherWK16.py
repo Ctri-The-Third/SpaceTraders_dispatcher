@@ -144,18 +144,11 @@ class dispatcher:
         self.agents = agents
 
         self.consumer = RequestConsumer(False)
-        self.session = LimiterSession(per_second=2, per_hour=10800)
-        self.session.mount(
-            "https://api.spacetraders.io",
-            HTTPAdapter(pool_maxsize=self.max_connections),
-        )
         self.ships = {}
         self.tasks_last_updated = datetime.min
         self.task_refresh_period = timedelta(minutes=1)
         self.tasks = {}
-        self.generic_behaviour = Behaviour(
-            "", "", connection=self.connection, session=self.session
-        )
+        self.generic_behaviour = Behaviour("", "", connection=self.connection)
         self.client = self.generic_behaviour.st
         self.exit_flag = False
 
@@ -502,9 +495,7 @@ class dispatcher:
         bhvr_params = behaviour_params
         bhvr = None
         if id in behaviours_and_classes:
-            bhvr = behaviours_and_classes[id](
-                aname, sname, bhvr_params, session=self.session
-            )
+            bhvr = behaviours_and_classes[id](aname, sname, bhvr_params)
             return bhvr
 
     def maybe_scan_all_systems(self):

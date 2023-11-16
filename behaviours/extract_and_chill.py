@@ -32,7 +32,7 @@ class ExtractAndChill(Behaviour):
             connection,
         )
         self
-        self.logger = logging.getLogger("bhvr_extract_and_sell")
+        self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.cargo_to_target = self.behaviour_params.get("cargo_to_transfer", None)
         self.cargo_to_jettison = self.behaviour_params.get("cargo_to_jettison", [])
 
@@ -53,6 +53,7 @@ class ExtractAndChill(Behaviour):
         st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
+            time.sleep(60)
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1C"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1E"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {

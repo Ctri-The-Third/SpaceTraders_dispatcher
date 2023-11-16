@@ -52,6 +52,7 @@ from dispatcherWK16 import (
     BHVR_MONITOR_SPECIFIC_LOCATION,
     BHVR_BUY_AND_SELL_DRIPFEED,
     BHVR_EXTRACT_AND_CHILL,
+    BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -683,12 +684,18 @@ if __name__ == "__main__":
     set_behaviour(
         conductor.connection,
         "CTRI-U--8",
-        BHVR_RECEIVE_AND_FULFILL,
-        {"asteroid_wp": "X1-U49-B41", "priority": 4},
+        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+        {
+            "asteroid_wp": "X1-U49-B41",
+            "priority": 4,
+            "market_wp": "X1-U49-B6",
+            "cargo_to_receive": ["PLATINUM_ORE", "GOLD_ORE", "SILVER_ORE"],
+        },
     )
     params = {
         "asteroid_wp": "X1-U49-B41",
         "cargo_to_transfer": ["*"],
+        "cargo_to_jettison": ["QUARTZ_SAND", "ICE_WATER", "SILICON_CRYSTALS"],
     }
     for ship_symbol in [
         "CTRI-U--3",
@@ -697,9 +704,7 @@ if __name__ == "__main__":
         "CTRI-U--2A",
         "CTRI-U--24",
     ]:
-        set_behaviour(
-            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params
-        )
+        set_behaviour(conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params)
 
     set_behaviour(
         conductor.connection,
@@ -711,6 +716,7 @@ if __name__ == "__main__":
     params = {
         "asteroid_wp": "X1-U49-FA4A",
         "cargo_to_transfer": ["*"],
+        "cargo_to_jettison": ["QUARTZ_SAND", "ICE_WATER", "SILICON_CRYSTALS"],
     }
 
     for ship_symbol in [
@@ -720,12 +726,15 @@ if __name__ == "__main__":
         "CTRI-U--1E",
         "CTRI-U--22",
     ]:
-        set_behaviour(
-            conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params
-        )
+        set_behaviour(conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params)
     set_behaviour(
         conductor.connection,
         "CTRI-U--9",
-        BHVR_RECEIVE_AND_FULFILL,
-        {"asteroid_wp": "X1-U49-FA4A", "priority": 4},
+        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+        {
+            "asteroid_wp": "X1-U49-FA4A",
+            "priority": 4,
+            "market_wp": "X1-U49-H53",
+            "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINIUM_ORE"],
+        },
     )
