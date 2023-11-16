@@ -81,7 +81,11 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         cargo_remaining = ship.cargo_space_remaining
         neighbours = self.get_neighbouring_extractors()
         for target in self.exclusive_cargo_items:
+            if cargo_remaining == 0:
+                break
             for neighbour in neighbours:
+                if cargo_remaining == 0:
+                    break
                 neighbour: Ship
                 for cargo_item in neighbour.cargo_inventory:
                     if cargo_item.symbol == target:
@@ -174,7 +178,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
             for s in ships.values()
             if s.nav.waypoint_symbol == self.ship.nav.waypoint_symbol
         ]
-        ships = [s for s in ships if s.role != "EXTRACTOR"]
+        ships = [s for s in ships if s.role == "EXCAVATOR"]
         return ships
 
 
@@ -188,7 +192,7 @@ if __name__ == "__main__":
     behaviour_params = {
         "asteroid_wp": "X1-U49-FA4A",
         "market_wp": "X1-U49-H53",
-        "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINIUM_ORE"],
+        "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINUM_ORE"],
         "priority": 4,
     }
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})

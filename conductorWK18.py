@@ -735,6 +735,6 @@ if __name__ == "__main__":
             "asteroid_wp": "X1-U49-FA4A",
             "priority": 4,
             "market_wp": "X1-U49-H53",
-            "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINIUM_ORE"],
+            "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINUM_ORE"],
         },
     )
