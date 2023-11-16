@@ -250,7 +250,7 @@ class FuelManagementConductor:
                 {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
             )
         sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
-
+        return
         # set 10 extractors to go to site 1 and extract
         if len(self.extractors) > 0:
             for extractor in self.extractors[:10]:
@@ -342,6 +342,18 @@ class FuelManagementConductor:
         fuel_refinery = self.st.system_market(self.fuel_refinery)
         cargo_requirement = 35 if len(self.haulers) > 0 else 70
         fuel = fuel_refinery.get_tradegood("FUEL")
+        if len(self.siphoners) > 0:
+            params = {
+                "market_wp": fuel_refinery.symbol,
+                "cargo_to_receive": ["HYDROCARBONS"],
+                "asteroid_wp": self.gas_giant.symbol,
+            }
+            set_behaviour(
+                self.connection,
+                hydrocarbon_shipper.name,
+                BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+                params,
+            )
 
         # if we've enough fuel , send a refuel task, otherwise log a shallow trade
         log_trade = False
@@ -366,7 +378,6 @@ class FuelManagementConductor:
             trades_to_log = 1
 
         if log_trade:
-            return
             log_shallow_trade_tasks(
                 self.connection,
                 self.st.view_my_self().credits,
@@ -745,3 +756,4 @@ if __name__ == "__main__":
             "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINUM_ORE"],
         },
     )
+    conductor.run()
