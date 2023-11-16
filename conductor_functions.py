@@ -327,7 +327,7 @@ def get_shallow_trades(
     working_capital: int,
     limit=50,
 ) -> list[tuple]:
-    sql = """select tri.*  
+    sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 10
     from trade_routes_intrasystem tri 
     left join trade_routes_max_potentials trmp on tri.trade_symbol =  trmp.trade_symbol
     where market_depth = 10 and purchase_price * 10 < %s
