@@ -227,7 +227,7 @@ class FuelManagementConductor:
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         pass
-        if len(self.extractors) < 40:
+        if len(self.extractors) < 20:
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         if len(self.siphoners) < 10:
             maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
