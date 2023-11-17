@@ -342,7 +342,7 @@ class Behaviour:
 
             if (
                 self.pathfinder.determine_fuel_cost(current_wayp, nearest_refuel_wp)
-                > ship.fuel_current
+                >= ship.fuel_current
             ):
                 flight_mode = "DRIFT"
             if distance >= 0:
