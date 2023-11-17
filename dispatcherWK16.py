@@ -103,7 +103,7 @@ behaviours_and_classes = {
     # BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
     BHVR_EXPLORE_SYSTEM: ExploreSystem,
     # BHVR_MONITOR_CHEAPEST_PRICE: MonitorPrices,
-    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndSellDripfeed,
+    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
     # BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
     BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
     BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
@@ -303,6 +303,7 @@ class dispatcher:
                                 task["task_hash"], ship_and_behaviour["name"]
                             )
                         task["behaviour_params"]["task_hash"] = task["task_hash"]
+
                         bhvr = self.map_behaviour_to_class(
                             task["behaviour_id"],
                             ship_and_behaviour["name"],
