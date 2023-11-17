@@ -86,7 +86,7 @@ class RefuelAnExchange(Behaviour):
                 ):
                     needing_refueled.append(w)
                     break
-        if not needing_refueled:
+        if not needing_refueled or len(needing_refueled) == 0:
             time.sleep(SAFETY_PADDING)
             self.end()
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
