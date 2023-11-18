@@ -63,6 +63,7 @@ from conductor_functions import (
     log_task,
     log_shallow_trade_tasks,
     log_mining_package_deliveries,
+    missing_market_prices,
 )
 
 
@@ -160,6 +161,18 @@ class FuelManagementConductor:
         )
         self.fuel_refinery = self.find_fuel_refineries(self.gas_giant)
 
+        if missing_market_prices(self.connection, self.starting_system.symbol):
+            params = {"target_sys": self.starting_system.symbol}
+            log_task(
+                self.connection,
+                BHVR_EXPLORE_SYSTEM,
+                ["40_CARGO"],
+                self.starting_system.symbol,
+                1,
+                self.current_agent_symbol,
+                params,
+                expiry=self.next_quarterly_update,
+            )
         self.set_satellite_behaviours()
         self.set_drone_behaviours()
 
@@ -224,7 +237,7 @@ class FuelManagementConductor:
 
     def minutely_update(self):
         if len(self.haulers) < 5:
-            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
+            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
         pass
         if len(self.extractors) < 30:
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
@@ -311,7 +324,10 @@ class FuelManagementConductor:
                 BHVR_MONITOR_CHEAPEST_PRICE,
                 {"ship_type": "SHIP_PROBE"},
             )
-        total_satellites_needed = len(coordinates) + len(types)
+        if len(self.haulers) > 2:
+            total_satellites_needed = len(coordinates) + len(types)
+        else:
+            total_satellites_needed = len(types)
         if len(self.satellites) < total_satellites_needed:
             for i in range(total_satellites_needed - len(self.satellites)):
                 ship = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
@@ -363,7 +379,7 @@ class FuelManagementConductor:
 
         # if we've enough fuel , send a refuel task, otherwise log a shallow trade
         log_trade = False
-        if fuel.supply in ("ABUNDANT", "HIGH"):
+        if fuel and fuel.supply in ("ABUNDANT", "HIGH"):
             if self.any_refuels_needed():
                 log_task(
                     self.connection,
