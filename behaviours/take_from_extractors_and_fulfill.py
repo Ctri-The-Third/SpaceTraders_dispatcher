@@ -187,13 +187,13 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "9"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
-        "asteroid_wp": "X1-U49-FA4A",
-        "market_wp": "X1-U49-H53",
-        "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINUM_ORE"],
         "priority": 4,
+        "market_wp": "X1-U49-H53",
+        "asteroid_wp": "X1-U49-FA4A",
+        "cargo_to_receive": ["ALUMINUM_ORE", "COPPER_ORE", "IRON_ORE"],
     }
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
