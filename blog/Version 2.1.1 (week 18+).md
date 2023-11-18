@@ -71,3 +71,17 @@ Problem: Fuel is absurdly high, and unexpected latency intolerance meant that my
 ### projects paused mid development
 ✅🥇We started on a new event throttler, which is paused for the time being.
 We also started trying to do pathfinding for intrasolar, it's kind of done but in some cases ships still go drifting when they shouldn't.
+
+
+End of week stats
+
+| stat         | Node U | node V | node C | 
+| ---          | ------------ | ---------- | --------------- |
+| total uptime |  188.67h   | 131.24h | 103.51h |        
+| total ships  | 84         | 3        | 2
+| contracts    | 0          | 0        | 0
+| earnings     | 59,777,850 | 569,494  | 0
+| requests     | 640,007    | 36,904   | 74,664
+| average delay| 2.37       | 0.43     | 0.31
+| CPH          | 3,396      | 280      | 0
+| CPR          | 93.4       | 15.43    | 0

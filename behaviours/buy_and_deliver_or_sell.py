@@ -218,13 +218,10 @@ order by purchase_price asc """
             return current_market
 
         # empty anything that's not the goal.
-        self.sell_all_cargo([target_tradegood], current_market)
-        target_price = 1
 
         self.purchase_what_you_can(
             target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
         )
-        self.st.system_market(target_waypoint, True)
         return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
 
     def deliver_half(
@@ -281,16 +278,17 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "7"
     ship = f"{agent}-{suffix}"
     bhvr = BuyAndDeliverOrSell_6(
         agent,
         ship,
         behaviour_params={
-            "buy_wp": "X1-QV47-H56",
-            "sell_wp": "X1-QV47-A3",
-            "tradegood": "IRON",
-            "return_tradegood": "",
+            "buy_wp": "X1-U49-D46",
+            "sell_wp": "X1-U49-H54",
+            "quantity": 10,
+            "tradegood": "SHIP_PLATING",
+            "safety_profit_threshold": 7134,
         },
     )
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)

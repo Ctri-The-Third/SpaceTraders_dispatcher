@@ -272,6 +272,50 @@ order by 1 desc """
     return return_obj
 
 
+def log_mining_package_deliveries(
+    connection,
+    collection_task_id: str,
+    current_agent_symbol: str,
+    current_system_symbol: str,
+    task_expiry: datetime.datetime,
+):
+    sql = """
+with potentials as (
+	select ROW_NUMBER() OVER (PARTITION BY tecp.source_waypoint ORDER BY package_value desc) AS row_number
+	, 
+	*
+	, (package_value / distance )as cph 
+	from trade_extraction_packages tecp
+	where source_waypoint ilike %s and 
+			market_symbol ilike %s 					
+	order by package_value / distance 
+) 
+
+select trade_symbols, source_waypoint,market_symbol, package_value, distance from potentials where row_number = 1
+
+order by package_value/distance desc;"""
+    rows = try_execute_select(
+        connection, sql, (f"{current_system_symbol}%", f"{current_system_symbol}%")
+    )
+    for row in rows:
+        trade_symbols, source_waypoint, market_symbol, package_value, distance = row
+        task_id = log_task(
+            connection,
+            collection_task_id,
+            ["35_CARGO"],
+            waypoint_slicer(market_symbol),
+            4,
+            current_agent_symbol,
+            {
+                "asteroid_wp": source_waypoint,
+                "cargo_to_receive": trade_symbols,
+                "market_wp": market_symbol,
+                "priority": 4,
+            },
+            expiry=task_expiry,
+        )
+
+
 def log_shallow_trade_tasks(
     connection,
     credits_available: int,
@@ -309,9 +353,10 @@ def log_shallow_trade_tasks(
             {
                 "buy_wp": export_market,
                 "sell_wp": import_market,
-                "quantity": 35,
+                "quantity": 10,
                 "tradegood": trade_symbol,
                 "safety_profit_threshold": profit_per_unit / 2,
+                "priority": 4.5,
             },
             expiry=task_expiry,
         )
@@ -327,9 +372,12 @@ def get_shallow_trades(
     working_capital: int,
     limit=50,
 ) -> list[tuple]:
-    sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 35
-    from trade_routes_intrasystem tris
-    where market_depth = 10 and purchase_price * 35 < %s
+    sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 10
+    from trade_routes_intrasystem tri 
+    left join trade_routes_max_potentials trmp on tri.trade_symbol =  trmp.trade_symbol
+    where market_depth = 10 and purchase_price * 10 < %s
+    and round((sell_price::numeric/ purchase_price)*100,2) > profit_pct *0.99  
+
     limit %s"""
 
     routes = try_execute_select(

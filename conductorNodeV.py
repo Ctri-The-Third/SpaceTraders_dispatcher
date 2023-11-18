@@ -50,6 +50,7 @@ from dispatcherWK16 import (
     BHVR_REFUEL_ALL_IN_SYSTEM,
     BHVR_SINGLE_STABLE_TRADE,
     BHVR_MONITOR_SPECIFIC_LOCATION,
+    BHVR_BUY_AND_SELL_DRIPFEED,
     BHVR_EXTRACT_AND_CHILL,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
 )
@@ -62,7 +63,6 @@ from conductor_functions import (
     maybe_buy_ship_sys,
     log_task,
     log_shallow_trade_tasks,
-    log_mining_package_deliveries,
 )
 
 
@@ -214,19 +214,12 @@ class FuelManagementConductor:
                 self.next_quarterly_update,
                 len(self.haulers) - 2,
             )
-            log_mining_package_deliveries(
-                self.connection,
-                BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-                self.current_agent_symbol,
-                waypoint_slicer(self.st.view_my_self().headquarters),
-                self.next_quarterly_update,
-            )
 
     def minutely_update(self):
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         pass
-        if len(self.extractors) < 30:
+        if len(self.extractors) < 40:
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         if len(self.siphoners) < 10:
             maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
@@ -256,7 +249,7 @@ class FuelManagementConductor:
                 {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
             )
         sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
-        return
+
         # set 10 extractors to go to site 1 and extract
         if len(self.extractors) > 0:
             for extractor in self.extractors[:10]:
@@ -348,18 +341,6 @@ class FuelManagementConductor:
         fuel_refinery = self.st.system_market(self.fuel_refinery)
         cargo_requirement = 35 if len(self.haulers) > 0 else 70
         fuel = fuel_refinery.get_tradegood("FUEL")
-        if len(self.siphoners) > 0:
-            params = {
-                "market_wp": fuel_refinery.symbol,
-                "cargo_to_receive": ["HYDROCARBONS"],
-                "asteroid_wp": self.gas_giant.symbol,
-            }
-            set_behaviour(
-                self.connection,
-                hydrocarbon_shipper.name,
-                BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-                params,
-            )
 
         # if we've enough fuel , send a refuel task, otherwise log a shallow trade
         log_trade = False
@@ -668,65 +649,4 @@ if __name__ == "__main__":
     # `max_buy_price`: if you want to limit the purchase price, set it here\n
     # `min_sell_price`: if you want to limit the sell price, set it here\n
     conductor = FuelManagementConductor(user)
-
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--8",
-        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-        {
-            "asteroid_wp": "X1-U49-B41",
-            "priority": 4,
-            "market_wp": "X1-U49-B6",
-            "cargo_to_receive": ["PLATINUM_ORE", "GOLD_ORE", "SILVER_ORE"],
-        },
-    )
-    params = {
-        "asteroid_wp": "X1-U49-B41",
-        "cargo_to_transfer": ["*"],
-        "cargo_to_jettison": ["QUARTZ_SAND", "ICE_WATER", "SILICON_CRYSTALS"],
-    }
-    for ship_symbol in [
-        "CTRI-U--3",
-        "CTRI-U--26",
-        "CTRI-U--28",
-        "CTRI-U--2A",
-        "CTRI-U--24",
-    ]:
-        set_behaviour(conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params)
-
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--1",
-        BHVR_CHILL_AND_SURVEY,
-        {"asteroid_wp": "X1-U49-B41", "priority": 4.5},
-    )
-
-    #
-    # common metals near home
-    #
-    params = {
-        "asteroid_wp": "X1-U49-FA4A",
-        "cargo_to_transfer": ["*"],
-        "cargo_to_jettison": ["QUARTZ_SAND", "ICE_WATER", "SILICON_CRYSTALS"],
-    }
-
-    for ship_symbol in [
-        "CTRI-U--1C",
-        "CTRI-U--20",
-        "CTRI-U--1A",
-        "CTRI-U--1E",
-        "CTRI-U--22",
-    ]:
-        set_behaviour(conductor.connection, ship_symbol, BHVR_EXTRACT_AND_CHILL, params)
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--9",
-        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-        {
-            "asteroid_wp": "X1-U49-FA4A",
-            "priority": 4,
-            "market_wp": "X1-U49-H53",
-            "cargo_to_receive": ["IRON_ORE", "COPPER_ORE", "ALUMINUM_ORE"],
-        },
-    )
     conductor.run()
