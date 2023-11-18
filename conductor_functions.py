@@ -356,6 +356,7 @@ def log_shallow_trade_tasks(
                 "quantity": 10,
                 "tradegood": trade_symbol,
                 "safety_profit_threshold": profit_per_unit / 2,
+                "priority": 4.5,
             },
             expiry=task_expiry,
         )

@@ -218,13 +218,10 @@ order by purchase_price asc """
             return current_market
 
         # empty anything that's not the goal.
-        self.sell_all_cargo([target_tradegood], current_market)
-        target_price = 1
 
         self.purchase_what_you_can(
             target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
         )
-        self.st.system_market(target_waypoint, True)
         return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
 
     def deliver_half(

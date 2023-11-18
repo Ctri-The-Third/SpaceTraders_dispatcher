@@ -369,8 +369,6 @@ class Behaviour:
             market = self.st.system_market(
                 st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
             )
-        if market:
-            listings = {listing.symbol: listing for listing in market.listings}
         if ship.nav.status != "DOCKED":
             st.ship_dock(ship)
         listing = market.get_tradegood(cargo_symbol)
@@ -385,6 +383,7 @@ class Behaviour:
             if not resp:
                 pass
         self.log_market_changes(ship.nav.waypoint_symbol)
+        return resp
 
     def sell_all_cargo(self, exceptions: list = [], market: Market = None):
         # needs reworked to use the sell_cargo
@@ -757,7 +756,20 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "A"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
-    bhvr.sell_all_cargo()
+    ship = bhvr.st.ships_view_one(ship, True)
+
+    for inventory in ship.cargo_inventory:
+        wayps = bhvr.find_best_market_systems_to_sell(inventory.symbol)
+        for wayp, syst, profit in wayps:
+            syst: System
+            bhvr.ship_extrasolar(syst)
+            resp = bhvr.ship_intrasolar(wayp)
+            if resp or resp.error_code == 4204:
+                bhvr.sleep_until_ready()
+                break
+        bhvr.st.ship_dock(ship)
+        resp = bhvr.sell_cargo(inventory.symbol, int(inventory.units))
+        print(resp)

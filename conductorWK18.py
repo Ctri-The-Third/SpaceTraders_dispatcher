@@ -50,7 +50,6 @@ from dispatcherWK16 import (
     BHVR_REFUEL_ALL_IN_SYSTEM,
     BHVR_SINGLE_STABLE_TRADE,
     BHVR_MONITOR_SPECIFIC_LOCATION,
-    BHVR_BUY_AND_SELL_DRIPFEED,
     BHVR_EXTRACT_AND_CHILL,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
 )
@@ -227,7 +226,7 @@ class FuelManagementConductor:
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         pass
-        if len(self.extractors) < 20:
+        if len(self.extractors) < 30:
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         if len(self.siphoners) < 10:
             maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
