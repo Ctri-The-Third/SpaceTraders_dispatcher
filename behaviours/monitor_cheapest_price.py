@@ -10,7 +10,7 @@ import time, math, threading
 BEHAVIOUR_NAME = "MONITOR_CHEAPEST_SHIPYARD_PRICE"
 
 
-class MonitorPrices(Behaviour):
+class MonitorCheapestShipyard(Behaviour):
     """Expects a parameter blob containing 'ship_type'"""
 
     def __init__(
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_suffix}"
     params = {"ship_type": "SHIP_PROBE"}
-    bhvr = MonitorPrices(agent, f"{ship}", params)
+    bhvr = MonitorCheapestShipyard(agent, f"{ship}", params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()

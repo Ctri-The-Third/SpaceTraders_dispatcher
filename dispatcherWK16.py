@@ -45,7 +45,7 @@ from behaviours.explore_system import (
     BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
 )
 from behaviours.monitor_cheapest_price import (
-    MonitorPrices,
+    MonitorCheapestShipyard,
     BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
 )
 from behaviours.buy_and_deliver_or_sell import (
@@ -102,7 +102,7 @@ behaviours_and_classes = {
     BHVR_EXTRACT_AND_TRANSFER: ExtractAndTransfer_8,
     # BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
     BHVR_EXPLORE_SYSTEM: ExploreSystem,
-    BHVR_MONITOR_CHEAPEST_PRICE: MonitorPrices,
+    BHVR_MONITOR_CHEAPEST_PRICE: MonitorCheapestShipyard,
     BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
     # BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
     BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
