@@ -321,7 +321,7 @@ order by package_value/distance desc;"""
                 "asteroid_wp": source_waypoint,
                 "cargo_to_receive": trade_symbols,
                 "market_wp": market_symbol,
-                "priority": 4,
+                "priority": 3.9,
             },
             expiry=task_expiry,
         )
@@ -359,7 +359,7 @@ def log_shallow_trade_tasks(
             trade_task_id,
             ["40_CARGO"],
             waypoint_slicer(import_market),
-            5,
+            4,
             current_agent_symbol,
             {
                 "buy_wp": export_market,
