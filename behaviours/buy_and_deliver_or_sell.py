@@ -223,6 +223,11 @@ order by purchase_price asc """
             target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
         )
         if not resp:
+            self.st.view_my_self(True)
+            resp = self.purchase_what_you_can(
+                target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
+            )
+        if not resp:
             self.logger.error(
                 "Couldn't purchase %s at %s, because %s",
                 target_tradegood,
@@ -308,6 +313,6 @@ if __name__ == "__main__":
     bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=old_params)
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
     set_logging(logging.DEBUG)
-
+    bhvr.st.view_my_self(True)
     bhvr.run()
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=0)
