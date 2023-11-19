@@ -103,6 +103,9 @@ class RefuelAnExchange(Behaviour):
             fuel_market, m
         ):
             self.ship_intrasolar(fuel_market.symbol)
+            missing_fuel = self.ship.fuel_current - self.ship.fuel_capacity
+            if missing_fuel >= 100:
+                self.st.ship_refuel(self.ship)  # always refuel from the nearest market.
             if not self.buy_cargo("FUEL", self.ship.cargo_space_remaining):
                 logging.warning(
                     f"Couldn't buy fuel in {fuel_market.symbol} for {self.ship.name}"
@@ -139,11 +142,11 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3"
     ship = f"{agent}-{ship_number}"
     bhvr = RefuelAnExchange(agent, ship, {})
 
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    bhvr.st.view_my_self(True)
+
     bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
