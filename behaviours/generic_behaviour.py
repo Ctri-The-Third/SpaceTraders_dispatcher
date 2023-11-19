@@ -356,7 +356,6 @@ class Behaviour:
         if nearest_refuel_wp is not None:
             self.st.ship_dock(ship)
             self.st.ship_refuel(ship)
-            self.st.view_my_self(True)
             if flight_mode and flight_mode != ship.nav.flight_mode:
                 self.st.ship_patch_nav(ship, flight_mode)
 
@@ -767,17 +766,4 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "A"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
-    ship = bhvr.st.ships_view_one(ship, True)
-
-    for inventory in ship.cargo_inventory:
-        wayps = bhvr.find_best_market_systems_to_sell(inventory.symbol)
-        for wayp, syst, profit in wayps:
-            syst: System
-            bhvr.ship_extrasolar(syst)
-            resp = bhvr.ship_intrasolar(wayp)
-            if resp or resp.error_code == 4204:
-                bhvr.sleep_until_ready()
-                break
-        bhvr.st.ship_dock(ship)
-        resp = bhvr.sell_cargo(inventory.symbol, int(inventory.units))
-        print(resp)
+    bhvr.st.view_my_self(True)
