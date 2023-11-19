@@ -258,9 +258,6 @@ class FuelManagementConductor:
                 set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
 
     def set_drone_behaviours(self):
-        for ship in self.siphoners + self.extractors:
-            set_behaviour(self.connection, ship.name, "DISABLED", {})
-            return
         for siphoner in self.siphoners:
             set_behaviour(
                 self.connection,

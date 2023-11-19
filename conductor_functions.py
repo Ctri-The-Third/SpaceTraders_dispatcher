@@ -378,16 +378,13 @@ def log_shallow_trade_tasks(
     return capital_reserve
 
 
-def get_shallow_trades(
-    connection, working_capital: int, limit=50, price_cap=True
-) -> list[tuple]:
-    if price_cap:
-        sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 10
+def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple]:
+    sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * market_depth
     from trade_routes_intrasystem tri 
     left join trade_routes_max_potentials trmp on tri.trade_symbol =  trmp.trade_symbol
-    where market_depth <= 70 and purchase_price * market_depth < %s
+    where market_depth <= 70 and (purchase_price * market_depth) < %s
 	and  ( case when trmp.trade_symbol is not null then round((sell_price::numeric/ purchase_price)*100,2) > profit_pct *0.99 else True end ) 
-
+	order by route_value desc
     limit %s"""
 
     routes = try_execute_select(
