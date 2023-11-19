@@ -99,11 +99,19 @@ class RefuelAnExchange(Behaviour):
         m = self.st.system_market(w)
         fuel = m.get_tradegood("FUEL")
         trips = 0
-        while (fuel.supply != "ABUNDANT" or trips < 5) and self.still_profitable(
+        while (fuel.supply != "ABUNDANT" and trips < 5) and self.still_profitable(
             fuel_market, m
         ):
             self.ship_intrasolar(fuel_market.symbol)
-            self.buy_cargo("FUEL", self.ship.cargo_space_remaining)
+            if not self.buy_cargo("FUEL", self.ship.cargo_space_remaining):
+                logging.warning(
+                    f"Couldn't buy fuel in {fuel_market.symbol} for {self.ship.name}"
+                )
+                self.end()
+                self.st.logging_client.log_ending(
+                    BEHAVIOUR_NAME, ship.name, self.agent.credits
+                )
+                return
 
             w: Waypoint
             self.ship_intrasolar(w.symbol)
@@ -112,6 +120,7 @@ class RefuelAnExchange(Behaviour):
             fuel = m.get_tradegood("FUEL")
             trips += 1
         self.end()
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
 
     def still_profitable(
         self, fuel_market_wp: Waypoint, dest_market_wp: Waypoint
@@ -133,6 +142,8 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = RefuelAnExchange(agent, ship, {})
+
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    bhvr.st.view_my_self(True)
     bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)

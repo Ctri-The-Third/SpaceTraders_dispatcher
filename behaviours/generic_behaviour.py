@@ -330,15 +330,17 @@ class Behaviour:
             )
         nearest_refuel_wp = None
         nearest_refuel_distance = 99999
-        for refuel_point in maybe_refuel_points:
-            distance = self.pathfinder.calc_distance_between(current_wayp, refuel_point)
-            if distance < nearest_refuel_distance:
-                market = self.st.system_market(refuel_point)
-                if market.get_tradegood("FUEL") is not None:
-                    nearest_refuel_distance = distance
-                    nearest_refuel_wp = refuel_point
-        if nearest_refuel_wp is not None:
-            flight_mode = ship.nav.flight_mode
+        flight_mode = ship.nav.flight_mode
+        if current_wayp not in maybe_refuel_points:
+            for refuel_point in maybe_refuel_points:
+                distance = self.pathfinder.calc_distance_between(
+                    current_wayp, refuel_point
+                )
+                if distance < nearest_refuel_distance:
+                    market = self.st.system_market(refuel_point)
+                    if market.get_tradegood("FUEL") is not None:
+                        nearest_refuel_distance = distance
+                        nearest_refuel_wp = refuel_point
 
             if (
                 self.pathfinder.determine_fuel_cost(current_wayp, nearest_refuel_wp)
@@ -347,8 +349,14 @@ class Behaviour:
                 flight_mode = "DRIFT"
             if distance >= 0:
                 self.ship_intrasolar(nearest_refuel_wp.symbol, flight_mode=flight_mode)
+
+        else:
+            nearest_refuel_wp = current_wayp
+            nearest_refuel_distance = 0
+        if nearest_refuel_wp is not None:
             self.st.ship_dock(ship)
             self.st.ship_refuel(ship)
+            self.st.view_my_self(True)
             if flight_mode and flight_mode != ship.nav.flight_mode:
                 self.st.ship_patch_nav(ship, flight_mode)
 

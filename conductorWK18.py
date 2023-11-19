@@ -357,13 +357,18 @@ class FuelManagementConductor:
             i += 1
 
     def set_refinery_behaviours(self, possible_ships):
-        hydrocarbon_shipper = possible_ships[0]
-        hydrocarbon_shipper: Ship
-        refueler = possible_ships[min(1, len(possible_ships) - 1)]
+        #
+        # we can't guarantee a HYDROCARBON EXPORT anymore, and in fact it's going to be an EXTRACTOR instead.
+        #
+
+        # should be either a hauler, or the commander if we haven't got one
+        refueler = (self.haulers + self.commanders)[0]
         fuel_refinery = self.st.system_market(self.fuel_refinery)
-        cargo_requirement = 35 if len(self.haulers) > 0 else 70
-        fuel = fuel_refinery.get_tradegood("FUEL")
+
+        # either the hydrocarbon shipper should take from siphoners
+        # or the hydrocarbon shipper should be the commander who goes to extract & sell
         if len(self.siphoners) > 0:
+            hydrocarbon_shipper = self.haulers[0]
             params = {
                 "market_wp": fuel_refinery.symbol,
                 "cargo_to_receive": ["HYDROCARBONS"],
@@ -375,41 +380,8 @@ class FuelManagementConductor:
                 BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
                 params,
             )
-
-        # if we've enough fuel , send a refuel task, otherwise log a shallow trade
-        log_trade = False
-        if fuel and fuel.supply in ("ABUNDANT", "HIGH"):
-            if self.any_refuels_needed():
-                log_task(
-                    self.connection,
-                    BHVR_REFUEL_ALL_IN_SYSTEM,
-                    [f"{cargo_requirement}_CARGO"],
-                    waypoint_slicer(self.gas_giant.symbol),
-                    4,
-                    self.current_agent_symbol,
-                    {},
-                    expiry=self.next_quarterly_update,
-                    specific_ship_symbol=refueler.name,
-                )
-            else:
-                log_trade = True
-                trades_to_log = 5
-        else:
-            log_trade = True
-            trades_to_log = 1
-
-        if log_trade:
-            log_shallow_trade_tasks(
-                self.connection,
-                self.st.view_my_self().credits,
-                BHVR_BUY_AND_DELIVER_OR_SELL,
-                self.current_agent_symbol,
-                self.next_quarterly_update,
-                trades_to_log,
-            )
-
-        # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
-        if len(self.siphoners) == 0:
+        elif len(self.siphoners) == 0:
+            hydrocarbon_shipper = self.commanders[0]
             set_behaviour(
                 self.connection,
                 self.commanders[0].name,
@@ -419,6 +391,18 @@ class FuelManagementConductor:
                     "market_wp": fuel_refinery.symbol,
                 },
             )
+
+        #
+
+        if refueler != hydrocarbon_shipper:
+            set_behaviour(
+                self.connection,
+                refueler.name,
+                BHVR_REFUEL_ALL_IN_SYSTEM,
+                {"fuel_market_wp": fuel_refinery.symbol},
+            )
+
+        # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
 
     def scale_and_set_siphoning(self, possible_ships):
         # should be a quarterly or hourly behaviour
