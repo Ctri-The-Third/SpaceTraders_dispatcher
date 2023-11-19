@@ -357,7 +357,7 @@ def log_shallow_trade_tasks(
         task_id = log_task(
             connection,
             trade_task_id,
-            ["35_CARGO"],
+            ["40_CARGO"],
             waypoint_slicer(import_market),
             5,
             current_agent_symbol,
@@ -379,15 +379,14 @@ def log_shallow_trade_tasks(
 
 
 def get_shallow_trades(
-    connection,
-    working_capital: int,
-    limit=50,
+    connection, working_capital: int, limit=50, price_cap=True
 ) -> list[tuple]:
-    sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 10
+    if price_cap:
+        sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * 10
     from trade_routes_intrasystem tri 
     left join trade_routes_max_potentials trmp on tri.trade_symbol =  trmp.trade_symbol
     where market_depth = 10 and purchase_price * 10 < %s
-    and round((sell_price::numeric/ purchase_price)*100,2) > profit_pct *0.99  
+	and  ( case when trmp.trade_symbol is not null then round((sell_price::numeric/ purchase_price)*100,2) > profit_pct *0.99 else True end ) 
 
     limit %s"""
 

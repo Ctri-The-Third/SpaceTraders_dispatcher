@@ -131,6 +131,7 @@ class FuelManagementConductor:
             # hourly set ship behaviours
             # quarterly set ship tasks
             # minutely try and buy new ships
+            self.st.view_my_self(True)
             if self.next_daily_update < datetime.now():
                 self.next_daily_update = datetime.now() + timedelta(days=1)
                 self.daily_update()
@@ -209,8 +210,8 @@ class FuelManagementConductor:
         self.safety_margin = 0
 
         possible_ships = self.haulers + self.commanders
-        self.set_refinery_behaviours(possible_ships)
-        self.set_satellite_behaviours()
+        # self.set_refinery_behaviours(possible_ships)
+        # self.set_satellite_behaviours()
 
         # we should drip feed the most prominent trade routes to the haulers - ensuring that we don't double dip any of the exports.
         # drip feeding should specify the target purchase price, or the target sell price, or both. This will primarily stress the exports.
@@ -218,22 +219,21 @@ class FuelManagementConductor:
 
         # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
 
-        if len(self.haulers) > 2:
-            log_shallow_trade_tasks(
-                self.connection,
-                self.st.view_my_self().credits,
-                BHVR_BUY_AND_DELIVER_OR_SELL,
-                self.current_agent_symbol,
-                self.next_quarterly_update,
-                len(self.haulers) - 2,
-            )
-            log_mining_package_deliveries(
-                self.connection,
-                BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-                self.current_agent_symbol,
-                waypoint_slicer(self.st.view_my_self().headquarters),
-                self.next_quarterly_update,
-            )
+        log_shallow_trade_tasks(
+            self.connection,
+            self.st.view_my_self().credits,
+            BHVR_BUY_AND_DELIVER_OR_SELL,
+            self.current_agent_symbol,
+            self.next_quarterly_update,
+            len(self.haulers) * 3,
+        )
+        log_mining_package_deliveries(
+            self.connection,
+            BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+            self.current_agent_symbol,
+            waypoint_slicer(self.st.view_my_self().headquarters),
+            self.next_quarterly_update,
+        )
 
     def minutely_update(self):
         if len(self.haulers) < 5:
@@ -360,7 +360,6 @@ class FuelManagementConductor:
         hydrocarbon_shipper = possible_ships[0]
         hydrocarbon_shipper: Ship
         refueler = possible_ships[min(1, len(possible_ships) - 1)]
-
         fuel_refinery = self.st.system_market(self.fuel_refinery)
         cargo_requirement = 35 if len(self.haulers) > 0 else 70
         fuel = fuel_refinery.get_tradegood("FUEL")
@@ -410,25 +409,15 @@ class FuelManagementConductor:
             )
 
         # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
-        set_behaviour(
-            self.connection,
-            hydrocarbon_shipper.name,
-            BHVR_EXTRACT_AND_GO_SELL
-            if hydrocarbon_shipper.role == "COMMAND"
-            else BHVR_RECEIVE_AND_FULFILL,
-            {"asteroid_wp": self.gas_giant.symbol, "market_wp": fuel_refinery.symbol},
-        )
-
-        set_behaviour(
-            self.connection,
-            self.satellites[0].name,
-            BHVR_MONITOR_CHEAPEST_PRICE,
-            {"ship_type": "SHIP_LIGHT_FREIGHTER"},
-        )
-        if len(possible_ships) > 1:
-            fuel_shipper = possible_ships[1]
+        if len(self.siphoners) == 0:
             set_behaviour(
-                self.connection, fuel_shipper.name, BHVR_REFUEL_ALL_IN_SYSTEM, {}
+                self.connection,
+                self.commanders[0].name,
+                BHVR_EXTRACT_AND_GO_SELL,
+                {
+                    "asteroid_wp": self.gas_giant.symbol,
+                    "market_wp": fuel_refinery.symbol,
+                },
             )
 
     def scale_and_set_siphoning(self, possible_ships):
@@ -587,7 +576,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         ships = list(self.st.ships_view().values())
         ships.sort(key=lambda ship: ship.index)
         self.satellites = [ship for ship in ships if ship.role == "SATELLITE"]
-        self.haulers = [ship for ship in ships if ship.role == "HAULER"]
+        self.haulers = [ship for ship in ships if ship.role in ("HAULER", "TRANSPORT")]
         self.commanders = [ship for ship in ships if ship.role == "COMMAND"]
         self.hounds = [ship for ship in ships if ship.frame.symbol == "FRAME_MINER"]
         self.extractors = [

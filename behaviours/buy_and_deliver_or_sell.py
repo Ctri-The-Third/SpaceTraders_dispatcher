@@ -219,9 +219,17 @@ order by purchase_price asc """
 
         # empty anything that's not the goal.
 
-        self.purchase_what_you_can(
+        resp = self.purchase_what_you_can(
             target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
         )
+        if not resp:
+            self.logger.error(
+                "Couldn't purchase %s at %s, because %s",
+                target_tradegood,
+                ship.name,
+                resp.error,
+            )
+            return resp
         return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
 
     def deliver_half(
@@ -278,19 +286,26 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "7"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{suffix}"
-    bhvr = BuyAndDeliverOrSell_6(
-        agent,
-        ship,
-        behaviour_params={
-            "buy_wp": "X1-U49-D46",
-            "sell_wp": "X1-U49-H54",
-            "quantity": 10,
-            "tradegood": "SHIP_PLATING",
-            "safety_profit_threshold": 7134,
-        },
-    )
+
+    #        "X1-YG29-H50"	"X1-YG29-A3", 1 , "COPPER"
+
+    old_params = {
+        "buy_wp": "X1-YG29-H50",
+        "sell_wp": "X1-YG29-A3",
+        "quantity": 1,
+        "tradegood": "COPPER",
+    }
+    fabric_params = {
+        "buy_wp": "X1-YG29-E45",
+        "sell_wp": "X1-YG29-K86",
+        "quantity": 1,
+        "tradegood": "FABRICS",
+        # "safety_profit_threshold": 7134,
+    }
+
+    bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=old_params)
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
     set_logging(logging.DEBUG)
 

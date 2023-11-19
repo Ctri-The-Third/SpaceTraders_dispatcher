@@ -13,7 +13,7 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK16.py",
+            "program": "conductorWK18.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },
@@ -58,5 +58,21 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "Python: buy and deliver or sell",
+            "type": "python",
+            "request": "launch",
+            "program": "behaviours/buy_and_deliver_or_sell.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: refuel_all_fuel_exchanges_in_system",
+            "type": "python",
+            "request": "launch",
+            "program": "behaviours/refuel_all_fuel_exchanges_in_system.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
     ]
 }

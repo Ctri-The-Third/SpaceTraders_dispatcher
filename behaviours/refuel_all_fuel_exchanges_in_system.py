@@ -54,7 +54,7 @@ class RefuelAnExchange(Behaviour):
         all_markets = st.find_waypoints_by_trait(self.target_system, "MARKETPLACE")
         fuel_market = None
         supply_price = 9999999
-
+        self.sleep_until_ready()
         for w in all_markets:
             m = st.system_market(w)
             m: Market
