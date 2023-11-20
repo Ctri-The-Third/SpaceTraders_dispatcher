@@ -29,6 +29,7 @@ sqls = [
     "delete from ship_frame_links;",
     "delete from ship_frames;",
     "delete from ship_mounts;",
+    "delete from ship_cargo;",
     "delete from ship_nav;",
     "delete from ship_tasks;",
     "delete from ships;",

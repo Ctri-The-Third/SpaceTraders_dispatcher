@@ -47,3 +47,9 @@ I think our early stage game needs to be
 * for each end-tier product, afford 1 shuttle per branch and start continually shifting goods A -> B -> C -> D (not A -> B, back to A without a tradegood)
 
 From there we can theoretically fabricate everything and should map out the supply chains necessary to do so, and use shuttles (initially) to move those goods around, until we hit 100 trade volume (at which point we start using Haulers instead)
+
+until we have automated setup, we should manually
+* ✅ set the siphoners to extract and chill
+* set the shuttle to take_and_sell
+* set the shallow trades to require a ship with speed greater than 3 (new dispatcher requirement)
+* buy shuttles to take exports away from the refinery.

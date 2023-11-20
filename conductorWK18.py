@@ -103,6 +103,9 @@ class FuelManagementConductor:
         self.safety_margin = 0
         self.starting_planet = None
 
+        self.gas_giant = None
+        self.fuel_refinery = None
+
     def run(self):
         #
         # * scale regularly and set defaults
@@ -252,6 +255,7 @@ class FuelManagementConductor:
         )
 
     def minutely_update(self):
+        self.scale_and_set_siphoning()
         return
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
@@ -287,7 +291,7 @@ class FuelManagementConductor:
                 set_behaviour(
                     self.connection,
                     extractor.name,
-                    BHVR_EXTRACT_AND_TRANSFER,
+                    BHVR_EXTRACT_AND_CHILL,
                     {"asteroid_wp": sites[0][1], "cargo_to_transfer": ["*"]},
                 )
         return
@@ -423,14 +427,14 @@ class FuelManagementConductor:
             ship = maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
             if ship:
                 self.siphoners.append(ship)
-
-        for s in self.siphoners:
-            set_behaviour(
-                self.connection,
-                s.name,
-                BHVR_EXTRACT_AND_CHILL,
-                {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
-            )
+        if self.gas_giant:
+            for s in self.siphoners:
+                set_behaviour(
+                    self.connection,
+                    s.name,
+                    BHVR_EXTRACT_AND_CHILL,
+                    {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
+                )
 
     def find_unassigned_ships(self) -> list[Ship]:
         symbols = self.find_unassigned_ship_symbols()
@@ -451,7 +455,7 @@ class FuelManagementConductor:
 
     def find_fuel_refineries(self, relative_to: Waypoint = None) -> Waypoint:
         sql = """select system_symbol, waypoint_symbol, type,  x, y
-        from public."refinery_FUEL" where system_symbol = %s"""
+        from refinery_fuel where system_symbol = %s"""
         results = try_execute_select(
             self.connection, sql, (self.starting_system.symbol,)
         )
