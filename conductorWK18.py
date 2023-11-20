@@ -51,6 +51,7 @@ from dispatcherWK16 import (
     BHVR_MONITOR_SPECIFIC_LOCATION,
     BHVR_EXTRACT_AND_CHILL,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+    BHVR_SIPHON_AND_CHILL,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -432,7 +433,7 @@ class FuelManagementConductor:
                 set_behaviour(
                     self.connection,
                     s.name,
-                    BHVR_EXTRACT_AND_CHILL,
+                    BHVR_SIPHON_AND_CHILL,
                     {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
                 )
 

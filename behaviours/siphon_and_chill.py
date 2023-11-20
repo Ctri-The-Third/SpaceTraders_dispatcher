@@ -10,10 +10,10 @@ import logging
 from behaviours.generic_behaviour import Behaviour
 import time
 
-BEHAVIOUR_NAME = "EXTRACT_AND_CHILL"
+BEHAVIOUR_NAME = "SIPHON_AND_CHILL"
 
 
-class ExtractAndChill(Behaviour):
+class SiphonAndChill(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -46,11 +46,11 @@ class ExtractAndChill(Behaviour):
         self.st.ship_cooldown(ship)
         st = self.st
         agent = self.agent
-        if not ship.can_extract:
+        if not ship.can_siphon:
             return
         # move ship to a waypoint in its system with
 
-        st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
+        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
             time.sleep(60)
@@ -75,13 +75,8 @@ class ExtractAndChill(Behaviour):
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
         self.sleep_until_ready()
-        if (
-            ship.can_survey and target_wp.type == "ASTEROID"
-        ):  # this isn't appropriate for siphoning.
-            st.ship_survey(ship)
 
-        self.extract_till_full(self.cargo_to_target, self.cargo_to_jettison)
-        if ship.can_siphon > 0 and target_wp.type == "GAS_GIANT":
+        if ship.can_siphon and target_wp.type == "GAS_GIANT":
             self.siphon_till_full()
 
         ship_cargo_symbols = [cargo.symbol for cargo in ship.cargo_inventory]
@@ -114,7 +109,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {"asteroid_wp": "X1-YG29-C39", "cargo_to_transfer": ["*"]}
-    bhvr = ExtractAndChill(agent, ship, behaviour_params)
+    bhvr = SiphonAndChill(agent, ship, behaviour_params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()

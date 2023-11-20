@@ -82,6 +82,10 @@ from behaviours.take_from_extractors_and_fulfill import (
     TakeFromExactorsAndFulfillOrSell_9,
     BEHAVIOUR_NAME as BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
 )
+from behaviours.siphon_and_chill import (
+    SiphonAndChill,
+    BEHAVIOUR_NAME as BHVR_SIPHON_AND_CHILL,
+)
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -111,6 +115,7 @@ behaviours_and_classes = {
     BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
     BHVR_EXTRACT_AND_CHILL: ExtractAndChill,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
+    BHVR_SIPHON_AND_CHILL: SiphonAndChill,
 }
 
 logger = logging.getLogger("dispatcher")
