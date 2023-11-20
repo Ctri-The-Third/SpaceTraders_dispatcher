@@ -109,6 +109,25 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_waypoint = st.waypoints_view_one(
                 end_system.symbol, receive_ship.nav.waypoint_symbol
             )
+
+        #
+        # if we've not been given specific instructions about where to sell, sell it at the best price, regardless of distance.
+        #
+        if not end_waypoint:
+            potentials = self.find_best_market_systems_to_sell(target_tradegood)
+            best_potench = potentials[0]
+            best_cpd = 0
+            for potench in potentials:
+                waypoint_s, syst, sell_price = potench
+                route = self.pathfinder.astar(start_system, syst)
+                if route.jumps >= 0 and sell_price / min(route.jumps, 0.01) > best_cpd:
+                    best_potench = potench
+                    best_cpd = sell_price / min(route.jumps, 0.01)
+            end_waypoint = st.waypoints_view_one(
+                best_potench[1].symbol, best_potench[0]
+            )
+            end_system = best_potench[1]
+
         if "safety_profit_threshold" in self.behaviour_params:
             if source_listing and end_listing:
                 projected_profit = (
