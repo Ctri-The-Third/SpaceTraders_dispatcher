@@ -156,6 +156,23 @@ class FuelManagementConductor:
 
     def daily_update(self):
         """Reset uncharted waypoints and refresh materialised views."""
+
+        #
+        # check for first run
+        #
+        if missing_market_prices(self.connection, self.starting_system.symbol):
+            bhvr_params = {"target_sys": self.starting_system.symbol}
+            log_task(
+                self.connection,
+                BHVR_EXPLORE_SYSTEM,
+                [],
+                self.starting_system.symbol,
+                1,
+                self.current_agent_symbol,
+                bhvr_params,
+                specific_ship_symbol=self.commanders[0].name,
+            )
+
         possible_ships = self.haulers + self.commanders
         self.gas_giant = self.st.find_waypoints_by_type_one(
             self.starting_system.symbol, "GAS_GIANT"

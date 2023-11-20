@@ -29,7 +29,7 @@ from behaviours.explore_system import (
     BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
 )
 from behaviours.monitor_cheapest_price import (
-    MonitorPrices,
+    MonitorCheapestShipyard,
     BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
 )
 from behaviours.buy_and_deliver_or_sell import (

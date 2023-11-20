@@ -120,6 +120,7 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
 
 
 def missing_market_prices(connection, system_symbol: str) -> bool:
+    "helpful during first setup"
     sql = """select mt.market_waypoint, count(mtl.market_symbol) from market_tradegood mt 
 left join market_tradegood_listings mtl on mt.market_Waypoint = mtl.market_symbol and mt.symbol = mtl.trade_symbol
 join waypoints w on mt.market_waypoint = w.waypoint_symbol
