@@ -296,7 +296,7 @@ with potentials as (
 	select ROW_NUMBER() OVER (PARTITION BY tecp.source_waypoint ORDER BY package_value desc) AS row_number
 	, 
 	*
-	, (package_value / distance )as cph 
+	, (package_value / greatest(distance,1) )as cph 
 	from trade_extraction_packages tecp
 	where source_waypoint ilike %s and 
 			market_symbol ilike %s 					
