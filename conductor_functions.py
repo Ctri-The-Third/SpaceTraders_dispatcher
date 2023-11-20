@@ -300,12 +300,12 @@ with potentials as (
 	from trade_extraction_packages tecp
 	where source_waypoint ilike %s and 
 			market_symbol ilike %s 					
-	order by package_value / distance 
+	order by package_value / greatest(distance,1) 
 ) 
 
 select trade_symbols, source_waypoint,market_symbol, package_value, distance from potentials where row_number = 1
 
-order by package_value/distance desc;"""
+order by package_value/(greatest(distance,1) desc;"""
     rows = try_execute_select(
         connection, sql, (f"{current_system_symbol}%", f"{current_system_symbol}%")
     )
