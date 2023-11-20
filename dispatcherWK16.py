@@ -86,6 +86,7 @@ from behaviours.take_from_extractors_and_fulfill import (
     TakeFromExactorsAndFulfillOrSell_9,
     BEHAVIOUR_NAME as BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
 )
+from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
@@ -500,49 +501,15 @@ class dispatcher:
             return bhvr
 
     def maybe_scan_all_systems(self):
-        st = self.client
-        sql = """select count(distinct system_symbol) from systems"""
-        row = try_execute_select(self.connection, sql, [])
-        status = st.game_status()
-
-        api_systems = status.total_systems
-        got_em_all = row[0][0] == api_systems
-
-        agent = st.view_my_self()
-        headquarters = agent.headquarters
-        hq_system = st.systems_view_one(waypoint_slicer(headquarters), True)
-        for waypoint in hq_system.waypoints:
-            waypoint = st.waypoints_view_one(hq_system.symbol, waypoint.symbol)
-            if not waypoint:
-                continue
-            if len(waypoint.traits) == 0 or waypoint.type == "JUMP_GATE":
-                # refresh the traits
-                waypoint = st.waypoints_view_one(
-                    hq_system.symbol, waypoint.symbol, True
-                )
-            traits = [trait.symbol for trait in waypoint.traits]
-            if "SHIPYARD" in traits:
-                st.system_shipyard(waypoint)
-            if "MARKETPLACE" in traits:
-                st.system_market(waypoint)
-            if waypoint.type == "JUMP_GATE":
-                st.system_jumpgate(waypoint)
-
-        return
-        if got_em_all:
-            return
-        for i in range(1, math.ceil(api_systems / 20) + 1):
-            print(i)
-            resp = st.systems_view_twenty(i, True)
-            while not resp:
-                time.sleep(20)
-                resp = st.systems_view_twenty(i, True)
-                self.logger.warn("Failed to get system - page %s - retrying", i)
-            if not resp:
-                self.logger.error(
-                    "Failed to get system - page %s - redo this later!", i
-                )
-            time.sleep(1.2)
+        ships = self.client.ships_view()
+        ship = list(ships.values())[0]
+        bhvr = ScanInBackground(
+            self.client.current_agent_symbol, ship.name, {"priority": 10}
+        )
+        self.scan_thread = threading.Thread(
+            target=bhvr.run, name=f"scan_thread", daemon=True
+        )
+        self.scan_thread.start()
 
 
 def get_fun_name():
