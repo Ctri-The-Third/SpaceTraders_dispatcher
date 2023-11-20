@@ -36,10 +36,6 @@ from behaviours.extract_and_transfer import (
     ExtractAndTransfer_8,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER,
 )
-from behaviours.remote_scan_and_survey import (
-    RemoteScanWaypoints,
-    BEHAVIOUR_NAME as BHVR_REMOTE_SCAN_AND_SURV,
-)
 from behaviours.explore_system import (
     ExploreSystem,
     BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
@@ -459,6 +455,13 @@ class dispatcher:
                         ):
                             valid_for_ship = False
                             break
+                        if requirement == "ANY_FREIGHTER" and ship.role not in (
+                            "HAULER",
+                            "COMMANDER",
+                        ):
+                            valid_for_ship = False
+                            break
+
                         if "_CARGO" in requirement and ship.cargo_capacity < int(
                             re.findall(r"\d+", requirement)[0]
                         ):

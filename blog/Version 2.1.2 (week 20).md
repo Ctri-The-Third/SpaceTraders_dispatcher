@@ -34,7 +34,7 @@ This morning I ran out of money. monitoring behaviour over the course of the day
 Additionally, and to finish things off, the hydrocarbons market crashed through oversaturation, even after reaching the next trade volume (30->60?)
 so far we've seen 3,10,20,30,60,100 as trade volumes.
 
-we had to restart essentially from scratch by cutting off the dispatcher and drift navigating some marginal trades until we were making enough profit per trip to cover fuel costs and switching back to cruise speeds.
+we had to restart essentially from scratch by cutting off the dispatcher and drift navigating some marginal trades until we were making enough profit per trip to cover fuel costs and switching back to cruise speeds. This has succeeded and we're now operating with a comfortable amount of money.
 
 I think our early stage game needs to be 
 * ✅ Explore the system

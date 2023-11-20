@@ -358,7 +358,7 @@ def log_shallow_trade_tasks(
         task_id = log_task(
             connection,
             trade_task_id,
-            ["40_CARGO"],
+            ["40_CARGO", "ANY_FREIGHTER"],
             waypoint_slicer(import_market),
             4,
             current_agent_symbol,
@@ -377,6 +377,32 @@ def log_shallow_trade_tasks(
         )
 
     return capital_reserve
+
+
+def get_imports_for_export(
+    connection,
+    trade_symbol: str,
+    export_waypoint: str,
+    specific_system: str = None,
+) -> list[tuple]:
+    sql = """select tri.trade_symbol, system_symbol, export_market, import_market, market_depth
+    where (case when %s is not True then specific_system = %s else True end)
+    and (case when %s is not True then trade_symbol = %s else True end) 
+    and (case when %s is not True then export_system = %s else True end) """
+
+    results = try_execute_select(
+        connection,
+        sql,
+        (
+            specific_system is not None,
+            specific_system,
+            trade_symbol is not None,
+            trade_symbol,
+            export_waypoint is not None,
+            export_waypoint,
+        ),
+    )
+    return results
 
 
 def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple]:
@@ -399,3 +425,12 @@ def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple
     if not routes:
         return []
     return [(r[0], r[3], r[4], r[2], r[6]) for r in routes]
+
+
+"""
+refineries exist where the planet exports a given resource. 
+if we want to grow a refinery we need to export it.
+
+routes are links between refineries.
+
+"""
