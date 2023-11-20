@@ -242,7 +242,7 @@ class FuelManagementConductor:
             BHVR_BUY_AND_DELIVER_OR_SELL,
             self.current_agent_symbol,
             self.next_quarterly_update,
-            min(len(self.haulers) * 3, 2),
+            max(len(self.haulers) * 3, 2),
         )
         log_mining_package_deliveries(
             self.connection,
@@ -277,13 +277,9 @@ class FuelManagementConductor:
 
     def set_drone_behaviours(self):
         # see scale_and_set_siphoning
-        for siphoner in self.siphoners:
-            set_behaviour(
-                self.connection,
-                siphoner.name,
-                BHVR_EXTRACT_AND_TRANSFER,
-                {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
-            )
+        # for siphoner in self.siphoners:
+        #   set_behaviour(
+
         sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
 
         # set 10 extractors to go to site 1 and extract
@@ -434,7 +430,7 @@ class FuelManagementConductor:
                 self.connection,
                 s.name,
                 BHVR_EXTRACT_AND_CHILL,
-                {"asteroid_wp": self.gas_giant, "cargo_to_transfer": ["*"]},
+                {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
             )
 
     def find_unassigned_ships(self) -> list[Ship]:
