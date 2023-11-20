@@ -86,18 +86,14 @@ class ScanInBackground(Behaviour):
                 if not wp.is_charted:
                     wp = st.waypoints_view_one(sys, jump_gate_sym, True)
                 if not wp.is_charted:
-                    time.sleep(1.2)
-
                     continue
                 resp = st.system_jumpgate(wp, True)
-                time.sleep(1.2)
                 if ship.seconds_until_cooldown > 0:
                     continue
                 if ship.nav.travel_time_remaining > 0:
                     continue
                 if ship.can_survey:
                     st.ship_survey(ship)
-                    time.sleep(0.5)
 
             #
             # MARKETS and SHIPYARDS
@@ -110,13 +106,10 @@ class ScanInBackground(Behaviour):
                 wp = st.waypoints_view_one(sys, wp_sym)
                 if wp.has_market:
                     resp = st.system_market(wp, True)
-                    time.sleep(1.2)
                 if wp.has_shipyard:
                     resp = st.system_shipyard(wp, True)
-                    time.sleep(1.2)
                 if ship.can_survey:
                     st.ship_survey(ship)
-                    time.sleep(0.5)
 
         if len(wayps) + len(rows) == 0:
             self.logger.warning(

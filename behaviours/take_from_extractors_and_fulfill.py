@@ -144,18 +144,6 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
                 st.system_market(
                     st.waypoints_view_one(destination_sys, self.market_wp_s), True
                 )
-                if resp:
-                    st.ship_orbit(ship)
-                    self.ship_extrasolar(start_sys)
-                    self.ship_intrasolar(self.start_wp_s)
-
-                    # we added this in for circumstances when we've incorrect, left over cargo in the hold that needs drained. Might need a "vent all" option too.
-                    # self.sell_all_cargo()
-
-            if ship.cargo_units_used >= ship.cargo_capacity - 10:
-                # something's gone horribly wrong, we couldn't sell or fulfill at the destination - are our orders stale?
-                self.ship_extrasolar(start_sys)
-                self.ship_intrasolar(self.start_wp_s)
 
         else:
             if ship.nav.waypoint_symbol != self.start_wp_s:
