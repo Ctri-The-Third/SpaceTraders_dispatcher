@@ -37,12 +37,13 @@ so far we've seen 3,10,20,30,60,100 as trade volumes.
 we had to restart essentially from scratch by cutting off the dispatcher and drift navigating some marginal trades until we were making enough profit per trip to cover fuel costs and switching back to cruise speeds.
 
 I think our early stage game needs to be 
-* Explore the system
-* Shave off the top of profitable trades (continual)
+* ✅ Explore the system
+* ✅ Shave off the top of profitable trades (continual)
 * Afford up to 10 siphon drones (extract and chill)
 * Afford 1 hauler for delivering to the gas giant
 * Afford up to 10 mining drones (extract and chill)
 * Afford 1 hauler for delivering to the gas giant
 * Afford 1 surveyor
+* for each end-tier product, afford 1 shuttle per branch and start continually shifting goods A -> B -> C -> D (not A -> B, back to A without a tradegood)
 
 From there we can theoretically fabricate everything and should map out the supply chains necessary to do so, and use shuttles (initially) to move those goods around, until we hit 100 trade volume (at which point we start using Haulers instead)

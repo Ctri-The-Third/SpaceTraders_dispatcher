@@ -175,6 +175,7 @@ class FuelManagementConductor:
                 expiry=self.next_quarterly_update,
             )
         self.set_satellite_behaviours()
+        self.scale_and_set_siphoning()
         self.set_drone_behaviours()
 
     def hourly_update(self):
@@ -258,6 +259,7 @@ class FuelManagementConductor:
                 set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
 
     def set_drone_behaviours(self):
+        # see scale_and_set_siphoning
         for siphoner in self.siphoners:
             set_behaviour(
                 self.connection,
@@ -266,7 +268,7 @@ class FuelManagementConductor:
                 {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
             )
         sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
-        return
+
         # set 10 extractors to go to site 1 and extract
         if len(self.extractors) > 0:
             for extractor in self.extractors[:10]:
@@ -276,6 +278,7 @@ class FuelManagementConductor:
                     BHVR_EXTRACT_AND_TRANSFER,
                     {"asteroid_wp": sites[0][1], "cargo_to_transfer": ["*"]},
                 )
+        return
         if len(self.extractors) > 10:
             for extractor in self.extractors[10:19]:
                 set_behaviour(
@@ -401,28 +404,19 @@ class FuelManagementConductor:
 
         # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
 
-    def scale_and_set_siphoning(self, possible_ships):
+    def scale_and_set_siphoning(self):
         # should be a quarterly or hourly behaviour
-        if len(possible_ships) > 2:
-            command_role = BHVR_EXTRACT_AND_TRANSFER
-        else:
-            command_role = BHVR_EXTRACT_AND_GO_SELL
 
-        if len(self.siphoners <= 10):
+        if len(self.siphoners) <= 10:
             ship = maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
             if ship:
                 self.siphoners.append(ship)
-            set_behaviour(
-                self.connection,
-                self.commanders[0].name,
-                command_role,
-                {"asteroid_wp": self.gas_giant, "cargo_to_transfer": ["*"]},
-            )
+
         for s in self.siphoners:
             set_behaviour(
                 self.connection,
                 s.name,
-                BHVR_EXTRACT_AND_TRANSFER,
+                BHVR_EXTRACT_AND_CHILL,
                 {"asteroid_wp": self.gas_giant, "cargo_to_transfer": ["*"]},
             )
 
@@ -464,14 +458,14 @@ class FuelManagementConductor:
 
         return closest_refinery
 
-    def any_refuels_needed(self):
+    def any_refuels_needed(self, fuel_levels=("LIMITED", "SCARCE")):
         waypoints = self.st.find_waypoints_by_trait(
             self.starting_system.symbol, "MARKETPLACE"
         )
         markets = [self.st.system_market(wp) for wp in waypoints]
         for market in markets:
             fuel = market.get_tradegood("FUEL")
-            if fuel and fuel.type == "EXCHANGE" and fuel.supply != "ABUNDANT":
+            if fuel and fuel.type == "EXCHANGE" and fuel.supply in fuel_levels:
                 return True
         return False
 
