@@ -314,9 +314,9 @@ order by package_value/distance desc;"""
         task_id = log_task(
             connection,
             collection_task_id,
-            ["35_CARGO"],
+            ["40_CARGO"],
             waypoint_slicer(market_symbol),
-            4,
+            4 + 1 / (package_value / 40),
             current_agent_symbol,
             {
                 "asteroid_wp": source_waypoint,
@@ -360,12 +360,11 @@ def log_shallow_trade_tasks(
             trade_task_id,
             ["40_CARGO", "ANY_FREIGHTER"],
             waypoint_slicer(import_market),
-            4,
+            4 + (1 / profit_per_unit),
             current_agent_symbol,
             {
                 "buy_wp": export_market,
                 "sell_wp": import_market,
-                "quantity": 10,
                 "tradegood": trade_symbol,
                 "safety_profit_threshold": profit_per_unit / 2,
                 "priority": 4.5,
@@ -428,7 +427,8 @@ def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple
 
 
 """
-refineries exist where the planet exports a given resource. 
+
+ineries exist where the planet exports a given resource. 
 if we want to grow a refinery we need to export it.
 
 routes are links between refineries.
