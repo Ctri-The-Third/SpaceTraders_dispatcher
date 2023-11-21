@@ -462,7 +462,7 @@ class dispatcher:
                             break
                         if requirement == "ANY_FREIGHTER" and ship.role not in (
                             "HAULER",
-                            "COMMANDER",
+                            "COMMAND",
                         ):
                             valid_for_ship = False
                             break

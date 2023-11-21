@@ -9,7 +9,7 @@ import time
 import math
 import logging
 
-BEHAVIOUR_NAME = "SCAN_WAYPOINTS_AND_SURVEY"
+BEHAVIOUR_NAME = "SCAN_THREAD`"
 
 
 class ScanInBackground(Behaviour):
