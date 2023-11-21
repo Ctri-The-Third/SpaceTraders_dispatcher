@@ -257,10 +257,11 @@ class FuelManagementConductor:
 
     def minutely_update(self):
         self.scale_and_set_siphoning()
-        return
+
         if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
-        pass
+        elif len(self.haulers) < 10:
+            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         if len(self.extractors) < 30:
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         if len(self.siphoners) < 10:
@@ -568,7 +569,8 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         ships = list(self.st.ships_view().values())
         ships.sort(key=lambda ship: ship.index)
         self.satellites = [ship for ship in ships if ship.role == "SATELLITE"]
-        self.haulers = [ship for ship in ships if ship.role in ("HAULER", "TRANSPORT")]
+        self.haulers = [ship for ship in ships if ship.role in ("HAULER")]
+        self.shuttles = [ship for ship in ships if ship.role == "TRANSPORT"]
         self.commanders = [ship for ship in ships if ship.role == "COMMAND"]
         self.hounds = [ship for ship in ships if ship.frame.symbol == "FRAME_MINER"]
         self.extractors = [

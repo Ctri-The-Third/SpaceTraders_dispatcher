@@ -314,7 +314,7 @@ order by package_value/greatest(distance,1) desc;"""
         task_id = log_task(
             connection,
             collection_task_id,
-            ["40_CARGO"],
+            ["40_CARGO", "ANY_HAULER"],
             waypoint_slicer(market_symbol),
             4 + 1 / (package_value / 40),
             current_agent_symbol,
