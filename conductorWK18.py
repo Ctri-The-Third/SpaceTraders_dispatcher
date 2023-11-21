@@ -258,27 +258,14 @@ class FuelManagementConductor:
     def minutely_update(self):
         self.scale_and_set_siphoning()
 
-        if len(self.haulers) < 5:
+        if len(self.shuttles) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
-        elif len(self.haulers) < 10:
+        if len(self.haulers) < 5:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
         if len(self.extractors) < 30:
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         if len(self.siphoners) < 10:
             maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
-        for s in self.find_unassigned_ships():
-            if s.role == "SATELLITE":
-                set_behaviour(self.connection, s.name, BHVR_REMOTE_SCAN_AND_SURV, {})
-            elif s.role == "EXCAVATOR":
-                set_behaviour(self.connection, s.name, BHVR_EXTRACT_AND_TRANSFER, {})
-            elif s.role == "SURVEYOR":
-                set_behaviour(self.connection, s.name, BHVR_CHILL_AND_SURVEY, {})
-            elif s.role == "REFINERY":
-                set_behaviour(self.connection, s.name, BHVR_RECEIVE_AND_REFINE, {})
-            elif s.role == "HAULER":
-                set_behaviour(self.connection, s.name, BHVR_SINGLE_STABLE_TRADE, {})
-            elif s.role == "COMMAND":
-                set_behaviour(self.connection, s.name, BHVR_EXPLORE_SYSTEM, {})
 
     def set_drone_behaviours(self):
         # see scale_and_set_siphoning
