@@ -39,12 +39,12 @@ we had to restart essentially from scratch by cutting off the dispatcher and dri
 I think our early stage game needs to be 
 * ✅ Explore the system
 * ✅ Shave off the top of profitable trades (continual)
-* Afford up to 10 siphon drones (extract and chill)
-* Afford 1 hauler for delivering to the gas giant
-* Afford up to 10 mining drones (extract and chill)
-* Afford 1 hauler for delivering to the gas giant
-* Afford 1 surveyor
-* for each end-tier product, afford 1 shuttle per branch and start continually shifting goods A -> B -> C -> D (not A -> B, back to A without a tradegood)
+* ✅ Afford up to 10 siphon drones (extract and chill)
+*  Afford 1 hauler for delivering to the gas giant
+* ✅ Afford up to 10 mining drones (extract and chill)
+*  Afford 1 hauler for delivering to the gas giant
+*  Afford 1 surveyor
+*  for each "active planet" (e.g. start with the gas giant imports) buy a shuttle for each export and assign them to a route, repeat whilst profitable.
 
 From there we can theoretically fabricate everything and should map out the supply chains necessary to do so, and use shuttles (initially) to move those goods around, until we hit 100 trade volume (at which point we start using Haulers instead)
 
@@ -53,3 +53,22 @@ until we have automated setup, we should manually
 * set the shuttle to take_and_sell
 * set the shallow trades to require a ship with speed greater than 3 (new dispatcher requirement)
 * buy shuttles to take exports away from the refinery.
+
+
+
+## Pathfinder issue
+
+The last wee while I've noticed the odd journey being DRIFTed through, and now have figured out the cause thanks to a particularly straight line example.
+I found a ship travelling to an end waypoint via an asteroid. The asteroid doesn't have any fuel, so why is it going there instead of drifting directly? or more preferably, going the long way around via some fuel stations? 
+
+The cause is because the asteroid is a node that can visit both fuel stations, and is in between the fuel stations at a point where both legs of the journey are within the ships' theoretical maximum - it doesn't know that the 2nd leg of the journey will be made at DRIFT speeds.
+
+The easiest solution will be as follows:
+* ✅ Check if a single jump is possible without drifting, and if so - do that.
+* ✅ If not, check the graph.
+ * ✅ rework the graph so only fuel-to-fuel jumps get treated as non-drifting. The ship will still CRUISE, and there's a slight risk of ships going backwards to get onto the fuel network when not necessary - but I think the slight inefficiency there is worth it against the current DRIFT losses. The distance focused Heuristic might also end up protecting us from that.
+ * 🥇 It's not perfect, but it is an improvement.
+
+
+
+

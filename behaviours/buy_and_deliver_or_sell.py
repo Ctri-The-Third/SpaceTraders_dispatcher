@@ -315,43 +315,14 @@ if __name__ == "__main__":
 
     #        "X1-YG29-H50"	"X1-YG29-A3", 1 , "COPPER"
 
-    old_params = {
-        "buy_wp": "X1-YG29-H50",
-        "sell_wp": "X1-YG29-A3",
-        "quantity": 1,
-        "tradegood": "COPPER",
-    }
-    equipment_params = {
-        "buy_wp": "X1-YG29-K86",
-        "sell_wp": "X1-YG29-A1",
-        "quantity": 3,
-        "tradegood": "EQUIPMENT",
-        # "safety_profit_threshold": 7134,
-    }
-    fertilizer_params = {
-        "buy_wp": "X1-YG29-G49",
-        "sell_wp": "X1-YG29-K86",
-        "quantity": 10,
-        "tradegood": "FERTILIZERS",
-        # "safety_profit_threshold": 7134,
-    }
-    drugs_params = {
+    params = {
         "buy_wp": "X1-YG29-J57",
-        "sell_wp": "X1-YG29-H50",
-        "quantity": 9,
-        "tradegood": "DRUGS",
-        # "safety_profit_threshold": 7134,
+        "sell_wp": "X1-YG29-H53",
+        "priority": 4.5,
+        "tradegood": "PRECIOUS_STONES",
+        "safety_profit_threshold": 29.5,
     }
-
-    ship_parts_params = {
-        "buy_wp": "X1-YG29-D42",
-        "sell_wp": "X1-YG29-C40",
-        "quantity": 3,
-        "tradegood": "SHIP_PARTS",
-        # "safety_profit_threshold": 7134,
-    }
-
-    bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=drugs_params)
+    bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=params)
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
     set_logging(logging.DEBUG)
     bhvr.st.view_my_self(True)

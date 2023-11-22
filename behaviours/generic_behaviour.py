@@ -176,7 +176,9 @@ class Behaviour:
         for point in route.route:
             route: Waypoint
 
-            fuel_cost = self.pathfinder.determine_fuel_cost(origin_wp, point)
+            fuel_cost = self.pathfinder.determine_fuel_cost(
+                origin_wp, point, flight_mode
+            )
             if (
                 flight_mode != "DRIFT"
                 and fuel_cost >= ship.fuel_current
