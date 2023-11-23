@@ -15,7 +15,7 @@ from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "BUY_AND_DELIVER_OR_SELL"
-SAFETY_PADDING = 300
+SAFETY_PADDING = 60
 
 
 class BuyAndDeliverOrSell_6(Behaviour):

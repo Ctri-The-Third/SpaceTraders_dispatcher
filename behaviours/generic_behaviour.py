@@ -768,4 +768,4 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
-    bhvr.sell_all_cargo()
+    bhvr.run()
