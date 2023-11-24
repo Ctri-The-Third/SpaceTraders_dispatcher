@@ -40,7 +40,7 @@ I think our early stage game needs to be
 * ✅ Explore the system
 * ✅ Shave off the top of profitable trades (continual)
 * ✅ Afford up to 10 siphon drones (extract and chill)
-*  Afford 1 hauler for delivering to the gas giant
+* ✅ Afford 1 hauler for delivering to the gas giant
 * ✅ Afford up to 10 mining drones (extract and chill)
 *  Afford 1 hauler for delivering to the gas giant
 *  Afford 1 surveyor
@@ -52,7 +52,7 @@ until we have automated setup, we should manually
 * ✅ set the siphoners to extract and chill
 * set the shuttle to take_and_sell
 * set the shallow trades to require a ship with speed greater than 3 (new dispatcher requirement)
-* buy shuttles to take exports away from the refinery.
+* ✅ buy shuttles to take exports away from the refinery.
 
 
 
@@ -72,3 +72,12 @@ The easiest solution will be as follows:
 
 
 
+## Supply chain issues
+
+We've gotten a behaviour that manages exports, and have applied it to ADVANCED_CIRCUITRY, and its dependants - ELECTRONICS, MICROPROCESSORS and the dependant COPPER. 
+Unfortunately, we need COPPER_ORE taken to the refinery and SILICON_CRYSTALS to the electronics/microprocessors factory. 
+
+We don't have an easy way of doing this. Ideally haulers should go out to the asteroid belt, pick up a bunch of stuff from extractors, and bring it back.
+Currently haulers are being given regular tasks to take stuff to the best market that will buy whats in the extractor inventory - but that doesn't include our single-import microprocessors factory.
+
+the conductor needs to know which raw goods are being actively consumed by which factories, and then we can assign haulers to manage their imports appropriately.

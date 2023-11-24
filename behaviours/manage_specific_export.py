@@ -15,8 +15,9 @@ import logging
 from datetime import datetime, timedelta
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 from straders_sdk.ship import Ship
-from straders_sdk.models import Market
+from straders_sdk.models import Market, Waypoint
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
+from straders_sdk.constants import SUPPLY_LEVELS
 
 BEHAVIOUR_NAME = "MANAGE_SPECIFIC_EXPORT"
 SAFETY_PADDING = 60
@@ -46,8 +47,13 @@ class ManageSpecifcExport(Behaviour):
         self.target_market = self.behaviour_params.get("market_wp", None)
         if self.target_market:
             self.starting_system = waypoint_slicer(self.target_market)
+            self.starting_market_wp = self.st.waypoints_view_one(
+                self.starting_system, self.target_market
+            )
         else:
             self.starting_system = self.ship.nav.system_symbol
+            self.starting_market_wp = self.ship.nav.waypoint_symbol
+        self.markets = {}
 
     def run(self):
         self._run()
@@ -66,6 +72,10 @@ class ManageSpecifcExport(Behaviour):
             if len(mkts) == 0:
                 return
             self.target_market = mkts[0]
+            self.starting_system = waypoint_slicer(self.target_market)
+            self.starting_market_wp = self.st.waypoints_view_one(
+                self.starting_system, self.target_market
+            )
 
         st.ship_cooldown(ship)
 
@@ -73,53 +83,141 @@ class ManageSpecifcExport(Behaviour):
         # if data is old, go to it.
         # if the export market is RESTRICTED, find imports and BUY AND SELL
         # if the export market is ABUNDANT, HIGH, or MORDERATE, Sell to appropriate markets(prioritise imports)
-        target_market_waypoint = st.waypoints_view_one(
+        market = self.get_market(self.target_market)
+        export_wp = self.st.waypoints_view_one(
             waypoint_slicer(self.target_market), self.target_market
         )
-        market = st.system_market(target_market_waypoint)
         target_tradegood = market.get_tradegood(self.target_tradegood)
         if target_tradegood.recorded_ts < datetime.utcnow() - timedelta(hours=3):
             self.logger.info(f"Market data is stale, going to {self.target_market}")
             self.ship_extrasolar(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
             return
+        if SUPPLY_LEVELS[target_tradegood.supply] > 2:
+            self.logger.info(
+                f"Export for {target_tradegood.symbol} is {target_tradegood.supply} - selling"
+            )
+            self.sell_exports()
         elif target_tradegood.activity == "RESTRICTED":
-            self.logger.info(f"Market is RESTRICTED, finding imports")
-            self.procure_imports()
+            self.logger.info(
+                f"Export for {target_tradegood.symbol} is RESTRICTED, finding imports"
+            )
+            self.procure_imports(export_wp, market)
             # returns a list of tradegoods. We can then infer supply for each and target the scarcer of the two
 
             return
-        elif target_tradegood.supply not in ("ABUNDANT", "HIGH", "MODERATE"):
-            self.logger.info(f"Market is {target_tradegood.supply}, finding imports")
-            self.sell_exports()
-            #
+        else:
+            self.logger.info(
+                f"Export for {target_tradegood.symbol} is {target_tradegood.supply}, activity is {target_tradegood.activity} - resting"
+            )
+            time.sleep(60)
+
             return
 
-    def procure_imports(self, export_market: "Market"):
+    def procure_imports(self, export_waypoint: "Waypoint", export_market: "Market"):
         # find the markets that sell the desired tradegoods.
         # work out which is the most profitable in terms of CPH using travel time
         # buy the goods, then supply them to the manufactury
         import_symbols = self.get_matching_imports_for_export(self.target_tradegood)
+        export_tg = export_market.get_tradegood(self.target_tradegood)
+        scarcest_import = None
+        scarcest_supply = 6
 
         for symbol in import_symbols:
             # get the tradegood from the export market - find any that are SCARCE, then any that are LIMITED
-            export_market.get_tradegood(symbol)
+            tg = export_market.get_tradegood(symbol)
+            import_price = export_market.get_tradegood(symbol).purchase_price
+            if (
+                SUPPLY_LEVELS[tg.supply] < scarcest_supply
+                and tg.activity != "RESTRICTED"
+                and tg.sell_price < import_price
+            ):
+                scarcest_supply = SUPPLY_LEVELS[tg.supply]
+                scarcest_import = symbol
+
         pass
+        if not scarcest_import:
+            return None
+
+        # now we know the imports that are needed - we need to go find them at a price that's profitable
+        options = self.find_markets_that_export(scarcest_import, False)
+        markets = [self.get_market(m) for m in options]
+        # exports are always gonna be more profitable than exports so lets go with profit-per-distance
+        best_source_of_import = None
+        best_cpd = 0
+        for market in markets:
+            tg = market.get_tradegood(scarcest_import)
+            wp = self.st.waypoints_view_one(
+                waypoint_slicer(market.symbol), market.symbol
+            )
+            distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
+                export_waypoint, wp, self.ship.fuel_capacity
+            )
+            # the difference between the purchase price of the fabricated export
+            # and the raw goods. we want the biggest difference per distance
+            # difference represents part of the value add from production
+            cpd = (export_tg.purchase_price - tg.sell_price) / distance
+            if cpd > best_cpd:
+                best_source_of_import = market
+                best_cpd = cpd
+
+        if not best_source_of_import:
+            return
+
+        self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
+        self.ship_intrasolar(best_source_of_import.symbol)
+        self.buy_cargo(scarcest_import, self.ship.cargo_space_remaining)
+        self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+        self.ship_intrasolar(export_market.symbol)
+        self.sell_all_cargo()
 
     def sell_exports(self):
         # take the exports to the best CPH market.
-        pass
+        potential_markets = self.find_best_market_systems_to_sell(self.target_tradegood)
+        waypoints = {
+            m[0]: self.st.waypoints_view_one(waypoint_slicer(m[0]), m[0])
+            for m in potential_markets
+        }
+        markets = [self.get_market(w.symbol) for w in waypoints.values()]
+        export_tg = self.get_market(self.target_market).get_tradegood(
+            self.target_tradegood
+        )
+        best_cph = 0
+        best_sell_market = None
+        for market in markets:
+            wp = waypoints[market.symbol]
+            distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
+                self.starting_market_wp, wp, self.ship.fuel_capacity
+            )
+            profit = (
+                market.get_tradegood(self.target_tradegood).sell_price
+                - export_tg.purchase_price
+            )
+            cph = profit / distance
+            if cph > best_cph:
+                best_cph = cph
+                best_sell_market = market
 
-    def find_markets_that_export(self, highest_tradevolume=True):
+        if not best_sell_market:
+            return
+
+        self.ship_extrasolar(waypoint_slicer(self.target_market))
+        self.ship_intrasolar(self.target_market)
+        self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
+        self.ship_extrasolar(waypoint_slicer(best_sell_market.symbol))
+        self.ship_intrasolar(best_sell_market.symbol)
+        self.sell_all_cargo()
+
+    def find_markets_that_export(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
         return self._find_markets_that_trade(
-            self.target_tradegood, "EXPORT", highest_tradevolume
+            target_tradegood, "EXPORT", highest_tradevolume
         )
 
-    def find_markets_that_import(self, highest_tradevolume=True):
+    def find_markets_that_import(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
         return self._find_markets_that_trade(
-            self.target_tradegood, "IMPORT", highest_tradevolume
+            target_tradegood, "IMPORT", highest_tradevolume
         )
 
     def _find_markets_that_trade(
@@ -127,7 +225,7 @@ class ManageSpecifcExport(Behaviour):
     ):
         tg = tradegood
         waypoints = self.st.find_waypoints_by_trait(self.starting_system, "MARKETPLACE")
-        markets = [self.st.system_market(w) for w in waypoints]
+        markets = [self.get_market(w.symbol) for w in waypoints]
         markets = [
             m
             for m in markets
@@ -147,7 +245,15 @@ class ManageSpecifcExport(Behaviour):
         rows = try_execute_select(self.connection, sql, (export_symbol,))
         if not rows:
             return []
-        return rows[0]
+        return rows[0][0]
+
+    def get_market(self, market_symbol: str) -> "Market":
+        if market_symbol not in self.markets:
+            wp = self.st.waypoints_view_one(
+                waypoint_slicer(market_symbol), market_symbol
+            )
+            self.markets[market_symbol] = self.st.system_market(wp)
+        return self.markets[market_symbol]
 
 
 if __name__ == "__main__":
@@ -155,14 +261,24 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "22"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
-        "target_tradegood": "ADVANCED_CIRCUITRY",
-        "market_wp": "X1-YG29-D43",
+        "target_tradegood": "ELECTRONICS",
+        # "market_wp": "X1-YG29-D43",
     }
+    import threading
+
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    bhvr.run()
+    threading.Thread(target=bhvr.run).start()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+
+    behaviour_params["target_tradegood"] = "ADVANCED_CIRCUITRY"
+    bhvr = ManageSpecifcExport(agent, "CTRI-U--1", behaviour_params or {})
+    threading.Thread(target=bhvr.run).start()
+
+    behaviour_params["target_tradegood"] = "MICROPROCESSORS"
+    bhvr = ManageSpecifcExport(agent, "CTRI-U--3D", behaviour_params or {})
+    threading.Thread(target=bhvr.run).start()

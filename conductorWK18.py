@@ -52,6 +52,7 @@ from dispatcherWK16 import (
     BHVR_EXTRACT_AND_CHILL,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
     BHVR_SIPHON_AND_CHILL,
+    BHVR_MANAGE_SPECIFIC_EXPORT,
 )
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
@@ -276,22 +277,23 @@ class FuelManagementConductor:
 
         # set 10 extractors to go to site 1 and extract
         if len(self.extractors) > 0:
-            for extractor in self.extractors[:10]:
+            for extractor in self.extractors[:20]:
                 set_behaviour(
                     self.connection,
                     extractor.name,
                     BHVR_EXTRACT_AND_CHILL,
                     {"asteroid_wp": sites[0][1], "cargo_to_transfer": ["*"]},
                 )
-        return
-        if len(self.extractors) > 10:
-            for extractor in self.extractors[10:19]:
+
+        if len(self.extractors) > 20:
+            for extractor in self.extractors[20:29]:
                 set_behaviour(
                     self.connection,
                     extractor.name,
                     BHVR_EXTRACT_AND_TRANSFER,
                     {"asteroid_wp": sites[1][1], "cargo_to_transfer": ["*"]},
                 )
+        return
         if len(self.extractors) > 19:
             for extractor in self.extractors[19:30]:
                 set_behaviour(
@@ -654,5 +656,15 @@ if __name__ == "__main__":
     # `max_buy_price`: if you want to limit the purchase price, set it here\n
     # `min_sell_price`: if you want to limit the sell price, set it here\n
     conductor = FuelManagementConductor(user)
-
+    conductor.populate_ships()
+    tgs = ["ADVANCED_CIRCUITRY", "ELECTRONICS", "MICROPROCESSORS"]
+    index = 0
+    for tg in tgs:
+        set_behaviour(
+            conductor.connection,
+            conductor.shuttles[index].name,
+            BHVR_MANAGE_SPECIFIC_EXPORT,
+            {"target_tradegood": tg, "priority": 5},
+        )
+        index += 1
     conductor.run()

@@ -86,6 +86,10 @@ from behaviours.siphon_and_chill import (
     SiphonAndChill,
     BEHAVIOUR_NAME as BHVR_SIPHON_AND_CHILL,
 )
+from behaviours.manage_specific_export import (
+    ManageSpecifcExport,
+    BEHAVIOUR_NAME as BHVR_MANAGE_SPECIFIC_EXPORT,
+)
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -116,6 +120,7 @@ behaviours_and_classes = {
     BHVR_EXTRACT_AND_CHILL: ExtractAndChill,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
     BHVR_SIPHON_AND_CHILL: SiphonAndChill,
+    BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
 }
 
 logger = logging.getLogger("dispatcher")
@@ -472,6 +477,7 @@ class dispatcher:
                         ):
                             valid_for_ship = False
                             break
+
                 if valid_for_ship:
                     if task["priority"] < highest_priority:
                         highest_priority = task["priority"]
