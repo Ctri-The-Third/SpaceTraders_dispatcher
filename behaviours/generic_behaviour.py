@@ -626,8 +626,7 @@ order by 1 desc """
 
     def ship_extrasolar(self, destination_system: System, route: JumpGateRoute = None):
         if isinstance(destination_system, str):
-            self.logger.error("You passed a string not a system to ship_extrasolar")
-            return False
+            destination_system = self.st.systems_view_one(destination_system)
         st = self.st
         ship = self.ship
         if ship.nav.system_symbol == destination_system.symbol:

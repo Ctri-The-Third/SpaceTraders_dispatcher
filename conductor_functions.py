@@ -314,7 +314,7 @@ order by package_value/greatest(distance,1) desc;"""
         task_id = log_task(
             connection,
             collection_task_id,
-            ["40_CARGO", "ANY_HAULER"],
+            ["40_CARGO", "ANY_FREIGHTER"],
             waypoint_slicer(market_symbol),
             4 + 1 / (package_value / 40),
             current_agent_symbol,
@@ -353,12 +353,13 @@ def log_shallow_trade_tasks(
             import_market,
             profit_per_unit,
             cost_to_execute,
+            min_market_depth,
         ) = route
         capital_reserve += cost_to_execute
         task_id = log_task(
             connection,
             trade_task_id,
-            ["40_CARGO", "ANY_FREIGHTER"],
+            ["ANY_FREIGHTER"],
             waypoint_slicer(import_market),
             4 + (1 / profit_per_unit),
             current_agent_symbol,
@@ -368,6 +369,7 @@ def log_shallow_trade_tasks(
                 "tradegood": trade_symbol,
                 "safety_profit_threshold": profit_per_unit / 2,
                 "priority": 4.5,
+                "quantity": min_market_depth,
             },
             expiry=task_expiry,
         )
@@ -423,7 +425,7 @@ def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple
     )
     if not routes:
         return []
-    return [(r[0], r[3], r[4], r[2], r[6]) for r in routes]
+    return [(r[0], r[3], r[4], r[2], r[6], r[5]) for r in routes]
 
 
 """
