@@ -93,11 +93,16 @@ class ManageSpecifcExport(Behaviour):
             self.ship_extrasolar(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
             return
+
+        # if the export is restricted, it's because we don't have enough imports
+        # if the imports are restricted it's because we've too many exports. It's possible to have both.
+        # let's solve exports first, then imports. If exports aren't profitable then we should do nothing.
         if SUPPLY_LEVELS[target_tradegood.supply] > 2:
             self.logger.debug(
                 f"Export for {target_tradegood.symbol} is {target_tradegood.supply} - selling"
             )
             self.sell_exports()
+
         elif target_tradegood.activity == "RESTRICTED":
             self.logger.debug(
                 f"Export for {target_tradegood.symbol} is RESTRICTED, finding imports"
@@ -138,12 +143,15 @@ class ManageSpecifcExport(Behaviour):
         pass
         if not scarcest_import:
             self.logger.debug(
-                "No profitable imports found! Resolve upstream supply issues. Sleeping for 60 seconds."
+                "No profitable unrestricted imports found! either resolve upstream supply issues. Sleeping for 60 seconds."
             )
-            time.sleep(60)
             return None
 
         # now we know the imports that are needed - we need to go find them at a price that's profitable
+        #
+        # search for what we can buy
+        #
+
         options = self.find_markets_that_export(scarcest_import, False)
         markets = [self.get_market(m) for m in options]
         # exports are always gonna be more profitable than exports so lets go with profit-per-distance
@@ -165,12 +173,31 @@ class ManageSpecifcExport(Behaviour):
                 best_source_of_import = market
                 best_cpd = cpd
 
-        if not best_source_of_import:
+        if best_source_of_import:
+            self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
+            self.ship_intrasolar(best_source_of_import.symbol)
+            self.buy_cargo(scarcest_import, self.ship.cargo_space_remaining)
+            self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+            self.ship_intrasolar(export_market.symbol)
+            self.sell_all_cargo()
             return
 
-        self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
-        self.ship_intrasolar(best_source_of_import.symbol)
-        self.buy_cargo(scarcest_import, self.ship.cargo_space_remaining)
+        #
+        # if we get here, there's no profitable exports matching our hungry imports
+        # we should sweep for raw goods in extractors just in case.
+        #
+        packages = self.find_extractors_with_raw_goods(scarcest_import)
+        if not packages:
+            self.logger.debug(
+                f"No profitable imports found! Resolve upstream supply issues. Sleeping for 60 seconds."
+            )
+            time.sleep(60)
+            return None
+
+        waypoint, raw_good, quantity = packages[0]
+        self.ship_extrasolar(waypoint_slicer(waypoint))
+        self.ship_intrasolar(waypoint)
+        self.take_cargo_from_neighbouring_extractors(raw_good)
         self.ship_extrasolar(waypoint_slicer(export_market.symbol))
         self.ship_intrasolar(export_market.symbol)
         self.sell_all_cargo()
@@ -182,7 +209,11 @@ class ManageSpecifcExport(Behaviour):
             m[0]: self.st.waypoints_view_one(waypoint_slicer(m[0]), m[0])
             for m in potential_markets
         }
-        markets = [self.get_market(w.symbol) for w in waypoints.values()]
+        markets = [
+            self.get_market(w.symbol)
+            for w in waypoints.values()
+            if w.system_symbol == self.starting_system
+        ]
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
         )
@@ -207,6 +238,19 @@ class ManageSpecifcExport(Behaviour):
 
         self.ship_extrasolar(waypoint_slicer(self.target_market))
         self.ship_intrasolar(self.target_market)
+        while self.ship.cargo_space_remaining:
+            export_tg = self.get_market(self.target_market).get_tradegood(
+                self.target_tradegood
+            )
+            import_tg = best_sell_market.get_tradegood(self.target_tradegood)
+            if export_tg.purchase_price >= import_tg.sell_price:
+                break
+            resp = self.buy_cargo(
+                self.target_tradegood,
+                min(export_tg.trade_volume, self.ship.cargo_space_remaining),
+            )
+            if not resp:
+                return
         self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
         self.ship_extrasolar(waypoint_slicer(best_sell_market.symbol))
         self.ship_intrasolar(best_sell_market.symbol)
@@ -251,6 +295,19 @@ class ManageSpecifcExport(Behaviour):
             return []
         return rows[0][0]
 
+    def find_extractors_with_raw_goods(self, raw_good: str):
+        sql = """SELECT waypoint_Symbol, trade_symbol, sum(quantity)
+FROM SHIP_CARGO sc 
+join ship_nav sn on sc.ship_symbol = sn.ship_symbol
+join ships s on sc.ship_symbol = s.ship_symbol
+where ship_role = 'EXCAVATOR'
+and trade_symbol = %s
+group by 1,2 order by 3 desc """
+        packages = try_execute_select(self.connection, sql, (raw_good,))
+        if not packages:
+            return []
+        return packages
+
     def get_market(self, market_symbol: str) -> "Market":
         if market_symbol not in self.markets:
             wp = self.st.waypoints_view_one(
@@ -259,17 +316,33 @@ class ManageSpecifcExport(Behaviour):
             self.markets[market_symbol] = self.st.system_market(wp)
         return self.markets[market_symbol]
 
+    def take_cargo_from_neighbouring_extractors(self, raw_good: str):
+        neighbours = self.get_neighbouring_extractors()
+        cargo_remaining = self.ship.cargo_space_remaining
+        for neighbour in neighbours:
+            neighbour: Ship
+            for cargo_item in neighbour.cargo_inventory:
+                if cargo_item.symbol == raw_good:
+                    transfer_amount = min(cargo_item.units, cargo_remaining)
+                    resp = self.st.ship_transfer_cargo(
+                        neighbour, cargo_item.symbol, transfer_amount, self.ship.name
+                    )
+                    if resp:
+                        cargo_remaining -= transfer_amount
+                        if cargo_remaining == 0:
+                            break
+
 
 if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1E"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
-        "target_tradegood": "ELECTRONICS",
+        "target_tradegood": "EXPLOSIVES",
         # "market_wp": "X1-YG29-D43",
     }
 

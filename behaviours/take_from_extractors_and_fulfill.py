@@ -78,6 +78,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         #
         # 3. ACQUIRE DESIRED CARGO FROM NEIGHBOURING EXTRACTORS
         #
+
         cargo_remaining = ship.cargo_space_remaining
         neighbours = self.get_neighbouring_extractors()
         for target in self.exclusive_cargo_items:
@@ -159,29 +160,19 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
 
-    def get_neighbouring_extractors(self):
-        ships = self.st.ships_view()
-        ships = [
-            s
-            for s in ships.values()
-            if s.nav.waypoint_symbol == self.ship.nav.waypoint_symbol
-        ]
-        ships = [s for s in ships if s.role == "EXCAVATOR"]
-        return ships
-
 
 if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4,
-        "market_wp": "X1-U49-H53",
-        "asteroid_wp": "X1-U49-FA4A",
-        "cargo_to_receive": ["ALUMINUM_ORE", "COPPER_ORE", "IRON_ORE"],
+        "market_wp": "X1-YG29-F47",
+        # "asteroid_wp": "X1-YG29-EB5E",
+        "cargo_to_receive": ["QUARTZ_SAND", "SILICON_CRYSTALS"],
     }
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)

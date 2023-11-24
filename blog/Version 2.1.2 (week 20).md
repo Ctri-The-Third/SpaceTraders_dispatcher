@@ -72,12 +72,19 @@ The easiest solution will be as follows:
 
 
 
-## Supply chain issues
+## Supply chain issues - raw imports
 
 We've gotten a behaviour that manages exports, and have applied it to ADVANCED_CIRCUITRY, and its dependants - ELECTRONICS, MICROPROCESSORS and the dependant COPPER. 
 Unfortunately, we need COPPER_ORE taken to the refinery and SILICON_CRYSTALS to the electronics/microprocessors factory. 
 
 We don't have an easy way of doing this. Ideally haulers should go out to the asteroid belt, pick up a bunch of stuff from extractors, and bring it back.
-Currently haulers are being given regular tasks to take stuff to the best market that will buy whats in the extractor inventory - but that doesn't include our single-import microprocessors factory.
+Currently haulers are being given regular tasks to take stuff to the best market that will buy whats in the extractor inventory - but that doesn't include our single-import microprocessors factory. 
+
 
 the conductor needs to know which raw goods are being actively consumed by which factories, and then we can assign haulers to manage their imports appropriately.
+
+We need to provide 
+ - Liquid Hydrogen and Liquid Nitrogen to the explosives factory
+ - Siliocn Quartz to the electronics factory
+
+to do this we'll provide a behaviour that does the import management.

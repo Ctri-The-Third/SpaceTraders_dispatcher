@@ -653,11 +653,20 @@ if __name__ == "__main__":
     # optional:\n
     # `buy_wp`: if you want to specify a source market, provide the symbol.\n
     # `sell_wp`: if you want the ship to sell the cargo, set which waypoint\n
+
     # `max_buy_price`: if you want to limit the purchase price, set it here\n
     # `min_sell_price`: if you want to limit the sell price, set it here\n
     conductor = FuelManagementConductor(user)
+
     conductor.populate_ships()
-    tgs = ["ADVANCED_CIRCUITRY", "ELECTRONICS", "MICROPROCESSORS"]
+
+    tgs = [
+        "ADVANCED_CIRCUITRY",
+        "ELECTRONICS",
+        "MICROPROCESSORS",
+        "EXPLOSIVES",
+        "COPPER",
+    ]
     index = 0
     for tg in tgs:
         set_behaviour(
@@ -667,4 +676,12 @@ if __name__ == "__main__":
             {"target_tradegood": tg, "priority": 5},
         )
         index += 1
+
+    set_behaviour(
+        conductor.connection,
+        "CTRI-U--3D",
+        BHVR_MANAGE_SPECIFIC_EXPORT,
+        {"target_tradegood": "EXPLOSIVES", "priority": 5},
+    )
+
     conductor.run()

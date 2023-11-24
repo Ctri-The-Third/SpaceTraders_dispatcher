@@ -446,6 +446,9 @@ class Behaviour:
             return valid_haulers
         return []
 
+    def get_neighbouring_extractors(self):
+        return self.find_adjacent_ships(self.ship.nav.waypoint_symbol, ["EXCAVATOR"])
+
     def jettison_all_cargo(self, exceptions: list = []):
         ship = self.ship
         st = self.st
@@ -572,7 +575,10 @@ order by 1 desc """
                 break
 
         self.log_market_changes(current_waypoint.symbol)
-
+        if not resp:
+            if resp.error_code == 4217:
+                ship = self.st.ships_view_one(ship.name, True)
+            return resp
         return LocalSpaceTradersRespose(
             None, 0, None, "generic_behaviour.purchase_what_you_can"
         )
