@@ -359,6 +359,7 @@ def map_role(role) -> str:
         "COMMAND": "👑",
         "EXCAVATOR": "⛏️",
         "HAULER": "🚛",
+        "TRANSPORT": "🚛",
         "SATELLITE": "🛰️",
         "REFINERY": "⚙️",
     }
@@ -369,6 +370,7 @@ def map_frame(role) -> str:
     frames = {
         "FRAME_DRONE": "⛵",
         "FRAME_PROBE": "⛵",
+        "FRAME_SHUTTLE": "⛵",
         "FRAME_MINER": "🚤",
         "FRAME_LIGHT_FREIGHTER": "🚤",
         "FRAME_FRIGATE": "🚤",
