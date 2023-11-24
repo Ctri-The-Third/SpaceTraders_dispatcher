@@ -89,17 +89,17 @@ class ManageSpecifcExport(Behaviour):
         )
         target_tradegood = market.get_tradegood(self.target_tradegood)
         if target_tradegood.recorded_ts < datetime.utcnow() - timedelta(hours=3):
-            self.logger.info(f"Market data is stale, going to {self.target_market}")
+            self.logger.debug(f"Market data is stale, going to {self.target_market}")
             self.ship_extrasolar(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
             return
         if SUPPLY_LEVELS[target_tradegood.supply] > 2:
-            self.logger.info(
+            self.logger.debug(
                 f"Export for {target_tradegood.symbol} is {target_tradegood.supply} - selling"
             )
             self.sell_exports()
         elif target_tradegood.activity == "RESTRICTED":
-            self.logger.info(
+            self.logger.debug(
                 f"Export for {target_tradegood.symbol} is RESTRICTED, finding imports"
             )
             self.procure_imports(export_wp, market)
@@ -107,7 +107,7 @@ class ManageSpecifcExport(Behaviour):
 
             return
         else:
-            self.logger.info(
+            self.logger.debug(
                 f"Export for {target_tradegood.symbol} is {target_tradegood.supply}, activity is {target_tradegood.activity} - resting"
             )
             time.sleep(60)
@@ -137,6 +137,10 @@ class ManageSpecifcExport(Behaviour):
 
         pass
         if not scarcest_import:
+            self.logger.debug(
+                "No profitable imports found! Resolve upstream supply issues. Sleeping for 60 seconds."
+            )
+            time.sleep(60)
             return None
 
         # now we know the imports that are needed - we need to go find them at a price that's profitable
@@ -261,24 +265,15 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "22"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1E"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
         "target_tradegood": "ELECTRONICS",
         # "market_wp": "X1-YG29-D43",
     }
-    import threading
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    threading.Thread(target=bhvr.run).start()
+    bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
-
-    behaviour_params["target_tradegood"] = "ADVANCED_CIRCUITRY"
-    bhvr = ManageSpecifcExport(agent, "CTRI-U--1", behaviour_params or {})
-    threading.Thread(target=bhvr.run).start()
-
-    behaviour_params["target_tradegood"] = "MICROPROCESSORS"
-    bhvr = ManageSpecifcExport(agent, "CTRI-U--3D", behaviour_params or {})
-    threading.Thread(target=bhvr.run).start()
