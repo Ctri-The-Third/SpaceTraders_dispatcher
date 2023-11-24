@@ -87,6 +87,7 @@ class Behaviour:
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
             raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
+        self.sleep_until_ready()
         # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
 
