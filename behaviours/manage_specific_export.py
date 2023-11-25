@@ -135,7 +135,6 @@ class ManageSpecifcExport(Behaviour):
             if (
                 SUPPLY_LEVELS[tg.supply] < scarcest_supply
                 and tg.activity != "RESTRICTED"
-                and tg.sell_price < import_price
             ):
                 scarcest_supply = SUPPLY_LEVELS[tg.supply]
                 scarcest_import = symbol
@@ -168,7 +167,7 @@ class ManageSpecifcExport(Behaviour):
             # the difference between the purchase price of the fabricated export
             # and the raw goods. we want the biggest difference per distance
             # difference represents part of the value add from production
-            cpd = (export_tg.purchase_price - tg.sell_price) / distance
+            cpd = (export_tg.sell_price - tg.purchase_price) / distance
             if cpd > best_cpd:
                 best_source_of_import = market
                 best_cpd = cpd
@@ -342,7 +341,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
-        "target_tradegood": "EXPLOSIVES",
+        "target_tradegood": "ADVANCED_CIRCUITRY",
         # "market_wp": "X1-YG29-D43",
     }
 
