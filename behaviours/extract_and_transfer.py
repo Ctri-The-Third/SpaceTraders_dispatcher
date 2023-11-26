@@ -43,6 +43,7 @@ class ExtractAndTransfer_8(Behaviour):
         # self.logger.info("NEEDLESS REQUEST - get inventory into DB")
 
         st = self.st
+        ship = self.ship
         st.ship_cooldown(ship)
         self.ships = st.ships_view()
         agent = st.view_my_self()
