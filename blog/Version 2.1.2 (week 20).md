@@ -72,7 +72,7 @@ The easiest solution will be as follows:
 
 
 
-## Supply chain issues - raw imports
+## Supply chain issues - raw imports & bottlenecks  
 
 We've gotten a behaviour that manages exports, and have applied it to ADVANCED_CIRCUITRY, and its dependants - ELECTRONICS, MICROPROCESSORS and the dependant COPPER. 
 Unfortunately, we need COPPER_ORE taken to the refinery and SILICON_CRYSTALS to the electronics/microprocessors factory. 
@@ -87,4 +87,4 @@ We need to provide
  - Liquid Hydrogen and Liquid Nitrogen to the explosives factory
  - Siliocn Quartz to the electronics factory
 
-to do this we'll provide a behaviour that does the import management.
+✅ to do this we'll provide a behaviour that does the import management.

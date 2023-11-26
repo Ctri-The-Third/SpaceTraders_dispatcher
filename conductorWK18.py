@@ -17,7 +17,7 @@ Strategy for week 18
 """
 
 from datetime import datetime, timedelta
-import logging
+import logging, math
 import json
 from time import sleep
 from functools import partial
@@ -213,14 +213,6 @@ class FuelManagementConductor:
         if len(self.haulers) >= 2:
             for h in possible_ships[2 : len(available_routes)]:
                 set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
-            for h in possible_ships[2 + len(available_routes) :]:
-                site = mining_sites.pop()
-                set_behaviour(
-                    self.connection,
-                    h.name,
-                    BHVR_RECEIVE_AND_FULFILL,
-                    {"asteroid_wp": site[1], "market_wp": site[2]},
-                )
 
         # self.set_refinery_behaviours(possible_ships)
         # self.set_satellite_behaviours()
@@ -239,6 +231,8 @@ class FuelManagementConductor:
         # if we set the target price, then we'll end up buying/ selling once every 1h 3m, which is optimal.
 
         # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
+        process_contracts(self.st)
+        self.log_tasks_for_contracts()
 
         log_shallow_trade_tasks(
             self.connection,
@@ -571,6 +565,34 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             ship for ship in ships if ship.role == "EXCAVATOR" and ship.can_siphon
         ]
 
+    def log_tasks_for_contracts(self):
+        contracts = self.st.view_my_contracts()
+        unfulfilled_contracts = [
+            con for con in contracts if not con.fulfilled and con.accepted
+        ]
+        for con in unfulfilled_contracts:
+            con: Contract
+            for deliverable in con.deliverables:
+                remaining_to_deliver = (
+                    deliverable.units_required - deliverable.units_fulfilled
+                )
+                for i in range(math.ceil((remaining_to_deliver) / 80)):
+                    log_task(
+                        self.connection,
+                        BHVR_BUY_AND_DELIVER_OR_SELL,
+                        ["ANY_FREIGHTER", "80_CARGO"],
+                        waypoint_slicer(deliverable.destination_symbol),
+                        3.9 - (i * 0.1),
+                        self.current_agent_symbol,
+                        {
+                            "priority": 4,
+                            "tradegood": deliverable.symbol,
+                            "quantity": min(remaining_to_deliver, 80),
+                            "fulfil_wp": deliverable.destination_symbol,
+                        },
+                        expiry=self.next_quarterly_update,
+                    )
+
     def get_trade_routes(
         self, limit=None, min_market_depth=100, max_market_depth=1000000
     ) -> list[tuple]:
@@ -676,12 +698,5 @@ if __name__ == "__main__":
             {"target_tradegood": tg, "priority": 5},
         )
         index += 1
-
-    set_behaviour(
-        conductor.connection,
-        "CTRI-U--3D",
-        BHVR_MANAGE_SPECIFIC_EXPORT,
-        {"target_tradegood": "EXPLOSIVES", "priority": 5},
-    )
-
+    process_contracts(conductor.st)
     conductor.run()

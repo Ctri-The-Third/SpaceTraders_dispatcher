@@ -87,6 +87,21 @@ class BuyAndDeliverOrSell_6(Behaviour):
             )
             source_market = st.system_market(source_wp)
             source_listing = source_market.get_tradegood(target_tradegood)
+        else:
+            target_waypoints = self.find_cheapest_markets_for_good(target_tradegood)
+            best_jumps = math.inf
+            for target_waypoint in target_waypoints:
+                potential_wp = st.waypoints_view_one(
+                    waypoint_slicer(target_waypoint), target_waypoint
+                )
+                source_system = st.systems_view_one(potential_wp.system_symbol)
+                route = self.pathfinder.astar(start_system, source_system)
+                if route and route.jumps < best_jumps:
+                    best_jumps = route.jumps
+                    source_market = st.system_market(potential_wp)
+                    source_listing = source_market.get_tradegood(target_tradegood)
+                    source_wp = potential_wp
+
         if "sell_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["sell_wp"])
@@ -316,11 +331,10 @@ if __name__ == "__main__":
     #        "X1-YG29-H50"	"X1-YG29-A3", 1 , "COPPER"
 
     params = {
-        "buy_wp": "X1-YG29-J57",
-        "sell_wp": "X1-YG29-H53",
-        "priority": 4.5,
-        "tradegood": "PRECIOUS_STONES",
-        "safety_profit_threshold": 29.5,
+        "priority": 4,
+        "quantity": 3,
+        "fulfil_wp": "X1-YG29-A1",
+        "tradegood": "SHIP_PARTS",
     }
     bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=params)
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)

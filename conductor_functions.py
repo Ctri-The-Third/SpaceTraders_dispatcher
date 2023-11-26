@@ -9,9 +9,10 @@ import json
 import hashlib
 
 
-def process_contracts(client: SpaceTraders):
+def process_contracts(client: SpaceTraders, recurse=True):
     contracts = client.view_my_contracts()
     need_to_negotiate = True
+
     for con in contracts:
         con: Contract
         should_we_complete = False
@@ -34,7 +35,10 @@ def process_contracts(client: SpaceTraders):
         # get ships at the HQ, and have one do the thing
         ships = client.ships_view()
         satelite = [ship for ship in ships.values() if ship.role == "SATELLITE"][0]
-        client.ship_negotiate(satelite)
+        resp = client.ship_negotiate(satelite)
+        if resp and recurse:
+            logging.info("Negotiated a contract %s", resp)
+            process_contracts(client, False)
 
 
 def should_we_accept_contract(client: SpaceTraders, contract: Contract):
