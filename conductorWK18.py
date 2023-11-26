@@ -240,7 +240,7 @@ class FuelManagementConductor:
             BHVR_BUY_AND_DELIVER_OR_SELL,
             self.current_agent_symbol,
             self.next_quarterly_update,
-            max(len(self.haulers) * 3, 2),
+            max(len(self.haulers) + len(self.commanders), 2),
         )
         log_mining_package_deliveries(
             self.connection,
