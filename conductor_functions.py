@@ -26,6 +26,7 @@ def process_contracts(client: SpaceTraders, recurse=True):
                     should_we_complete = False
         if should_we_complete:
             client.contracts_fulfill(con)
+            need_to_negotiate = True
 
         if not con.accepted and con.deadline_to_accept > datetime.datetime.utcnow():
             need_to_negotiate = False

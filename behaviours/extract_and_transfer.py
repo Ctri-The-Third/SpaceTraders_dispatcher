@@ -40,10 +40,9 @@ class ExtractAndTransfer_8(Behaviour):
         super().run()
 
         starting_credts = self.st.view_my_self().credits
-        self.logger.info("NEEDLESS REQUEST - get inventory into DB")
+        # self.logger.info("NEEDLESS REQUEST - get inventory into DB")
 
         st = self.st
-        ship = self.ship = st.ships_view_one(self.ship.name, True)
         st.ship_cooldown(ship)
         self.ships = st.ships_view()
         agent = st.view_my_self()
@@ -116,7 +115,9 @@ class ExtractAndTransfer_8(Behaviour):
         cutoff_cargo_limit = None
         if ship.extract_strength > 0:
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
-        self.extract_till_full(cargo_to_transfer, cutoff_cargo_limit)
+        self.extract_till_full(
+            cargo_to_transfer, cutoff_cargo_units_used=cutoff_cargo_limit
+        )
 
         #
         # find a hauler from any of the matching agents, use a commander if we have zero dedicated haulers
@@ -191,9 +192,9 @@ class ExtractAndTransfer_8(Behaviour):
 if __name__ == "__main__":
     set_logging(level=logging.DEBUG)
     agent_symbol = "CTRI-U-"
-    ship_suffix = "1C"
+    ship_suffix = "33"
     ship = f"{agent_symbol}-{ship_suffix}"
-    params = {"asteroid_wp": "X1-U49-FA4A", "cargo_to_transfer": ["*"]}
+    params = {"asteroid_wp": "X1-YG29-B38", "cargo_to_transfer": ["*"]}
     # params = {"asteroid_wp": "X1-JX88-51095C"}
     bhvr = ExtractAndTransfer_8(agent_symbol, f"{ship}", params)
 
