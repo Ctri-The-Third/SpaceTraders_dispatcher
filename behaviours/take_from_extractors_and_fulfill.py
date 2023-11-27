@@ -57,8 +57,12 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
+        if not self.start_wp_s:
+            # we couldn't find any asteroids with the desired cargo
+            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         if not self.market_wp_s and not self.fulfil_wp_s:
             self.market_wp_s = self.determine_market_wp()
+
             # find all extractors with the desired cargo, group by waypoint
             # calculate distance per good
             # determine the best source
@@ -186,6 +190,9 @@ group by 1,2"""
         # find all extractors with the desired cargo, group by waypoint
         # calculate distance per good
         # determine the best source
+        else:
+            self.logger.debug("No asteroids found with desired cargo")
+            time.sleep(60)
 
     def determine_market_wp(self):
         # find the nearest market with the desired cargo
@@ -212,13 +219,13 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3E"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4,
         # "market_wp": "X1-YG29-F47",
         # "asteroid_wp": "X1-YG29-EB5E",
-        "cargo_to_receive": ["QUARTZ_SAND", "SILICON_CRYSTALS"],
+        "cargo_to_receive": ["COPPER_ORE"],
     }
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)

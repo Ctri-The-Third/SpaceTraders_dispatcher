@@ -53,7 +53,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
     def run(self):
         super().run()
         st = self.st
-        ship = self.ship = self.st.ships_view_one(self.ship.name, True)
+        ship = self.ship
         agent = self.agent
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
@@ -325,16 +325,18 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "3F"
     ship = f"{agent}-{suffix}"
 
     #        "X1-YG29-H50"	"X1-YG29-A3", 1 , "COPPER"
 
     params = {
-        "priority": 4,
-        "quantity": 3,
-        "fulfil_wp": "X1-YG29-A1",
-        "tradegood": "SHIP_PARTS",
+        "buy_wp": "X1-YG29-H53",
+        "sell_wp": "X1-YG29-A1",
+        "priority": 4.5,
+        "quantity": 10,
+        "tradegood": "JEWELRY",
+        "safety_profit_threshold": 1107,
     }
     bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=params)
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
