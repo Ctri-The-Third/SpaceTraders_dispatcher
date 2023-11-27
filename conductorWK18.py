@@ -71,6 +71,10 @@ from conductor_functions import (
 logger = logging.getLogger(__name__)
 
 
+# we should go through the markets available and manage exports for each of them.
+# ship_parts and
+
+
 class FuelManagementConductor:
 
     """This behaviour manager is for when we're in low fuel desperate situations"""
@@ -210,10 +214,34 @@ class FuelManagementConductor:
             self.starting_system.symbol, len(self.haulers), 10, 100
         )
 
-        if len(self.haulers) >= 2:
-            for h in possible_ships[2 : len(available_routes)]:
-                set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
+        trade_symbols = map_all_goods(
+            self.connection, "ADVANCED_CIRCUITRY", self.starting_system.symbol
+        )
+        trade_symbols = map_all_goods(
+            self.connection, "SHIP_PARTS", self.starting_system.symbol, trade_symbols
+        )
+        trade_symbols = map_all_goods(
+            self.connection, "SHIP_PLATING", self.starting_system.symbol, trade_symbols
+        )
+        trade_symbols = map_all_goods(
+            self.connection, "FAB_MATS", self.starting_system.symbol, trade_symbols
+        )
+        targets = [t for t, v in trade_symbols.items() if "EXTRACTABLE" in v]
 
+        index = 0
+        if len(self.haulers) >= 2:
+            for h in possible_ships[2:]:
+                if len(targets) > index:
+                    params = {"cargo_to_receive": [targets[index]], "priority": 5}
+                    set_behaviour(
+                        self.connection,
+                        h.name,
+                        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+                        params,
+                    )
+                else:
+                    set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
+                index += 1
         # self.set_refinery_behaviours(possible_ships)
         # self.set_satellite_behaviours()
 
@@ -663,6 +691,49 @@ def switch_to_surveying(connection, ship_symbol):
     try_execute_upsert(connection, sql, (BHVR_CHILL_AND_SURVEY, ship_symbol))
 
 
+def map_all_goods(
+    connection,
+    tradegood: str,
+    system_symbol: str,
+    managed_exports_and_markets: dict = None,
+):
+    if managed_exports_and_markets is None:
+        managed_exports_and_markets = {}
+    from straders_sdk.constants import EXTRACTABLES, SHIPONABLES
+
+    sql = """with unnested_relationships as (
+  select export_tradegood, unnest(import_tradegoods) as required_import from manufacture_relationships mr
+  where export_tradegood = %s 
+)
+select mr.export_tradegood, w.waypoint_symbol, mr.required_import from unnested_Relationships mr
+left join market_tradegood mt on mr.export_tradegood = mt.symbol 
+left join waypoints w on mt.market_waypoint = w.waypoint_symbol
+where (w.waypoint_symbol is null or ( buy_or_sell = 'sell'
+and w.system_symbol = %s))"""
+
+    results = try_execute_select(connection, sql, (tradegood, system_symbol))
+    if not results:
+        # check if the the export is actually an extractable
+        if tradegood in EXTRACTABLES or tradegood in SHIPONABLES:
+            managed_exports_and_markets[tradegood] = ["EXTRACTABLE"]
+        for key, value in managed_exports_and_markets.items():
+            # remove duplicates in value
+            managed_exports_and_markets[key] = list(set(value))
+        return managed_exports_and_markets
+
+    for export_tradegood, export_market_wp, required_import in results:
+        if export_tradegood not in managed_exports_and_markets:
+            managed_exports_and_markets[export_tradegood] = []
+        managed_exports_and_markets[export_tradegood].append(export_market_wp)
+
+        map_all_goods(
+            connection, required_import, system_symbol, managed_exports_and_markets
+        )
+    return managed_exports_and_markets
+    # find markets that EXPORT the given tradegood
+    # add them into managed_markets THEN determine the matching imports and manage each of those markets.
+
+
 if __name__ == "__main__":
     set_logging()
     user = json.load(open("user.json"))
@@ -699,4 +770,12 @@ if __name__ == "__main__":
         )
         index += 1
     process_contracts(conductor.st)
+    goods = map_all_goods(conductor.connection, "FUEL", "X1-YG29")
+
+    goods = map_all_goods(conductor.connection, "SHIP_PARTS", "X1-YG29")
+    # goods.update(map_all_goods(conductor.connection, "SHIP_PLATING", "X1-YG29"))
+    # for each tradegood we need a shuttle.
+    # for each tradegood either manage the export, or go collect from extractors.
+
+    # we also need to manually manage FUEL and EXPLOSIVES
     conductor.run()

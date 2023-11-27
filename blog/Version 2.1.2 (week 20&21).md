@@ -74,17 +74,22 @@ The easiest solution will be as follows:
 
 ## Supply chain issues - raw imports & bottlenecks  
 
+### raw imports 
 We've gotten a behaviour that manages exports, and have applied it to ADVANCED_CIRCUITRY, and its dependants - ELECTRONICS, MICROPROCESSORS and the dependant COPPER. 
 Unfortunately, we need COPPER_ORE taken to the refinery and SILICON_CRYSTALS to the electronics/microprocessors factory. 
 
-We don't have an easy way of doing this. Ideally haulers should go out to the asteroid belt, pick up a bunch of stuff from extractors, and bring it back.
+✅ We don't have an easy way of doing this. Ideally haulers should go out to the asteroid belt, pick up a bunch of stuff from extractors, and bring it back.
 Currently haulers are being given regular tasks to take stuff to the best market that will buy whats in the extractor inventory - but that doesn't include our single-import microprocessors factory. 
 
+We've changed that so that for each required import, a hauler gets the job of taking it to the factory.
+We don't yet have automated scaling for this, but making it shuttles for EXPORT management and haulers for extractable management should be good.
 
-the conductor needs to know which raw goods are being actively consumed by which factories, and then we can assign haulers to manage their imports appropriately.
+### bottlenecks
 
-We need to provide 
- - Liquid Hydrogen and Liquid Nitrogen to the explosives factory
- - Siliocn Quartz to the electronics factory
+Unfortunately, our microprocessor and electronics export hasn't increased past 15, and the required IMPORTS on ADVANCED_CIRCUITRY are still at SCARCE and their prices unchanged.
 
-✅ to do this we'll provide a behaviour that does the import management.
+We are selling ELECTORNICS but the price hasn't dipped below 3300 at any point. Either we're not generating enough to sell (my current theory) or something's broken. Since we're generating (0.36787944 * 15) 5.5 electronics an hour, it'd make sense.
+
+Hopefully the electronics market will evolve now that we've fixed that bottleneck.
+
+# week 21 - Version 2.1.2

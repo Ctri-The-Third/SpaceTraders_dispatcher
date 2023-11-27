@@ -12,7 +12,7 @@ import logging
 
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 from straders_sdk.ship import Ship
-from straders_sdk.utils import waypoint_slicer, set_logging
+from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 
 BEHAVIOUR_NAME = "TAKE_FROM_EXTRACTORS_AND_GO_SELL_9"
 SAFETY_PADDING = 60
@@ -39,7 +39,9 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
 
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
         self.fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
-        self.start_wp_s = self.behaviour_params.get("asteroid_wp", None)
+        self.start_wp_s = self.behaviour_params.get(
+            "asteroid_wp", self.determine_start_wp()
+        )
         self.market_wp_s = self.behaviour_params.get("market_wp", None)
         self.exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
 
@@ -47,13 +49,19 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         super().run()
 
         st = self.st
+        ship = self.ship
         # we have to use the API call since we don't have inventory in the DB
-        ship = self.ship = st.ships_view_one(self.ship.name, True)
 
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+
+        if not self.market_wp_s and not self.fulfil_wp_s:
+            self.market_wp_s = self.determine_market_wp()
+            # find all extractors with the desired cargo, group by waypoint
+            # calculate distance per good
+            # determine the best source
 
         #
         # 1. DEFAULT BEHAVIOUR (for if we've not got active orders)
@@ -160,6 +168,44 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
 
+    def determine_start_wp(self):
+        sql = """select system_symbol, waypoint_symbol, sum(quantity) from ship_cargo sc 
+join  ship_nav sn on sc.ship_symbol = sn.ship_symbol
+join ships s on s.ship_symbol = sc.ship_symbol
+where trade_symbol in %s
+and system_symbol = %s
+and ship_role = 'EXCAVATOR'
+group by 1,2"""
+
+        target = self.behaviour_params.get("cargo_to_receive", None)
+        system = self.ship.nav.system_symbol
+        results = try_execute_select(self.connection, sql, (tuple(target), system))
+        if results:
+            return results[0][1]
+        # find the nearest asteroid with the desired cargo
+        # find all extractors with the desired cargo, group by waypoint
+        # calculate distance per good
+        # determine the best source
+
+    def determine_market_wp(self):
+        # find the nearest market with the desired cargo
+        # find all markets with the desired cargo, group by waypoint
+        # calculate distance per good
+        # determine the best source
+        sql = """select market_Symbol from market_tradegood_listings mtl 
+join waypoints w on w.waypoint_symbol = mtl.market_symbol
+where trade_symbol in %s
+and mtl.type = 'IMPORT'
+and system_symbol = %s
+order by activity='RESTRICTED', supply = 'SCARCE' desc, supply = 'LIMITED' desc, supply = 'MODERATE' desc, sell_price desc"""
+
+        target = self.exclusive_cargo_items or []
+        system = self.ship.nav.system_symbol
+        results = try_execute_select(self.connection, sql, (tuple(target), system))
+        if results:
+            return results[0][0]
+        return None
+
 
 if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
@@ -170,7 +216,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4,
-        "market_wp": "X1-YG29-F47",
+        # "market_wp": "X1-YG29-F47",
         # "asteroid_wp": "X1-YG29-EB5E",
         "cargo_to_receive": ["QUARTZ_SAND", "SILICON_CRYSTALS"],
     }

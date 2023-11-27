@@ -42,7 +42,7 @@ class SingleStableTrade(Behaviour):
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
 
         # to the nearest factor of 10
-        target_trade_depth = get_best_tradevolume(ship.cargo_capacity)
+        target_trade_depth = ship.cargo_capacity / 4
         trade_routes = self.get_trade_routes(
             limit=5, min_market_depth=target_trade_depth
         )
@@ -113,14 +113,6 @@ class SingleStableTrade(Behaviour):
             return []
 
         return [(r[2], r[4], r[5], r[3]) for r in routes]
-
-
-def get_best_tradevolume(number) -> int:
-    depth = 10
-    while number / 10 > 1:
-        depth *= 10
-        number /= 10
-    return depth
 
 
 if __name__ == "__main__":
