@@ -93,3 +93,8 @@ We are selling ELECTORNICS but the price hasn't dipped below 3300 at any point. 
 Hopefully the electronics market will evolve now that we've fixed that bottleneck.
 
 # week 21 - Version 2.1.2
+
+new conductor strategy (bank existing one)
+* ONCE -  explore system
+* every hour do 1/e tradevolume of export trades (per export, start with most profitable)
+* map out fuel supply - hauler for fuel and 

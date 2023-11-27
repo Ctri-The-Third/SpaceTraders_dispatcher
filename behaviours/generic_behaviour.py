@@ -193,6 +193,11 @@ class Behaviour:
                 and ship.fuel_capacity > 0
                 and ship.nav.flight_mode != "DRIFT"
             ):
+                self.logger.warn(
+                    "DRIFT ALERT - Cached values: Current fuel %s, fuel cost %s",
+                    ship.fuel_current,
+                    fuel_cost,
+                )
                 st.ship_patch_nav(ship, "DRIFT")
             elif ship.nav.flight_mode != flight_mode:
                 st.ship_patch_nav(ship, flight_mode)
