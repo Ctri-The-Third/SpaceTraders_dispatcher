@@ -237,9 +237,8 @@ class dispatcher:
 
         # rather than tying this behaviour to the probe, this is executed at the dispatcher level.
 
-        ships_and_threads["scan_thread"] = threading.Thread(
-            target=self.maybe_scan_all_systems, daemon=True
-        )
+        scan_thread = threading.Thread(target=self.maybe_scan_all_systems, daemon=True)
+        scan_thread.start()
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
@@ -520,10 +519,7 @@ class dispatcher:
         bhvr = ScanInBackground(
             self.client.current_agent_symbol, ship.name, {"priority": 10}
         )
-        self.scan_thread = threading.Thread(
-            target=bhvr.run, name=f"scan_thread", daemon=True
-        )
-        self.scan_thread.start()
+        bhvr.run()
 
 
 def get_fun_name():

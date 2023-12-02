@@ -66,7 +66,8 @@ class ScanInBackground(Behaviour):
                 self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
                 or self.get_twenty_unscanned_waypoints("ASTEROID_FIELD")
                 or self.get_twenty_unscanned_waypoints("JUMP_GATE")
-                or []
+                or self.get_twenty_unscanned_waypoints("PLANET")
+                or self.get_twenty_unscanned_waypoints("MOON")
             )
 
             for wayp in wayps:
@@ -92,8 +93,6 @@ class ScanInBackground(Behaviour):
                     continue
                 if ship.nav.travel_time_remaining > 0:
                     continue
-                if ship.can_survey:
-                    st.ship_survey(ship)
 
             #
             # MARKETS and SHIPYARDS
@@ -108,8 +107,6 @@ class ScanInBackground(Behaviour):
                     resp = st.system_market(wp, True)
                 if wp.has_shipyard:
                     resp = st.system_shipyard(wp, True)
-                if ship.can_survey:
-                    st.ship_survey(ship)
 
         if len(wayps) + len(rows) == 0:
             self.logger.warning(
