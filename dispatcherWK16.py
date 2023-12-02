@@ -240,7 +240,7 @@ class dispatcher:
         ships_and_threads["scan_thread"] = threading.Thread(
             target=self.maybe_scan_all_systems, daemon=True
         )
-        ships_and_threads["scan_thread"].start()
+        # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
             # if we've been running for more than 12 hours, terminate. important for profiling.
@@ -632,13 +632,15 @@ def wait_until_reset(url, user_file: dict):
                 return
             elif response.status_code == 200:
                 current_reset_date = response.response_json["resetDate"]
-                logging.info("Reset date is %s", current_reset_date)
+                logging.info(
+                    "Reset date is %s - waiting for %s", current_reset_date, target_date
+                )
             else:
                 logging.info("It's coming!")
         except Exception as err:
             logging.error("Error %s", err)
         finally:
-            time.sleep(60)
+            time.sleep(5)
 
 
 def lock_ship(ship_symbol, lock_id, connection, duration=60):

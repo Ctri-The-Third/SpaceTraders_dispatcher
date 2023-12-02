@@ -112,14 +112,24 @@ class FuelManagementConductor:
         self.gas_giant = None
         self.fuel_refinery = None
 
-    def run(self):
-        #
-        # * scale regularly and set defaults
         # * progress missions
         hq = self.st.view_my_self().headquarters
         hq_sys = waypoint_slicer(hq)
-        self.starting_system = self.st.systems_view_one(hq_sys)
+        self.starting_system = self.st.systems_view_one(hq_sys, True)
         self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
+
+        for sym in self.starting_system.waypoints:
+            wp = self.st.waypoints_view_one(self.starting_system.symbol, sym.symbol)
+            if "MARKETPLACE" in [t.symbol for t in wp.traits]:
+                self.st.system_market(wp)
+            if "SHIPYARD" in [t.symbol for t in wp.traits]:
+                self.st.system_shipyard(wp)
+            if wp.type == "JUMP_GATE":
+                self.st.system_jumpgate(wp)
+
+    def run(self):
+        #
+        # * scale regularly and set defaults
 
         self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
         self.next_hourly_update = datetime.now() + timedelta(hours=1)
@@ -182,23 +192,38 @@ class FuelManagementConductor:
             )
 
         possible_ships = self.haulers + self.commanders
-        self.gas_giant = self.st.find_waypoints_by_type_one(
-            self.starting_system.symbol, "GAS_GIANT"
-        )
-        self.fuel_refinery = self.find_fuel_refineries(self.gas_giant)
-
-        if missing_market_prices(self.connection, self.starting_system.symbol):
-            params = {"target_sys": self.starting_system.symbol}
-            log_task(
+        tgs = [
+            "SHIP_PARTS",
+            "SHIP_PLATING",
+            "ADVANCED_CIRCUITRY",
+            "ELECTRONICS",
+            "MICROPROCESSORS",
+            "EXPLOSIVES",
+            "COPPER",
+        ]
+        index = 0
+        for tg in tgs:
+            if len(self.shuttles) <= index:
+                bought = maybe_buy_ship_sys(
+                    self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin
+                )
+                if bought:
+                    self.shuttles.append(bought)
+                else:
+                    break
+            set_behaviour(
                 self.connection,
-                BHVR_EXPLORE_SYSTEM,
-                ["40_CARGO"],
-                self.starting_system.symbol,
-                1,
-                self.current_agent_symbol,
-                params,
-                expiry=self.next_quarterly_update,
+                self.shuttles[index].name,
+                BHVR_MANAGE_SPECIFIC_EXPORT,
+                {"target_tradegood": tg, "priority": 5},
             )
+            index += 1
+        process_contracts(self.st)
+        goods = map_all_goods(self.connection, "FUEL", self.starting_system.symbol)
+
+        goods = map_all_goods(
+            self.connection, "SHIP_PARTS", self.starting_system.symbol, goods
+        )
         self.set_satellite_behaviours()
         self.scale_and_set_siphoning()
         self.set_drone_behaviours()
@@ -753,26 +778,6 @@ if __name__ == "__main__":
 
     conductor.populate_ships()
 
-    tgs = [
-        "ADVANCED_CIRCUITRY",
-        "ELECTRONICS",
-        "MICROPROCESSORS",
-        "EXPLOSIVES",
-        "COPPER",
-    ]
-    index = 0
-    for tg in tgs:
-        set_behaviour(
-            conductor.connection,
-            conductor.shuttles[index].name,
-            BHVR_MANAGE_SPECIFIC_EXPORT,
-            {"target_tradegood": tg, "priority": 5},
-        )
-        index += 1
-    process_contracts(conductor.st)
-    goods = map_all_goods(conductor.connection, "FUEL", "X1-YG29")
-
-    goods = map_all_goods(conductor.connection, "SHIP_PARTS", "X1-YG29")
     # goods.update(map_all_goods(conductor.connection, "SHIP_PLATING", "X1-YG29"))
     # for each tradegood we need a shuttle.
     # for each tradegood either manage the export, or go collect from extractors.
