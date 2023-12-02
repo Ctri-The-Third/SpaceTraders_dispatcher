@@ -112,6 +112,16 @@ class FuelManagementConductor:
         self.gas_giant = None
         self.fuel_refinery = None
 
+        self.tradegood_and_ship_mappings = {
+            "SHIP_PARTS": None,
+            "SHIP_PLATING": None,
+            "ADVANCED_CIRCUITRY": None,
+            "ELECTRONICS": None,
+            "MICROPROCESSORS": None,
+            "EXPLOSIVES": None,
+            "COPPER": None,
+        }
+
         # * progress missions
         hq = self.st.view_my_self().headquarters
         hq_sys = waypoint_slicer(hq)
@@ -126,6 +136,13 @@ class FuelManagementConductor:
                 self.st.system_shipyard(wp)
             if wp.type == "JUMP_GATE":
                 self.st.system_jumpgate(wp)
+
+    @property
+    def max_cargo_available(self):
+        max_cargo = 0
+        for ship in self.commanders + self.haulers:
+            if ship.cargo_capacity > max_cargo:
+                return ship.cargo_capacity
 
     def run(self):
         #
@@ -203,38 +220,34 @@ class FuelManagementConductor:
         ]
         index = 0
         for tg in tgs:
-            if len(self.shuttles) <= index:
+            if len(self.haulers) <= index:
                 bought = maybe_buy_ship_sys(
-                    self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin
+                    self.st, "SHIP_LIGHT_HAULER", self.safety_margin
                 )
                 if bought:
-                    self.shuttles.append(bought)
+                    self.haulers.append(bought)
                 else:
                     break
             set_behaviour(
                 self.connection,
-                self.shuttles[index].name,
+                self.haulers[index].name,
                 BHVR_MANAGE_SPECIFIC_EXPORT,
                 {"target_tradegood": tg, "priority": 5},
             )
             index += 1
         process_contracts(self.st)
-        goods = map_all_goods(self.connection, "FUEL", self.starting_system.symbol)
-
-        goods = map_all_goods(
-            self.connection, "SHIP_PARTS", self.starting_system.symbol, goods
-        )
         self.set_satellite_behaviours()
         self.scale_and_set_siphoning()
         self.set_drone_behaviours()
 
     def hourly_update(self):
-        # if we have a fuel shipper, give it all the fuel shipping tasks possible
-        # if not, give the exporter a refuel task for 1 (maybe 2) points.
+        # for each
 
+        if self.safety_margin == 0:
+            self.safety_margin = 50000
         possible_ships = self.haulers + self.commanders
 
-        available_routes = self.get_trade_routes(50, 100)
+        available_routes = self.get_trade_routes(50)
         mining_sites = self.get_mining_sites(
             self.starting_system.symbol, len(self.haulers), 10, 100
         )
@@ -251,13 +264,13 @@ class FuelManagementConductor:
         trade_symbols = map_all_goods(
             self.connection, "FAB_MATS", self.starting_system.symbol, trade_symbols
         )
-        targets = [t for t, v in trade_symbols.items() if "EXTRACTABLE" in v]
-
+        targets = [(tradegood, source) for tradegood, source in trade_symbols.items()]
         index = 0
-        if len(self.haulers) >= 2:
-            for h in possible_ships[2:]:
-                if len(targets) > index:
-                    params = {"cargo_to_receive": [targets[index]], "priority": 5}
+        for h in possible_ships:
+            if len(targets) > index:
+                tradegood, source = targets[index]
+                if source == "EXTRACTABLE":
+                    params = {"cargo_to_receive": [tradegood], "priority": 4}
                     set_behaviour(
                         self.connection,
                         h.name,
@@ -265,15 +278,27 @@ class FuelManagementConductor:
                         params,
                     )
                 else:
-                    set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
-                index += 1
+                    params = {
+                        "target_tradegood": tradegood,
+                        "market_wp": source,
+                        "priority": 4,
+                    }
+                    set_behaviour(
+                        self.connection,
+                        h.name,
+                        BHVR_MANAGE_SPECIFIC_EXPORT,
+                        params,
+                    )
+            else:
+                set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
+            index += 1
         # self.set_refinery_behaviours(possible_ships)
         # self.set_satellite_behaviours()
 
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
         # if not, give the exporter a refuel task for 1 (maybe 2) points.
-        self.safety_margin = 30000
+        self.safety_margin = 50000
 
         possible_ships = self.haulers + self.commanders
         # self.set_refinery_behaviours(possible_ships)
@@ -623,28 +648,37 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         unfulfilled_contracts = [
             con for con in contracts if not con.fulfilled and con.accepted
         ]
+
         for con in unfulfilled_contracts:
             con: Contract
+            tasks_logged = 0
             for deliverable in con.deliverables:
                 remaining_to_deliver = (
                     deliverable.units_required - deliverable.units_fulfilled
                 )
-                for i in range(math.ceil((remaining_to_deliver) / 80)):
+                for i in range(
+                    math.ceil((remaining_to_deliver) / self.max_cargo_available)
+                ):
                     log_task(
                         self.connection,
                         BHVR_BUY_AND_DELIVER_OR_SELL,
-                        ["ANY_FREIGHTER", "80_CARGO"],
+                        ["ANY_FREIGHTER", f"{self.max_cargo_available}_CARGO"],
                         waypoint_slicer(deliverable.destination_symbol),
                         3.9 - (i * 0.1),
                         self.current_agent_symbol,
                         {
                             "priority": 4,
                             "tradegood": deliverable.symbol,
-                            "quantity": min(remaining_to_deliver, 80),
+                            "quantity": min(
+                                remaining_to_deliver, self.max_cargo_available
+                            ),
                             "fulfil_wp": deliverable.destination_symbol,
                         },
                         expiry=self.next_quarterly_update,
                     )
+                    tasks_logged += 1
+                    remaining_to_deliver -= self.max_cargo_available
+        self.st.logger.info(f"Logged {tasks_logged} tasks for contracts")
 
     def get_trade_routes(
         self, limit=None, min_market_depth=100, max_market_depth=1000000

@@ -187,7 +187,7 @@ class Behaviour:
                 and fuel_cost < ship.fuel_capacity
             ):
                 # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
-                self.go_and_refuel()
+                self.refuel_locally()
             if (
                 fuel_cost >= ship.fuel_current
                 and ship.fuel_capacity > 0
@@ -320,10 +320,17 @@ class Behaviour:
                 else:
                     survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
-    def go_and_refuel(self):
+    def refuel_locally(self):
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
+        self.st.ship_dock(ship)
+        self.st.ship_refuel(ship)
+        return
+
+        # this used to be "go and refuel."
+        # in order try and understand why ships are sometimes drifting, and to take advantage
+        # of the fuel-aware pathfinder, we're simplifying this.
         current_wayp = self.st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
