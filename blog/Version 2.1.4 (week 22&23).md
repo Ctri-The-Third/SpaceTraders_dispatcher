@@ -4,7 +4,7 @@ goals for the week -
 * Complete as many missions as possible
 * evolve markets
 
-# Week 22 - Version 2.1.2
+# Week 22 - Version 2.1.4
 After last week I have a solid understanding that gameplay needs to focus on keeping markets un restricted.
 I also recognised that transport shuttles were woefully inadequite at handling trades, and that we'll swap to a more expensive hauler based model for this week.
 
