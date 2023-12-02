@@ -14,7 +14,7 @@ from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.models import Waypoint
-from straders_sdk.utils import set_logging, waypoint_slicer
+from straders_sdk.utils import set_logging, waypoint_slicer, get_and_validate
 from behaviours.extract_and_chill import (
     ExtractAndChill,
     BEHAVIOUR_NAME as BHVR_EXTRACT_AND_CHILL,
@@ -599,6 +599,8 @@ def load_users(username=None) -> list[tuple]:
         register_and_store_user(username)
         return
 
+    wait_until_reset("https://api.spacetraders.io/v2/", user)
+
     if username:
         for agent in user["agents"]:
             if agent["username"] == username:
@@ -615,6 +617,28 @@ def load_users(username=None) -> list[tuple]:
         return resp_obj
 
     logging.error("Could neither load nor register user %s", username)
+
+
+def wait_until_reset(url, user_file: dict):
+    target_date = user_file["reset_date"]
+    current_reset_date = "1990-01-01"
+    while target_date != current_reset_date:
+        response = get_and_validate(url)
+        try:
+            if (
+                response.status_code == 200
+                and response.response_json["resetDate"] == target_date
+            ):
+                return
+            elif response.status_code == 200:
+                current_reset_date = response.response_json["resetDate"]
+                logging.info("Reset date is %s", current_reset_date)
+            else:
+                logging.info("It's coming!")
+        except Exception as err:
+            logging.error("Error %s", err)
+        finally:
+            time.sleep(60)
 
 
 def lock_ship(ship_symbol, lock_id, connection, duration=60):

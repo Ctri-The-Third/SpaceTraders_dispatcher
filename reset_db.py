@@ -183,7 +183,7 @@ for mount in rows:
         result = cur.execute(sql, mount)
         print(f"{mount} - {cur.statusmessage}")
 
-sql = """insert into manufacture_relationships (import_tradegood, export_Tradegood), values (%s, %s) on conflict do nothing;"""
+sql = """insert into manufacture_relationships (import_tradegoods, export_Tradegood) values (%s, %s) on conflict do nothing;"""
 manufactables = {
     "CULTURAL_ARTIFACTS": ["LAB_INSTRUMENTS"],
     "PLASTICS": ["LIQUID_HYDROGEN"],
@@ -307,8 +307,6 @@ manufactables = {
     "SHIP_SURVEYOR": ["SHIP_PLATING", "SHIP_PARTS"],
 }
 
-for import_tradegood, export_tradegoods in manufactables.items():
-    with conn as cur:
-        for export_tradegood in export_tradegoods:
-            cur.execute(sql, (import_tradegood, export_tradegood))
-            print(f"{import_tradegood} -> {export_tradegood} - {cur.statusmessage}")
+for export_tradegood, import_tradegoods in manufactables.items():
+    with conn.cursor() as cur:
+        cur.execute(sql, (import_tradegoods, export_tradegood))

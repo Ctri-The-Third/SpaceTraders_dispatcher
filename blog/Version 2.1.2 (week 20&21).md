@@ -92,9 +92,16 @@ We are selling ELECTORNICS but the price hasn't dipped below 3300 at any point. 
 
 Hopefully the electronics market will evolve now that we've fixed that bottleneck.
 
-# week 21 - Version 2.1.2
 
-new conductor strategy (bank existing one)
-* ONCE -  explore system
-* every hour do 1/e tradevolume of export trades (per export, start with most profitable)
-* map out fuel supply - hauler for fuel and 
+End of week stats
+
+| stat         | Node U | node V | node C | 
+| ---          | ------------ | ---------- | --------------- |
+| total uptime |  246.62    | 245.83 | n/a       
+| total ships  | 73         | 17 | n/a
+| contracts    | 12         | 0 | n/a
+| earnings     | 19,885,216 | 1,535,191 | n/a
+| requests     | 512,942    | 201,445 | n/a
+| average delay| 0.89       | 0.48 | n/a
+| CPH          | 80,629.55  | 36,244.82 | n/a
+| CPR          | 38.77      | 7.62 | n/a
