@@ -68,6 +68,7 @@ class ScanInBackground(Behaviour):
                 or self.get_twenty_unscanned_waypoints("JUMP_GATE")
                 or self.get_twenty_unscanned_waypoints("PLANET")
                 or self.get_twenty_unscanned_waypoints("MOON")
+                or []
             )
 
             for wayp in wayps:
