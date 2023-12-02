@@ -696,23 +696,24 @@ order by 1 desc """
             nt = post_market.get_tradegood(t.symbol)
             if not isinstance(nt, MarketTradeGoodListing):
                 continue
+
             if nt.purchase_price != t.purchase_price:
                 changes["purchase_price_change"] = nt.purchase_price - t.purchase_price
-                changes["new_purchase_price"] = nt.purchase_price
             if nt.sell_price != t.sell_price:
                 changes["sell_price_change"] = nt.sell_price - t.sell_price
-                changes["new_sell_price"] = nt.sell_price
             if nt.supply != t.supply:
-                changes["new_supply"] = nt.supply
                 changes["old_supply"] = t.supply
             if nt.activity != t.activity:
-                changes["new_activity"] = nt.activity
                 changes["old_activity"] = t.activity
             if nt.trade_volume != t.trade_volume:
-                changes["new_trade_volume"] = nt.trade_volume
-                changes["old_trade_volume"] = t.trade_volume
+                changes["trade_volume_change"] = nt.trade_volume - t.trade_volume
 
             if len(changes) > 0:
+                changes["purchase_price"] = nt.purchase_price
+                changes["sell_price"] = nt.sell_price
+                changes["supply"] = nt.supply
+                changes["activity"] = nt.activity
+                changes["trade_volume"] = nt.trade_volume
                 changes["trade_symbol"] = t.symbol
                 changes["market_symbol"] = market_s
                 self.st.logging_client.log_custom_event(
