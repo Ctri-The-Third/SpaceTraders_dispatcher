@@ -341,17 +341,30 @@ def log_shallow_trade_tasks(
     current_agent_symbol: str,
     task_expiry: datetime.datetime,
     max_tasks: int,
+    target_system: str,
 ) -> int:
     capital_reserve = 0
-    routes = get_shallow_trades(
+    routes = get_99pct_shallow_trades(
         connection,
         credits_available,
+        target_system,
         limit=max_tasks,
     )
     if len(routes) == 0:
         logging.warning(
-            f"No shallow trades found {credits_available} cr, limit of {max_tasks}"
+            f"No optimum shallow trades found {credits_available} cr, limit of {max_tasks}"
         )
+        routes = get_abundant_scarce_trades(
+            connection,
+            credits_available,
+            target_system,
+            limit=max_tasks,
+        )
+    if len(routes) == 0:
+        logging.warning(
+            f"No abundant scarce trades found {credits_available} cr, limit of {max_tasks}"
+        )
+        return 0
     for route in routes:
         (
             trade_symbol,
@@ -412,11 +425,14 @@ def get_imports_for_export(
     return results
 
 
-def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple]:
+def get_99pct_shallow_trades(
+    connection, working_capital: int, target_system_symbol: str, limit=50
+) -> list[tuple]:
     sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * market_depth
     from trade_routes_intrasystem tri 
     left join trade_routes_max_potentials trmp on tri.trade_symbol =  trmp.trade_symbol
-    where market_depth <= 70 and (purchase_price * market_depth) < %s
+    where market_depth <= 80 and (purchase_price * market_depth) < %s
+    and system_symbol = %s
 	and  ( case when trmp.trade_symbol is not null then round((sell_price::numeric/ purchase_price)*100,2) > profit_pct *0.99 else True end ) 
 	order by route_value desc
     limit %s"""
@@ -426,12 +442,38 @@ def get_shallow_trades(connection, working_capital: int, limit=50) -> list[tuple
         sql,
         (
             working_capital,
+            target_system_symbol,
             limit,
         ),
     )
     if not routes:
         return []
     return [(r[0], r[3], r[4], r[2], r[6], r[5]) for r in routes]
+
+
+def get_abundant_scarce_trades(
+    connection, working_capital: int, target_system_symbol: str, limit=50
+) -> list[tuple]:
+    sql = """select trade_symbol, export_market, import_market, profit_per_unit, market_depth, purchase_price * market_depth
+    from trade_routes_intrasystem tri 
+    where market_depth <= 80 and (purchase_price * market_depth) < %s
+    and system_symbol = %s
+    and supply_text = 'ABUNDANT' and import_supply = 'SCARCE' 
+    order by route_value desc
+    limit %s"""
+
+    routes = try_execute_select(
+        connection,
+        sql,
+        (
+            working_capital,
+            target_system_symbol,
+            limit,
+        ),
+    )
+    if not routes:
+        return []
+    return [(r[0], r[3], r[6], r[5]) for r in routes]
 
 
 """
