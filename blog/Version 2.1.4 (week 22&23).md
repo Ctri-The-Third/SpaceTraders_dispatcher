@@ -25,7 +25,9 @@ When we get mining drones, will need to factor in proximity to a market as well,
 
 * Currently we're setting the commander to manage an export immediately, instead of fuel. The commander is running out of things to do.
 * The conductor needs to track permanent assignments and assign priority based tasks until they're complete. 
-* QUESTION - should we just switch to a task based system?
+* QUESTION - should we just switch to a task based system, and fall back to behaviours?
+  * much harder to troubleshoot.
+  
 
 ## node V 
 

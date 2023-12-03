@@ -473,7 +473,7 @@ def get_abundant_scarce_trades(
     )
     if not routes:
         return []
-    return [(r[0], r[3], r[6], r[5]) for r in routes]
+    return [(r[0], r[3], r[4], r[2], r[6], r[5]) for r in routes]
 
 
 """
