@@ -18,6 +18,7 @@ from straders_sdk.ship import Ship
 from straders_sdk.models import Market, Waypoint
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 from straders_sdk.constants import SUPPLY_LEVELS
+import math
 
 BEHAVIOUR_NAME = "MANAGE_SPECIFIC_EXPORT"
 SAFETY_PADDING = 60
@@ -92,6 +93,9 @@ class ManageSpecifcExport(Behaviour):
             self.logger.debug(f"Market data is stale, going to {self.target_market}")
             self.ship_extrasolar(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
+            wp = self.st.waypoints_view_one(self.starting_system, self.target_market)
+            market = self.st.system_market(wp, True)
+
             return
 
         # if the export is restricted, it's because we don't have enough imports
@@ -233,11 +237,19 @@ class ManageSpecifcExport(Behaviour):
                 best_sell_market = market
 
         if not best_sell_market:
+            self.logger.debug(
+                f"No profitable markets found! Resolve upstream supply issues. Sleeping for 60 seconds."
+            )
+            time.sleep(60)
             return
 
         self.ship_extrasolar(waypoint_slicer(self.target_market))
         self.ship_intrasolar(self.target_market)
-        while self.ship.cargo_space_remaining:
+        export_tg = self.get_market(self.target_market).get_tradegood(
+            self.target_tradegood
+        )
+        tradevolumes_purchased = 0
+        while self.ship.cargo_space_remaining or tradevolumes_purchased < 3:
             export_tg = self.get_market(self.target_market).get_tradegood(
                 self.target_tradegood
             )
@@ -246,11 +258,18 @@ class ManageSpecifcExport(Behaviour):
                 break
             resp = self.buy_cargo(
                 self.target_tradegood,
-                min(export_tg.trade_volume, self.ship.cargo_space_remaining),
+                min(
+                    export_tg.trade_volume,
+                    self.ship.cargo_space_remaining,
+                    math.floor(self.agent.credits / export_tg.purchase_price),
+                ),
             )
-            if not resp:
+            if not resp and self.ship.cargo_units_used == 0:
                 return
-        self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
+            elif not resp:
+                break
+            tradevolumes_purchased += 1
+        # self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
         self.ship_extrasolar(waypoint_slicer(best_sell_market.symbol))
         self.ship_intrasolar(best_sell_market.symbol)
         self.sell_all_cargo()
