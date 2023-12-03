@@ -54,6 +54,14 @@ from dispatcherWK16 import (
     BHVR_SIPHON_AND_CHILL,
     BHVR_MANAGE_SPECIFIC_EXPORT,
 )
+from dispatcherWK16 import (
+    RQ_ANY_FREIGHTER,
+    RQ_CARGO,
+    RQ_DRONE,
+    RQ_EXPLORER,
+    RQ_FUEL,
+    RQ_HEAVY_FREIGHTER,
+)
 from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
 from conductor_functions import (
@@ -151,8 +159,7 @@ class FuelManagementConductor:
 
         self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
         self.next_hourly_update = datetime.now() + timedelta(hours=1)
-        last_quarterly_update = datetime.now()
-        last_daily_update = datetime.now()
+
         self.next_daily_update = datetime.now() + timedelta(days=1)
         #
         # hourly calculations of profitable things, assign behaviours and tasks
@@ -171,12 +178,10 @@ class FuelManagementConductor:
             if self.next_daily_update < datetime.now():
                 self.next_daily_update = datetime.now() + timedelta(days=1)
                 self.daily_update()
-                last_daily_update = datetime.now()
 
             if self.next_hourly_update < datetime.now():
                 self.next_hourly_update = datetime.now() + timedelta(hours=1)
                 self.hourly_update()
-                last_hourly_update = datetime.now()
 
             if self.next_quarterly_update < datetime.now():
                 self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
@@ -316,13 +321,59 @@ class FuelManagementConductor:
             max(len(self.haulers) + len(self.commanders), 2),
             self.starting_system.symbol,
         )
-        log_mining_package_deliveries(
+        self.log_tasks_for_export_markets()
+        # we don't do this anymore, as extractors are going to "EXTRACT AND SELL" to nearby exchanges.
+        # if we get extractors or siphoners doing "EXTRACT AND CHILL" then it might be appropriate.
+
+        # log_mining_package_deliveries(    self.connection,BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,self.current_agent_symbol,waypoint_slicer(self.st.view_my_self().headquarters),self.next_quarterly_update,)
+
+    def log_tasks_for_export_markets(self, system_symbol=None):
+        # find export goods and their markets
+        # find ships that have regular behvaiours for those and exclude
+        # log a single task for each good that isn't managed
+        # these are priority 4 tasks
+        if not system_symbol:
+            system_symbol = self.starting_system.symbol
+        sql = """
+with export_goods as ( 
+select market_symbol, mtl.trade_symbol, supply, activity, mp.import_price - mp.export_price as avg_profit from market_tradegood_listings mtl 
+join waypoints w on mtl.market_symbol = w.waypoint_symbol
+join market_prices mp on mtl.trade_symbol = mp.trade_symbol
+where w.system_symbol = %s
+and mtl.type = 'EXPORT'
+order by activity != 'RESTRICTED', supply != 'ABUNDANT', (mp.import_price - mp.export_price) desc
+	),
+ managed_goods as (
+	select behaviour_params ->> 'target_tradegood' as trade_symbol
+	, behaviour_params ->> 'market_wp' as market_symbol
+	from ship_behaviours sb 
+	join ships s on sb.ship_symbol = s.ship_symbol
+	where behaviour_id = %s
+	and agent_name = %s
+)
+select eg.market_symbol, eg.trade_symbol  from export_goods eg left join managed_goods mg on 
+eg.trade_symbol = mg.trade_symbol and eg.market_symbol = mg.market_symbol
+where mg.trade_symbol is null and avg_profit is not null """
+        results = try_execute_select(
             self.connection,
-            BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-            self.current_agent_symbol,
-            waypoint_slicer(self.st.view_my_self().headquarters),
-            self.next_quarterly_update,
+            sql,
+            (system_symbol, BHVR_MANAGE_SPECIFIC_EXPORT, self.current_agent_symbol),
         )
+        i = 0.001
+        for result in results:
+            market_symbol, trade_symbol = result
+            params = {"target_tradegood": trade_symbol, "market_wp": market_symbol}
+            log_task(
+                self.connection,
+                BHVR_MANAGE_SPECIFIC_EXPORT,
+                [RQ_ANY_FREIGHTER],
+                system_symbol,
+                4 + i,
+                self.current_agent_symbol,
+                params,
+                expiry=self.next_quarterly_update,
+            )
+            i += 0.001
 
     def minutely_update(self):
         self.scale_and_set_siphoning()
@@ -688,7 +739,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
                     log_task(
                         self.connection,
                         BHVR_BUY_AND_DELIVER_OR_SELL,
-                        ["ANY_FREIGHTER", f"{self.max_cargo_available}_CARGO"],
+                        [RQ_ANY_FREIGHTER, f"{self.max_cargo_available}{RQ_CARGO}"],
                         waypoint_slicer(deliverable.destination_symbol),
                         3.9 - (i * 0.1),
                         self.current_agent_symbol,
