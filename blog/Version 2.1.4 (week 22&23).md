@@ -23,11 +23,12 @@ We'll need to remember to have ships that can sit on that exchange and sell the 
 
 When we get mining drones, will need to factor in proximity to a market as well, if we can find one that is <40 units we'll be in a good place. If we do <80 units we might need to be clever with fuel.
 
-* Currently we're setting the commander to manage an export immediately, instead of fuel. The commander is running out of things to do.
+* Currently we're setting the commander to manage an export immediately, instead of fuel. The commander is running out of things to do when the market is not valid for managing that export. Currently this is because the behaviour does not factor getting imports into the market unless the market is restricted.
 * The conductor needs to track permanent assignments and assign priority based tasks until they're complete. 
+* single trading tasks should have a FUEL_ requirement that is the largest single hop in the pathfinder. 
 * QUESTION - should we just switch to a task based system, and fall back to behaviours?
   * much harder to troubleshoot.
-  
+
 
 ## node V 
 

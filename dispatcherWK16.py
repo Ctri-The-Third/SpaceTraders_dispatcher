@@ -101,6 +101,13 @@ BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
 BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
 BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
 
+RQ_DRONE = "REQUIRE_DRONE"
+RQ_EXPLORER = "EXPLORER"
+RQ_HEAVY_FREIGHTER = "HEAVY_FREIGHTER"
+RQ_ANY_FREIGHTER = "ANY_FREIGHTER"
+RQ_CARGO = "_CARGO"
+RQ_FUEL = "_FUEL"
+
 behaviours_and_classes = {
     BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
     BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
@@ -448,30 +455,36 @@ class dispatcher:
                 valid_for_ship = True
                 if task["requirements"]:
                     for requirement in task["requirements"]:
-                        if requirement == "DRONE" and ship.frame.symbol not in [
+                        if requirement == RQ_DRONE and ship.frame.symbol not in [
                             "FRAME_DRONE",
                             "FRAME_PROBE",
                         ]:
                             valid_for_ship = False
                             break
-                        if requirement == "EXPLORER" and ship.role != "COMMANDER":
+                        if requirement == RQ_EXPLORER and ship.role != "COMMANDER":
                             valid_for_ship = False
                             break
                         if (
-                            requirement == "HEAVY_FREIGHTER"
+                            requirement == RQ_HEAVY_FREIGHTER
                             and ship.role != "HAULER"
                             and ship.cargo_capacity >= 360
                         ):
                             valid_for_ship = False
                             break
-                        if requirement == "ANY_FREIGHTER" and ship.role not in (
+                        if requirement == RQ_ANY_FREIGHTER and ship.role not in (
                             "HAULER",
                             "COMMAND",
                         ):
                             valid_for_ship = False
                             break
 
-                        if "_CARGO" in requirement and ship.cargo_capacity < int(
+                        if RQ_CARGO in requirement and ship.cargo_capacity < int(
+                            re.findall(r"\d+", requirement)[0]
+                        ):
+                            valid_for_ship = False
+                            break
+
+                        if RQ_FUEL in requirement and ship.fuel_capacity < int(
                             re.findall(r"\d+", requirement)[0]
                         ):
                             valid_for_ship = False
