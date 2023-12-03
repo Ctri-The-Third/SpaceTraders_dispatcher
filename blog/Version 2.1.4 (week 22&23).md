@@ -23,6 +23,10 @@ We'll need to remember to have ships that can sit on that exchange and sell the 
 
 When we get mining drones, will need to factor in proximity to a market as well, if we can find one that is <40 units we'll be in a good place. If we do <80 units we might need to be clever with fuel.
 
+* Currently we're setting the commander to manage an export immediately, instead of fuel. The commander is running out of things to do.
+* The conductor needs to track permanent assignments and assign priority based tasks until they're complete. 
+* QUESTION - should we just switch to a task based system?
+
 ## node V 
 
 We missed some early behaviours with node V, and unfortuantely it's not generating any credits. I'll need to look into why the contract tasks aren't being picked up by the dispatcher and maybe fix that one thing tomorrow.
