@@ -187,7 +187,10 @@ class Behaviour:
                 and fuel_cost < ship.fuel_capacity
             ):
                 # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
-                self.refuel_locally()
+                resp = self.refuel_locally()
+                if not resp:
+                    # expect to drift
+                    pass
             if (
                 fuel_cost >= ship.fuel_current
                 and ship.fuel_capacity > 0
@@ -325,8 +328,8 @@ class Behaviour:
         if ship.fuel_capacity == 0:
             return
         self.st.ship_dock(ship)
-        self.st.ship_refuel(ship)
-        return
+        resp = self.st.ship_refuel(ship)
+        return resp
 
         # this used to be "go and refuel."
         # in order try and understand why ships are sometimes drifting, and to take advantage
@@ -425,10 +428,10 @@ class Behaviour:
                 continue
             # we need to validate that we're not selling more than the tradegood volume for the market allows.
             listing = listings.get(cargo.symbol, None)
-            trade_volume = cargo.units
+            trade_volume = remaining_units = cargo.units
             if listing:
                 trade_volume = listing.trade_volume
-            remaining_units = cargo.units
+
             for i in range(0, math.ceil(cargo.units / trade_volume)):
                 resp = st.ship_sell(
                     ship, cargo.symbol, min(remaining_units, trade_volume)

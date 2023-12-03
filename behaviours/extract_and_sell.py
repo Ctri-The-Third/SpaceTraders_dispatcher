@@ -45,7 +45,7 @@ class ExtractAndGoSell(Behaviour):
         self.st.ship_cooldown(ship)
         st = self.st
         agent = self.agent
-        if not ship.can_extract:
+        if not ship.can_extract and not ship.can_siphon:
             return
         # move ship to a waypoint in its system with
         st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
@@ -100,8 +100,6 @@ class ExtractAndGoSell(Behaviour):
             self.sell_all_cargo()
         else:
             self.jettison_all_cargo()
-
-        new_market = st.system_market(current_wp, True)
 
         self.end()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
@@ -171,10 +169,14 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "A"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
-    behaviour_params = {"market_wp": "X1-U49-G52", "asteroid_wp": "X1-U49-C42"}
+    behaviour_params = {
+        "market_wp": "X1-KM71-C43",
+        "asteroid_wp": "X1-KM71-C42",
+        "cargo_to_transfer": ["*"],
+    }
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
