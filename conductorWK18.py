@@ -500,13 +500,22 @@ order by 2 desc """
             if ship:
                 self.siphoners.append(ship)
         if self.gas_giant:
+            # is there a place we can sell stuff orbiting the gas giant?
+            # if so, extract_and_sell, else siphon_and_chill
+            # if we don't constraint it this way, we might end up with 8hr drifts again
+            bhvr = (
+                BHVR_SIPHON_AND_CHILL
+                if not self.gas_exchange
+                else BHVR_EXTRACT_AND_GO_SELL
+            )
+            params = {
+                "asteroid_wp": self.gas_giant.symbol,
+                "cargo_to_transfer": ["*"],
+            }
+            if self.gas_exchange:
+                params["market_wp"] = self.gas_exchange.symbol
             for s in self.siphoners:
-                set_behaviour(
-                    self.connection,
-                    s.name,
-                    BHVR_SIPHON_AND_CHILL,
-                    {"asteroid_wp": self.gas_giant.symbol, "cargo_to_transfer": ["*"]},
-                )
+                set_behaviour(self.connection, s.name, bhvr, params)
 
     def find_unassigned_ships(self) -> list[Ship]:
         symbols = self.find_unassigned_ship_symbols()
