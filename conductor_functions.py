@@ -454,7 +454,7 @@ def get_99pct_shallow_trades(
 def get_abundant_scarce_trades(
     connection, working_capital: int, target_system_symbol: str, limit=50
 ) -> list[tuple]:
-    sql = """select trade_symbol, export_market, import_market, profit_per_unit, market_depth, purchase_price * market_depth
+    sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market,  market_depth, purchase_price * market_depth
     from trade_routes_intrasystem tri 
     where market_depth <= 80 and (purchase_price * market_depth) < %s
     and system_symbol = %s
