@@ -110,6 +110,7 @@ class FuelManagementConductor:
         self.starting_planet = None
 
         self.gas_giant = None
+        self.gas_exchange = None
         self.fuel_refinery = None
 
         self.tradegood_and_ship_mappings = {
@@ -181,12 +182,13 @@ class FuelManagementConductor:
                 self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
                 self.quarterly_update()
 
-            self.minutely_update()
             if starting_run:
                 self.daily_update()
                 self.hourly_update()
                 self.quarterly_update()
                 starting_run = False
+            self.minutely_update()
+
             sleep(60)
 
     def daily_update(self):
@@ -208,33 +210,21 @@ class FuelManagementConductor:
                 specific_ship_symbol=self.commanders[0].name,
             )
 
-        possible_ships = self.haulers + self.commanders
-        tgs = [
-            "SHIP_PARTS",
-            "SHIP_PLATING",
-            "ADVANCED_CIRCUITRY",
-            "ELECTRONICS",
-            "MICROPROCESSORS",
-            "EXPLOSIVES",
-            "COPPER",
-        ]
-        index = 0
-        for tg in tgs:
-            if len(self.haulers) <= index:
-                bought = maybe_buy_ship_sys(
-                    self.st, "SHIP_LIGHT_HAULER", self.safety_margin
-                )
-                if bought:
-                    self.haulers.append(bought)
-                else:
-                    break
-            set_behaviour(
-                self.connection,
-                self.haulers[index].name,
-                BHVR_MANAGE_SPECIFIC_EXPORT,
-                {"target_tradegood": tg, "priority": 5},
+        gas_giant = self.st.find_waypoints_by_type_one(
+            self.starting_system.symbol, "GAS_GIANT"
+        )
+        if gas_giant:
+            self.gas_giant = gas_giant
+            wps = self.st.find_waypoints_by_coords(
+                gas_giant.system_symbol, gas_giant.x, gas_giant.y
             )
-            index += 1
+            for _, wp in wps.items():
+                if "MARKETPLACE" in [t.symbol for t in wp.traits]:
+                    market = self.st.system_market(wp)
+                    if market.get_tradegood("HYDROCARBON"):
+                        self.gas_exchange = market
+                        break
+
         process_contracts(self.st)
         self.set_satellite_behaviours()
         self.scale_and_set_siphoning()
@@ -251,20 +241,25 @@ class FuelManagementConductor:
         mining_sites = self.get_mining_sites(
             self.starting_system.symbol, len(self.haulers), 10, 100
         )
-
-        trade_symbols = map_all_goods(
-            self.connection, "ADVANCED_CIRCUITRY", self.starting_system.symbol
-        )
-        trade_symbols = map_all_goods(
-            self.connection, "SHIP_PARTS", self.starting_system.symbol, trade_symbols
-        )
-        trade_symbols = map_all_goods(
-            self.connection, "SHIP_PLATING", self.starting_system.symbol, trade_symbols
-        )
-        trade_symbols = map_all_goods(
-            self.connection, "FAB_MATS", self.starting_system.symbol, trade_symbols
-        )
-        targets = [(tradegood, source) for tradegood, source in trade_symbols.items()]
+        # our goal is to get markets that we can manage.
+        # however we can't guarantee that the markets will have imports and exports in the given system
+        # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
+        target_tradegoods = [
+            "SHIP_PARTS",
+            "SHIP_PLATING",
+            "ADVANCED_CIRCUITRY",
+            "ELECTRONICS",
+            "FAB_MATS",
+        ]
+        viabile_tradegoods = self.get_viable_routes(target_tradegoods)
+        trade_symbols = None
+        for tradegood in viabile_tradegoods:
+            trade_symbols = map_all_goods(
+                self.connection, tradegood, self.starting_system.symbol, trade_symbols
+            )
+        targets = [
+            (tradegood, source[0]) for tradegood, source in trade_symbols.items()
+        ]
         index = 0
         for h in possible_ships:
             if len(targets) > index:
@@ -319,6 +314,7 @@ class FuelManagementConductor:
             self.current_agent_symbol,
             self.next_quarterly_update,
             max(len(self.haulers) + len(self.commanders), 2),
+            self.starting_system.symbol,
         )
         log_mining_package_deliveries(
             self.connection,
@@ -382,6 +378,19 @@ class FuelManagementConductor:
                     BHVR_EXTRACT_AND_TRANSFER,
                     {"asteroid_wp": sites[3][1], "cargo_to_transfer": ["*"]},
                 )
+
+    def get_viable_routes(self, trade_symbols: list[str] = None):
+        sql = """select trade_symbol, max(route_value) from trade_routes_intrasystem
+where system_Symbol = %s
+group by trade_symbol
+order by 2 desc """
+        results = try_execute_select(
+            self.connection, sql, (self.starting_system.symbol,)
+        )
+        valid_symbols = [r[0] for r in results]
+        if trade_symbols:
+            return [r for r in trade_symbols if r in valid_symbols]
+        return valid_symbols
 
     def set_satellite_behaviours(self):
         "ensures that each distinct celestial body (excluding moons etc...) has a satellite, and a shipyard for each ship"
@@ -648,11 +657,13 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         unfulfilled_contracts = [
             con for con in contracts if not con.fulfilled and con.accepted
         ]
-
+        # we need to check we've enough money to fulfil the contract.
         for con in unfulfilled_contracts:
             con: Contract
             tasks_logged = 0
             for deliverable in con.deliverables:
+                if "ORE" in deliverable.symbol:
+                    continue
                 remaining_to_deliver = (
                     deliverable.units_required - deliverable.units_fulfilled
                 )
