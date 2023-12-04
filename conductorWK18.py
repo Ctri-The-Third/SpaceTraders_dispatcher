@@ -348,7 +348,8 @@ class FuelManagementConductor:
         #   set_behaviour(
 
         sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
-
+        if len(sites) == 0:
+            return
         # set 10 extractors to go to site 1 and extract
         if len(self.extractors) > 0:
             for extractor in self.extractors[:20]:
