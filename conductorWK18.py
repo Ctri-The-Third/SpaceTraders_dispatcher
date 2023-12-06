@@ -298,9 +298,9 @@ class FuelManagementConductor:
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
         # if not, give the exporter a refuel task for 1 (maybe 2) points.
-        self.safety_margin = 50000
 
         possible_ships = self.haulers + self.commanders
+        self.safety_margin = 50000 * len(possible_ships)
         # self.set_refinery_behaviours(possible_ships)
         # self.set_satellite_behaviours()
 
