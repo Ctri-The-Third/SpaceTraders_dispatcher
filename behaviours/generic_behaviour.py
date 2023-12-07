@@ -180,17 +180,22 @@ class Behaviour:
             fuel_cost = self.pathfinder.determine_fuel_cost(
                 origin_wp, point, flight_mode
             )
-            if (
+            attempts = 0
+            while (
                 flight_mode != "DRIFT"
                 and fuel_cost >= ship.fuel_current
                 and ship.fuel_capacity > 0
                 and fuel_cost < ship.fuel_capacity
+                and attempts < 5
             ):
                 # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
+                attempts += 1
                 resp = self.refuel_locally()
-                if not resp:
+                if not resp and resp.error_code == 4600:  # not enough credits
                     # expect to drift
+                    time.sleep(60)
                     pass
+
             if (
                 fuel_cost >= ship.fuel_current
                 and ship.fuel_capacity > 0
