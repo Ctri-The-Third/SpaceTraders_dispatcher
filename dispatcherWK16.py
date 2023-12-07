@@ -235,9 +235,7 @@ class dispatcher:
         print(f"-----  DISPATCHER [{self.lock_id}] ACTIVATED ------")
         self.consumer.start()
         ships_and_threads: dict[str : threading.Thread] = {}
-        check_frequency = timedelta(seconds=15 * len(self.agents))
-        agents_and_last_checkeds = {}
-        agents_and_unlocked_ships = {}
+
         self.client: SpaceTraders
         self.client.set_current_agent(self.agents[0][1], self.agents[0][0])
         self.client.ships_view(force=True)
@@ -249,113 +247,12 @@ class dispatcher:
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
-            # if we've been running for more than 12 hours, terminate. important for profiling.
-            #
-            # every 15 seconds update the list of unlocked ships with a DB query
-            #
-            for token, agent_symbol in self.agents:
-                self.client.current_agent_symbol = agent_symbol
-                self.client.set_current_agent(agent_symbol, token)
-                if (
-                    agents_and_last_checkeds.get(
-                        agent_symbol, datetime.now() - (check_frequency * 2)
-                    )
-                    + check_frequency
-                    < datetime.now()
-                ):
-                    agents_and_unlocked_ships[agent_symbol] = self.get_unlocked_ships(
-                        agent_symbol
-                    )
-                    agents_and_last_checkeds[agent_symbol] = datetime.now()
-                    unlocked_ships = agents_and_unlocked_ships[agent_symbol]
-                    active_ships = sum(
-                        [1 for t in ships_and_threads.values() if t.is_alive()]
-                    )
+            try:
+                self._the_big_loop(ships_and_threads)
+            except Exception as err:
+                self.logger.error("Error in the big loop: %s", err)
+                time.sleep(30)
 
-                    logging.info(
-                        "dispatcher %s found %d unlocked ships for agent %s - %s active (%s%%)",
-                        self.lock_id,
-                        len(unlocked_ships),
-                        agent_symbol,
-                        active_ships,
-                        round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
-                    )
-                    if len(unlocked_ships) > 10:
-                        set_logging(level=logging.INFO)
-                        api_logger = logging.getLogger("API-Client")
-                        api_logger.setLevel(logging.CRITICAL)
-                        self.logger.level = logging.INFO
-                        logging.getLogger().setLevel(logging.WARNING)
-                        pass
-                    # if we're running a ship and the lock has expired during execution, what do we do?
-                    # do we relock the ship whilst we're running it, or terminate the thread
-                    # I say terminate.
-
-                #
-                # check if we have idle ships whose behaviours we can execute.
-                #
-
-                for ship_and_behaviour in unlocked_ships:
-                    if ship_and_behaviour["name"] in ships_and_threads:
-                        thread = ships_and_threads[ship_and_behaviour["name"]]
-                        thread: threading.Thread
-                        if thread.is_alive():
-                            continue
-                        else:
-                            del ships_and_threads[ship_and_behaviour["name"]]
-
-                    #
-                    # is there a task the ship can execute? if not, go to behaviour scripts instead.
-                    #
-                    task = self.get_task_for_ships(
-                        self.client, ship_and_behaviour["name"]
-                    )
-                    if task:
-                        if task["claimed_by"] is None or task["claimed_by"] == "":
-                            self.claim_task(
-                                task["task_hash"], ship_and_behaviour["name"]
-                            )
-                        task["behaviour_params"]["task_hash"] = task["task_hash"]
-
-                        bhvr = self.map_behaviour_to_class(
-                            task["behaviour_id"],
-                            ship_and_behaviour["name"],
-                            task["behaviour_params"],
-                            agent_symbol,
-                        )
-                        doing_task = self.lock_and_execute(
-                            ships_and_threads,
-                            ship_and_behaviour["name"],
-                            bhvr,
-                            task["behaviour_id"],
-                        )
-
-                        if doing_task:
-                            continue
-
-                    #
-                    # Instead, fallback behaviour.
-                    #
-
-                    # first time we've seen this ship - create a thread
-                    bhvr = None
-                    bhvr = self.map_behaviour_to_class(
-                        ship_and_behaviour["behaviour_id"],
-                        ship_and_behaviour["name"],
-                        ship_and_behaviour["behaviour_params"],
-                        agent_symbol,
-                    )
-
-                    self.lock_and_execute(
-                        ships_and_threads,
-                        ship_and_behaviour["name"],
-                        bhvr,
-                        ship_and_behaviour["behaviour_id"],
-                    )
-                    # time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
-                    pass
-
-                time.sleep(1)
         last_exec = False
         while (
             len([t for t in ships_and_threads.values() if t.is_alive()]) > 0
@@ -374,6 +271,115 @@ class dispatcher:
                 last_exec = len(ships_and_threads) == 0
             time.sleep(1)
         self.consumer.stop()
+
+    def _the_big_loop(self, ships_and_threads):
+        agents_and_last_checkeds = {}
+        agents_and_unlocked_ships = {}
+        check_frequency = timedelta(seconds=15 * len(self.agents))
+
+        # if we've been running for more than 12 hours, terminate. important for profiling.
+        #
+        # every 15 seconds update the list of unlocked ships with a DB query
+        #
+        for token, agent_symbol in self.agents:
+            self.client.current_agent_symbol = agent_symbol
+            self.client.set_current_agent(agent_symbol, token)
+            if (
+                agents_and_last_checkeds.get(
+                    agent_symbol, datetime.now() - (check_frequency * 2)
+                )
+                + check_frequency
+                < datetime.now()
+            ):
+                agents_and_unlocked_ships[agent_symbol] = self.get_unlocked_ships(
+                    agent_symbol
+                )
+                agents_and_last_checkeds[agent_symbol] = datetime.now()
+                unlocked_ships = agents_and_unlocked_ships[agent_symbol]
+                active_ships = sum(
+                    [1 for t in ships_and_threads.values() if t.is_alive()]
+                )
+
+                logging.info(
+                    "dispatcher %s found %d unlocked ships for agent %s - %s active (%s%%)",
+                    self.lock_id,
+                    len(unlocked_ships),
+                    agent_symbol,
+                    active_ships,
+                    round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
+                )
+                if len(unlocked_ships) > 10:
+                    set_logging(level=logging.INFO)
+                    api_logger = logging.getLogger("API-Client")
+                    api_logger.setLevel(logging.CRITICAL)
+                    self.logger.level = logging.INFO
+                    logging.getLogger().setLevel(logging.WARNING)
+                    pass
+                # if we're running a ship and the lock has expired during execution, what do we do?
+                # do we relock the ship whilst we're running it, or terminate the thread
+                # I say terminate.
+
+            #
+            # check if we have idle ships whose behaviours we can execute.
+            #
+
+            for ship_and_behaviour in unlocked_ships:
+                if ship_and_behaviour["name"] in ships_and_threads:
+                    thread = ships_and_threads[ship_and_behaviour["name"]]
+                    thread: threading.Thread
+                    if thread.is_alive():
+                        continue
+                    else:
+                        del ships_and_threads[ship_and_behaviour["name"]]
+
+                #
+                # is there a task the ship can execute? if not, go to behaviour scripts instead.
+                #
+                task = self.get_task_for_ships(self.client, ship_and_behaviour["name"])
+                if task:
+                    if task["claimed_by"] is None or task["claimed_by"] == "":
+                        self.claim_task(task["task_hash"], ship_and_behaviour["name"])
+                    task["behaviour_params"]["task_hash"] = task["task_hash"]
+
+                    bhvr = self.map_behaviour_to_class(
+                        task["behaviour_id"],
+                        ship_and_behaviour["name"],
+                        task["behaviour_params"],
+                        agent_symbol,
+                    )
+                    doing_task = self.lock_and_execute(
+                        ships_and_threads,
+                        ship_and_behaviour["name"],
+                        bhvr,
+                        task["behaviour_id"],
+                    )
+
+                    if doing_task:
+                        continue
+
+                #
+                # Instead, fallback behaviour.
+                #
+
+                # first time we've seen this ship - create a thread
+                bhvr = None
+                bhvr = self.map_behaviour_to_class(
+                    ship_and_behaviour["behaviour_id"],
+                    ship_and_behaviour["name"],
+                    ship_and_behaviour["behaviour_params"],
+                    agent_symbol,
+                )
+
+                self.lock_and_execute(
+                    ships_and_threads,
+                    ship_and_behaviour["name"],
+                    bhvr,
+                    ship_and_behaviour["behaviour_id"],
+                )
+                # time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
+                pass
+
+            time.sleep(1)
 
     def lock_and_execute(
         self, ships_and_threads: dict, ship_symbol: str, bhvr: Behaviour, bhvr_id

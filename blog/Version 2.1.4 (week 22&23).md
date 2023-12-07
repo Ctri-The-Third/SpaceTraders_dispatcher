@@ -33,3 +33,18 @@ When we get mining drones, will need to factor in proximity to a market as well,
 ## node V 
 
 We missed some early behaviours with node V, and unfortuantely it's not generating any credits. I'll need to look into why the contract tasks aren't being picked up by the dispatcher and maybe fix that one thing tomorrow.
+
+
+## tracking progress on market growth and changes.
+
+I want a system-wide view of tradegoods and their market states. 
+Clicking into them should show an interweaved set of transactions, and activity /supply changes on a minute to minute basis, as well as any ships responsible for making those transactions.
+
+I want to be able to see which markets are restricted.
+
+✅ A per-listing graph showing the export market(s) and the import market(s) with their prices over time, supply state, and activity stat should be provided.
+now a mechanism that, for each of these exports, shows the dependancy chain and their states. 
+State health calculated by 
+* Activity (if not restricted)
+* No items sold (if > 0 )
+* Supply 
