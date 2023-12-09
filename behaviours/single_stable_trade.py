@@ -39,7 +39,9 @@ class SingleStableTrade(Behaviour):
         ship = self.ship = st.ships_view_one(self.ship_name, True)
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         # to the nearest factor of 10
         target_trade_depth = ship.cargo_capacity / 4

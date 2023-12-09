@@ -43,7 +43,12 @@ class MonitorCheapestShipyard(Behaviour):
         )
         # scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
         time.sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
 

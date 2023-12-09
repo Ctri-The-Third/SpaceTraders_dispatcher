@@ -48,7 +48,9 @@ class FindMountsAndEquip(Behaviour):
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         mounts = self.behaviour_params["mounts"]
         ship_mounts = [mount.symbol for mount in ship.mounts]

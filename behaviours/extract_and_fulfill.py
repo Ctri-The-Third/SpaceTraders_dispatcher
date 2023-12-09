@@ -51,7 +51,12 @@ class ExtractAndFulfill_7(Behaviour):
         #
 
         if not ship.can_extract:
-            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            st.logging_client.log_ending(
+                BEHAVIOUR_NAME,
+                ship.name,
+                agent.credits,
+                behaviour_params=self.behaviour_params,
+            )
             return
 
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)

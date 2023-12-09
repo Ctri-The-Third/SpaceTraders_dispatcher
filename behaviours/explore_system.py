@@ -48,7 +48,12 @@ class ExploreSystem(Behaviour):
         st = self.st
         agent = st.view_my_self()
         # check all markets in the system
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
         self.sleep_until_ready()
         o_sys = st.systems_view_one(ship.nav.system_symbol)

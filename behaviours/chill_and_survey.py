@@ -38,7 +38,9 @@ class ChillAndSurvey(Behaviour):
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         target_sys = st.systems_view_one(waypoint_slicer(self.target_wp_s))
         target_wp = st.waypoints_view_one(
