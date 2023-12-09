@@ -40,7 +40,7 @@ class RefuelAnExchange(Behaviour):
 
     def run(self):
         self.st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, self.ship.name, self.agent.credits
+            BEHAVIOUR_NAME, self.ship.name, self.agent.credits, self.behaviour_params
         )
         st = self.st
         ship = st.ships_view_one(self.ship.name, True)
