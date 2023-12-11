@@ -325,11 +325,8 @@ class FuelManagementConductor:
             max(len(self.haulers) + len(self.commanders), 2),
             self.starting_system.symbol,
         )
-        self.log_tasks_for_export_markets()
-        # we don't do this anymore, as extractors are going to "EXTRACT AND SELL" to nearby exchanges.
-        # if we get extractors or siphoners doing "EXTRACT AND CHILL" then it might be appropriate.
 
-        # log_mining_package_deliveries(    self.connection,BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,self.current_agent_symbol,waypoint_slicer(self.st.view_my_self().headquarters),self.next_quarterly_update,)
+        # self.log_tasks_for_export_markets()
 
     def log_tasks_for_export_markets(self, system_symbol=None):
         # find export goods and their markets
@@ -736,15 +733,23 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             con for con in contracts if not con.fulfilled and con.accepted
         ]
         # we need to check we've enough money to fulfil the contract.
+
         for con in unfulfilled_contracts:
+            contract_cost = 0
             con: Contract
             tasks_logged = 0
             for deliverable in con.deliverables:
-                if "ORE" in deliverable.symbol:
-                    continue
                 remaining_to_deliver = (
                     deliverable.units_required - deliverable.units_fulfilled
                 )
+                deliverable_cost = self.get_market_prices_for(deliverable.symbol)
+                if not deliverable_cost:
+                    continue
+                total_cost = (
+                    deliverable_cost[1] or deliverable_cost[3]
+                ) * remaining_to_deliver
+                if self.st.current_agent.credits < total_cost + self.safety_margin:
+                    continue
                 for i in range(
                     math.ceil((remaining_to_deliver) / self.max_cargo_available)
                 ):
@@ -768,6 +773,14 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
                     tasks_logged += 1
                     remaining_to_deliver -= self.max_cargo_available
         self.st.logger.info(f"Logged {tasks_logged} tasks for contracts")
+
+    def get_market_prices_for(self, tradegood: str) -> tuple:
+        sql = """select trade_symbol, export_price, import_price, galactic_average from market_prices
+        where trade_symbol = %s"""
+        results = try_execute_select(self.connection, sql, (tradegood,))
+        if not results:
+            return None
+        return results[0]
 
     def get_trade_routes(
         self, limit=None, min_market_depth=100, max_market_depth=1000000
