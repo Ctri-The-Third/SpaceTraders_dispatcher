@@ -50,7 +50,12 @@ class ExtractAndChill(Behaviour):
             return
         # move ship to a waypoint in its system with
 
-        st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            "EXTRACT_AND_SELL",
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
             time.sleep(60)

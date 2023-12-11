@@ -52,7 +52,12 @@ class ExtractAndTransfer_8(Behaviour):
         #  -- log beginning
         #
 
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
         #
         # -- navigate to target waypoint - if not set, go for nearest asteroid field

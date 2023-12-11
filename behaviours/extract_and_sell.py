@@ -48,7 +48,12 @@ class ExtractAndGoSell(Behaviour):
         if not ship.can_extract and not ship.can_siphon:
             return
         # move ship to a waypoint in its system with
-        st.logging_client.log_beginning("EXTRACT_AND_SELL", ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            "EXTRACT_AND_SELL",
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)

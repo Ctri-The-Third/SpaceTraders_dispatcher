@@ -38,7 +38,9 @@ class ScanInBackground(Behaviour):
         hq_system = waypoint_slicer(agent.headquarters)
         st = self.st
         # check all markets in the system
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         systems_sweep = self.have_we_all_the_systems()
         if not systems_sweep[0]:

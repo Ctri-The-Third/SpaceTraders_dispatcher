@@ -66,7 +66,12 @@ class ManageSpecifcExport(Behaviour):
         ship = self.ship
         agent = st.view_my_self()
         self.sleep_until_ready()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
         if not self.target_market:
             mkts = self.find_markets_that_export(self.target_tradegood)

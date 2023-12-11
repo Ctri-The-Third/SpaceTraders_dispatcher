@@ -41,8 +41,8 @@ We missed some early behaviours with node V, and unfortuantely it's not generati
 Clicking into them should show an interweaved set of transactions, and activity /supply changes on a minute to minute basis, as well as any ships responsible for making those transactions.
 
 ✅ I want to be able to see which markets are restricted.
-
-✅ A per-listing graph showing the export market(s) and the import market(s) with their prices over time, supply state, and activity stat should be provided.
+s
+ A per-listing graph showing the export market(s) and the import market(s) with their prices over time, supply state, and activity stat should be provided.
 now a mechanism that, for each of these exports, shows the dependancy chain and their states. 
 State health calculated by 
 * Activity (if not restricted)
@@ -51,6 +51,12 @@ State health calculated by
 
 ## Complete restriction
 
-* ✅ With the UI above complete, it's very clear that all markets are restricted. We need to get EXPLOSIVES managed, who will gain their IMPORTs from exchanges.
-* We also need to get ship sessions summarised and then detailed in the UI so we can troubleshoot better.
+Our increase to haulers has seen several markets enter the STRONG state, those are FOOD, ALUMINUM, and ALUMINUM_ORE.
+What we don't have is a way to observe both the behaviours for a given ship, and and the transactions for a given market.
+Unfortunately, later those returned back to a RESTRICTED state and it's not quite clear why. 
+
+* ✅ We need to get EXPLOSIVES managed, who will gain their IMPORTs from exchanges.
+* ✅ A new view which shows transactions, and can be filtered either by tradegood, or by market.
+* ✅ Update the SDK so that behaviour params are logged with the event's beginning.
+* We now need to get ship sessions summarised and then surfaced in the UI so we can troubleshoot better.
 * The amount of hourly quests might be clogging things up. It might be better to have a floating hauler (or the commander I guess) that is set to zip between markets and perform profitable trades. 

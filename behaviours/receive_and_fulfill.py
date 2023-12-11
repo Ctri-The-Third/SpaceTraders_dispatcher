@@ -47,7 +47,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)

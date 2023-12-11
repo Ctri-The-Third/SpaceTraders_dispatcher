@@ -38,7 +38,9 @@ class RemoteScanWaypoints(Behaviour):
         hq_system = waypoint_slicer(agent.headquarters)
         st = self.st
         # check all markets in the system
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         agent = self.agent
         if ship.can_survey:

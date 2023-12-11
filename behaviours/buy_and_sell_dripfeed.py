@@ -60,7 +60,9 @@ class BuyAndSellDripfeed(Behaviour):
         st = self.st
         ship = self.ship = self.st.ships_view_one(self.ship.name, True)
         agent = self.agent
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         #
         # setup initial parameters and preflight checks

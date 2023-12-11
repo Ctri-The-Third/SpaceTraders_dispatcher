@@ -55,7 +55,9 @@ class BuyAndDeliverOrSell_6(Behaviour):
         st = self.st
         ship = self.ship
         agent = self.agent
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         #
         # setup initial parameters and preflight checks

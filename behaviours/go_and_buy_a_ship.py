@@ -37,7 +37,12 @@ class GoAndBuyShip(Behaviour):
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
         target_ship_type = self.behaviour_params.get("ship_type", None)
         target_wp = self.find_shipyards(target_ship_type)

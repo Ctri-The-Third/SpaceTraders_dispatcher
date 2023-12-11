@@ -55,7 +55,9 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         if not self.start_wp_s:
             # we couldn't find any asteroids with the desired cargo
