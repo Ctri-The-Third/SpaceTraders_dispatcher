@@ -255,6 +255,10 @@ class FuelManagementConductor:
             "ADVANCED_CIRCUITRY",
             "ELECTRONICS",
             "FAB_MATS",
+            "EXPLOSIVES",
+            "IRON",
+            "COPPER",
+            "ALUMINUM",
         ]
         viabile_tradegoods = self.get_viable_routes(target_tradegoods)
         trade_symbols = None
@@ -378,6 +382,9 @@ where mg.trade_symbol is null and avg_profit is not null """
     def minutely_update(self):
         self.scale_and_set_siphoning()
 
+        # for each engineered asteroid - position 20 extractors
+        # for each asteroid with either an exchange or import within 80 clicks, deploy 10 extractors
+
         # if len(self.shuttles) < 5:
         #    maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
         if len(self.haulers) < 2:
@@ -390,8 +397,12 @@ where mg.trade_symbol is null and avg_profit is not null """
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         elif len(self.surveyors) < 1:
             maybe_buy_ship_sys(self.st, "SHIP_SURVEYOR", self.safety_margin)
-        elif len(self.haulers) < 10:
+        elif len(self.haulers) < 15:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
+        elif len(self.extractors) < 20:
+            maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
+        elif len(self.surveyors) < 2:
+            maybe_buy_ship_sys(self.st, "SHIP_SURVEYOR", self.safety_margin)
 
     def set_drone_behaviours(self):
         # see scale_and_set_siphoning

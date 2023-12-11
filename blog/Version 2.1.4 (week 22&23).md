@@ -37,10 +37,10 @@ We missed some early behaviours with node V, and unfortuantely it's not generati
 
 ## tracking progress on market growth and changes.
 
-I want a system-wide view of tradegoods and their market states. 
+✅ I want a system-wide view of tradegoods and their market states. 
 Clicking into them should show an interweaved set of transactions, and activity /supply changes on a minute to minute basis, as well as any ships responsible for making those transactions.
 
-I want to be able to see which markets are restricted.
+✅ I want to be able to see which markets are restricted.
 
 ✅ A per-listing graph showing the export market(s) and the import market(s) with their prices over time, supply state, and activity stat should be provided.
 now a mechanism that, for each of these exports, shows the dependancy chain and their states. 
@@ -48,3 +48,9 @@ State health calculated by
 * Activity (if not restricted)
 * No items sold (if > 0 )
 * Supply 
+
+## Complete restriction
+
+* ✅ With the UI above complete, it's very clear that all markets are restricted. We need to get EXPLOSIVES managed, who will gain their IMPORTs from exchanges.
+* We also need to get ship sessions summarised and then detailed in the UI so we can troubleshoot better.
+* The amount of hourly quests might be clogging things up. It might be better to have a floating hauler (or the commander I guess) that is set to zip between markets and perform profitable trades. 
