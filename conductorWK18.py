@@ -315,16 +315,16 @@ class FuelManagementConductor:
         # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
         process_contracts(self.st)
         self.log_tasks_for_contracts()
-
-        log_shallow_trade_tasks(
-            self.connection,
-            self.st.view_my_self().credits,
-            BHVR_BUY_AND_DELIVER_OR_SELL,
-            self.current_agent_symbol,
-            self.next_quarterly_update,
-            max(len(self.haulers) + len(self.commanders), 2),
-            self.starting_system.symbol,
-        )
+        if self.st.view_my_self().credits < 1000000:
+            log_shallow_trade_tasks(
+                self.connection,
+                self.st.view_my_self().credits,
+                BHVR_BUY_AND_DELIVER_OR_SELL,
+                self.current_agent_symbol,
+                self.next_quarterly_update,
+                max(len(self.haulers) + len(self.commanders), 2),
+                self.starting_system.symbol,
+            )
 
         # self.log_tasks_for_export_markets()
 
@@ -400,6 +400,8 @@ where mg.trade_symbol is null and avg_profit is not null """
             maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
         elif len(self.surveyors) < 2:
             maybe_buy_ship_sys(self.st, "SHIP_SURVEYOR", self.safety_margin)
+        elif len(self.haulers) < 16:
+            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
 
     def set_drone_behaviours(self):
         # see scale_and_set_siphoning
@@ -735,7 +737,6 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         # we need to check we've enough money to fulfil the contract.
 
         for con in unfulfilled_contracts:
-            contract_cost = 0
             con: Contract
             tasks_logged = 0
             for deliverable in con.deliverables:
