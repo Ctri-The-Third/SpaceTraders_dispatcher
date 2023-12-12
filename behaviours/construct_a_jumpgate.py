@@ -85,7 +85,9 @@ class ConstructJumpgate(Behaviour):
             self.logger.error("Target waypoint has no construction site!")
             self.end("Target waypoint has no construction site!")
 
-        requirements = [m for m in j_construction_site.materials if not m.fulfilled]
+        requirements = [
+            m for m in j_construction_site.materials if m.fulfilled < m.required
+        ]
 
         for r in requirements:
             markets = self.source_markets or self.find_markets_that_export(
