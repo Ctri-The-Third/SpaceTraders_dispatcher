@@ -17,7 +17,7 @@ def process_contracts(client: SpaceTraders, recurse=True):
         con: Contract
         should_we_complete = False
 
-        if con.accepted and not con.fulfilled:
+        if con.accepted and not con.fulfilled and not con.is_expired:
             should_we_complete = True
 
             need_to_negotiate = False

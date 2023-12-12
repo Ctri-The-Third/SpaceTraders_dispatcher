@@ -53,6 +53,7 @@ from dispatcherWK16 import (
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
     BHVR_SIPHON_AND_CHILL,
     BHVR_MANAGE_SPECIFIC_EXPORT,
+    BHVR_CONSTRUCT_JUMP_GATE,
 )
 from dispatcherWK16 import (
     RQ_ANY_FREIGHTER,
@@ -293,8 +294,10 @@ class FuelManagementConductor:
                         BHVR_MANAGE_SPECIFIC_EXPORT,
                         params,
                     )
+
             else:
-                set_behaviour(self.connection, h.name, BHVR_SINGLE_STABLE_TRADE, {})
+                # this needs to be context aware.
+                set_behaviour(self.connection, h.name, BHVR_CONSTRUCT_JUMP_GATE, {})
             index += 1
         # self.set_refinery_behaviours(possible_ships)
         # self.set_satellite_behaviours()
@@ -612,7 +615,9 @@ order by 2 desc """
             return None
         closest_distance = float("inf")
         closest_refinery = None
-        relative_to = relative_to or Waypoint("", "", "", 0, 0, [], [], {}, {})
+        relative_to = relative_to or Waypoint(
+            "", "", "", 0, 0, [], [], {}, {}, [], False
+        )
 
         for refinery in results:
             wp = Waypoint(*refinery, [], [], {}, {})
@@ -732,7 +737,9 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
     def log_tasks_for_contracts(self):
         contracts = self.st.view_my_contracts()
         unfulfilled_contracts = [
-            con for con in contracts if not con.fulfilled and con.accepted
+            con
+            for con in contracts
+            if not con.fulfilled and con.accepted and not con.is_expired
         ]
         # we need to check we've enough money to fulfil the contract.
 

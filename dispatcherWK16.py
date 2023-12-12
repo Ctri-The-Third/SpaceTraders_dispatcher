@@ -90,6 +90,10 @@ from behaviours.manage_specific_export import (
     ManageSpecifcExport,
     BEHAVIOUR_NAME as BHVR_MANAGE_SPECIFIC_EXPORT,
 )
+from behaviours.construct_a_jumpgate import (
+    ConstructJumpgate,
+    BEHAVIOUR_NAME as BHVR_CONSTRUCT_JUMP_GATE,
+)
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -128,6 +132,7 @@ behaviours_and_classes = {
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
     BHVR_SIPHON_AND_CHILL: SiphonAndChill,
     BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
+    BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
 }
 
 logger = logging.getLogger("dispatcher")
