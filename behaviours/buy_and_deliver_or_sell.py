@@ -137,7 +137,11 @@ class BuyAndDeliverOrSell_6(Behaviour):
             for potench in potentials:
                 waypoint_s, syst, sell_price = potench
                 route = self.pathfinder.astar(start_system, syst)
-                if route.jumps >= 0 and sell_price / min(route.jumps, 0.01) > best_cpd:
+                if (
+                    route
+                    and route.jumps >= 0
+                    and sell_price / min(route.jumps, 0.01) > best_cpd
+                ):
                     best_potench = potench
                     best_cpd = sell_price / min(route.jumps, 0.01)
             end_waypoint = st.waypoints_view_one(
@@ -289,7 +293,8 @@ order by purchase_price asc """
         self.st.ship_dock(self.ship)
         if "fulfil_wp" in self.behaviour_params:
             resp = self.fulfil_any_relevant()
-        elif "sell_wp" in self.behaviour_params:
+        # elif "sell_wp" in self.behaviour_params:
+        else:
             resp = self.sell_all_cargo()
 
         return resp
@@ -327,18 +332,18 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    suffix = sys.argv[2] if len(sys.argv) > 2 else "3F"
+    suffix = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{suffix}"
 
     #        "X1-YG29-H50"	"X1-YG29-A3", 1 , "COPPER"
 
     params = {
-        "buy_wp": "X1-YG29-H53",
-        "sell_wp": "X1-YG29-A1",
+        # "buy_wp": "X1-YG29-H53",
+        # "sell_wp": "X1-YG29-H56",
         "priority": 4.5,
         "quantity": 10,
-        "tradegood": "JEWELRY",
-        "safety_profit_threshold": 1107,
+        "tradegood": "IRON_ORE",
+        # "safety_profit_threshold": 1107,
     }
     bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=params)
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
