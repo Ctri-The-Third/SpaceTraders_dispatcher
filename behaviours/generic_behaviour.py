@@ -142,7 +142,7 @@ class Behaviour:
         return path.end_system if path.jumps < 999999 else None
 
     def ship_intrasolar(
-        self, target_wp_symbol: "str", sleep_till_done=True, flight_mode="CRUISE"
+        self, target_wp_symbol: "str", sleep_till_done=True, flight_mode=None
     ):
         if isinstance(target_wp_symbol, Waypoint):
             target_wp_symbol = target_wp_symbol.symbol
@@ -179,6 +179,10 @@ class Behaviour:
             point: Waypoint
             if point.symbol == current_wp.symbol:
                 continue
+            if not flight_mode:
+                flight_mode = self.pathfinder.determine_best_speed(
+                    current_wp, point, ship.fuel_capacity
+                )
             fuel_cost = self.pathfinder.determine_fuel_cost(
                 current_wp, point, flight_mode
             )
