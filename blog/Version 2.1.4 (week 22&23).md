@@ -58,5 +58,10 @@ Unfortunately, later those returned back to a RESTRICTED state and it's not quit
 * ✅ We need to get EXPLOSIVES managed, who will gain their IMPORTs from exchanges.
 * ✅ A new view which shows transactions, and can be filtered either by tradegood, or by market.
 * ✅ Update the SDK so that behaviour params are logged with the event's beginning.
-* We now need to get ship sessions summarised and then surfaced in the UI so we can troubleshoot better.
-* The amount of hourly quests might be clogging things up. It might be better to have a floating hauler (or the commander I guess) that is set to zip between markets and perform profitable trades. 
+* We now need to get ship sessions summarised and then surfaced in the UI so we can troubleshoot better. the current view looks meh
+* ⏳ The amount of quarterly quests was definitely clogging things up. It might be better to have a floating hauler (or the commander I guess) that is set to zip between markets and perform profitable trades - with the rest managing exports
+* I noticed that the Food export keeps going to buy fertilizer at a 600cr / unit loss, and that fertilizer isn't seeing any management.
+  * ✅ switched off the quarterly tasks
+  * should hopefully see more fertilizer management now.
+* We should start working on the jump gate now we have sufficient money.
+* We're becoming over-reliant on the task system, and should decrease the amount of unpredictability that systme engenders. It's designed for one offs - and whilst it's useful during setup for things like shallow trades and earning cash, we should switch that off once we're not at risk of stalling.
