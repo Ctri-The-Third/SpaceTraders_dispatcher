@@ -174,11 +174,13 @@ class Behaviour:
         route = self.pathfinder.plot_system_nav(
             ship.nav.system_symbol, origin_wp, dest_wp, self.ship.fuel_capacity
         )
+        current_wp = origin_wp
         for point in route.route:
-            route: Waypoint
-
+            point: Waypoint
+            if point.symbol == current_wp.symbol:
+                continue
             fuel_cost = self.pathfinder.determine_fuel_cost(
-                origin_wp, point, flight_mode
+                current_wp, point, flight_mode
             )
             attempts = 0
             while (
@@ -194,6 +196,8 @@ class Behaviour:
                 if not resp and resp.error_code == 4600:  # not enough credits
                     # expect to drift
                     time.sleep(60)
+                    pass
+                elif not resp:
                     pass
 
             if (
@@ -228,6 +232,7 @@ class Behaviour:
                     ship.name,
                     ship.nav.travel_time_remaining,
                 )
+                current_wp = point
 
         return True
 
@@ -534,18 +539,20 @@ order by 1 desc """
             return_obj.append((waypoint_symbol, sys, price))
         return return_obj
 
-    def buy_cargo(self, cargo_symbol: str, quantity: int):
+    def purchase_what_you_can(self, cargo_symbol: str, quantity: int):
         # check the waypoint we're at has a market
         # check the market has the cargo symbol we're seeking
         # check the market_depth is sufficient, buy until quantity hit.
 
-        return self.purchase_what_you_can(cargo_symbol, quantity)
+        return self.buy_cargo(cargo_symbol, quantity)
 
-    def purchase_what_you_can(self, cargo_symbol: str, quantity: int):
+    def buy_cargo(self, cargo_symbol: str, quantity: int):
         # check current waypoint has a market that sells the tradegood
         # check we have enough cargo space
         # check we have enough credits
 
+        if quantity < 0:
+            raise ValueError("Quantity must be a positive integer or zero !")
         ship = self.ship
         current_waypoint = self.st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
@@ -795,4 +802,5 @@ if __name__ == "__main__":
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
+    bhvr.ship = bhvr.st.ships_view_one(ship, True)
     bhvr.run()
