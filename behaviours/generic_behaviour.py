@@ -179,16 +179,20 @@ class Behaviour:
             point: Waypoint
             if point.symbol == current_wp.symbol:
                 continue
-            if not flight_mode:
-                flight_mode = self.pathfinder.determine_best_speed(
+
+            temp_flight_mode = flight_mode
+
+            if not temp_flight_mode:
+                temp_flight_mode = self.pathfinder.determine_best_speed(
                     current_wp, point, ship.fuel_capacity
                 )
             fuel_cost = self.pathfinder.determine_fuel_cost(
-                current_wp, point, flight_mode
+                current_wp, point, temp_flight_mode
             )
             attempts = 0
             while (
-                flight_mode != "DRIFT"
+                flight_mode
+                or temp_flight_mode != "DRIFT"
                 and fuel_cost >= ship.fuel_current
                 and ship.fuel_capacity > 0
                 and fuel_cost < ship.fuel_capacity
@@ -215,8 +219,8 @@ class Behaviour:
                     fuel_cost,
                 )
                 st.ship_patch_nav(ship, "DRIFT")
-            elif ship.nav.flight_mode != flight_mode:
-                st.ship_patch_nav(ship, flight_mode)
+            elif ship.nav.flight_mode != temp_flight_mode:
+                st.ship_patch_nav(ship, temp_flight_mode)
 
             if ship.nav.waypoint_symbol != point.symbol:
                 if ship.nav.status == "DOCKED":
