@@ -174,7 +174,7 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "A"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "13"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {
