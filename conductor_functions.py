@@ -78,25 +78,17 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
 
 
 def get_prices_for(connection, tradegood: str, agent_symbol="@"):
-    sql = """with results as ( 
-        select trade_symbol, purchase_price, sell_price 
-        from market_prices where trade_symbol = %s
-        union
-        select trade_symbol,0 as purchase_price, payment_per_item as sell_price
-        from contracts_overview  co
-        where trade_symbol = %s and agent_symbol ilike %s
-    )
+    sql = """select mp.trade_Symbol, export_price, coalesce(import_price, galactic_average) as import_price from market_prices mp 
+where mp.trade_Symbol = %s
 
-    select max(purchase_price),max(sell_price) from results  
 """
-    rows = try_execute_select(connection, sql, (tradegood, tradegood, agent_symbol))
+    rows = try_execute_select(connection, sql, (tradegood,))
     if rows and len(rows) > 0:
         row = rows[0]
-        average_price_buy = row[0]
-        average_price_sell = row[1]
-        if average_price_buy and average_price_sell:
-            return [int(average_price_buy), int(average_price_sell)]
-    return None
+        average_price_buy = row[1]
+        average_price_sell = row[2]
+        return [int(average_price_buy), int(average_price_sell)]
+    return []
 
 
 def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):

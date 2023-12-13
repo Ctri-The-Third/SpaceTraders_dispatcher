@@ -191,8 +191,7 @@ class Behaviour:
             )
             attempts = 0
             while (
-                flight_mode
-                or temp_flight_mode != "DRIFT"
+                (flight_mode is None or temp_flight_mode != "DRIFT")
                 and fuel_cost >= ship.fuel_current
                 and ship.fuel_capacity > 0
                 and fuel_cost < ship.fuel_capacity

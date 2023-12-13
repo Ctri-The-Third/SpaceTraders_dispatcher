@@ -134,8 +134,9 @@ class ConstructJumpgate(Behaviour):
         self.ship_intrasolar(build_wp.symbol)
 
         cargo = [ci for ci in self.ship.cargo_inventory if ci.symbol == tradegood]
-        self.st.ship_dock(self.ship)
-        self.st.construction_supply(build_wp, self.ship, tradegood, cargo[0].units)
+        if len(cargo) > 0:
+            self.st.ship_dock(self.ship)
+            self.st.construction_supply(build_wp, self.ship, tradegood, cargo[0].units)
 
     def find_markets_that_export(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
