@@ -243,10 +243,6 @@ class FuelManagementConductor:
             self.safety_margin = 50000
         possible_ships = self.haulers + self.commanders
 
-        available_routes = self.get_trade_routes(50)
-        mining_sites = self.get_mining_sites(
-            self.starting_system.symbol, len(self.haulers), 10, 100
-        )
         # our goal is to get markets that we can manage.
         # however we can't guarantee that the markets will have imports and exports in the given system
         # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.

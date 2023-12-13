@@ -78,7 +78,7 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
 
 
 def get_prices_for(connection, tradegood: str, agent_symbol="@"):
-    sql = """select mp.trade_Symbol, export_price, coalesce(import_price, galactic_average) as import_price from market_prices mp 
+    sql = """select mp.trade_Symbol, coalesce(export_price, galactic_average) as export_price, coalesce(import_price, galactic_average) as import_price from market_prices mp 
 where mp.trade_Symbol = %s
 
 """
@@ -87,7 +87,10 @@ where mp.trade_Symbol = %s
         row = rows[0]
         average_price_buy = row[1]
         average_price_sell = row[2]
-        return [int(average_price_buy), int(average_price_sell)]
+        return [
+            int(average_price_buy) if average_price_buy else None,
+            int(average_price_sell) if average_price_sell else None,
+        ]
     return []
 
 

@@ -66,6 +66,17 @@ class ConstructJumpgate(Behaviour):
         ship = self.ship
         agent = st.view_my_self()
 
+        if not self.target_waypoint:
+            wayp = st.find_waypoints_by_type_one(
+                waypoint_slicer(self.agent.headquarters), "JUMP_GATE"
+            )
+            if wayp:
+                self.target_waypoint = wayp.symbol
+            else:
+                self.logger.error("No jumpgate found")
+                time.sleep(SAFETY_PADDING)
+                return
+
         jumpgate = st.waypoints_view_one(
             waypoint_slicer(self.target_waypoint), self.target_waypoint, True
         )
@@ -136,7 +147,12 @@ class ConstructJumpgate(Behaviour):
         cargo = [ci for ci in self.ship.cargo_inventory if ci.symbol == tradegood]
         if len(cargo) > 0:
             self.st.ship_dock(self.ship)
-            self.st.construction_supply(build_wp, self.ship, tradegood, cargo[0].units)
+            resp = self.st.construction_supply(
+                build_wp, self.ship, tradegood, cargo[0].units
+            )
+            if not resp:
+                self.logger.error("Failed to supply construction site")
+                time.sleep(SAFETY_PADDING)
 
     def find_markets_that_export(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
@@ -189,8 +205,8 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
-        "target_wp": "X1-KM71-I60",
-        "market_wps": ["X1-KM71-F52", "X1-KM71-D46"]
+        # "target_wp": "X1-KM71-I60",
+        # "market_wps": ["X1-KM71-F52", "X1-KM71-D46"]
         # "market_wp": "X1-YG29-D43",
     }
 
