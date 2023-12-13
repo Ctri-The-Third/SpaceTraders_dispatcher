@@ -784,6 +784,7 @@ order by 1 desc """
         return path
 
     def end(self, error: str = None):
+        
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(

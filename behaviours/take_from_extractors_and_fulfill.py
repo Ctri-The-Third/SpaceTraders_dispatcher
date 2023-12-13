@@ -46,8 +46,13 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         self.exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
 
     def run(self):
-        super().run()
+        super.run()
+        self._run()
+        self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
+        self.end()
+
+    def _run(self):
         st = self.st
         ship = self.ship
         # we have to use the API call since we don't have inventory in the DB
@@ -62,13 +67,13 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         if not self.start_wp_s:
             # we couldn't find any asteroids with the desired cargo
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            return
         if not self.market_wp_s and not self.fulfil_wp_s:
             self.market_wp_s = self.determine_market_wp()
 
             # find all extractors with the desired cargo, group by waypoint
             # calculate distance per good
             # determine the best source
-
         #
         # 1. DEFAULT BEHAVIOUR (for if we've not got active orders)
         # 1.1 check what cargo we already have
@@ -168,20 +173,18 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
                 time.sleep(SAFETY_PADDING)
             # sleep for 60 seconds
 
-        self.sleep_until_ready()
-        self.end()
-        st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
 
     def determine_start_wp(self):
-        sql = """select system_symbol, waypoint_symbol, sum(quantity) from ship_cargo sc 
-join  ship_nav sn on sc.ship_symbol = sn.ship_symbol
-join ships s on s.ship_symbol = sc.ship_symbol
-where trade_symbol in %s
+        sql = """select sn.waypoint_symbol, trade_symbol, sum(quantity)  from ship_cargo sc 
+join ship_nav sn on sc.ship_symbol = sn.ship_symbol
+join ships s on sc.ship_symbol = s.ship_symbol 
+where s.ship_role = 'EXCAVATOR'
+and trade_symbol in %s
 and system_symbol = %s
-and ship_role = 'EXCAVATOR'
-group by 1,2"""
+group by 1,2
+order by 3 desc """
 
         target = self.behaviour_params.get("cargo_to_receive", None)
         system = self.ship.nav.system_symbol
@@ -223,12 +226,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "3E"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {
-        "priority": 4,
-        # "market_wp": "X1-YG29-F47",
-        # "asteroid_wp": "X1-YG29-EB5E",
-        "cargo_to_receive": ["COPPER_ORE"],
-    }
+    behaviour_params = {"priority": 4, "cargo_to_receive": ["COPPER_ORE"]}
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
