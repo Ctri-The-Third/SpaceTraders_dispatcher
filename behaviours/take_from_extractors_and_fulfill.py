@@ -46,7 +46,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         self.exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
 
     def run(self):
-        super.run()
+        super().run()
         self._run()
 
         self.st.logging_client.log_ending(
@@ -193,7 +193,7 @@ order by 3 desc """
         system = self.ship.nav.system_symbol
         results = try_execute_select(self.connection, sql, (tuple(target), system))
         if results:
-            return results[0][1]
+            return results[0][0]
         # find the nearest asteroid with the desired cargo
         # find all extractors with the desired cargo, group by waypoint
         # calculate distance per good
