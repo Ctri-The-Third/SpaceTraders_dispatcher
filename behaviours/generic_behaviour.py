@@ -249,12 +249,16 @@ class Behaviour:
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
+
         if current_wayp.type not in ("GAS_GIANT"):
             self.logger.error(
                 "Ship is not at an siphonable location, sleeping then aborting"
             )
             sleep(300)
             return False
+        if ship.nav.status == "DOCKED":
+            st.ship_orbit(ship)
+
         cutoff_cargo_units_used = ship.cargo_capacity
         while ship.cargo_units_used < cutoff_cargo_units_used:
             cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
@@ -784,7 +788,6 @@ order by 1 desc """
         return path
 
     def end(self, error: str = None):
-        
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(

@@ -82,7 +82,7 @@ class ExtractAndGoSell(Behaviour):
         # in a circumstance where the ship isn't in the specified system, it will go.
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
-        self.sleep_until_ready()
+
         if (
             ship.can_survey and target_wp.type == "ASTEROID"
         ):  # this isn't appropriate for siphoning.
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "13"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "F"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {

@@ -741,8 +741,8 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
             for con in contracts
             if not con.fulfilled and con.accepted and not con.is_expired
         ]
-        # we need to check we've enough money to fulfil the contract.
-
+        # we   need to check we've enough money to fulfil the contract.
+        tasks_logged = 0
         for con in unfulfilled_contracts:
             con: Contract
             tasks_logged = 0
