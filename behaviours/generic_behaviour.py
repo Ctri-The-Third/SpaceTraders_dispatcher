@@ -193,7 +193,7 @@ class Behaviour:
             while (
                 (flight_mode is None or temp_flight_mode != "DRIFT")
                 and fuel_cost >= ship.fuel_current
-                and ship.fuel_capacity > 0
+                and (ship.fuel_capacity > 0 and ship.fuel_current <= 5)
                 and fuel_cost < ship.fuel_capacity
                 and attempts < 5
             ):
@@ -814,4 +814,5 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)
+    bhvr.jettison_all_cargo()
     bhvr.run()
