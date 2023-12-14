@@ -431,7 +431,7 @@ where mg.trade_symbol is null and avg_profit is not null """
                 set_behaviour(
                     self.connection,
                     extractor.name,
-                    BHVR_EXTRACT_AND_CHILL,
+                    BHVR_EXTRACT_AND_GO_SELL,
                     {"asteroid_wp": sites[0][1], "cargo_to_transfer": ["*"]},
                 )
 
