@@ -87,8 +87,7 @@ class ManageSpecifcExport(Behaviour):
 
         # inspect the market and its tradegood
         # if data is old, go to it.
-        # if the export market is RESTRICTED, find imports and BUY AND SELL
-        # if the export market is ABUNDANT, HIGH, or MORDERATE, Sell to appropriate markets(prioritise imports)
+
         market = self.get_market(self.target_market)
         export_wp = self.st.waypoints_view_one(
             waypoint_slicer(self.target_market), self.target_market
@@ -101,17 +100,37 @@ class ManageSpecifcExport(Behaviour):
             wp = self.st.waypoints_view_one(self.starting_system, self.target_market)
             market = self.st.system_market(wp, True)
 
-            return
+        import_symbols = self.get_matching_imports_for_export(self.target_tradegood)
+        worst_ratio = float("inf")
+        for import_symbol in import_symbols:
+            required_tradegood = market.get_tradegood(import_symbol)
+
+            worst_ratio = min(
+                worst_ratio,
+                target_tradegood.trade_volume / required_tradegood.trade_volume,
+            )
 
         # there are three criteria levels for exports - SCARCE supply, unRESTRICTED imports, and a supply ratio that is >= 3:1
         # Doesn't matter which we do, just so long as it's profitable.
-        succeeded = False
+        # currently the "maybe_sell_exports" doesn't factor in that ratio.
+        # if we're in a circumstance where the two tradevolumes are equal, we need to prioritise imports so the TVs line up.
+        #
 
-        resp = self.maybe_sell_exports()
-        succeeded = resp if resp else succeeded
+        # calculate worst ratio
+        # do imports if import state is not STRONG or RESTRICTED
+        # if any ratio is < 3 and import procuring failed, do exports
+        # if ratio is >= 3 do exports.
+        succeeded = False
         resp = self.maybe_procure_imports(export_wp, market)
         # returns a list of tradegoods. We can then infer supply for each and target the scarcer of the two
         succeeded = resp if resp else succeeded
+
+        if worst_ratio < 3 and not succeeded:
+            resp = self.maybe_sell_exports()
+            succeeded = resp if resp else succeeded
+        elif worst_ratio >= 3:
+            resp = self.maybe_sell_exports()
+            succeeded = resp if resp else succeeded
 
         if not succeeded:
             self.logger.debug(
@@ -122,28 +141,39 @@ class ManageSpecifcExport(Behaviour):
             return
 
     def maybe_procure_imports(
-        self, export_waypoint: "Waypoint", export_market: "Market"
+        self,
+        export_waypoint: "Waypoint",
+        export_market: "Market",
+        options: list[Market] = None,
     ):
         # find the markets that sell the desired tradegoods.
         # work out which is the most profitable in terms of CPH using travel time
         # buy the goods, then supply them to the manufactury
         import_symbols = self.get_matching_imports_for_export(self.target_tradegood)
         export_tg = export_market.get_tradegood(self.target_tradegood)
+
         success = False
         for required_import_symbol in import_symbols:
+            import_listing = export_market.get_tradegood(required_import_symbol)
+            # if this tradegood is in a STRONG state we don't need to do more to it except keep it strong
+            # if it's restricted, we need to focus on exporting the export tradegood to free it up
+            if import_listing.activity in ("STRONG", "RESTRICTED"):
+                continue
             # now we know the imports that are needed - we need to go find them at a price that's profitable
             #
             # search for what we can buy
             #
-
-            options = self.find_markets_that_export(required_import_symbol, False)
-            options.extend(self.find_exchanges(required_import_symbol, False))
+            if not options:
+                options = self.find_markets_that_export(required_import_symbol, False)
+                options.extend(self.find_exchanges(required_import_symbol, False))
             markets = [self.get_market(m) for m in options]
             # exports are always gonna be more profitable than exports so lets go with profit-per-distance
             best_source_of_import = None
             best_cpd = 0
             for market in markets:
                 required_good_export_tg = market.get_tradegood(required_import_symbol)
+                if not required_good_export_tg:
+                    continue
                 wp = self.st.waypoints_view_one(
                     waypoint_slicer(market.symbol), market.symbol
                 )
@@ -345,15 +375,16 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "17"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "27"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
-        "target_tradegood": "SHIP_PARTS",
+        "target_tradegood": "EQUIPMENT",
         # "market_wp": "X1-YG29-D43",
     }
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    bhvr.run()
+    for i in range(30):
+        bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)

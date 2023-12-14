@@ -63,10 +63,14 @@ Unfortunately, later those returned back to a RESTRICTED state and it's not quit
 * I noticed that the Food export keeps going to buy fertilizer at a 600cr / unit loss, and that fertilizer isn't seeing any management.
   * ✅ switched off the quarterly tasks
   * ❌ should hopefully see more fertilizer management now.
-  * Not enough nitrogen and stuff being brought in - need to review the behaviour
+  * ✅ Not enough nitrogen and stuff being brought in - need to review the behaviour
 * ✅ We should start working on the jump gate now we have sufficient money.
 * ✅We're becoming over-reliant on the task system, and should decrease the amount of unpredictability that systme engenders. It's designed for one offs - and whilst it's useful during setup for things like shallow trades and earning cash, we should switch that off once we're not at risk of stalling.
+* I've noticed several market exchanges where tradevolume IMPORTs are _equal_ to the tradevolume of the EXPORTs, but we know from Space Admiral that this ratio needs to be closer to 3:1, so we should build behaviours that are going to properly handle this situation.
+* We switched asteroid-0 extractors to "EXTRACT_AND_SELL". If there's an exchange within 80 units of travel, we'll use that instead of "EXTRACT_AND_CHILL".
+
 
 TOMORROW TASKS 
-* Create a "go and refuel this stuck ship" task to support extractors that are out of fuel.
-* Revisit the "manage exports" behaviour so that it can also source imports from exchanges.
+* ✅ Create a "go and refuel this stuck ship" task to support extractors that are out of fuel.
+* ✅ Ships are failing to do moves because of insufficient fuel, and default to drifts immediately afterward. Whilst it's good that the fallback behaviour is working, this is an issue.
+* ✅ Revisit the "manage exports" behaviour so that it can also source imports from exchanges, and stops doing unprofitable trades.
