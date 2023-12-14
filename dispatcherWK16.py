@@ -94,6 +94,7 @@ from behaviours.construct_a_jumpgate import (
     ConstructJumpgate,
     BEHAVIOUR_NAME as BHVR_CONSTRUCT_JUMP_GATE,
 )
+from behaviours.sell_or_jettison_all_cargo import ( SellOrDitch, BEHAVIOUR_NAME as BHVR_SELL_OR_JETTISON_ALL_CARGO)
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -133,6 +134,8 @@ behaviours_and_classes = {
     BHVR_SIPHON_AND_CHILL: SiphonAndChill,
     BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
     BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
+    BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
+    
 }
 
 logger = logging.getLogger("dispatcher")

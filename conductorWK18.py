@@ -54,6 +54,7 @@ from dispatcherWK16 import (
     BHVR_SIPHON_AND_CHILL,
     BHVR_MANAGE_SPECIFIC_EXPORT,
     BHVR_CONSTRUCT_JUMP_GATE,
+    BHVR_SELL_OR_JETTISON_ALL_CARGO,
 )
 from dispatcherWK16 import (
     RQ_ANY_FREIGHTER,
@@ -242,6 +243,20 @@ class FuelManagementConductor:
         if self.safety_margin == 0:
             self.safety_margin = 50000
         possible_ships = self.haulers + self.commanders
+
+        # just in case any behaviours have been terminated half way through and ships have stuff they don't know what to do with:
+        for ship in self.commanders + self.haulers:
+            log_task(
+                self.connection,
+                BHVR_SELL_OR_JETTISON_ALL_CARGO,
+                [],
+                ship.nav.system_symbol,
+                5,
+                self.current_agent_symbol,
+                {},
+                self.next_hourly_update,
+                ship.name,
+            )
 
         # our goal is to get markets that we can manage.
         # however we can't guarantee that the markets will have imports and exports in the given system

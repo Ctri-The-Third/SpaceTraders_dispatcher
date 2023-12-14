@@ -37,7 +37,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
             connection,
         )
 
-        self.logger = logging.getLogger("bhvr_receive_and_fulfill")
+        self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         self.start_wp_s = self.behaviour_params.get(
             "asteroid_wp", self.determine_start_wp()
@@ -70,6 +70,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         if not self.start_wp_s:
             # we couldn't find any asteroids with the desired cargo
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            time.sleep(60)
             return
         if not self.market_wp_s and not self.fulfil_wp_s:
             self.market_wp_s = self.determine_market_wp()
