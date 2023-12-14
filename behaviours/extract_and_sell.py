@@ -83,16 +83,20 @@ class ExtractAndGoSell(Behaviour):
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
         self.ship_intrasolar(target_wp_sym)
 
-        if (
-            ship.can_survey and target_wp.type == "ASTEROID"
+        if ship.can_survey and target_wp.type in (
+            "ASTEROID",
+            "ENGINEERED_ASTEROID",
         ):  # this isn't appropriate for siphoning.
             st.ship_survey(ship)
 
         cutoff_cargo_limit = None
-        if ship.extract_strength > 0 and target_wp.type == "ASTEROID":
+        if ship.extract_strength > 0 and target_wp.type in (
+            "ASTEROID",
+            "ENGINEERED_ASTEROID",
+        ):
             cutoff_cargo_limit = ship.cargo_capacity - ship.extract_strength / 2
 
-            self.extract_till_full([], cutoff_cargo_limit)
+            self.extract_till_full([], [], cutoff_cargo_limit)
         if ship.can_siphon > 0 and target_wp.type == "GAS_GIANT":
             self.siphon_till_full(cutoff_cargo_limit)
 
@@ -183,12 +187,12 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "F"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "19"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {
-        "market_wp": "X1-KM71-C43",
-        "asteroid_wp": "X1-KM71-C42",
+        "asteroid_wp": "X1-KM71-CZ5B",
+        "script_name": "EXTRACT_AND_SELL",
         "cargo_to_transfer": ["*"],
     }
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
