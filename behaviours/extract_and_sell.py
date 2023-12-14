@@ -139,6 +139,15 @@ class ExtractAndGoSell(Behaviour):
             for option in options:
                 end_system = option[1]
                 end_wp = self.st.waypoints_view_one(end_system, option[0])
+                market = self.st.system_market(end_wp)
+
+                # never sell to exporting markets.
+                if market.get_tradegood(tradegood.symbol).type not in (
+                    "EXCHANGE",
+                    "IMPORT",
+                ):
+                    continue
+
                 distance_to_market = self.pathfinder.calc_distance_between(
                     start_system, end_system
                 )
