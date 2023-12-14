@@ -193,10 +193,10 @@ class Behaviour:
             while (
                 (flight_mode is None or temp_flight_mode != "DRIFT")
                 and fuel_cost >= ship.fuel_current
-                and (ship.fuel_capacity > 0 and ship.fuel_current <= 5)
+                and (ship.fuel_capacity > 0 or ship.fuel_current <= 5)
                 and fuel_cost < ship.fuel_capacity
                 and attempts < 5
-            ):
+            ) or (ship.fuel_capacity > 0 and ship.fuel_current <= 5):
                 # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
                 attempts += 1
                 resp = self.refuel_locally()
@@ -204,8 +204,17 @@ class Behaviour:
                     # expect to drift
                     time.sleep(60)
                     pass
+
                 elif not resp:
-                    pass
+                    # recalculate best speed, maybe we can drop down to CRUISE rather than have to DRIFT
+                    if not flight_mode:
+                        temp_flight_mode = self.pathfinder.determine_best_speed(
+                            current_wp, point, ship.fuel_current
+                        )
+                        fuel_cost = self.pathfinder.determine_fuel_cost(
+                            current_wp, point, temp_flight_mode
+                        )
+                    break
 
             if (
                 fuel_cost >= ship.fuel_current
