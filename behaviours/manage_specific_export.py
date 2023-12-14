@@ -103,24 +103,17 @@ class ManageSpecifcExport(Behaviour):
 
             return
 
-        # if the export is restricted, it's because we don't have enough imports
-        # if the imports are restricted it's because we've too many exports. It's possible to have both.
-        # let's solve exports first, then imports. If exports aren't profitable then we should do nothing.
-        if SUPPLY_LEVELS[target_tradegood.supply] > 2:
-            self.logger.debug(
-                f"Export for {target_tradegood.symbol} is {target_tradegood.supply} - selling"
-            )
-            self.sell_exports()
+        # there are three criteria levels for exports - SCARCE supply, unRESTRICTED imports, and a supply ratio that is >= 3:1
+        # Doesn't matter which we do, just so long as it's profitable.
+        succeeded = False
 
-        elif target_tradegood.activity == "RESTRICTED":
-            self.logger.debug(
-                f"Export for {target_tradegood.symbol} is RESTRICTED, finding imports"
-            )
-            self.procure_imports(export_wp, market)
-            # returns a list of tradegoods. We can then infer supply for each and target the scarcer of the two
+        resp = self.maybe_sell_exports()
+        succeeded = resp if resp else succeeded
+        resp = self.maybe_procure_imports(export_wp, market)
+        # returns a list of tradegoods. We can then infer supply for each and target the scarcer of the two
+        succeeded = resp if resp else succeeded
 
-            return
-        else:
+        if not succeeded:
             self.logger.debug(
                 f"Export for {target_tradegood.symbol} is {target_tradegood.supply}, activity is {target_tradegood.activity} - resting"
             )
@@ -128,89 +121,76 @@ class ManageSpecifcExport(Behaviour):
 
             return
 
-    def procure_imports(self, export_waypoint: "Waypoint", export_market: "Market"):
+    def maybe_procure_imports(
+        self, export_waypoint: "Waypoint", export_market: "Market"
+    ):
         # find the markets that sell the desired tradegoods.
         # work out which is the most profitable in terms of CPH using travel time
         # buy the goods, then supply them to the manufactury
         import_symbols = self.get_matching_imports_for_export(self.target_tradegood)
         export_tg = export_market.get_tradegood(self.target_tradegood)
-        scarcest_import = None
-        scarcest_supply = 6
+        success = False
+        for required_import_symbol in import_symbols:
+            # now we know the imports that are needed - we need to go find them at a price that's profitable
+            #
+            # search for what we can buy
+            #
 
-        for symbol in import_symbols:
-            # get the tradegood from the export market - find any that are SCARCE, then any that are LIMITED
-            tg = export_market.get_tradegood(symbol)
-            import_price = export_market.get_tradegood(symbol).purchase_price
-            if (
-                SUPPLY_LEVELS[tg.supply] < scarcest_supply
-                and tg.activity != "RESTRICTED"
-            ):
-                scarcest_supply = SUPPLY_LEVELS[tg.supply]
-                scarcest_import = symbol
+            options = self.find_markets_that_export(required_import_symbol, False)
+            options.extend(self.find_exchanges(required_import_symbol, False))
+            markets = [self.get_market(m) for m in options]
+            # exports are always gonna be more profitable than exports so lets go with profit-per-distance
+            best_source_of_import = None
+            best_cpd = 0
+            for market in markets:
+                import_tg = market.get_tradegood(required_import_symbol)
+                wp = self.st.waypoints_view_one(
+                    waypoint_slicer(market.symbol), market.symbol
+                )
+                distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
+                    export_waypoint, wp, self.ship.fuel_capacity
+                )
+                # the difference between the purchase price of the fabricated export
+                # and the raw goods. we want the biggest difference per distance
+                # difference represents part of the value add from production
+                cpd = (export_tg.sell_price - import_tg.purchase_price) / distance
+                if cpd > best_cpd:
+                    best_source_of_import = market
+                    best_cpd = cpd
 
-        pass
-        if not scarcest_import:
-            self.logger.debug(
-                "No profitable unrestricted imports found! either resolve upstream supply issues. Sleeping for 60 seconds."
-            )
-            return None
+            if best_source_of_import:
+                self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
+                self.ship_intrasolar(best_source_of_import.symbol)
+                self.buy_cargo(required_import_symbol, self.ship.cargo_space_remaining)
+                self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+                self.ship_intrasolar(export_market.symbol)
+                self.sell_all_cargo()
+                success = True
+                continue
 
-        # now we know the imports that are needed - we need to go find them at a price that's profitable
-        #
-        # search for what we can buy
-        #
+            #
+            # if we get here, there's no profitable exports matching our hungry imports
+            # we should sweep for raw goods in extractors just in case.
+            #
+            packages = self.find_extractors_with_raw_goods(required_import_symbol)
+            if not packages:
+                self.logger.debug(
+                    f"No profitable imports found! Resolve upstream supply issues. Sleeping for 60 seconds."
+                )
+                time.sleep(60)
+                continue
 
-        options = self.find_markets_that_export(scarcest_import, False)
-        markets = [self.get_market(m) for m in options]
-        # exports are always gonna be more profitable than exports so lets go with profit-per-distance
-        best_source_of_import = None
-        best_cpd = 0
-        for market in markets:
-            tg = market.get_tradegood(scarcest_import)
-            wp = self.st.waypoints_view_one(
-                waypoint_slicer(market.symbol), market.symbol
-            )
-            distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
-                export_waypoint, wp, self.ship.fuel_capacity
-            )
-            # the difference between the purchase price of the fabricated export
-            # and the raw goods. we want the biggest difference per distance
-            # difference represents part of the value add from production
-            cpd = (export_tg.sell_price - tg.purchase_price) / distance
-            if cpd > best_cpd:
-                best_source_of_import = market
-                best_cpd = cpd
-
-        if best_source_of_import:
-            self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
-            self.ship_intrasolar(best_source_of_import.symbol)
-            self.buy_cargo(scarcest_import, self.ship.cargo_space_remaining)
+            waypoint, raw_good, quantity = packages[0]
+            self.ship_extrasolar(waypoint_slicer(waypoint))
+            self.ship_intrasolar(waypoint)
+            self.take_cargo_from_neighbouring_extractors(raw_good)
             self.ship_extrasolar(waypoint_slicer(export_market.symbol))
             self.ship_intrasolar(export_market.symbol)
             self.sell_all_cargo()
-            return
+            success = True
+        return success
 
-        #
-        # if we get here, there's no profitable exports matching our hungry imports
-        # we should sweep for raw goods in extractors just in case.
-        #
-        packages = self.find_extractors_with_raw_goods(scarcest_import)
-        if not packages:
-            self.logger.debug(
-                f"No profitable imports found! Resolve upstream supply issues. Sleeping for 60 seconds."
-            )
-            time.sleep(60)
-            return None
-
-        waypoint, raw_good, quantity = packages[0]
-        self.ship_extrasolar(waypoint_slicer(waypoint))
-        self.ship_intrasolar(waypoint)
-        self.take_cargo_from_neighbouring_extractors(raw_good)
-        self.ship_extrasolar(waypoint_slicer(export_market.symbol))
-        self.ship_intrasolar(export_market.symbol)
-        self.sell_all_cargo()
-
-    def sell_exports(self):
+    def maybe_sell_exports(self):
         # take the exports to the best CPH market.
         potential_markets = self.find_best_market_systems_to_sell(self.target_tradegood)
         waypoints = {
@@ -241,48 +221,51 @@ class ManageSpecifcExport(Behaviour):
                 best_cph = cph
                 best_sell_market = market
 
-        if not best_sell_market:
+        if not best_sell_market and SUPPLY_LEVELS[export_tg.supply] > 1:
             self.logger.debug(
-                f"No profitable markets found! Resolve upstream supply issues. Sleeping for 60 seconds."
+                f"No profitable markets found, and we're not SCARCE yet - something's wrong upstream. "
             )
             time.sleep(60)
-            return
+        if not best_sell_market:
+            return False
+        import_tg = best_sell_market.get_tradegood(self.target_tradegood)
+
+        if export_tg.purchase_price >= import_tg.sell_price:
+            return False
 
         self.ship_extrasolar(waypoint_slicer(self.target_market))
         self.ship_intrasolar(self.target_market)
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
         )
-        tradevolumes_purchased = 0
-        while self.ship.cargo_space_remaining or tradevolumes_purchased < 3:
-            export_tg = self.get_market(self.target_market).get_tradegood(
-                self.target_tradegood
-            )
-            import_tg = best_sell_market.get_tradegood(self.target_tradegood)
-            if export_tg.purchase_price >= import_tg.sell_price:
-                break
-            resp = self.buy_cargo(
-                self.target_tradegood,
-                min(
-                    export_tg.trade_volume,
-                    self.ship.cargo_space_remaining,
-                    math.floor(self.agent.credits / export_tg.purchase_price),
-                ),
-            )
-            if not resp and self.ship.cargo_units_used == 0:
-                return
-            elif not resp:
-                break
-            tradevolumes_purchased += 1
+        export_tg = self.get_market(self.target_market).get_tradegood(
+            self.target_tradegood
+        )
+        resp = self.buy_cargo(
+            self.target_tradegood,
+            min(
+                export_tg.trade_volume,
+                self.ship.cargo_space_remaining,
+                math.floor(self.agent.credits / export_tg.purchase_price),
+            ),
+        )
         # self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
         self.ship_extrasolar(waypoint_slicer(best_sell_market.symbol))
         self.ship_intrasolar(best_sell_market.symbol)
         self.sell_all_cargo()
 
+        return True
+
     def find_markets_that_export(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
         return self._find_markets_that_trade(
             target_tradegood, "EXPORT", highest_tradevolume
+        )
+
+    def find_exchanges(self, target_tradegood, highest_tradevolume=True):
+        # find the market in the system with the highest tradevolume (or lowest)
+        return self._find_markets_that_trade(
+            target_tradegood, "EXCHANGE", highest_tradevolume
         )
 
     def find_markets_that_import(self, target_tradegood, highest_tradevolume=True):
@@ -361,11 +344,11 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3C"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
-        "target_tradegood": "ADVANCED_CIRCUITRY",
+        "target_tradegood": "EXPLOSIVES",
         # "market_wp": "X1-YG29-D43",
     }
 
