@@ -68,7 +68,12 @@ Unfortunately, later those returned back to a RESTRICTED state and it's not quit
 * ✅We're becoming over-reliant on the task system, and should decrease the amount of unpredictability that systme engenders. It's designed for one offs - and whilst it's useful during setup for things like shallow trades and earning cash, we should switch that off once we're not at risk of stalling.
 * I've noticed several market exchanges where tradevolume IMPORTs are _equal_ to the tradevolume of the EXPORTs, but we know from Space Admiral that this ratio needs to be closer to 3:1, so we should build behaviours that are going to properly handle this situation.
 * We switched asteroid-0 extractors to "EXTRACT_AND_SELL". If there's an exchange within 80 units of travel, we'll use that instead of "EXTRACT_AND_CHILL".
-
+* I've created a mining sties view in the DB - which lists an asteroid and its yield, along with imports/ exchanges (and their distances). This will inform the range of EXTRACT_AND_SELL groupings.
+* I've observed that using light haulers for missions is not optimal. Idle trade ships should have the following behaviours
+ * 1 ship has a "complete missions then chill" behaviour. If there is not a profitable mission at present, the conductor should skip this step.
+ * 1 ship should have a "Construct warp gate" behaviour. 
+ * other ships should have a "chain trade" behaviour, which will pick a profitable trade from the current location, then execute it - or look for raw materials to feed into the chain.
+ 
 
 TOMORROW TASKS 
 * ✅ Create a "go and refuel this stuck ship" task to support extractors that are out of fuel.

@@ -180,9 +180,12 @@ class ManageSpecifcExport(Behaviour):
                 distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
                     export_waypoint, wp, self.ship.fuel_capacity
                 )
-                # the difference between the purchase price of the fabricated export
-                # and the raw goods. we want the biggest difference per distance
-                # difference represents part of the value add from production
+
+                # we've been getting situations where borderline trades are dipping into negative and I don't know why
+                # so putting in this SCARCE limiter as a safety measure to stop that.
+                # it's probably because we do the financial check before we move, and in that time other ships have made purchases.
+                if required_good_export_tg.supply == "SCARCE":
+                    continue
                 cpd = (
                     export_tg.sell_price - required_good_export_tg.purchase_price
                 ) / distance
@@ -263,7 +266,7 @@ class ManageSpecifcExport(Behaviour):
 
         if export_tg.purchase_price >= import_tg.sell_price:
             return False
-
+        # 2799 3488
         self.ship_extrasolar(waypoint_slicer(self.target_market))
         self.ship_intrasolar(self.target_market)
         export_tg = self.get_market(self.target_market).get_tradegood(
