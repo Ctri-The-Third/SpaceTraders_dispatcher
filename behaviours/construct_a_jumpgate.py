@@ -212,6 +212,6 @@ if __name__ == "__main__":
 
     bhvr = ConstructJumpgate(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)

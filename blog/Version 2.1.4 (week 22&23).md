@@ -65,10 +65,14 @@ Unfortunately, later those returned back to a RESTRICTED state and it's not quit
   * ❌ should hopefully see more fertilizer management now.
   * ✅ Not enough nitrogen and stuff being brought in - need to review the behaviour
 * ✅ We should start working on the jump gate now we have sufficient money.
-* ✅We're becoming over-reliant on the task system, and should decrease the amount of unpredictability that systme engenders. It's designed for one offs - and whilst it's useful during setup for things like shallow trades and earning cash, we should switch that off once we're not at risk of stalling.
-* I've noticed several market exchanges where tradevolume IMPORTs are _equal_ to the tradevolume of the EXPORTs, but we know from Space Admiral that this ratio needs to be closer to 3:1, so we should build behaviours that are going to properly handle this situation.
+* ✅ We're becoming over-reliant on the task system, and should decrease the amount of unpredictability that systme engenders. It's designed for one offs - and whilst it's useful during setup for things like shallow trades and earning cash, we should switch that off once we're not at risk of stalling.
+* ✅ Create a "go and refuel this stuck ship" task to support extractors that are out of fuel.
+* ✅ Ships are failing to do moves because of insufficient fuel, and default to drifts immediately afterward. Whilst it's good that the fallback behaviour is working, this is an issue.
+* ✅ Revisit the "manage exports" behaviour so that it can also source imports from exchanges, and stops doing unprofitable trades.
+ * profit from the system as a whole has dropped since we lifted the text based restrictions and went to profit only. This appears to largely because of multiple ships relying on individual exports as their imports and the exports not being able to keep up.
+* ✅ I've noticed several market exchanges where tradevolume IMPORTs are _equal_ to the tradevolume of the EXPORTs, but we know from Space Admiral that this ratio needs to be closer to 3:1, so we should build behaviours that are going to properly handle this situation.
 * We switched asteroid-0 extractors to "EXTRACT_AND_SELL". If there's an exchange within 80 units of travel, we'll use that instead of "EXTRACT_AND_CHILL".
-* I've created a mining sties view in the DB - which lists an asteroid and its yield, along with imports/ exchanges (and their distances). This will inform the range of EXTRACT_AND_SELL groupings.
+* I've created a mining sties view in the DB - which lists an asteroid and its yield, along with imports/ exchanges (and their distances). This will inform the range of EXTRACT_AND_SELL groupings - need to scale that up.
 * I've observed that using light haulers for missions is not optimal. Idle trade ships should have the following behaviours
  * 1 ship has a "complete missions then chill" behaviour. If there is not a profitable mission at present, the conductor should skip this step.
  * 1 ship should have a "Construct warp gate" behaviour. 
@@ -76,6 +80,27 @@ Unfortunately, later those returned back to a RESTRICTED state and it's not quit
  
 
 TOMORROW TASKS 
-* ✅ Create a "go and refuel this stuck ship" task to support extractors that are out of fuel.
-* ✅ Ships are failing to do moves because of insufficient fuel, and default to drifts immediately afterward. Whilst it's good that the fallback behaviour is working, this is an issue.
-* ✅ Revisit the "manage exports" behaviour so that it can also source imports from exchanges, and stops doing unprofitable trades.
+
+ * We should increase the amount of concurrent miners operating near exchanges.
+
+
+End of Week reports.
+Node U - current reset, experimental
+Node C - current reset, executed half way through
+Node V - end of week 21 (last reset)
+Node S - end of week 23 (reduced usage of tasks, contracts support, jump gate gets built)
+Node W - idle 
+After this reset we'll put this onto node S. 
+
+| stat              | Node U (exp) | node V (21) | node C (22 halfway) | 
+| ---               | ------------ | ----------  | --------------- |
+| total uptime      | 140.44       | 253.19      | 184.03          | 
+| total ships       | 76           | 59          | 74              |
+| contracts         | 60           | 0           | 2               | 
+| contract_earnings | 17,140,049   | 35,397      | 1,183,332       |
+| trade_earnings    | 48,250,860   | 69,471,819  | 10,348,853      |
+| total_earnings    | 65,390,909   | 69,507,216  | 11,532,185      |
+| requests          | 901240       | 1044219     | 425277          |
+| average delay     | 2.04         | 4.47        | 1.40            |
+| CPH               | 465,614.56   | 274,525.91  | 62664.70        |
+| CPR               | 72.56        | 66.56       | 27.17           |
