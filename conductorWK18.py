@@ -175,7 +175,7 @@ class BehaviourConductor:
             # hourly set ship behaviours
             # quarterly set ship tasks
             # minutely try and buy new ships
-            self.st.view_my_self(True)
+            self.st.view_my_self()
             if self.next_daily_update < datetime.now():
                 self.next_daily_update = datetime.now() + timedelta(days=1)
                 self.daily_update()
@@ -237,11 +237,11 @@ class BehaviourConductor:
         self.set_drone_behaviours()
 
     def hourly_update(self):
-        # for each
+        "Where the majority of ship behaviours should be set"
 
         if self.safety_margin == 0:
             self.safety_margin = 50000
-        possible_ships = self.haulers + self.commanders
+        possible_ships = self.haulers
 
         # just in case any behaviours have been terminated half way through and ships have stuff they don't know what to do with:
         for ship in self.commanders + self.haulers:
@@ -257,15 +257,13 @@ class BehaviourConductor:
                 ship.name,
             )
 
+        # set the commander to chain trades.
+        # we'll want to get a hauler to execute on contracts, but so far we don't know if contracts or chain trading is more effective.
+        set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
         # our goal is to get markets that we can manage.
         # however we can't guarantee that the markets will have imports and exports in the given system
         # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
         target_tradegoods = [
-            "SHIP_PARTS",
-            "SHIP_PLATING",
-            "ADVANCED_CIRCUITRY",
-            "ELECTRONICS",
-            "FAB_MATS",
             "EXPLOSIVES",
             "IRON",
             "COPPER",
@@ -277,6 +275,8 @@ class BehaviourConductor:
             trade_symbols = map_all_goods(
                 self.connection, tradegood, self.starting_system.symbol, trade_symbols
             )
+        if not trade_symbols:
+            return
         targets = [
             (tradegood, source[0]) for tradegood, source in trade_symbols.items()
         ]
@@ -456,6 +456,8 @@ order by 2 desc """
         market_places = self.st.find_waypoints_by_trait(
             self.starting_system.symbol, "MARKETPLACE"
         )
+        if not market_places:
+            return
         coordinates = {}
 
         coordinates = {(wp.x, wp.y): wp for wp in market_places}
@@ -508,48 +510,7 @@ order by 2 desc """
         # we can't guarantee a HYDROCARBON EXPORT anymore, and in fact it's going to be an EXTRACTOR instead.
         #
 
-        # should be either a hauler, or the commander if we haven't got one
-        refueler = (self.haulers + self.commanders)[0]
-        fuel_refinery = self.st.system_market(self.fuel_refinery)
-
-        # either the hydrocarbon shipper should take from siphoners
-        # or the hydrocarbon shipper should be the commander who goes to extract & sell
-        if len(self.siphoners) > 0:
-            hydrocarbon_shipper = self.haulers[0]
-            params = {
-                "market_wp": fuel_refinery.symbol,
-                "cargo_to_receive": ["HYDROCARBONS"],
-                "asteroid_wp": self.gas_giant.symbol,
-            }
-            set_behaviour(
-                self.connection,
-                hydrocarbon_shipper.name,
-                BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-                params,
-            )
-        elif len(self.siphoners) == 0:
-            hydrocarbon_shipper = self.commanders[0]
-            set_behaviour(
-                self.connection,
-                self.commanders[0].name,
-                BHVR_EXTRACT_AND_GO_SELL,
-                {
-                    "asteroid_wp": self.gas_giant.symbol,
-                    "market_wp": fuel_refinery.symbol,
-                },
-            )
-
-        #
-
-        if refueler != hydrocarbon_shipper:
-            set_behaviour(
-                self.connection,
-                refueler.name,
-                BHVR_REFUEL_ALL_IN_SYSTEM,
-                {"fuel_market_wp": fuel_refinery.symbol},
-            )
-
-        # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
+        pass
 
     def set_siphoning(self):
         # should be a quarterly or hourly behaviour

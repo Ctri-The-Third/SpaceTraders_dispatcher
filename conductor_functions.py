@@ -162,7 +162,7 @@ where system_symbol = %s
 group by mt.market_waypoint
 having count(mtl.market_symbol) = 0"""
     results = try_execute_select(connection, sql, (system_symbol,))
-    return len(results) > 0
+    return len(results) == 0
 
 
 def log_task(
