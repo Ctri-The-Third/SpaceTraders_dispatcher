@@ -39,23 +39,21 @@ from straders_sdk.utils import (
 )
 from dispatcherWK16 import (
     BHVR_EXTRACT_AND_GO_SELL,
-    BHVR_RECEIVE_AND_FULFILL,
-    BHVR_RECEIVE_AND_REFINE,
     BHVR_MONITOR_CHEAPEST_PRICE,
     BHVR_EXPLORE_SYSTEM,
     BHVR_EXTRACT_AND_TRANSFER,
     BHVR_CHILL_AND_SURVEY,
     BHVR_BUY_AND_DELIVER_OR_SELL,
     BHVR_REFUEL_ALL_IN_SYSTEM,
-    BHVR_SINGLE_STABLE_TRADE,
     BHVR_MONITOR_SPECIFIC_LOCATION,
-    BHVR_EXTRACT_AND_CHILL,
     BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
     BHVR_SIPHON_AND_CHILL,
     BHVR_MANAGE_SPECIFIC_EXPORT,
     BHVR_CONSTRUCT_JUMP_GATE,
     BHVR_SELL_OR_JETTISON_ALL_CARGO,
+    BHVR_CHAIN_TRADE,
 )
+
 from dispatcherWK16 import (
     RQ_ANY_FREIGHTER,
     RQ_CARGO,
@@ -86,7 +84,7 @@ logger = logging.getLogger(__name__)
 # ship_parts and
 
 
-class FuelManagementConductor:
+class BehaviourConductor:
 
     """This behaviour manager is for when we're in low fuel desperate situations"""
 
@@ -235,7 +233,7 @@ class FuelManagementConductor:
 
         process_contracts(self.st)
         self.set_satellite_behaviours()
-        self.scale_and_set_siphoning()
+        self.set_siphoning()
         self.set_drone_behaviours()
 
     def hourly_update(self):
@@ -392,31 +390,24 @@ where mg.trade_symbol is null and avg_profit is not null """
             i += 0.001
 
     def minutely_update(self):
-        self.scale_and_set_siphoning()
+        self.set_siphoning()
 
         # for each engineered asteroid - position 20 extractors
         # for each asteroid with either an exchange or import within 80 clicks, deploy 10 extractors
 
         # if len(self.shuttles) < 5:
         #    maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
-        if len(self.haulers) < 2:
+        if len(self.satellites) < 2:
+            t = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
+            if t:
+                self.set_satellite_behaviours()
+        elif len(self.siphoners) < 5:
+            t = maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
+            if t:
+                self.set_siphoning()
+        elif len(self.haulers) < 2:
             maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
-        elif len(self.siphoners) < 10:
-            maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
-        elif len(self.haulers) < 5:
-            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
-        elif len(self.extractors) < 10:
-            maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
-        elif len(self.surveyors) < 1:
-            maybe_buy_ship_sys(self.st, "SHIP_SURVEYOR", self.safety_margin)
-        elif len(self.haulers) < 15:
-            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
-        elif len(self.extractors) < 20:
-            maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
-        elif len(self.surveyors) < 2:
-            maybe_buy_ship_sys(self.st, "SHIP_SURVEYOR", self.safety_margin)
-        elif len(self.haulers) < 16:
-            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
+            # one stuck on explosives, one stuck on do contracts
 
     def set_drone_behaviours(self):
         # see scale_and_set_siphoning
@@ -445,22 +436,6 @@ where mg.trade_symbol is null and avg_profit is not null """
                     {"asteroid_wp": sites[1][1], "cargo_to_transfer": ["*"]},
                 )
         return
-        if len(self.extractors) > 19:
-            for extractor in self.extractors[19:30]:
-                set_behaviour(
-                    self.connection,
-                    extractor.name,
-                    BHVR_EXTRACT_AND_TRANSFER,
-                    {"asteroid_wp": sites[2][1], "cargo_to_transfer": ["*"]},
-                )
-        if len(self.extractors) > 30:
-            for extractor in self.extractors[30:40]:
-                set_behaviour(
-                    self.connection,
-                    extractor.name,
-                    BHVR_EXTRACT_AND_TRANSFER,
-                    {"asteroid_wp": sites[3][1], "cargo_to_transfer": ["*"]},
-                )
 
     def get_viable_routes(self, trade_symbols: list[str] = None):
         sql = """select trade_symbol, max(route_value) from trade_routes_intrasystem
@@ -495,6 +470,7 @@ order by 2 desc """
                 BHVR_MONITOR_CHEAPEST_PRICE,
                 {"ship_type": "SHIP_PROBE"},
             )
+
         if len(self.haulers) > 2:
             total_satellites_needed = len(coordinates) + len(types)
         else:
@@ -575,13 +551,9 @@ order by 2 desc """
 
         # either use the commander or a spare hauler to receive siphoned stuff and sell it. Commander has the advantage of extracting it too.
 
-    def scale_and_set_siphoning(self):
+    def set_siphoning(self):
         # should be a quarterly or hourly behaviour
 
-        if len(self.siphoners) <= 10:
-            ship = maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
-            if ship:
-                self.siphoners.append(ship)
         if self.gas_giant:
             # is there a place we can sell stuff orbiting the gas giant?
             # if so, extract_and_sell, else siphon_and_chill
@@ -933,7 +905,7 @@ if __name__ == "__main__":
 
     # `max_buy_price`: if you want to limit the purchase price, set it here\n
     # `min_sell_price`: if you want to limit the sell price, set it here\n
-    conductor = FuelManagementConductor(user)
+    conductor = BehaviourConductor(user)
 
     conductor.populate_ships()
 
