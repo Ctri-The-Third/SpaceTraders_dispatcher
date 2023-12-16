@@ -77,5 +77,8 @@ from behaviours.construct_a_jumpgate import (
     ConstructJumpgate,
     BEHAVIOUR_NAME as BHVR_CONSTRUCT_JUMP_GATE,
 )
-
+from behaviours.sell_or_jettison_all_cargo import (
+    SellOrDitch,
+    BEHAVIOUR_NAME as BHVR_SELL_OR_JETTISON_ALL_CARGO,
+)
 from behaviours.chain_trade import ChainTrade, BEHAVIOUR_NAME as BHVR_CHAIN_TRADE

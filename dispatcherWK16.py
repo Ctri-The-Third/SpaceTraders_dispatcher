@@ -16,7 +16,7 @@ from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer, get_and_validate
 
-from behaviours.sell_or_jettison_all_cargo import ( SellOrDitch, BEHAVIOUR_NAME as BHVR_SELL_OR_JETTISON_ALL_CARGO)
+
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
@@ -35,7 +35,7 @@ RQ_ANY_FREIGHTER = "ANY_FREIGHTER"
 RQ_CARGO = "_CARGO"
 RQ_FUEL = "_FUEL"
 
-from behaviour_constants import * 
+from behaviour_constants import *
 
 behaviours_and_classes = {
     BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
@@ -59,7 +59,7 @@ behaviours_and_classes = {
     BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
     BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
     BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
-    
+    BHVR_CHAIN_TRADE: ChainTrade,
 }
 
 logger = logging.getLogger("dispatcher")
