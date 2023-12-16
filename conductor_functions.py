@@ -1,12 +1,19 @@
 from straders_sdk import SpaceTraders
 from straders_sdk.contracts import Contract
-from straders_sdk.utils import try_execute_select, try_execute_upsert, waypoint_slicer
+from straders_sdk.utils import (
+    try_execute_select,
+    try_execute_upsert,
+    waypoint_slicer,
+    get_and_validate,
+)
 from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.models import System
+
 import datetime
 import logging
 import json
 import hashlib
+import time
 
 
 def process_contracts(client: SpaceTraders, recurse=True):
@@ -75,6 +82,32 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
     logging.warning("I don't think we should accept this contract %s", contract.id)
 
     return False
+
+
+def wait_until_reset(url, user_file: dict):
+    target_date = user_file["reset_date"]
+    current_reset_date = "1990-01-01"
+    had_to_wait = False
+    while target_date != current_reset_date:
+        response = get_and_validate(url)
+        try:
+            if (
+                response.status_code == 200
+                and response.response_json["resetDate"] == target_date
+            ):
+                return had_to_wait
+            elif response.status_code == 200:
+                current_reset_date = response.response_json["resetDate"]
+                logging.info(
+                    "Reset date is %s - waiting for %s", current_reset_date, target_date
+                )
+            else:
+                logging.info("It's coming!")
+        except Exception as err:
+            logging.error("Error %s", err)
+        finally:
+            had_to_wait = True
+            time.sleep(5)
 
 
 def get_prices_for(connection, tradegood: str, agent_symbol="@"):

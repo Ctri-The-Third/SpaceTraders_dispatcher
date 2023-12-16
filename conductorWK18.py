@@ -75,6 +75,7 @@ from conductor_functions import (
     log_shallow_trade_tasks,
     log_mining_package_deliveries,
     missing_market_prices,
+    wait_until_reset,
 )
 
 
@@ -916,6 +917,9 @@ and w.system_symbol = %s))"""
 
 if __name__ == "__main__":
     set_logging()
+    user = json.load(open("user.json"))
+    had_to_wait = wait_until_reset("https://api.spacetraders.io/v2/", user)
+    sleep(30 if had_to_wait else 0)
     user = json.load(open("user.json"))
     logger.info("Starting up conductor, preparing to connect to database")
     logger.info("Connected to database")
