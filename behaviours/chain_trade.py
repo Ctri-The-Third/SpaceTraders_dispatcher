@@ -63,7 +63,11 @@ class ChainTrade(Behaviour):
         ship: Ship
         agent = self.agent
 
+        self.start_wp = st.waypoints_view_one(
+            ship.nav.system_symbol, ship.nav.waypoint_symbol
+        )
         params = self.select_positive_trade()
+
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
         buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
         sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
@@ -98,13 +102,44 @@ class ChainTrade(Behaviour):
         )
         if not results:
             return []
+        best_distance = float("inf")
+        best_result = None
+        for result in results:
+            dest = Waypoint(
+                result[1],
+                result[4],
+                "",
+                result[5],
+                result[6],
+                [],
+                [],
+                {},
+                {},
+                [],
+                False,
+            )
+            if result[4] == self.ship.nav.waypoint_symbol:
+                best_result = result
+                break
+            if (
+                self.pathfinder.calc_distance_between(self.start_wp, dest)
+                < best_distance
+            ):
+                best_distance = self.pathfinder.calc_distance_between(
+                    self.start_wp, dest
+                )
+                best_result = result
+            if best_distance == 0:
+                break
+        if not best_result:
+            return []
         params = {
-            "tradegood": results[0][2],
-            "buy_wp": results[0][4],
-            "sell_wp": results[0][13],
+            "tradegood": best_result[2],
+            "buy_wp": best_result[4],
+            "sell_wp": best_result[13],
             "quantity": self.ship.cargo_capacity,
             # half of sellprice - buyprice
-            "safety_profit_threshold": (results[0][8] - results[0][7]) / 2,
+            "safety_profit_threshold": (best_result[8] - best_result[7]) / 2,
         }
         return params
 
