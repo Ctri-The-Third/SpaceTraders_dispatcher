@@ -327,6 +327,8 @@ class BehaviourConductor:
 
         # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
         process_contracts(self.st)
+
+        return
         self.log_tasks_for_contracts()
         if self.st.view_my_self().credits < 1000000:
             log_shallow_trade_tasks(

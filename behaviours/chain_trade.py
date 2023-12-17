@@ -20,6 +20,7 @@ from straders_sdk.models import Market, Waypoint
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 from straders_sdk.constants import SUPPLY_LEVELS
 import math
+from behaviours.generic_behaviour import Behaviour
 
 BEHAVIOUR_NAME = "CHAIN_TRADES"
 SAFETY_PADDING = 60
@@ -35,7 +36,8 @@ class ChainTrade(BuyAndDeliverOrSell_6):
         session=None,
         connection=None,
     ) -> None:
-        super().__init__(
+        Behaviour.__init__(
+            self,
             agent_name,
             ship_name,
             behaviour_params,
@@ -43,11 +45,10 @@ class ChainTrade(BuyAndDeliverOrSell_6):
             session,
             connection,
         )
-
+        self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
     def run(self):
-        super().run()
         self.sleep_until_ready()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
@@ -62,21 +63,24 @@ class ChainTrade(BuyAndDeliverOrSell_6):
         st = self.st
         ship = self.ship  # = st.ships_view_one(self.ship_name, True)
         ship: Ship
-        agent = st.view_my_self()
+        agent = self.agent
 
         params = self.select_positive_trade()
+
+        buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
+        buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
+        sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
+        sell_wp = st.waypoints_view_one(sell_sys.symbol, params["sell_wp"])
         self.fetch_half(
             "",
-            self.ship.nav.system_symbol,
-            params["buy_wp"],
+            buy_system,
+            buy_wp,
             [],
             self.ship.cargo_capacity,
             params["tradegood"],
         )
 
-        self.deliver_half(
-            self.ship.nav.system_symbol, params["sell_wp"], params["tradegood"]
-        )
+        self.deliver_half(self.ship.nav.system_symbol, sell_wp, params["tradegood"])
 
     def select_positive_trade(self):
         # this gets all viable trades for a given system

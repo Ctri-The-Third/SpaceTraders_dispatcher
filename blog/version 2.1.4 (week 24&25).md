@@ -9,7 +9,7 @@ I'm going to implement a "chain trade" behaviour, expanding off the old "single 
 In the event there are no profitable exchange starting points, picking the nearest profitable nearby trade is a good fallback.
 
 let's do:
-* commander does chain-trade
+* ✅ commander does chain-trade
 * buy 5 siphoners for the gas giant
 * buy hauler and manage explosives 
 * buy hauler and manage metal refineries
