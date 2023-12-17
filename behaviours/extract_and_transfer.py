@@ -8,6 +8,7 @@ import time
 from straders_sdk.utils import set_logging, waypoint_slicer
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL_8"
+SAFETY_PADDING = 180
 
 
 class ExtractAndTransfer_8(Behaviour):

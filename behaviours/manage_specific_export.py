@@ -241,7 +241,7 @@ class ManageSpecifcExport(Behaviour):
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
         )
-        best_cph = 0
+        best_cph = -1
         best_sell_market = None
         for market in markets:
             wp = waypoints[market.symbol]
@@ -266,7 +266,7 @@ class ManageSpecifcExport(Behaviour):
             return False
         import_tg = best_sell_market.get_tradegood(self.target_tradegood)
 
-        if export_tg.purchase_price >= import_tg.sell_price:
+        if export_tg.purchase_price > import_tg.sell_price:
             return False
         # 2799 3488
         self.ship_extrasolar(waypoint_slicer(self.target_market))
@@ -390,6 +390,5 @@ if __name__ == "__main__":
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    for i in range(30):
-        bhvr.run()
+    bhvr.run()
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)

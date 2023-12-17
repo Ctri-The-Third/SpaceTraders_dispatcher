@@ -11,6 +11,7 @@ from behaviours.generic_behaviour import Behaviour
 import time
 
 BEHAVIOUR_NAME = "EXTRACT_AND_CHILL"
+SAFETY_PADDING = 180
 
 
 class ExtractAndChill(Behaviour):
@@ -58,7 +59,7 @@ class ExtractAndChill(Behaviour):
         )
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:

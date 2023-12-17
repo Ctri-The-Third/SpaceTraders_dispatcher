@@ -11,6 +11,7 @@ from behaviours.generic_behaviour import Behaviour
 import time
 
 BEHAVIOUR_NAME = "EXTRACT_AND_GO_SELL"
+SAFETY_PADDING = 180
 
 
 class ExtractAndGoSell(Behaviour):

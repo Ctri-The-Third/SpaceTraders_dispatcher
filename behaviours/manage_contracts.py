@@ -24,7 +24,7 @@ from behaviours.generic_behaviour import Behaviour
 from conductor_functions import process_contracts
 
 BEHAVIOUR_NAME = "EXECUTE_CONTRACTS"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ExecuteContracts(Behaviour):

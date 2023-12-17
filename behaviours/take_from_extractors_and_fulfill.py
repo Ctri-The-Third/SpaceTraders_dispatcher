@@ -15,7 +15,7 @@ from straders_sdk.ship import Ship
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 
 BEHAVIOUR_NAME = "TAKE_FROM_EXTRACTORS_AND_GO_SELL_9"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
@@ -70,7 +70,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         if not self.start_wp_s:
             # we couldn't find any asteroids with the desired cargo
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             return
         if not self.market_wp_s and not self.fulfil_wp_s:
             self.market_wp_s = self.determine_market_wp()
@@ -201,7 +201,7 @@ order by 3 desc """
         # determine the best source
         else:
             self.logger.debug("No asteroids found with desired cargo")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
 
     def determine_market_wp(self):
         # find the nearest market with the desired cargo

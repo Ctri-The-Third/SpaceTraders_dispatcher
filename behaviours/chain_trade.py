@@ -22,7 +22,7 @@ import math
 from behaviours.generic_behaviour import Behaviour
 
 BEHAVIOUR_NAME = "CHAIN_TRADES"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ChainTrade(Behaviour):

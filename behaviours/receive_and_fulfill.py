@@ -13,7 +13,7 @@ from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 from straders_sdk.utils import waypoint_slicer, set_logging
 
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ReceiveAndFulfillOrSell_3(Behaviour):

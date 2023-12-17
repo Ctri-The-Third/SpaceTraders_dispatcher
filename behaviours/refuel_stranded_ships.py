@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "REFUEL_STRANDED"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ConstructJumpgate(Behaviour):

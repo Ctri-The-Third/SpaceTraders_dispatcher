@@ -15,7 +15,7 @@ import math
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "UPGRADE_TO_SPEC"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class FindMountsAndEquip(Behaviour):

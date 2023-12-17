@@ -8,6 +8,7 @@ from straders_sdk.models import Waypoint, System
 import time, math, threading
 
 BEHAVIOUR_NAME = "MONITOR_CHEAPEST_SHIPYARD_PRICE"
+SAFETY_PADDING = 180
 
 
 class MonitorCheapestShipyard(Behaviour):
@@ -65,7 +66,7 @@ class MonitorCheapestShipyard(Behaviour):
             self.logger.error(
                 "Couldn't find ship type %s", self.behaviour_params["ship_type"]
             )
-            time.sleep(30)
+            time.sleep(180)
             return
         route = None
         for row in rows:
@@ -77,7 +78,7 @@ class MonitorCheapestShipyard(Behaviour):
                 break
         if not route:
             print(f"Couldn't find a route to any shipyards that sell {rows[0][1]}!")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             return
         else:
             # print(
@@ -92,7 +93,7 @@ class MonitorCheapestShipyard(Behaviour):
         self.ship_extrasolar(target_sys)
         resp = self.ship_intrasolar(target_wp)
         if not resp:
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             self.end()
             self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         wp = st.waypoints_view_one(target_sys_sym, target_wp)
@@ -100,7 +101,7 @@ class MonitorCheapestShipyard(Behaviour):
             st.system_shipyard(wp, True)
             self.end()
 
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
         if scan_thread.is_alive():
             scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)

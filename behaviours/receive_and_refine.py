@@ -14,6 +14,7 @@ from straders_sdk.utils import waypoint_slicer, set_logging
 import time
 
 BEHAVIOUR_NAME = "RECEIVE_AND_REFINE"
+SAFETY_PADDING = 180
 
 
 class ReceiveAndRefine(Behaviour):

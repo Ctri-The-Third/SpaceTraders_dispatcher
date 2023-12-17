@@ -9,6 +9,7 @@ import time, math, threading
 from datetime import datetime, timedelta
 
 BEHAVIOUR_NAME = "MONITOR_SPECIFIC_WAYPOINT"
+SAFETY_PADDING = 180
 
 
 class MonitorPrices(Behaviour):
@@ -51,7 +52,7 @@ class MonitorPrices(Behaviour):
             self.st.logging_client.log_ending(
                 BEHAVIOUR_NAME, ship.name, self.agent.credits
             )
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             return
         waypoint = st.waypoints_view_one(waypoint_slicer(destination), destination)
         waypoint: Waypoint
@@ -76,7 +77,7 @@ class MonitorPrices(Behaviour):
             self.log_market_changes(waypoint.symbol)
         if waypoint.has_shipyard:
             self.st.system_shipyard(waypoint, True)
-        time.sleep(60)
+        time.sleep(SAFETY_PADDING)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
         self.end()
 

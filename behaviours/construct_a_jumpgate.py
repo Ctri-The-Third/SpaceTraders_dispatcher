@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "CONSTRUCT_JUMPGATE"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ConstructJumpgate(Behaviour):

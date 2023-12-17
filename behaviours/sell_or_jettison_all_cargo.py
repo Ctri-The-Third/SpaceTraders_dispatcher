@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "SELL_OR_JETTISON_ALL_CARGO"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class SellOrDitch(Behaviour):
