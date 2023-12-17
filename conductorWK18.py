@@ -218,25 +218,13 @@ class BehaviourConductor:
                 specific_ship_symbol=self.commanders[0].name,
             )
 
-        gas_giant = self.st.find_waypoints_by_type_one(
+        self.gas_giant = self.st.find_waypoints_by_type_one(
             self.starting_system.symbol, "GAS_GIANT"
         )
-        if gas_giant:
-            self.gas_giant = gas_giant
-            wps = self.st.find_waypoints_by_coords(
-                gas_giant.system_symbol, gas_giant.x, gas_giant.y
-            )
-            for _, wp in wps.items():
-                if "MARKETPLACE" in [t.symbol for t in wp.traits]:
-                    market = self.st.system_market(wp)
-                    if market.get_tradegood("HYDROCARBON"):
-                        self.gas_exchange = market
-                        break
 
-        process_contracts(self.st)
         self.set_satellite_behaviours()
         self.set_siphoning()
-        self.set_drone_behaviours()
+        self.set_extraction_drones()
 
     def hourly_update(self):
         "Where the majority of ship behaviours should be set"
@@ -262,103 +250,29 @@ class BehaviourConductor:
         self.set_satellite_behaviours()
 
     def quarterly_update(self):
-        # if we have a fuel shipper, give it all the fuel shipping tasks possible
-        # if not, give the exporter a refuel task for 1 (maybe 2) points.
-
-        possible_ships = self.haulers + self.commanders
-        self.safety_margin = 50000 * len(possible_ships)
-        # self.set_refinery_behaviours(possible_ships)
-        # self.set_satellite_behaviours()
-
-        # we should drip feed the most prominent trade routes to the haulers - ensuring that we don't double dip any of the exports.
-        # drip feeding should specify the target purchase price, or the target sell price, or both. This will primarily stress the exports.
-        # if we set the target price, then we'll end up buying/ selling once every 1h 3m, which is optimal.
-
-        # we should also pick one market at a time to evolve - ideally starting with the refinery markets first, which can have extractors provide metals to them.
-        process_contracts(self.st)
-
         return
-        self.log_tasks_for_contracts()
-        if self.st.view_my_self().credits < 1000000:
-            log_shallow_trade_tasks(
-                self.connection,
-                self.st.view_my_self().credits,
-                BHVR_BUY_AND_DELIVER_OR_SELL,
-                self.current_agent_symbol,
-                self.next_quarterly_update,
-                max(len(self.haulers) + len(self.commanders), 2),
-                self.starting_system.symbol,
-            )
-
-        # self.log_tasks_for_export_markets()
-
-    def log_tasks_for_export_markets(self, system_symbol=None):
-        # find export goods and their markets
-        # find ships that have regular behvaiours for those and exclude
-        # log a single task for each good that isn't managed
-        # these are priority 4 tasks
-        if not system_symbol:
-            system_symbol = self.starting_system.symbol
-        sql = """
-with export_goods as ( 
-select market_symbol, mtl.trade_symbol, supply, activity, mp.import_price - mp.export_price as avg_profit from market_tradegood_listings mtl 
-join waypoints w on mtl.market_symbol = w.waypoint_symbol
-join market_prices mp on mtl.trade_symbol = mp.trade_symbol
-where w.system_symbol = %s
-and mtl.type = 'EXPORT'
-order by activity != 'RESTRICTED', supply != 'ABUNDANT', (mp.import_price - mp.export_price) desc
-	),
- managed_goods as (
-	select behaviour_params ->> 'target_tradegood' as trade_symbol
-	, behaviour_params ->> 'market_wp' as market_symbol
-	from ship_behaviours sb 
-	join ships s on sb.ship_symbol = s.ship_symbol
-	where behaviour_id = %s
-	and agent_name = %s
-)
-select eg.market_symbol, eg.trade_symbol  from export_goods eg left join managed_goods mg on 
-eg.trade_symbol = mg.trade_symbol and eg.market_symbol = mg.market_symbol
-where mg.trade_symbol is null and avg_profit is not null """
-        results = try_execute_select(
-            self.connection,
-            sql,
-            (system_symbol, BHVR_MANAGE_SPECIFIC_EXPORT, self.current_agent_symbol),
-        )
-        i = 0.001
-        for result in results:
-            market_symbol, trade_symbol = result
-            params = {"target_tradegood": trade_symbol, "market_wp": market_symbol}
-            log_task(
-                self.connection,
-                BHVR_MANAGE_SPECIFIC_EXPORT,
-                [RQ_ANY_FREIGHTER],
-                system_symbol,
-                4 + i,
-                self.current_agent_symbol,
-                params,
-                expiry=self.next_quarterly_update,
-            )
-            i += 0.001
 
     def minutely_update(self):
-        self.set_siphoning()
-
         # for each engineered asteroid - position 20 extractors
         # for each asteroid with either an exchange or import within 80 clicks, deploy 10 extractors
 
         # if len(self.shuttles) < 5:
         #    maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
+        t = None
         if len(self.satellites) < 2:
             t = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
             if t:
+                self.satellites.append(t)
                 self.set_satellite_behaviours()
         elif len(self.siphoners) < 5:
             t = maybe_buy_ship_sys(self.st, "SHIP_SIPHON_DRONE", self.safety_margin)
             if t:
+                self.siphoners.append(t)
                 self.set_siphoning()
         elif len(self.haulers) < 2:
             t = maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
             if t:
+                self.haulers.append(t)
                 self.set_hauler_behaviours()
 
         elif len(self.haulers) > 2:
@@ -370,10 +284,24 @@ where mg.trade_symbol is null and avg_profit is not null """
         if len(self.satellites) < total_satellites_needed:
             for i in range(total_satellites_needed - len(self.satellites)):
                 t = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
+                if t:
+                    self.satellites.append(t)
                 if not t:
                     break
+            if t:
+                self.set_satellite_behaviours()
         if t:
             return
+        if len(self.extractors) < 20:
+            t = maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
+            if t:
+                self.extractors.append(t)
+                self.set_extraction_drones()
+        elif len(self.haulers) < 5:
+            t = maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
+            if t:
+                self.haulers.append(t)
+                self.set_hauler_behaviours()
 
     def get_distinct_coordinates_with_marketplaces(self):
         market_places = self.st.find_waypoints_by_trait(
@@ -394,32 +322,40 @@ where mg.trade_symbol is null and avg_profit is not null """
         types = [t[0] for t in types]
         return types
 
-    def set_drone_behaviours(self):
+    def set_extraction_drones(self):
         # see scale_and_set_siphoning
         # for siphoner in self.siphoners:
         #   set_behaviour(
-
-        sites = self.get_mining_sites(self.starting_system.symbol, 10, 10, 100)
-        if len(sites) == 0:
+        if len(self.extractors) == 0:
             return
-        # set 10 extractors to go to site 1 and extract
-        if len(self.extractors) > 0:
-            for extractor in self.extractors[:20]:
+        sites = self.get_mining_sites(
+            self.starting_system.symbol, self.extractors[0].fuel_capacity
+        )
+
+        allocated_drones = 0
+        for site in sites:
+            system_symbol, extraction_waypoint, site_type, extractables, distance = site
+            if site_type == "ENGINEERED_ASTEROID":
+                needed_drones = 20
+            else:
+                needed_drones = 10
+            for i in range(needed_drones):
+                if allocated_drones + i >= len(self.extractors):
+                    break
+
+                extractor = self.extractors[allocated_drones]
+                allocated_drones += 1
                 set_behaviour(
                     self.connection,
                     extractor.name,
                     BHVR_EXTRACT_AND_GO_SELL,
-                    {"asteroid_wp": sites[0][1], "cargo_to_transfer": ["*"]},
+                    {
+                        "asteroid_wp": extraction_waypoint,
+                        "cargo_to_transfer": extractables,
+                        "priority": 5,
+                    },
                 )
 
-        if len(self.extractors) > 20:
-            for extractor in self.extractors[20:29]:
-                set_behaviour(
-                    self.connection,
-                    extractor.name,
-                    BHVR_EXTRACT_AND_TRANSFER,
-                    {"asteroid_wp": sites[1][1], "cargo_to_transfer": ["*"]},
-                )
         return
 
     def get_viable_routes(self, trade_symbols: list[str] = None):
@@ -498,10 +434,10 @@ order by 2 desc """
             "IRON",
             "COPPER",
             "ALUMINUM",
+            "FUEL",
         ]
         viabile_tradegoods = self.get_viable_routes(target_tradegoods)
         tradesymbols_and_sources = None
-
         #  this code extends the tradegoods to find their dependencies - currently disabled
         for tradegood in viabile_tradegoods:
             tradesymbols_and_sources = map_tradesymbols_to_export_markets(
@@ -798,30 +734,21 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
 
         return [(r[2], r[4], r[5], r[3], r[1]) for r in routes]
 
-    def get_mining_sites(
-        self,
-        system_sym: str,
-        limit=None,
-        min_market_depth=100,
-        max_market_depth=1000000,
-    ) -> list[tuple]:
-        if not limit:
-            limit = 10
-        sql = """select avg(route_value)
-, extraction_waypoint
-, import_market 
-
-from trade_routes_extraction_intrasystem
-where market_depth >= %s
-and market_depth <= %s
-and system_symbol = %s
-group by 2,3
-order by 1 desc 
-limit %s"""
+    def get_mining_sites(self, system_sym: str, distance=80) -> list[tuple]:
+        sql = """with unpacked_sites as (
+            select system_Symbol,  unnest (array_agg) as extractable, extraction_waypoint, distance from mining_sites_and_exchanges
+            where system_Symbol = %s
+            and distance <= %s
+	    )
+	select us.system_symbol,  extraction_Waypoint, type, array_agg(extractable) as extractables, min(distance) 
+	from unpacked_sites us
+	join waypoints w on extraction_waypoint = w.waypoint_symbol
+	group by 1,2,3
+	order by 5 asc"""
         routes = try_execute_select(
             self.connection,
             sql,
-            (min_market_depth, max_market_depth, system_sym, limit),
+            (system_sym, distance),
         )
         if not routes:
             return []
