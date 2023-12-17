@@ -187,7 +187,7 @@ class ManageSpecifcExport(Behaviour):
                 if required_good_export_tg.supply == "SCARCE":
                     continue
                 cpd = (
-                    export_tg.sell_price - required_good_export_tg.purchase_price
+                    import_listing.sell_price - required_good_export_tg.purchase_price
                 ) / distance
                 if cpd > best_cpd:
                     best_source_of_import = market
@@ -206,7 +206,9 @@ class ManageSpecifcExport(Behaviour):
             #
             # if we get here, there's no profitable exports matching our hungry imports
             # we should sweep for raw goods in extractors just in case.
-            #
+            # decided not to do this, and instead move on to the next import
+            continue
+
             packages = self.find_extractors_with_raw_goods(required_import_symbol)
             if not packages:
                 self.logger.debug(
@@ -378,16 +380,16 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "27"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3F"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4.5,
-        "target_tradegood": "EQUIPMENT",
+        "target_tradegood": "FUEL",
         # "market_wp": "X1-YG29-D43",
     }
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     for i in range(30):
         bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
