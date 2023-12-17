@@ -88,3 +88,8 @@ from behaviours.emergency_reboot import (
     EmergencyReboot,
     BEHAVIOUR_NAME as BHVR_EMERGENCY_REBOOT,
 )
+
+from behaviours.manage_contracts import (
+    ExecuteContracts,
+    BEHAVIOUR_NAME as BHVR_EXECUTE_CONTRACTS,
+)

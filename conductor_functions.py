@@ -20,7 +20,11 @@ def process_contracts(client: SpaceTraders, recurse=True):
     contracts = client.view_my_contracts()
     need_to_negotiate = True
 
-    for con in contracts:
+    open_contracts = [
+        con for con in contracts if not con.fulfilled and not con.is_expired
+    ]
+
+    for con in open_contracts:
         con: Contract
         should_we_complete = False
 
@@ -162,7 +166,7 @@ where system_symbol = %s
 group by mt.market_waypoint
 having count(mtl.market_symbol) = 0"""
     results = try_execute_select(connection, sql, (system_symbol,))
-    return len(results) == 0
+    return len(results) > 0
 
 
 def log_task(

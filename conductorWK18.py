@@ -256,74 +256,9 @@ class BehaviourConductor:
                 self.next_hourly_update,
                 ship.name,
             )
-
-        # set the commander to chain trades.
-        # we'll want to get a hauler to execute on contracts, but so far we don't know if contracts or chain trading is more effective.
-        set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
-        if len(self.haulers) > 0:
-            set_behaviour(
-                self.connection, self.haulers[0].name, BHVR_MANAGE_CONTRACTS, {}
-            )
-        possible_ships = self.haulers[1:]
-
-        # our goal is to get markets that we can manage.
-        # however we can't guarantee that the markets will have imports and exports in the given system
-        # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
-        target_tradegoods = [
-            "EXPLOSIVES",
-            "IRON",
-            "COPPER",
-            "ALUMINUM",
-        ]
-        viabile_tradegoods = self.get_viable_routes(target_tradegoods)
-        tradesymbols_and_sources = None
-
-        #  this code extends the tradegoods to find their dependencies - currently disabled
-        for tradegood in viabile_tradegoods:
-            tradesymbols_and_sources = map_tradesymbols_to_export_markets(
-                self.connection,
-                tradegood,
-                self.starting_system.symbol,
-                tradesymbols_and_sources,
-            )
-
-        if not tradesymbols_and_sources:
-            return
-        targets = [
-            (tradegood, source[0])
-            for tradegood, source in tradesymbols_and_sources.items()
-        ]
-        index = 0
-        for h in possible_ships:
-            if len(targets) > index:
-                tradegood, source = targets[index]
-                if source == "EXTRACTABLE":
-                    params = {"cargo_to_receive": [tradegood], "priority": 4}
-                    set_behaviour(
-                        self.connection,
-                        h.name,
-                        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-                        params,
-                    )
-                else:
-                    params = {
-                        "target_tradegood": tradegood,
-                        "market_wp": source,
-                        "priority": 4,
-                    }
-                    set_behaviour(
-                        self.connection,
-                        h.name,
-                        BHVR_MANAGE_SPECIFIC_EXPORT,
-                        params,
-                    )
-
-            else:
-                # this needs to be context aware.
-                set_behaviour(self.connection, h.name, BHVR_CONSTRUCT_JUMP_GATE, {})
-            index += 1
+        self.set_hauler_behaviours()
         # self.set_refinery_behaviours(possible_ships)
-        # self.set_satellite_behaviours()
+        self.set_satellite_behaviours()
 
     def quarterly_update(self):
         # if we have a fuel shipper, give it all the fuel shipping tasks possible
@@ -421,8 +356,42 @@ where mg.trade_symbol is null and avg_profit is not null """
             if t:
                 self.set_siphoning()
         elif len(self.haulers) < 2:
-            maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
-            # one stuck on explosives, one stuck on do contracts
+            t = maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
+            if t:
+                self.set_hauler_behaviours()
+
+        elif len(self.haulers) > 2:
+            coordinates = self.get_distinct_coordinates_with_marketplaces()
+            types = self.get_distinct_ship_types()
+            total_satellites_needed = len(coordinates) + len(types)
+        else:
+            total_satellites_needed = len(types)
+        if len(self.satellites) < total_satellites_needed:
+            for i in range(total_satellites_needed - len(self.satellites)):
+                t = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
+                if not ship:
+                    break
+        if t:
+            return
+
+    def get_distinct_coordinates_with_marketplaces(self):
+        market_places = self.st.find_waypoints_by_trait(
+            self.starting_system.symbol, "MARKETPLACE"
+        )
+        if not market_places:
+            return {}
+        coordinates = {}
+
+        coordinates = {(wp.x, wp.y): wp for wp in market_places}
+        return coordinates
+
+    def get_distinct_ship_types(self):
+        ship_types_sql = """select distinct ship_type  from shipyard_types"""
+        types = try_execute_select(self.connection, ship_types_sql, ())
+        if not types:
+            return []
+        types = [t[0] for t in types]
+        return types
 
     def set_drone_behaviours(self):
         # see scale_and_set_siphoning
@@ -488,16 +457,6 @@ order by 2 desc """
                 {"ship_type": "SHIP_PROBE"},
             )
 
-        if len(self.haulers) > 2:
-            total_satellites_needed = len(coordinates) + len(types)
-        else:
-            total_satellites_needed = len(types)
-        if len(self.satellites) < total_satellites_needed:
-            for i in range(total_satellites_needed - len(self.satellites)):
-                ship = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
-                if not ship:
-                    break
-
         i = -1
         for satellite in self.satellites[1 : len(types) + 1]:
             try:
@@ -519,6 +478,73 @@ order by 2 desc """
                 {"waypoint": list(coordinates.values())[i].symbol},
             )
             i += 1
+
+    def set_hauler_behaviours(self):
+        # set the commander to chain trades.
+        # we'll want to get a hauler to execute on contracts, but so far we don't know if contracts or chain trading is more effective.
+        set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
+        if len(self.haulers) > 0:
+            set_behaviour(
+                self.connection, self.haulers[0].name, BHVR_MANAGE_CONTRACTS, {}
+            )
+        possible_ships = self.haulers[1:]
+
+        # our goal is to get markets that we can manage.
+        # however we can't guarantee that the markets will have imports and exports in the given system
+        # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
+        target_tradegoods = [
+            "EXPLOSIVES",
+            "IRON",
+            "COPPER",
+            "ALUMINUM",
+        ]
+        viabile_tradegoods = self.get_viable_routes(target_tradegoods)
+        tradesymbols_and_sources = None
+
+        #  this code extends the tradegoods to find their dependencies - currently disabled
+        for tradegood in viabile_tradegoods:
+            tradesymbols_and_sources = map_tradesymbols_to_export_markets(
+                self.connection,
+                tradegood,
+                self.starting_system.symbol,
+                tradesymbols_and_sources,
+            )
+
+        if not tradesymbols_and_sources:
+            return
+        targets = [
+            (tradegood, source[0])
+            for tradegood, source in tradesymbols_and_sources.items()
+        ]
+        index = 0
+        for h in possible_ships:
+            if len(targets) > index:
+                tradegood, source = targets[index]
+                if source == "EXTRACTABLE":
+                    params = {"cargo_to_receive": [tradegood], "priority": 4}
+                    set_behaviour(
+                        self.connection,
+                        h.name,
+                        BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
+                        params,
+                    )
+                else:
+                    params = {
+                        "target_tradegood": tradegood,
+                        "market_wp": source,
+                        "priority": 4,
+                    }
+                    set_behaviour(
+                        self.connection,
+                        h.name,
+                        BHVR_MANAGE_SPECIFIC_EXPORT,
+                        params,
+                    )
+
+            else:
+                # this needs to be context aware.
+                set_behaviour(self.connection, h.name, BHVR_CONSTRUCT_JUMP_GATE, {})
+            index += 1
 
     def set_refinery_behaviours(self, possible_ships):
         #
