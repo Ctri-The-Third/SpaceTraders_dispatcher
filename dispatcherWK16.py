@@ -60,6 +60,7 @@ behaviours_and_classes = {
     BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
     BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
     BHVR_CHAIN_TRADE: ChainTrade,
+    BHVR_EMERGENCY_REBOOT: EmergencyReboot,
 }
 
 logger = logging.getLogger("dispatcher")
