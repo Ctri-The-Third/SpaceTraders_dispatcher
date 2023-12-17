@@ -18,7 +18,8 @@ Our planned strategy was:
 > * buy 5 siphoners for the gas giant
 > * buy hauler and manage explosives 
 > * buy hauler and manage metal refineries
-however, an error in deployment meant the previous strategy was executed instead, triggering a stall.
+however, an error in deployment meant the Node V (Week21) strategy was executed instead, triggering a stall.
+Whilst "Chain trade" has proven effective, when working with credit values less than 500, it's better to EXTRACT_AND_SELL, so I've created and EMERGENCY_REBOOT behaviour that will have the commander EXTRACT_AND_SELL from the gas giant to the fuel refinery - to help guarantee that we have sustainably priced fuel. 
 
 
 ## REUSING BEHAVIOURS

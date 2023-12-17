@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 from behaviours.generic_behaviour import Behaviour
 
-BEHAVIOUR_NAME = "CHAIN_TRADES"
+BEHAVIOUR_NAME = "CONTRACT_MANAGEMENT"
 SAFETY_PADDING = 60
 
 
@@ -63,38 +63,70 @@ class ChainTrade(Behaviour):
         ship: Ship
         agent = self.agent
 
-        params = self.select_positive_trade()
+        params = self.select_active_contract()
+
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
         buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
-        sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
-        sell_wp = st.waypoints_view_one(sell_sys.symbol, params["sell_wp"])
-        tradegood = params["tradegood"]
-        pass
-        if not tradegood in [x.symbol for x in ship.cargo_inventory]:
-            self.go_and_buy(tradegood, buy_wp, max_to_buy=self.ship.cargo_capacity)
+        fulfil_sys = st.systems_view_one(waypoint_slicer(params["fulfil_wp"]))
+        fulfil_wp = st.waypoints_view_one(fulfil_sys.symbol, params["fulfil_wp"])
+        self.go_and_buy(
+            params["tradegood"], buy_wp, max_to_buy=self.ship.cargo_capacity
+        )
 
-        self.go_and_sell_or_fulfill(tradegood, sell_wp)
+        self.go_and_sell_or_fulfill(params["tradegood"], fulfil_wp)
+
+    def select_active_contract(self):
+        contracts = self.st.view_my_contracts()
+        open_contracts = [
+            c for c in contracts if c.accepted and not c.fulfilled and not c.is_expired
+        ]
+        for contract in contracts:
+            for deliverable in contract.deliverables:
+                if deliverable.units_fulfilled == deliverable.units_required:
+                    continue
+                sql = """SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, fulfill_value_per_unit, fulfill_market, supply_text, supply_value, market_depth, waypoint_symbol, fulfil_x, fulfil_y, distance, agent_symbol
+	FROM public.trade_routes_contracts
+    where system_symbol = %s and trade_symbol = %s
+    and agent_symbol = %s"""
+                results = try_execute_select(
+                    self.connection,
+                    sql,
+                    (
+                        self.ship.nav.system_symbol,
+                        deliverable.symbol,
+                        self.agent.symbol,
+                    ),
+                )
+                if not results:
+                    continue
+                params = {
+                    "tradegood": results[0][2],
+                    "buy_wp": results[0][4],
+                    "fulfil_wp": results[0][9],
+                    "quantity": deliverable.units_required
+                    - deliverable.units_fulfilled,
+                }
+                return params
 
     def select_positive_trade(self):
         # this gets all viable trades for a given system
         # it lists all the trades from the current market first, then all others afterwards#
         # it will then go by the most profitable (profit per distance).
+        contracts = self.st.view_my_contracts()
+        open_contracts = [
+            c for c in contracts if c.accepted and not c.fulfilled and not c.is_expired
+        ]
 
         sql = """
     SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, sell_price, supply_value, supply_text, import_supply, market_depth, import_market, import_x, import_y, distance
 	FROM public.trade_routes_intrasystem
     where system_symbol = %s
-    and purchase_price < %s
     order by export_market = %s desc, route_value desc
     """
         results = try_execute_select(
             self.st.db_client.connection,
             sql,
-            (
-                self.ship.nav.system_symbol,
-                self.agent.credits,
-                self.ship.nav.waypoint_symbol,
-            ),
+            (self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol),
         )
         if not results:
             return []
@@ -114,7 +146,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
