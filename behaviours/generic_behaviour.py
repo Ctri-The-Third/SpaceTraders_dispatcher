@@ -252,12 +252,16 @@ class Behaviour:
 
         return True
 
-    def siphon_till_full(self, cutoff_cargo_units_used=None) -> Ship or bool:
+    def siphon_till_full(
+        self, cutoff_cargo_units_used=None, tradegoods_to_discard: list[str] = None
+    ) -> Ship or bool:
         ship = self.ship
         st = self.st
         current_wayp = self.st.waypoints_view_one(
             self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
         )
+        if tradegoods_to_discard is None:
+            tradegoods_to_discard = []
 
         if current_wayp.type not in ("GAS_GIANT"):
             self.logger.error(
@@ -276,6 +280,9 @@ class Behaviour:
             self.sleep_until_ready()
 
             resp = st.ship_siphon(ship)
+            for cargo in ship.cargo_inventory:
+                if cargo.symbol in tradegoods_to_discard:
+                    st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
 
             # extract. if we're full, return without refreshing the survey (as we won't use it)
             if ship.cargo_units_used >= cutoff_cargo_units_used:
@@ -898,9 +905,8 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)
-    bhvr.jettison_all_cargo()
-    bhvr.run()
+    bhvr.st.view_my_self(True)
