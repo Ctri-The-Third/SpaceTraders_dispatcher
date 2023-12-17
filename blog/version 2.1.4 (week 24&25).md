@@ -49,3 +49,16 @@ We'll see if the import for that on evolves. Fingers crossed!
 
 **Outcome:**
 Remains to be seen.
+So far I'm observing the following moving out of the default WEAK state
+IRON_ORE (GROWING) which feeds IRON (STRONG)
+ALUMINUM ORE (WEAK :( ) which feeds ALUMINUM (GROWING)
+COPPER_ORE (WEAK :( ) which feeds COPPER (GROWING)
+HYDROCARBON (GROWING) which feeds FUEL (WEAK)
+LIQUID_NITROGEN (GROWING) which feeds EXPLOSIVES (WEAK)
+LIQUID_HYDROGEN (GROWING) which feeds EXPLOSIVES (WEAK)
+
+HOWEVER, unexpectedly the code has diverted haulers away from that behaviour. 
+We had a bit of code that checked there were valid places to sell the managed EXPORT, but that was predicated on the assumption that there would always be a profitable route for the export.
+If we still need to work on the import whilst the EXPORT is fulfilled, then this code takes haulers away too soon.
+
+Whilst it is good to have a mechanism by which ships can be redirected to more profitable activities - this is not the correct way to do it, so I'm removing that function and reverting to just the fixed strings.

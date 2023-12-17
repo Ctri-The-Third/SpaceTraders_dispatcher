@@ -146,7 +146,7 @@ class ReceiveAndRefine(Behaviour):
 
         if not did_something:
             self.logger.debug("Nothing to do, sleeping for 60s")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
         self.end()
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)

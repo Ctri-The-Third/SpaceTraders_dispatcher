@@ -116,7 +116,7 @@ class ExtractAndTransfer_8(Behaviour):
                 agent.credits,
                 agent.credits - starting_credts,
             )
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             return
 
         cutoff_cargo_limit = None
@@ -173,7 +173,7 @@ class ExtractAndTransfer_8(Behaviour):
             self.logger.info(
                 "Ship unable to do anything, sleeping for 1 minute - hoping for a transport."
             )
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
 
         #
         # end of script.

@@ -367,19 +367,6 @@ class BehaviourConductor:
 
         return
 
-    def get_viable_routes(self, trade_symbols: list[str] = None):
-        sql = """select trade_symbol, max(route_value) from trade_routes_intrasystem
-where system_Symbol = %s
-group by trade_symbol
-order by 2 desc """
-        results = try_execute_select(
-            self.connection, sql, (self.starting_system.symbol,)
-        )
-        valid_symbols = [r[0] for r in results]
-        if trade_symbols:
-            return [r for r in trade_symbols if r in valid_symbols]
-        return valid_symbols
-
     def set_satellite_behaviours(self):
         "ensures that each distinct celestial body (excluding moons etc...) has a satellite, and a shipyard for each ship"
 
@@ -447,10 +434,9 @@ order by 2 desc """
             "ALUMINUM",
             "FUEL",
         ]
-        viabile_tradegoods = self.get_viable_routes(target_tradegoods)
         tradesymbols_and_sources = None
         #  this code extends the tradegoods to find their dependencies - currently disabled
-        for tradegood in viabile_tradegoods:
+        for tradegood in target_tradegoods:
             tradesymbols_and_sources = map_tradesymbols_to_export_markets(
                 self.connection,
                 tradegood,
