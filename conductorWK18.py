@@ -297,11 +297,16 @@ class BehaviourConductor:
             if t:
                 self.extractors.append(t)
                 self.set_extraction_drones()
-        elif len(self.haulers) < 5:
+        elif len(self.haulers) < 7:
             t = maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
             if t:
                 self.haulers.append(t)
                 self.set_hauler_behaviours()
+        elif len(self.extractors) < 40:
+            t = maybe_buy_ship_sys(self.st, "SHIP_MINING_DRONE", self.safety_margin)
+            if t:
+                self.extractors.append(t)
+                self.set_extraction_drones()
 
     def get_distinct_coordinates_with_marketplaces(self):
         market_places = self.st.find_waypoints_by_trait(
@@ -333,7 +338,10 @@ class BehaviourConductor:
         )
 
         allocated_drones = 0
+        stop = False
         for site in sites:
+            if stop:
+                break
             system_symbol, extraction_waypoint, site_type, extractables, distance = site
             if site_type == "ENGINEERED_ASTEROID":
                 needed_drones = 20
@@ -341,6 +349,7 @@ class BehaviourConductor:
                 needed_drones = 10
             for i in range(needed_drones):
                 if allocated_drones + i >= len(self.extractors):
+                    stop = True
                     break
 
                 extractor = self.extractors[allocated_drones]
@@ -424,6 +433,8 @@ order by 2 desc """
             set_behaviour(
                 self.connection, self.haulers[0].name, BHVR_EXECUTE_CONTRACTS, {}
             )
+
+        # at the end of the script, if all the target_tradegoods are being managed, build the jump gate.
         possible_ships = self.haulers[1:]
 
         # our goal is to get markets that we can manage.

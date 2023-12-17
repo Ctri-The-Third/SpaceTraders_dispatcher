@@ -1,6 +1,6 @@
 Learnings from last week
 
-* Contracts are good if we have enough money to execute them
+* ✅ Contracts are good if we have enough money to execute them
 * relying purely on the "manage export" behaviour is not good if the suppyling tradevolume is equal to (or less than) the hungry tradevolume, especially for manufactured materials.
 * Our "build a jump gate" behaviour is functional - we'll definitly get the jump gate done this reset.
 * we were vulnerable to an early game stall - fixed by minimum safety amounts, and buying fewer ships to begin with.
@@ -8,16 +8,17 @@ Learnings from last week
 
 
 
-I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
+✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
 
-In the event there are no profitable exchange starting points, picking the nearest profitable nearby trade is a good fallback.
+In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
+Outcome: Incredibly effective. 🥇
 
 Our planned strategy was: 
 > let's do:
 > * ✅ commander does chain-trade
-> * buy 5 siphoners for the gas giant
-> * buy hauler and manage explosives 
-> * buy hauler and manage metal refineries
+> * ✅ buy 5 siphoners for the gas giant
+> * ✅ buy hauler and manage explosives 
+> * ✅buy hauler and manage metal refineries
 however, an error in deployment meant the Node V (Week21) strategy was executed instead, triggering a stall.
 Whilst "Chain trade" has proven effective, when working with credit values less than 500, it's better to EXTRACT_AND_SELL, so I've created and EMERGENCY_REBOOT behaviour that will have the commander EXTRACT_AND_SELL from the gas giant to the fuel refinery - to help guarantee that we have sustainably priced fuel. 
 
