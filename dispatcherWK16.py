@@ -192,17 +192,25 @@ class dispatcher:
             or last_exec
         ):
             ships_to_pop = []
-            last_exec = False
+
             for ship_id, thread in ships_and_threads.items():
                 if not thread.is_alive():
                     thread.join()
                     print(f"ship {ship_id} has finished - releasing")
                     lock_ship(ship_id, self.lock_id, self.connection, duration=0)
                     ships_to_pop.append(ship_id)
+
             for ship_id in ships_to_pop:
                 ships_and_threads.pop(ship_id)
                 last_exec = len(ships_and_threads) == 0
             time.sleep(1)
+        # release the final ship
+        for ship_id, thread in ships_and_threads.items():
+            if not thread.is_alive():
+                thread.join()
+                print(f"FINAL RELEASE - ship {ship_id} has finished - releasing")
+                lock_ship(ship_id, self.lock_id, self.connection, duration=0)
+
         self.consumer.stop()
 
     def _the_big_loop(self, ships_and_threads):
@@ -257,32 +265,33 @@ class dispatcher:
             #
 
             for ship_and_behaviour in unlocked_ships:
-                if ship_and_behaviour["name"] in ships_and_threads:
-                    thread = ships_and_threads[ship_and_behaviour["name"]]
+                ship_name = ship_and_behaviour["name"]
+                if ship_name in ships_and_threads:
+                    thread = ships_and_threads[ship_name]
                     thread: threading.Thread
                     if thread.is_alive():
                         continue
                     else:
-                        del ships_and_threads[ship_and_behaviour["name"]]
+                        del ships_and_threads[ship_name]
 
                 #
                 # is there a task the ship can execute? if not, go to behaviour scripts instead.
                 #
-                task = self.get_task_for_ships(self.client, ship_and_behaviour["name"])
+                task = self.get_task_for_ships(self.client, ship_name)
                 if task:
                     if task["claimed_by"] is None or task["claimed_by"] == "":
-                        self.claim_task(task["task_hash"], ship_and_behaviour["name"])
+                        self.claim_task(task["task_hash"], ship_name)
                     task["behaviour_params"]["task_hash"] = task["task_hash"]
 
                     bhvr = self.map_behaviour_to_class(
                         task["behaviour_id"],
-                        ship_and_behaviour["name"],
+                        ship_name,
                         task["behaviour_params"],
                         agent_symbol,
                     )
                     doing_task = self.lock_and_execute(
                         ships_and_threads,
-                        ship_and_behaviour["name"],
+                        ship_name,
                         bhvr,
                         task["behaviour_id"],
                     )
@@ -298,14 +307,14 @@ class dispatcher:
                 bhvr = None
                 bhvr = self.map_behaviour_to_class(
                     ship_and_behaviour["behaviour_id"],
-                    ship_and_behaviour["name"],
+                    ship_name,
                     ship_and_behaviour["behaviour_params"],
                     agent_symbol,
                 )
 
                 self.lock_and_execute(
                     ships_and_threads,
-                    ship_and_behaviour["name"],
+                    ship_name,
                     bhvr,
                     ship_and_behaviour["behaviour_id"],
                 )
