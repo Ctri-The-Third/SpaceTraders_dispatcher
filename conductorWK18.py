@@ -52,6 +52,7 @@ from dispatcherWK16 import (
     BHVR_CONSTRUCT_JUMP_GATE,
     BHVR_SELL_OR_JETTISON_ALL_CARGO,
     BHVR_CHAIN_TRADE,
+    BHVR_EXECUTE_CONTRACTS,
 )
 
 from dispatcherWK16 import (
@@ -369,7 +370,7 @@ where mg.trade_symbol is null and avg_profit is not null """
         if len(self.satellites) < total_satellites_needed:
             for i in range(total_satellites_needed - len(self.satellites)):
                 t = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
-                if not ship:
+                if not t:
                     break
         if t:
             return
@@ -485,7 +486,7 @@ order by 2 desc """
         set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
         if len(self.haulers) > 0:
             set_behaviour(
-                self.connection, self.haulers[0].name, BHVR_MANAGE_CONTRACTS, {}
+                self.connection, self.haulers[0].name, BHVR_EXECUTE_CONTRACTS, {}
             )
         possible_ships = self.haulers[1:]
 
