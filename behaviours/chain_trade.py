@@ -10,7 +10,6 @@ import sys
 
 sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
-from behaviours.buy_and_deliver_or_sell import BuyAndDeliverOrSell_6
 import logging
 
 from datetime import datetime, timedelta
@@ -26,7 +25,7 @@ BEHAVIOUR_NAME = "CHAIN_TRADES"
 SAFETY_PADDING = 60
 
 
-class ChainTrade(BuyAndDeliverOrSell_6):
+class ChainTrade(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -36,8 +35,7 @@ class ChainTrade(BuyAndDeliverOrSell_6):
         session=None,
         connection=None,
     ) -> None:
-        Behaviour.__init__(
-            self,
+        super().__init__(
             agent_name,
             ship_name,
             behaviour_params,
@@ -66,21 +64,16 @@ class ChainTrade(BuyAndDeliverOrSell_6):
         agent = self.agent
 
         params = self.select_positive_trade()
-
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
         buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
         sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
         sell_wp = st.waypoints_view_one(sell_sys.symbol, params["sell_wp"])
-        self.fetch_half(
-            "",
-            buy_system,
-            buy_wp,
-            [],
-            self.ship.cargo_capacity,
-            params["tradegood"],
-        )
+        tradegood = params["tradegood"]
 
-        self.deliver_half(self.ship.nav.system_symbol, sell_wp, params["tradegood"])
+        if not tradegood in [x.symbol for x in ship.cargo_inventory]:
+            self.go_and_buy(tradegood, buy_wp, max_to_buy=self.ship.cargo_capacity)
+
+        self.go_and_sell_or_fulfill(params["tradegood"], sell_wp)
 
     def select_positive_trade(self):
         # this gets all viable trades for a given system
@@ -91,12 +84,17 @@ class ChainTrade(BuyAndDeliverOrSell_6):
     SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, sell_price, supply_value, supply_text, import_supply, market_depth, import_market, import_x, import_y, distance
 	FROM public.trade_routes_intrasystem
     where system_symbol = %s
+    and purchase_price < %s
     order by export_market = %s desc, route_value desc
     """
         results = try_execute_select(
             self.st.db_client.connection,
             sql,
-            (self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol),
+            (
+                self.ship.nav.system_symbol,
+                self.agent.credits,
+                self.ship.nav.waypoint_symbol,
+            ),
         )
         if not results:
             return []
@@ -116,7 +114,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,

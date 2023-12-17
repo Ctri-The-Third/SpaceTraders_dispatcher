@@ -105,10 +105,8 @@ class ExtractAndGoSell(Behaviour):
                 ship, st, current_wp.symbol
             )
         if market_wp_sym:
-            self.ship_intrasolar(market_wp_sym)
-            self.sell_all_cargo()
-        else:
-            self.jettison_all_cargo()
+            for cargo in ship.cargo_inventory:
+                self.go_and_sell_or_fulfill(cargo.symbol, market_wp_sym)
 
         self.end()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)

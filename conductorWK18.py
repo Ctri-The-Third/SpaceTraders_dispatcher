@@ -135,9 +135,10 @@ class BehaviourConductor:
         # * progress missions
         hq = self.st.view_my_self().headquarters
         hq_sys = waypoint_slicer(hq)
+        self.st.ships_view(True)
+
         self.starting_system = self.st.systems_view_one(hq_sys, True)
         self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
-
         for sym in self.starting_system.waypoints:
             wp = self.st.waypoints_view_one(self.starting_system.symbol, sym.symbol)
             if "MARKETPLACE" in [t.symbol for t in wp.traits]:
@@ -240,8 +241,7 @@ class BehaviourConductor:
         "Where the majority of ship behaviours should be set"
 
         if self.safety_margin == 0:
-            self.safety_margin = 50000
-        possible_ships = self.haulers
+            self.safety_margin = 50000 * len(self.haulers + self.commanders)
 
         # just in case any behaviours have been terminated half way through and ships have stuff they don't know what to do with:
         for ship in self.commanders + self.haulers:
@@ -260,6 +260,12 @@ class BehaviourConductor:
         # set the commander to chain trades.
         # we'll want to get a hauler to execute on contracts, but so far we don't know if contracts or chain trading is more effective.
         set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
+        if len(self.haulers) > 0:
+            set_behaviour(
+                self.connection, self.haulers[0].name, BHVR_MANAGE_CONTRACTS, {}
+            )
+        possible_ships = self.haulers[1:]
+
         # our goal is to get markets that we can manage.
         # however we can't guarantee that the markets will have imports and exports in the given system
         # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
@@ -270,15 +276,22 @@ class BehaviourConductor:
             "ALUMINUM",
         ]
         viabile_tradegoods = self.get_viable_routes(target_tradegoods)
-        trade_symbols = None
+        tradesymbols_and_sources = None
+
+        #  this code extends the tradegoods to find their dependencies - currently disabled
         for tradegood in viabile_tradegoods:
-            trade_symbols = map_all_goods(
-                self.connection, tradegood, self.starting_system.symbol, trade_symbols
+            tradesymbols_and_sources = map_tradesymbols_to_export_markets(
+                self.connection,
+                tradegood,
+                self.starting_system.symbol,
+                tradesymbols_and_sources,
             )
-        if not trade_symbols:
+
+        if not tradesymbols_and_sources:
             return
         targets = [
-            (tradegood, source[0]) for tradegood, source in trade_symbols.items()
+            (tradegood, source[0])
+            for tradegood, source in tradesymbols_and_sources.items()
         ]
         index = 0
         for h in possible_ships:
@@ -807,7 +820,7 @@ def switch_to_surveying(connection, ship_symbol):
     try_execute_upsert(connection, sql, (BHVR_CHILL_AND_SURVEY, ship_symbol))
 
 
-def map_all_goods(
+def map_tradesymbols_to_export_markets(
     connection,
     tradegood: str,
     system_symbol: str,
@@ -842,9 +855,10 @@ and w.system_symbol = %s))"""
             managed_exports_and_markets[export_tradegood] = []
         managed_exports_and_markets[export_tradegood].append(export_market_wp)
 
-        map_all_goods(
-            connection, required_import, system_symbol, managed_exports_and_markets
-        )
+        # to re-enable recursion, uncomment the below
+        # map_all_goods(
+        #    connection, required_import, system_symbol, managed_exports_and_markets
+        # )
     return managed_exports_and_markets
     # find markets that EXPORT the given tradegood
     # add them into managed_markets THEN determine the matching imports and manage each of those markets.

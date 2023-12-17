@@ -728,6 +728,85 @@ order by 1 desc """
         # Then, hit it.care
         return True
 
+    def go_and_buy(
+        self,
+        target_tradegood: str,
+        target_waypoint: "Waypoint",
+        target_system: "System" = None,
+        local_jumpgate: "Waypoint" = None,
+        path: list = None,
+        max_to_buy: int = None,
+    ) -> LocalSpaceTradersRespose:
+        """Sends the ship to the target system and buys as much of the given target tradegood as possible.
+
+        `local_jumpgate` is only necessary if you might be going extrasolar"""
+        #
+        # this needs to validate that we're going to make a profit with current prices.
+        # if we're not, sleep for 15 minutes, and return false. By the time it picks up, either the market goods will have shuffled (hopefully) or there'll be a new contract assigned.
+        #
+        ship = self.ship
+        st = self.st
+        current_market = st.system_market(target_waypoint)
+
+        if target_system and ship.nav.system_symbol != target_system.symbol:
+            self.ship_intrasolar(local_jumpgate.symbol)
+            self.ship_extrasolar(target_waypoint, path)
+        self.ship_intrasolar(target_waypoint.symbol, flight_mode="CRUISE")
+
+        st.ship_dock(ship)
+        if not current_market:
+            self.logger.error(
+                "No market found at waypoint %s", ship.nav.waypoint_symbol
+            )
+            time.sleep(SAFETY_PADDING)
+            return current_market
+
+        # empty anything that's not the goal.
+
+        resp = self.purchase_what_you_can(
+            target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
+        )
+        if not resp:
+            self.st.view_my_self(True)
+            resp = self.purchase_what_you_can(
+                target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
+            )
+        if not resp:
+            self.logger.error(
+                "Couldn't purchase %s at %s, because %s",
+                target_tradegood,
+                ship.name,
+                resp.error,
+            )
+            return resp
+        return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
+
+    def go_and_sell_or_fulfill(
+        self,
+        target_tradegood: str,
+        target_waypoint: "Waypoint",
+        target_system=None,
+    ):
+        if target_system:
+            resp = self.ship_extrasolar(target_system)
+            if not resp:
+                return False
+        resp = self.ship_intrasolar(target_waypoint, flight_mode="CRUISE")
+        if not resp and resp.error_code != 4204:
+            return False
+        # now that we're here, decide what to do. Options are:
+        # transfer (skip for now, throw in a warning)
+        # fulfill
+        # sell
+        self.st.ship_dock(self.ship)
+        if "fulfil_wp" in self.behaviour_params:
+            resp = self.fulfil_any_relevant()
+        # elif "sell_wp" in self.behaviour_params:
+        else:
+            resp = self.sell_all_cargo()
+
+        return resp
+
     def log_market_changes(self, market_s: str):
         wp = self.st.waypoints_view_one(waypoint_slicer(market_s), market_s)
         pre_market = self.st.system_market(wp)
