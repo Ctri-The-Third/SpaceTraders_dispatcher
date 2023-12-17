@@ -36,3 +36,16 @@ this keeps the logging clean.
 
 **Outcome:**
 When I went to implement the "manage contracts" behaviour, I realised I was doing enough of the same stuff that I put the "fetch_half" and "deliver_half" into the generic behaviour class after all.
+
+## MARKET GROWTH
+**Musings:**
+
+I'd already come to the conclusion that I needed to focus market growth behaviour on the base layers of the production chain rather than the highly profitable end-products. Chain Trading is largely taking care of the high-value stuff, and leaving the raw materials to slowly gather their requirements is definitely the best way forwards.
+
+So far, I see that the two explosives imports (nitrogen and hydrogen) are doing well with supplies of LIMITED and MODERATE respectively. Their tradevolumes are at 60 and will need to rise to 180 before the export of explosives can rise beyond its current of 60.
+
+Likewise the fuel market is in a good state from our work doing EMERGENCY_REBOOT earlier, with an ABUNDANT impport (and crashed prices) and a healthy set of export options. 
+We'll see if the import for that on evolves. Fingers crossed!
+
+**Outcome:**
+Remains to be seen.

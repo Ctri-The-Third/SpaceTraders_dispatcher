@@ -69,6 +69,10 @@ class ExecuteContracts(Behaviour):
 
         self.behaviour_params = self.behaviour_params | self.select_active_contract()
         params = self.behaviour_params
+        if "quantity" not in params:
+            self.logger.warning("No active contract found, sleeping")
+            time.sleep(SAFETY_PADDING)
+            return
         quantity = params["quantity"]
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
         buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
@@ -113,6 +117,7 @@ class ExecuteContracts(Behaviour):
                     - deliverable.units_fulfilled,
                 }
                 return params
+        return {}
 
     def select_positive_trade(self):
         # this gets all viable trades for a given system
@@ -152,7 +157,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "19"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "D"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
@@ -160,6 +165,7 @@ if __name__ == "__main__":
 
     bhvr = ExecuteContracts(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    bhvr.run()
+    while True:
+        lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+        bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)

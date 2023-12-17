@@ -78,9 +78,17 @@ class SellOrDitch(Behaviour):
                     best_market = m
                     best_value = tg.sell_price
             if best_market:
+                tg = best_market.get_tradegood(cargo.symbol)
                 self.ship_intrasolar(best_market.symbol)
                 st.ship_dock(ship)
-                st.ship_sell(ship, cargo.symbol, cargo.units)
+                resp = st.ship_sell(
+                    ship, cargo.symbol, min(cargo.units, tg.trade_volume)
+                )
+                if not resp:
+                    self.logger.error(
+                        f"Failed to sell {cargo.symbol} because {resp.error}"
+                    )
+                    continue
             else:
                 st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
 
@@ -90,7 +98,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "E"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "D"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
