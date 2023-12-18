@@ -1,17 +1,28 @@
+# week 24 & 25
 Learnings from last week
 
 * ✅ Contracts are good if we have enough money to execute them
-* relying purely on the "manage export" behaviour is not good if the suppyling tradevolume is equal to (or less than) the hungry tradevolume, especially for manufactured materials.
-* Our "build a jump gate" behaviour is functional - we'll definitly get the jump gate done this reset.
+* ✅ relying purely on the "manage export" behaviour is not good if the suppyling tradevolume is equal to (or less than) the hungry tradevolume, especially for manufactured materials. 
+ * There are 3 TV 60 Aluminum imports and 1 TV 60 Aluminum export. Whilst I hope that extractors will speed this up, having such a grotesque imbalance was the reason for our losses last fortnight.
+ * We should apply analysis behaviours to the corresponding TVs before managing the next export up a chain.
+ * IRON has grown, but ALUMINUM hasn't - why? let's plot the price differences between  hungry imports and their supplying exports, same with exports - preferably on a box chart.
+*  Our "build a jump gate" behaviour is functional - we'll definitly get the jump gate done this reset.
 * we were vulnerable to an early game stall - fixed by minimum safety amounts, and buying fewer ships to begin with.
 * during volatile trading with multiple active ships, it was possible to sometimes have no money to buy fuel. We added a minutely retry in this circumstance, and it's shown usefulness in preventing drifts.
 
+TODAY TASKS:
+* see if we can get Justin's code running on node S(espionage)
+* implement monitoring script into node S
+  * movement, purchases, sells, contracts.
+* Generate chart of specific manufactury
+  * EXPORT tradevolume, price, supply & activity.
+  * IMPORTs tradevolume, PRICE & COMPARISON TO SUPPLY, supply & activity.
 
 
+## Chain Trade
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
 
 In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
-Outcome: Incredibly effective. 🥇
 
 Our planned strategy was: 
 > let's do:
@@ -22,6 +33,12 @@ Our planned strategy was:
 however, an error in deployment meant the Node V (Week21) strategy was executed instead, triggering a stall.
 Whilst "Chain trade" has proven effective, when working with credit values less than 500, it's better to EXTRACT_AND_SELL, so I've created and EMERGENCY_REBOOT behaviour that will have the commander EXTRACT_AND_SELL from the gas giant to the fuel refinery - to help guarantee that we have sustainably priced fuel. 
 
+**Outcome: 🥇**
+This is shaping up to be the best addition to the script this reset. We've had two full stalls this go around
+1. because we deployed the wrong conductor and bought a tonne of ships we didn't need/ want
+2. because of an edge case, too many haulers were concurrently instructed to build the jump gate, and we emptied our money on ADVANCED_CIRCUITS
+
+In both cases, the CHAIN_TRADES behaviour was crucial in getting things back on track. The first one required a combo of the EMERGENCY_REBOOT behaviour to keep the lights on, and the latter we didn't intervene beyond fixing the code issue, and after 4 hours the system had recovered itself to the point of the command ship (and additional freighters) running full loads again.
 
 ## REUSING BEHAVIOURS
 **Musings:**
@@ -53,12 +70,21 @@ So far I'm observing the following moving out of the default WEAK state
 IRON_ORE (GROWING) which feeds IRON (STRONG)
 ALUMINUM ORE (WEAK :( ) which feeds ALUMINUM (GROWING)
 COPPER_ORE (WEAK :( ) which feeds COPPER (GROWING)
-HYDROCARBON (GROWING) which feeds FUEL (WEAK)
+HYDROCARBON (STRONG) which feeds FUEL (WEAK)
 LIQUID_NITROGEN (GROWING) which feeds EXPLOSIVES (WEAK)
 LIQUID_HYDROGEN (GROWING) which feeds EXPLOSIVES (WEAK)
 
-HOWEVER, unexpectedly the code has diverted haulers away from that behaviour. 
-We had a bit of code that checked there were valid places to sell the managed EXPORT, but that was predicated on the assumption that there would always be a profitable route for the export.
-If we still need to work on the import whilst the EXPORT is fulfilled, then this code takes haulers away too soon.
+I've twice seen HYDROCARBON hop from GROWING into STRONG without intervention from me.
+Am I alone in this system? I should perform a check.
 
-Whilst it is good to have a mechanism by which ships can be redirected to more profitable activities - this is not the correct way to do it, so I'm removing that function and reverting to just the fixed strings.
+
+
+## Espionage ##
+
+Another player, Justin, has observed a huge CPS spike in their system. It's not clear why or how, but understanding is key.
+They've shared their respository on github so I'm going to spend some time looking at their code and seeing if I can figure out what's going on.
+Might be possible to modify it to add PostGres logging to mine, but it's written in another language so this will be extremely challening and probably not worth it.
+
+I think instead I'll just use my SDK to regularly ping my copies of his ships and build retroactive logs of what's going on.
+
+**Outcome:**
