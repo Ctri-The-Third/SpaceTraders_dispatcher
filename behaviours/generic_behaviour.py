@@ -306,6 +306,11 @@ class Behaviour:
             return False
 
         wayp_s = self.ship.nav.waypoint_symbol
+        wayp = self.st.waypoints_view_one(self.ship.nav.system_symbol, wayp_s)
+        if "UNSTABLE" in wayp.modifiers:
+            self.logger.error("asteroid %s still unstable, aborting", wayp_s)
+            sleep(SAFETY_PADDING * 3)
+            return False
         st = self.st
         if cargo_to_target is None:
             cargo_to_target = []
@@ -328,7 +333,8 @@ class Behaviour:
             survey = st.find_survey_best(self.ship.nav.waypoint_symbol) or None
 
         cutoff_cargo_units_used = ship.cargo_capacity
-        while ship.cargo_units_used < cutoff_cargo_units_used:
+        resp = True
+        while ship.cargo_units_used < cutoff_cargo_units_used and resp:
             cutoff_cargo_units_used = cutoff_cargo_units_used or ship.cargo_capacity
 
             # we've moved this to here because ofthen surveys expire after we select them whilst the ship is asleep.
@@ -347,10 +353,21 @@ class Behaviour:
             # 4000 means the ship is on cooldown (shouldn't happen, but safe to repeat attempt)
             if not resp and resp.error_code in [4228]:
                 return False
+            elif not resp and resp.error_code == 4253:
+                wayp = self.st.waypoints_view_one(
+                    self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
+                )
+                if "UNSTABLE" not in wayp.modifiers:
+                    wayp.modifiers.append("UNSTABLE")
+                    self.st.update(wayp)
+                self.logger.error("ASTEROID UNSTABLE, CONDUCTOR SHOULD ABORT.")
+                sleep(SAFETY_PADDING * 3)
+                return False
             elif not resp and resp.error_code not in [4224, 4221, 4000]:
                 return False
             else:
-                # the survey is expired, refresh it.
+                # the survey is expired, refresh it.]
+                resp = True
                 if len(cargo_to_target) > 0:
                     survey = (
                         st.find_survey_best_deposit(wayp_s, cargo_to_target[0])

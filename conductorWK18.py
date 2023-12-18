@@ -53,6 +53,7 @@ from dispatcherWK16 import (
     BHVR_SELL_OR_JETTISON_ALL_CARGO,
     BHVR_CHAIN_TRADE,
     BHVR_EXECUTE_CONTRACTS,
+    BHVR_EXTRACT_AND_CHILL,
 )
 
 from dispatcherWK16 import (
@@ -348,7 +349,10 @@ class BehaviourConductor:
             else:
                 needed_drones = 10
             for i in range(needed_drones):
-                if allocated_drones + i >= len(self.extractors):
+                bhvr = BHVR_EXTRACT_AND_GO_SELL
+                if needed_drones == 10 and i > 5:
+                    bhvr = BHVR_EXTRACT_AND_CHILL
+                if allocated_drones >= len(self.extractors):
                     stop = True
                     break
 
@@ -357,7 +361,7 @@ class BehaviourConductor:
                 set_behaviour(
                     self.connection,
                     extractor.name,
-                    BHVR_EXTRACT_AND_GO_SELL,
+                    bhvr,
                     {
                         "asteroid_wp": extraction_waypoint,
                         "cargo_to_transfer": extractables,

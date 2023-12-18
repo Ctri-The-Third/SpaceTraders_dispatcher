@@ -104,3 +104,60 @@ Their conductor is configurable and the configuration doesn't live in the reposi
 They've put restrictions on their chain-traders so it only does MODERATE or ABUNDANT trades compared to our any%.  
 They have a probe that pings markets on a loop instead of our static sentries.  
 They have some haulers
+
+
+
+--- 
+
+# market evolution investigation
+
+we observed the LIQUID HYDROGEN import.
+
+* 6.5 hours after first becoming GROWING
+* 15 minute minimum between STRONG and evolution
+* 15 minute minimum between GROWING and STRONG
+* continual trades not required
+* hidden price point where evolution permitted? 80%? 
+* restricted resets the timer?
+
+We observed the IRON ORE import and found consistent results.
+
+
+
+```sql
+with changes as ( select event_timestamp
+, event_params ->> 'market_symbol' as market
+, event_params ->> 'trade_symbol' as trade_symbol
+, event_params ->> 'activity' as activity
+, event_params ->> 'supply' as supply
+,(event_params ->> 'sell_price')::integer as sell_price
+,(event_params ->> 'trade_volume_change')::integer as change 
+, null::integer as goods_traded
+  from logging l 
+where event_name = 'MARKET_CHANGES'
+
+-- --edit this-- --
+and event_params ->> 'market_symbol' = 'X1-PK16-H57'
+and event_params ->> 'trade_symbol' = 'IRON_ORE'
+and (ship_symbol ilike 'CTRI-U%' or ship_symbol ilike 'GLOBAL')
+-------------------
+order by 3,2,1),
+
+trs as (
+	select timestamp, waypoint_symbol, trade_symbol, null, null,  t.price_per_unit, null::integer , t.units  from transactions t
+	where ship_Symbol ilike 'CTRI-U%'
+	and trade_Symbol in (select distinct trade_symbol from changes)
+	and waypoint_symbol in (select distinct market from changes)
+)
+
+, combined as (
+select * from changes
+
+)
+select c.*
+-- and this - imports only
+, round((sell_price/max_import_price)*100,2) as percent_of_best 
+-----------------------------------
+from combined c join trade_routes_max_potentials trmp on c.trade_symbol = trmp.trade_symbol
+order by 2,3,1
+```
