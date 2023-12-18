@@ -1,6 +1,7 @@
-# week 24 & 25
-Learnings from last week
 
+# week 24 & 25
+
+## Learnings from last week
 * ✅ Contracts are good if we have enough money to execute them
 * ✅ relying purely on the "manage export" behaviour is not good if the suppyling tradevolume is equal to (or less than) the hungry tradevolume, especially for manufactured materials. 
  * There are 3 TV 60 Aluminum imports and 1 TV 60 Aluminum export. Whilst I hope that extractors will speed this up, having such a grotesque imbalance was the reason for our losses last fortnight.
@@ -23,6 +24,16 @@ TODAY TASKS:
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
 
 In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
+
+## Obsrvations of previous behaviours
+
+* NodeC had its satelites deploy on a daily refresh, which meant there was many hours between a satellite coming online and it being given instructions
+ * To combat this, nodeU reinstruments behaviours every time a new satellite comes online 
+* We previously used "dripfeed" technology to keep prices around their maximums. I'm putting something similar into the chain-trade, specifically filtering it 
+✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
+
+In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
+**Outcome:** Incredibly effective. 🥇
 
 Our planned strategy was: 
 > let's do:
@@ -59,7 +70,8 @@ When I went to implement the "manage contracts" behaviour, I realised I was doin
 
 I'd already come to the conclusion that I needed to focus market growth behaviour on the base layers of the production chain rather than the highly profitable end-products. Chain Trading is largely taking care of the high-value stuff, and leaving the raw materials to slowly gather their requirements is definitely the best way forwards.
 
-So far, I see that the two explosives imports (nitrogen and hydrogen) are doing well with supplies of LIMITED and MODERATE respectively. Their tradevolumes are at 60 and will need to rise to 180 before the export of explosives can rise beyond its current of 60.
+So far, I see that the two explosives imports (nitrogen and hydrogen) are doing well with supplies of LIMITED and MODERATE respectively. Their tradevolumes are at 60 and will need to rise to 180 before the export of explosives can rise beyond its current of 60 - at the time of writing 150 and 165 respectively.
+However, the EXPLOSIVES export is still showing as RESTRICTED, and the supplies are mostly scarce. I'm also seing tha
 
 Likewise the fuel market is in a good state from our work doing EMERGENCY_REBOOT earlier, with an ABUNDANT impport (and crashed prices) and a healthy set of export options. 
 We'll see if the import for that on evolves. Fingers crossed!
@@ -88,3 +100,7 @@ Might be possible to modify it to add PostGres logging to mine, but it's written
 I think instead I'll just use my SDK to regularly ping my copies of his ships and build retroactive logs of what's going on.
 
 **Outcome:**
+Their conductor is configurable and the configuration doesn't live in the repository well.  
+They've put restrictions on their chain-traders so it only does MODERATE or ABUNDANT trades compared to our any%.  
+They have a probe that pings markets on a loop instead of our static sentries.  
+They have some haulers

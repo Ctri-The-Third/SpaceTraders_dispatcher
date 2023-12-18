@@ -67,6 +67,9 @@ class ChainTrade(Behaviour):
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
         params = self.select_positive_trade()
+        if not params:
+            self.logger.info("No trades found")
+            time.sleep(SAFETY_PADDING)
 
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
         buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
@@ -85,10 +88,11 @@ class ChainTrade(Behaviour):
         # it will then go by the most profitable (profit per distance).
 
         sql = """
-    SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, sell_price, supply_value, supply_text, import_supply, market_depth, import_market, import_x, import_y, distance
+    SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, sell_price, supply_value,  supply_text, import_supply, market_depth, import_market, import_x, import_y, distance, export_activity
 	FROM public.trade_routes_intrasystem
     where system_symbol = %s
     and purchase_price < %s
+    and ((supply_value >= 4 and export_activity = 'STRONG') or supply_value >= 3)
     order by export_market = %s desc, route_value desc
     """
         results = try_execute_select(
@@ -101,7 +105,7 @@ class ChainTrade(Behaviour):
             ),
         )
         if not results:
-            return []
+            return {}
         best_distance = float("inf")
         best_result = None
         for result in results:
@@ -157,6 +161,7 @@ if __name__ == "__main__":
 
     bhvr = ChainTrade(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
