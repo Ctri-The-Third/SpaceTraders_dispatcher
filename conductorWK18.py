@@ -328,7 +328,7 @@ class BehaviourConductor:
         sites = self.get_mining_sites(
             self.starting_system.symbol, self.extractors[0].fuel_capacity
         )
-
+        banned_sites = ["X1-PK16-B40"]
         allocated_drones = 0
         stop = False
         for site in sites:
