@@ -67,7 +67,7 @@ class Behaviour:
         )
         self.pathfinder = PathFinder(connection=self.connection)
         self.ship_name = ship_name
-        self.ship = self.st.ships_view_one(ship_name)
+        self.ship = None
         self._graph = None
         self.ships = None
         self.agent = None
@@ -81,13 +81,19 @@ class Behaviour:
         return self._connection
 
     def run(self):
+        delay_start = self.behaviour_params.get("delay_start", 0)
         if not self.ship:
+            self.ship = self.st.ships_view_one(self.ship_name)
+        if self.ship.cargo_units_used != sum(
+            [c.units for c in self.ship.cargo_inventory]
+        ):
             self.ship = self.st.ships_view_one(self.ship_name, force=True)
-
+        if not self.ship:
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
             raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
         self.sleep_until_ready()
+        time.sleep(delay_start)
         # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
 
@@ -921,9 +927,14 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "THUNDER-PHOENI"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)
     bhvr.st.view_my_self(True)
+
+    bhvr.st.ship_orbit(bhvr.ship)
+    ships = bhvr.st.ship_scan_ships(bhvr.ship)
+
+    pass
