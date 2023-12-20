@@ -628,7 +628,7 @@ if __name__ == "__main__":
         os.environ.get("ST_DB_NAME", "DB_NAME_not_set"),
         os.environ.get("ST_DB_USER", "DB_USER_not_set"),
         os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
-    )
+    ) 
     signal.signal(signal.SIGINT, dips.set_exit_flag)
     dips.run()
     exit()

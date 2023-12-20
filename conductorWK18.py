@@ -1,20 +1,4 @@
-"""
-Strategy for week 18 
 
-## behaviours to manage
-# siphon and transfer
-# refuel in system
-# stable trades
-# extract and transfer
-# drip-feed trades
-
-## ships to scale to
-# command
-# 2 haulers
-# siphon fleet
-# extractor fleet + transfer
-
-"""
 
 from datetime import datetime, timedelta
 import logging, math
@@ -90,9 +74,16 @@ class BehaviourConductor:
 
     """This behaviour manager is for when we're in low fuel desperate situations"""
 
-    def __init__(self, user: dict[str, str], connection=None, session=None) -> None:
-        self.current_agent_symbol = user.get("agents")[0]["username"]
-        self.current_agent_token = user.get("agents")[0]["token"]
+    def __init__(self, user: dict[str, str], connection=None, session=None, target_agent=None) -> None:
+        
+        if target_agent:
+            for tup in user.get("agents"):
+                if tup["username"] == target_agent:
+                    self.current_agent_symbol = tup["username"]
+                    self.current_agent_token = tup["token"]
+        else:               
+            self.current_agent_symbol = user.get("agents")[0]["username"]
+            self.current_agent_token = user.get("agents")[0]["token"]
 
         client = self.st = SpaceTraders(
             self.current_agent_token,
