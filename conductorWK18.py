@@ -266,8 +266,9 @@ class BehaviourConductor:
             if t:
                 self.haulers.append(t)
                 self.set_hauler_behaviours()
-
-        elif len(self.haulers) > 2:
+        if t:
+            return
+        if len(self.haulers) > 2:
             coordinates = self.get_distinct_coordinates_with_marketplaces()
             types = self.get_distinct_ship_types()
             total_satellites_needed = len(coordinates) + len(types)
@@ -299,6 +300,11 @@ class BehaviourConductor:
             if t:
                 self.extractors.append(t)
                 self.set_extraction_drones()
+        elif len(self.haulers) < 8:
+            t = maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
+            if t:
+                self.haulers.append(t)
+                self.set_hauler_behaviours()
 
     def get_distinct_coordinates_with_marketplaces(self):
         market_places = self.st.find_waypoints_by_trait(
@@ -329,35 +335,48 @@ class BehaviourConductor:
             self.starting_system.symbol, self.extractors[0].fuel_capacity
         )
         banned_sites = ["X1-PK16-B40"]
+        banned_sites = []
         allocated_drones = 0
         stop = False
         for site in sites:
             if stop:
                 break
-            system_symbol, extraction_waypoint, site_type, extractables, distance = site
+            (
+                system_symbol,
+                extraction_waypoint,
+                site_type,
+                extractables,
+                exchanges,
+                distance,
+            ) = site
+            wayp = self.st.waypoints_view_one(system_symbol, extraction_waypoint)
+
             if site_type == "ENGINEERED_ASTEROID":
                 needed_drones = 20
             else:
                 needed_drones = 10
+
+            params = {
+                "asteroid_wp": extraction_waypoint,
+                "cargo_to_transfer": extractables,
+                "priority": 5,
+            }
+            if len(exchanges) == 1:
+                params["market_wp"] = exchanges[0]
             for i in range(needed_drones):
-                bhvr = BHVR_EXTRACT_AND_GO_SELL
-                if needed_drones == 10 and i > 5:
-                    bhvr = BHVR_EXTRACT_AND_CHILL
+                if "UNSTABLE" in wayp.modifiers or extraction_waypoint in banned_sites:
+                    allocated_drones += 1
+                    continue
+
                 if allocated_drones >= len(self.extractors):
                     stop = True
                     break
 
                 extractor = self.extractors[allocated_drones]
                 allocated_drones += 1
+                params["delay_start"] = i * 10
                 set_behaviour(
-                    self.connection,
-                    extractor.name,
-                    bhvr,
-                    {
-                        "asteroid_wp": extraction_waypoint,
-                        "cargo_to_transfer": extractables,
-                        "priority": 5,
-                    },
+                    self.connection, extractor.name, BHVR_EXTRACT_AND_GO_SELL, params
                 )
 
         return
@@ -424,11 +443,15 @@ class BehaviourConductor:
         # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
         target_tradegoods = [
             "EXPLOSIVES",
+            "EXPLOSIVES",
             "IRON",
             "COPPER",
             "ALUMINUM",
             "FUEL",
         ]
+
+        constructor_ship = None
+
         tradesymbols_and_sources = None
         #  this code extends the tradegoods to find their dependencies - currently disabled
         for tradegood in target_tradegoods:
