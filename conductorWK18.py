@@ -472,7 +472,11 @@ class BehaviourConductor:
 
             else:
                 # this needs to be context aware.
-                set_behaviour(self.connection, h.name, BHVR_CONSTRUCT_JUMP_GATE, {})
+                if not constructor_ship:
+                    constructor_ship = h
+                    set_behaviour(self.connection, h.name, BHVR_CONSTRUCT_JUMP_GATE, {})
+                else:
+                    set_behaviour(self.connection, h.name, BHVR_CHAIN_TRADE, [])
             index += 1
 
     def set_refinery_behaviours(self, possible_ships):
@@ -728,15 +732,15 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
 
     def get_mining_sites(self, system_sym: str, distance=80) -> list[tuple]:
         sql = """with unpacked_sites as (
-            select system_Symbol,  unnest (array_agg) as extractable, extraction_waypoint, distance from mining_sites_and_exchanges
+            select system_Symbol,  unnest (array_agg) as extractable, extraction_waypoint, distance, exchange_waypoint from mining_sites_and_exchanges
             where system_Symbol = %s
             and distance <= %s
 	    )
-	select us.system_symbol,  extraction_Waypoint, type, array_agg(extractable) as extractables, min(distance) 
+	select us.system_symbol,  extraction_Waypoint, type, array_agg(extractable) as extractables, array_agg(distinct exchange_waypoint) as exchanges, min(distance) 
 	from unpacked_sites us
 	join waypoints w on extraction_waypoint = w.waypoint_symbol
 	group by 1,2,3
-	order by 5 asc"""
+	order by 6 asc"""
         routes = try_execute_select(
             self.connection,
             sql,
