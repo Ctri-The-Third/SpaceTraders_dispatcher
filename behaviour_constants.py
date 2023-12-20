@@ -93,3 +93,7 @@ from behaviours.manage_contracts import (
     ExecuteContracts,
     BEHAVIOUR_NAME as BHVR_EXECUTE_CONTRACTS,
 )
+
+from behaviours.chain_trade_est import (
+    ChainTradeEST, BEHAVIOUR_NAME as BHVR_CHAIN_TRADE_EST
+)

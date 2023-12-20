@@ -20,36 +20,28 @@ TODAY TASKS:
   * IMPORTs tradevolume, PRICE & COMPARISON TO SUPPLY, supply & activity.
 
 
-## Chain Trade
-✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
-
-In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
-
 ## Obsrvations of previous behaviours
 
 * NodeC had its satelites deploy on a daily refresh, which meant there was many hours between a satellite coming online and it being given instructions
  * To combat this, nodeU reinstruments behaviours every time a new satellite comes online 
 * We previously used "dripfeed" technology to keep prices around their maximums. I'm putting something similar into the chain-trade, specifically filtering it 
+✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goo
+
+## Chain Trade
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
 
 In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
+ds and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
+
+In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
+
 **Outcome:** Incredibly effective. 🥇
-
-Our planned strategy was: 
-> let's do:
-> * ✅ commander does chain-trade
-> * ✅ buy 5 siphoners for the gas giant
-> * ✅ buy hauler and manage explosives 
-> * ✅buy hauler and manage metal refineries
-however, an error in deployment meant the Node V (Week21) strategy was executed instead, triggering a stall.
-Whilst "Chain trade" has proven effective, when working with credit values less than 500, it's better to EXTRACT_AND_SELL, so I've created and EMERGENCY_REBOOT behaviour that will have the commander EXTRACT_AND_SELL from the gas giant to the fuel refinery - to help guarantee that we have sustainably priced fuel. 
-
-**Outcome: 🥇**
 This is shaping up to be the best addition to the script this reset. We've had two full stalls this go around
 1. because we deployed the wrong conductor and bought a tonne of ships we didn't need/ want
 2. because of an edge case, too many haulers were concurrently instructed to build the jump gate, and we emptied our money on ADVANCED_CIRCUITS
 
 In both cases, the CHAIN_TRADES behaviour was crucial in getting things back on track. The first one required a combo of the EMERGENCY_REBOOT behaviour to keep the lights on, and the latter we didn't intervene beyond fixing the code issue, and after 4 hours the system had recovered itself to the point of the command ship (and additional freighters) running full loads again.
+
 
 ## REUSING BEHAVIOURS
 **Musings:**
@@ -100,10 +92,10 @@ Might be possible to modify it to add PostGres logging to mine, but it's written
 I think instead I'll just use my SDK to regularly ping my copies of his ships and build retroactive logs of what's going on.
 
 **Outcome:**
-Their conductor is configurable and the configuration doesn't live in the repository well.  
-They've put restrictions on their chain-traders so it only does MODERATE or ABUNDANT trades compared to our any%.  
-They have a probe that pings markets on a loop instead of our static sentries.  
-They have some haulers
+Their conductor is configurable and the configuration doesn't live in the repository well - so determining his strategy is impossible.
+They've put restrictions on their chain-traders so it only does MODERATE or ABUNDANT trades compared to our any% - I'm implementing this myself  
+They have a probe that pings markets on a loop instead of our static sentries - going to keep with my own system
+They have 5 haulers doing chain trades instead of my 1 (and managed goods) - I'm going to investigate a SUPPLY_CHAIN_TRADE behaviour
 
 
 

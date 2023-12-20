@@ -62,6 +62,7 @@ behaviours_and_classes = {
     BHVR_CHAIN_TRADE: ChainTrade,
     BHVR_EMERGENCY_REBOOT: EmergencyReboot,
     BHVR_EXECUTE_CONTRACTS: ExecuteContracts,
+    BHVR_CHAIN_TRADE_EST: ChainTradeEST
 }
 
 logger = logging.getLogger("dispatcher")
