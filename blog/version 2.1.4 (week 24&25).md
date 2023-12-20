@@ -10,7 +10,7 @@
   * It did eventually grow! They're all sitting at 123 export tradevolum and 180 import tradevolume.
 *  Our "build a jump gate" behaviour is functional - we'll definitly get the jump gate done this reset.
 * we were vulnerable to an early game stall - fixed by minimum safety amounts, and buying fewer ships to begin with.
-* during volatile trading with multiple active ships, it was possible to sometimes have no money to buy fuel. We added a minutely retry in this circumstance, and it's shown usefulness in preventing drifts.
+* during volatile trading with multiple active ships, it was possible to sometimes have no money to buy fuel. We added a minutely retry in this circumstance, and it's shown usefulness in preventing drifts during exceptional situations.
 TODAY TASKS:
 * ☑️ see if we can get Justin's code running on node S(espionage)
 * ☑️ implement monitoring script into node S
@@ -44,6 +44,18 @@ This is shaping up to be the best addition to the script this reset. We've had t
 
 In both cases, the CHAIN_TRADES behaviour was crucial in getting things back on track. The first one required a combo of the EMERGENCY_REBOOT behaviour to keep the lights on, and the latter we didn't intervene beyond fixing the code issue, and after 4 hours the system had recovered itself to the point of the command ship (and additional freighters) running full loads again.
 
+## Unlocking the Jump Gate
+
+It's wednesday (3 days into the reset) and we're going to complete our jumpgate this evening. Excellent news. 
+Here's what I'll need to get underway - and eventually have procuedurally detected by the conductor.
+* Take the commander to the faction HQ to buy explorers
+* Get a list of networked systems within X units of home (ideally 50 systems)
+* Send an explorer to each (preferably by jump gate, if not figure out warping)
+* update the "explore" system with chart behaviour. Don't chart any of the rare goods markts or shipyards that contain non-standard ships.
+* Once there, chain-trade.
+-----
+* Evntually, go exploring for the unlinked systems around the home system - see what they've got.
+* Eventually, send orehounds home to mine the farther asteroids and bring to exchanges. Ships bought should be assigned to a system by the conductor with a task.
 
 ## REUSING BEHAVIOURS
 **Musings:**

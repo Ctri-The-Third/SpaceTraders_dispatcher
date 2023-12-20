@@ -1,5 +1,3 @@
-
-
 from datetime import datetime, timedelta
 import logging, math
 import json
@@ -74,14 +72,15 @@ class BehaviourConductor:
 
     """This behaviour manager is for when we're in low fuel desperate situations"""
 
-    def __init__(self, user: dict[str, str], connection=None, session=None, target_agent=None) -> None:
-        
+    def __init__(
+        self, user: dict[str, str], connection=None, session=None, target_agent=None
+    ) -> None:
         if target_agent:
             for tup in user.get("agents"):
                 if tup["username"] == target_agent:
                     self.current_agent_symbol = tup["username"]
                     self.current_agent_token = tup["token"]
-        else:               
+        else:
             self.current_agent_symbol = user.get("agents")[0]["username"]
             self.current_agent_token = user.get("agents")[0]["token"]
 
@@ -273,6 +272,8 @@ class BehaviourConductor:
             types = self.get_distinct_ship_types()
             total_satellites_needed = len(coordinates) + len(types)
         else:
+            types = self.get_distinct_ship_types()
+
             total_satellites_needed = len(types)
         if len(self.satellites) < total_satellites_needed:
             for i in range(total_satellites_needed - len(self.satellites)):
@@ -300,7 +301,7 @@ class BehaviourConductor:
             if t:
                 self.extractors.append(t)
                 self.set_extraction_drones()
-        elif len(self.haulers) < 8:
+        elif len(self.haulers) < 10:
             t = maybe_buy_ship_sys(self.st, "SHIP_LIGHT_HAULER", self.safety_margin)
             if t:
                 self.haulers.append(t)
@@ -443,11 +444,12 @@ class BehaviourConductor:
         # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
         target_tradegoods = [
             "EXPLOSIVES",
-            "EXPLOSIVES",
             "IRON",
             "COPPER",
             "ALUMINUM",
             "FUEL",
+            "EXPLOSIVES",
+            "FAB_MATS",
         ]
 
         constructor_ship = None
@@ -516,11 +518,7 @@ class BehaviourConductor:
             # is there a place we can sell stuff orbiting the gas giant?
             # if so, extract_and_sell, else siphon_and_chill
             # if we don't constraint it this way, we might end up with 8hr drifts again
-            bhvr = (
-                BHVR_SIPHON_AND_CHILL
-                if not self.gas_exchange
-                else BHVR_EXTRACT_AND_GO_SELL
-            )
+            bhvr = BHVR_EXTRACT_AND_GO_SELL
             params = {
                 "asteroid_wp": self.gas_giant.symbol,
                 "cargo_to_transfer": ["*"],
