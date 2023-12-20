@@ -337,6 +337,8 @@ class BehaviourConductor:
         coordinates = {(wp.x, wp.y): wp for wp in market_places}
         ship_types_sql = """select distinct ship_type  from shipyard_types"""
         types = try_execute_select(self.connection, ship_types_sql, ())
+
+        types = ["SHIP_PROBE", "SHIP_LIGHT_HAULER"]
         types = [t[0] for t in types]
         if "SHIP_PROBE" in types:
             types.remove("SHIP_PROBE")

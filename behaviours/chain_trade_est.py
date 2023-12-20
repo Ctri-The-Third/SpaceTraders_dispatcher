@@ -45,6 +45,7 @@ class ChainTradeEST(Behaviour):
         )
         self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
+        self.target_tradegoods = self.behaviour_params.get("target_tradegoods", [])
 
     def run(self):
         self.sleep_until_ready()
@@ -54,6 +55,7 @@ class ChainTradeEST(Behaviour):
             self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
+
         self._run()
         self.end()
 
@@ -66,7 +68,7 @@ class ChainTradeEST(Behaviour):
         self.start_wp = st.waypoints_view_one(
             ship.nav.system_symbol, ship.nav.waypoint_symbol
         )
-        params = self.select_positive_trade()
+        params = self.select_positive_trade(self.target_tradegoods)
         if not params:
             self.logger.info("No trades found")
             time.sleep(SAFETY_PADDING)
@@ -76,11 +78,11 @@ class ChainTradeEST(Behaviour):
         sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
         sell_wp = st.waypoints_view_one(sell_sys.symbol, params["sell_wp"])
         tradegood = params["tradegood"]
-        
+
         if not tradegood in [x.symbol for x in ship.cargo_inventory]:
             self.go_and_buy(tradegood, buy_wp, max_to_buy=self.ship.cargo_capacity)
 
-        self.go_and_sell_or_fulfill(tradegood, sell_wp) 
+        self.go_and_sell_or_fulfill(tradegood, sell_wp)
 
         #
         # as part of our market analysis strategy, we need to keep tradegoods at a low level, to see if ACTIVITY strength has an impact on price recovery
@@ -97,16 +99,18 @@ class ChainTradeEST(Behaviour):
 
                 if tg.type not in ("EXPORT", "EXCHANGE"):
                     continue
-                resp = True 
-                while resp and credits_to_spend > safety_margin and ( SUPPLY_LEVELS[tg.supply]>1 or tg.purchase_price < 300 ):
+                resp = True
+                while (
+                    resp
+                    and credits_to_spend > safety_margin
+                    and (SUPPLY_LEVELS[tg.supply] > 1 or tg.purchase_price < 300)
+                ):
                     cost = tg.purchase_price * tg.trade_volume
                     resp = self.buy_cargo(target, tg.trade_volume)
                     credits_to_spend -= cost
                     self.jettison_all_cargo()
 
-        
-
-    def select_positive_trade(self):
+    def select_positive_trade(self, exclusions):
         # this gets all viable trades for a given system
         # it lists all the trades from the current market first, then all others afterwards#
         # it will then go by the most profitable (profit per distance).
@@ -116,6 +120,7 @@ class ChainTradeEST(Behaviour):
 	FROM public.trade_routes_intrasystem
     where system_symbol = %s
     and purchase_price < %s
+    and trade_symbol not in %s
     and ((supply_value >= 4 and export_activity = 'STRONG') or supply_value >= 3)
     order by export_market = %s desc, route_value desc
     """
@@ -125,6 +130,7 @@ class ChainTradeEST(Behaviour):
             (
                 self.ship.nav.system_symbol,
                 self.agent.credits,
+                exclusions,
                 self.ship.nav.waypoint_symbol,
             ),
         )
@@ -179,10 +185,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "THUNDER-PHOENI"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {
-        "priority": 3,
-        "target_tradegoods": ["FUEL","FAB_MATS"]
-    }
+    behaviour_params = {"priority": 3, "target_tradegoods": ["FUEL", "FAB_MATS"]}
 
     bhvr = ChainTradeEST(agent, ship, behaviour_params or {})
 
