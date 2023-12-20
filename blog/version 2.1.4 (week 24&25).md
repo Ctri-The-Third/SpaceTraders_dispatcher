@@ -7,23 +7,25 @@
  * There are 3 TV 60 Aluminum imports and 1 TV 60 Aluminum export. Whilst I hope that extractors will speed this up, having such a grotesque imbalance was the reason for our losses last fortnight.
  * We should apply analysis behaviours to the corresponding TVs before managing the next export up a chain.
  * IRON has grown, but ALUMINUM hasn't - why? let's plot the price differences between  hungry imports and their supplying exports, same with exports - preferably on a box chart.
+  * It did eventually grow! They're all sitting at 123 export tradevolum and 180 import tradevolume.
 *  Our "build a jump gate" behaviour is functional - we'll definitly get the jump gate done this reset.
 * we were vulnerable to an early game stall - fixed by minimum safety amounts, and buying fewer ships to begin with.
 * during volatile trading with multiple active ships, it was possible to sometimes have no money to buy fuel. We added a minutely retry in this circumstance, and it's shown usefulness in preventing drifts.
-
 TODAY TASKS:
-* see if we can get Justin's code running on node S(espionage)
-* implement monitoring script into node S
-  * movement, purchases, sells, contracts.
-* Generate chart of specific manufactury
+* ☑️ see if we can get Justin's code running on node S(espionage)
+* ☑️ implement monitoring script into node S
+  * ☑️ movement, ⌛purchases, ⌛sells, ⌛contracts.
+* ✅ Add return trip planning to extract_and_sell behaviour.
+* Generate historic chart of specific manufacturing element.
   * EXPORT tradevolume, price, supply & activity.
   * IMPORTs tradevolume, PRICE & COMPARISON TO SUPPLY, supply & activity.
-
+* build a "supply chain trade" behaviour that takes a specific end product and calculates all the requirements, buying and selling up the chain.
 
 ## Obsrvations of previous behaviours
 
 * NodeC had its satelites deploy on a daily refresh, which meant there was many hours between a satellite coming online and it being given instructions
  * To combat this, nodeU reinstruments behaviours every time a new satellite comes online 
+* Node C has run out of money because of construction trades
 * We previously used "dripfeed" technology to keep prices around their maximums. I'm putting something similar into the chain-trade, specifically filtering it 
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goo
 
@@ -89,7 +91,7 @@ Another player, Justin, has observed a huge CPS spike in their system. It's not 
 They've shared their respository on github so I'm going to spend some time looking at their code and seeing if I can figure out what's going on.
 Might be possible to modify it to add PostGres logging to mine, but it's written in another language so this will be extremely challening and probably not worth it.
 
-I think instead I'll just use my SDK to regularly ping my copies of his ships and build retroactive logs of what's going on.
+I think instead I'll just use my SDK to regularly ping my copies of his ships and build retroactive logs of what's going on. Better! I can identify his system, drop an agent in that system and begin monitoring the markets' "transaction" histories.
 
 **Outcome:**
 Their conductor is configurable and the configuration doesn't live in the repository well - so determining his strategy is impossible.
