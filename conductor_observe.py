@@ -1,5 +1,3 @@
-
-
 from datetime import datetime, timedelta
 import logging, math
 import json
@@ -227,12 +225,98 @@ class ObservationConductor:
                 ship.name,
             )
 
-        set_behaviour(self.connection, self.commanders[0], BHVR_CHAIN_TRADE, {"priority":3})
+        set_behaviour(
+            self.connection, self.commanders[0], BHVR_CHAIN_TRADE, {"priority": 3}
+        )
 
     def quarterly_update(self):
         return
 
+    def minutely_update(self):
+        # for each engineered asteroid - position 20 extractors
+        # for each asteroid with either an exchange or import within 80 clicks, deploy 10 extractors
 
+        # if len(self.shuttles) < 5:
+        #    maybe_buy_ship_sys(self.st, "SHIP_LIGHT_SHUTTLE", self.safety_margin)
+        t = None
+
+        coordinates = self.get_distinct_coordinates_with_marketplaces()
+        types = self.get_distinct_ship_types()
+        total_satellites_needed = len(coordinates) + len(types)
+
+        if len(self.satellites) < total_satellites_needed:
+            for i in range(total_satellites_needed - len(self.satellites)):
+                t = maybe_buy_ship_sys(self.st, "SHIP_PROBE", self.safety_margin)
+                if t:
+                    self.satellites.append(t)
+                if not t:
+                    break
+            if t:
+                self.set_satellite_behaviours()
+
+    def set_satellite_behaviours(self):
+        "ensures that each distinct celestial body (excluding moons etc...) has a satellite, and a shipyard for each ship"
+
+        market_places = self.st.find_waypoints_by_trait(
+            self.starting_system.symbol, "MARKETPLACE"
+        )
+        if not market_places:
+            return
+        coordinates = {}
+
+        coordinates = {(wp.x, wp.y): wp for wp in market_places}
+        ship_types_sql = """select distinct ship_type  from shipyard_types"""
+        types = try_execute_select(self.connection, ship_types_sql, ())
+        types = [t[0] for t in types]
+        if "SHIP_PROBE" in types:
+            types.remove("SHIP_PROBE")
+            set_behaviour(
+                self.connection,
+                self.satellites[0].name,
+                BHVR_MONITOR_CHEAPEST_PRICE,
+                {"ship_type": "SHIP_PROBE"},
+            )
+
+        i = -1
+        for satellite in self.satellites[1 : len(types) + 1]:
+            try:
+                i += 1
+                set_behaviour(
+                    self.connection,
+                    satellite.name,
+                    BHVR_MONITOR_CHEAPEST_PRICE,
+                    {"ship_type": types[i]},
+                )
+            except:
+                pass
+        i = 0
+        for satellite in self.satellites[len(types) + 1 :]:
+            set_behaviour(
+                self.connection,
+                satellite.name,
+                BHVR_MONITOR_SPECIFIC_LOCATION,
+                {"waypoint": list(coordinates.values())[i].symbol},
+            )
+            i += 1
+
+    def get_distinct_coordinates_with_marketplaces(self):
+        market_places = self.st.find_waypoints_by_trait(
+            self.starting_system.symbol, "MARKETPLACE"
+        )
+        if not market_places:
+            return {}
+        coordinates = {}
+
+        coordinates = {(wp.x, wp.y): wp for wp in market_places}
+        return coordinates
+
+    def get_distinct_ship_types(self):
+        ship_types_sql = """select distinct ship_type  from shipyard_types"""
+        types = try_execute_select(self.connection, ship_types_sql, ())
+        if not types:
+            return []
+        types = [t[0] for t in types]
+        return types
 
     def max_mining_strength(self):
         sql = """select * from market_prices
@@ -372,9 +456,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         return routes
 
 
-
 if __name__ == "__main__":
-
     set_logging()
     user = json.load(open("user.json"))
     had_to_wait = wait_until_reset("https://api.spacetraders.io/v2/", user)
