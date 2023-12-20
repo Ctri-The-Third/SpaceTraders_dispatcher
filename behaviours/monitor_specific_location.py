@@ -58,7 +58,17 @@ class MonitorPrices(Behaviour):
         waypoint: Waypoint
 
         self.ship_intrasolar(waypoint.symbol)
+        if "MARKETPLACE" not in [t.symbol for t in waypoint.traits]:
+            logging.error("No marketplace at destination")
+            self.end()
+            self.st.logging_client.log_ending(
+                BEHAVIOUR_NAME, ship.name, self.agent.credits
+            )
+            time.sleep(SAFETY_PADDING)
+            return
+
         market = st.system_market(waypoint)
+
         if market.is_stale(60 * 15) or (datetime.now().minute % 15) == 0:
             coorbitals = st.find_waypoints_by_coords(
                 waypoint.system_symbol, waypoint.x, waypoint.y
