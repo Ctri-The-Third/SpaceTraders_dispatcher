@@ -440,7 +440,7 @@ class BehaviourConductor:
 
         if self.explorers:
             possible_sites = [
-                "X1-CA38",
+                "X1-CA38",  # nothing here - need a better selection of systems
                 "X1-GN65",
                 "X1-GU9",
                 "X1-KD25",

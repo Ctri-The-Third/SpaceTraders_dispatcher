@@ -670,6 +670,7 @@ order by 1 desc """
         # QUESTION
         st.waypoints_view(current_system_sym, True)
         target_wayps = []
+        st.ship_scan_waypoints(ship)
         marketplaces = (
             st.find_waypoints_by_trait(current_system_sym, "MARKETPLACE") or []
         )
@@ -766,7 +767,7 @@ order by 1 desc """
         for next_sys in route.route:
             next_sys
             sleep(ship.seconds_until_cooldown)
-            resp = st.ship_jump(ship, next_sys.gate_symbol)
+            resp = st.ship_jump(ship, next_sys.jump_gate_waypoint)
             if not resp:
                 return resp
             if next_sys == destination_system.symbol:

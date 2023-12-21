@@ -64,9 +64,14 @@ class SellOrDitch(Behaviour):
         agent = st.view_my_self()
 
         markets = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-        markets = [
-            st.system_market(m) for m in markets if m.symbol != ship.nav.waypoint_symbol
-        ]
+        if markets:
+            markets = [
+                st.system_market(m)
+                for m in markets
+                if m.symbol != ship.nav.waypoint_symbol
+            ]
+        else:
+            markets = []
         for cargo in ship.cargo_inventory:
             best_market = None
             best_value = 0

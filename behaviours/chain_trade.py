@@ -48,6 +48,7 @@ class ChainTrade(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
     def run(self):
+        self.ship = self.st.ships_view_one(self.ship_name)
         self.sleep_until_ready()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
@@ -71,6 +72,7 @@ class ChainTrade(Behaviour):
         if not params:
             self.logger.info("No trades found")
             time.sleep(SAFETY_PADDING)
+            return
 
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
         buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
