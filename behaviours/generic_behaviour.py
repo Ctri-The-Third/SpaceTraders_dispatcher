@@ -670,13 +670,29 @@ order by 1 desc """
         # QUESTION
         st.waypoints_view(current_system_sym, True)
         target_wayps = []
-        st.ship_scan_waypoints(ship)
+        wayps = st.ship_scan_waypoints(ship)
+        if wayps:
+            for wayp in wayps:
+                wayp: Waypoint
+                if "MARKETPLACE" in [t.symbol for t in wayp.traits]:
+                    target_wayps.append(wayp)
+
         marketplaces = (
             st.find_waypoints_by_trait(current_system_sym, "MARKETPLACE") or []
         )
 
         shipyards = st.find_waypoints_by_trait(current_system_sym, "SHIPYARD") or []
+
         gate = st.find_waypoints_by_type_one(current_system_sym, "JUMP_GATE")
+        uncharted_planets = st.find_waypoints_by_trait(
+            ship.nav.system_symbol, "UNCHARTED"
+        )
+        if uncharted_planets:
+            target_wayps.extend(
+                p
+                for p in uncharted_planets
+                if p.type in ("PLANET", "MOON", "ORBITAL_STATION")
+            )
         target_wayps.extend(marketplaces)
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
@@ -692,10 +708,21 @@ order by 1 desc """
             self.ship_intrasolar(wayp_sym)
             self.sleep_until_arrived()
             trait_symbols = [trait.symbol for trait in waypoint.traits]
+            should_chart = False
+            if "UNCHARTED" in trait_symbols:
+
+                if len(trait_symbols) == 1:
+                    self.sleep_until_ready()
+                    wayps = st.ship_scan_waypoints(ship)
+                wayps = [w for w in wayps if w.symbol == waypoint.symbol]
+                waypoint = wayps[0]
+                should_chart = True
             if "MARKETPLACE" in trait_symbols:
                 market = st.system_market(waypoint, True)
                 if market:
                     for listing in market.listings:
+                        if listing.symbol in ("VALUABLES"):
+                            should_chart = False
                         print(
                             f"item: {listing.symbol}, buy: {listing.purchase_price} sell: {listing.sell_price} - supply available {listing.supply}"
                         )
@@ -704,6 +731,8 @@ order by 1 desc """
                 if shipyard:
                     for ship_type in shipyard.ship_types:
                         print(ship_type)
+                        if ship_type in ("VALUABLES"):
+                            should_chart = False
             if waypoint.type == "JUMP_GATE":
                 jump_gate = st.system_jumpgate(waypoint, True)
                 self.pathfinder._graph = self.pathfinder.load_jump_graph_from_db()
