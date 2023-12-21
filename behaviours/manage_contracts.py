@@ -49,6 +49,7 @@ class ExecuteContracts(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
     def run(self):
+        super().run()
         self.sleep_until_ready()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,

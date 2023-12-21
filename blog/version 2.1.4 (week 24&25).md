@@ -39,7 +39,8 @@ TODAY TASKS:
 In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
 ds and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
 
-In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
+In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback - if we add some randomness to it.
+When we were chain-trading the best available export -> import, we had collisions. Now we've made it random, we're doing dumb things like trading fuel between exchanges.
 
 **Outcome:** Incredibly effective. 🥇
 This is shaping up to be the best addition to the script this reset. We've had two full stalls this go around
@@ -52,11 +53,11 @@ In both cases, the CHAIN_TRADES behaviour was crucial in getting things back on 
 
 It's wednesday (3 days into the reset) and we're going to complete our jumpgate this evening. Excellent news. 
 Here's what I'll need to get underway - and eventually have procuedurally detected by the conductor.
-* Take the commander to the faction HQ to buy explorers
-* Get a list of networked systems within X units of home (ideally 50 systems)
-* Send an explorer to each (preferably by jump gate, if not figure out warping)
-* update the "explore" system with chart behaviour. Don't chart any of the rare goods markts or shipyards that contain non-standard ships.
-* Once there, chain-trade.
+* ✅Take the commander to the faction HQ to buy explorers
+* ✅get a list of accessible HQ systems (those with jump gates and >= 15 planets)
+* ☑️Send an explorer to each (preferably by jump gate, if not figure out warping)
+* ☑️update the "explore" system with chart behaviour. Don't chart any of the rare goods markts or shipyards that contain non-standard ships.
+* ✅Once there, chain-trade.
 -----
 * Evntually, go exploring for the unlinked systems around the home system - see what they've got.
 * Eventually, send orehounds home to mine the farther asteroids and bring to exchanges. Ships bought should be assigned to a system by the conductor with a task.
@@ -87,18 +88,12 @@ Likewise the fuel market is in a good state from our work doing EMERGENCY_REBOOT
 We'll see if the import for that on evolves. Fingers crossed!
 
 **Outcome:**
-Remains to be seen.
-So far I'm observing the following moving out of the default WEAK state
-IRON_ORE (GROWING) which feeds IRON (STRONG)
-ALUMINUM ORE (WEAK :( ) which feeds ALUMINUM (GROWING)
-COPPER_ORE (WEAK :( ) which feeds COPPER (GROWING)
-HYDROCARBON (STRONG) which feeds FUEL (WEAK)
-LIQUID_NITROGEN (GROWING) which feeds EXPLOSIVES (WEAK)
-LIQUID_HYDROGEN (GROWING) which feeds EXPLOSIVES (WEAK)
-
-I've twice seen HYDROCARBON hop from GROWING into STRONG without intervention from me.
-Am I alone in this system? I should perform a check.
-
+Understanding, validated by the developers. 🥈 very good, work to be done.
+Market prices update every 15 minutes, which is also when ACTIVITY and SUPPLY calculations are made.
+Goods that are STRONG change their prices between 2 and 4x the rate of goods that are RESTRICTED. 🚨This is not yet public knowledge.🚨
+Import goods will not grow to be more than 3* the tradevolume of the export, nor will they evolve with a supply of more than 80% (price is > 80% of max price)
+Export goods will not grow to be much less than 2:1 of the import tradevolume 
+An amount of time is needed for the market to be in the GROWING state before it will become STRONG, and enable growth. 
 
 
 ## Espionage ##
@@ -109,28 +104,25 @@ Might be possible to modify it to add PostGres logging to mine, but it's written
 
 I think instead I'll just use my SDK to regularly ping my copies of his ships and build retroactive logs of what's going on. Better! I can identify his system, drop an agent in that system and begin monitoring the markets' "transaction" histories.
 
-**Outcome:**
+**Outcome:** 
 Their conductor is configurable and the configuration doesn't live in the repository well - so determining his strategy is impossible.
 They've put restrictions on their chain-traders so it only does MODERATE or ABUNDANT trades compared to our any% - I'm implementing this myself  
 They have a probe that pings markets on a loop instead of our static sentries - going to keep with my own system
 They have 5 haulers doing chain trades instead of my 1 (and managed goods) - I'm going to investigate a SUPPLY_CHAIN_TRADE behaviour
 
-
+We need to properly estimate the capacity of a given system for concurrent traders. This needs to factor in tradevolume, and total distance between imports and their exports.
 
 --- 
+# Intergalactic operations
+
+* We're hampered by a UI not designed for multi system operations. Each system we select should be managed. Ideally, this should be shared across agents.
+* This week we're using explorers but we should have an intermediary step of finding haulers on the jump gate network. 
+* Identifying starter systems is easy to a human. They have planets with a consistent naming structure, and operate with at least 15 planets/moons.
+  * The non-starter systems that are on the jumpgate network must be explored. Probes may be the best choice for this as they're cheap and the jumpgate is inherently slow.
+
+
 
 # market evolution investigation
-
-we observed the LIQUID HYDROGEN import.
-
-* 6.5 hours after first becoming GROWING
-* 15 minute minimum between STRONG and evolution
-* 15 minute minimum between GROWING and STRONG
-* continual trades not required
-* hidden price point where evolution permitted? 80%? 
-* restricted resets the timer?
-
-We observed the IRON ORE import and found consistent results.
 
 
 

@@ -81,9 +81,9 @@ class Behaviour:
         return self._connection
 
     def run(self):
+        self.ship = self.st.ships_view_one(self.ship_name)
+
         delay_start = self.behaviour_params.get("delay_start", 0)
-        if not self.ship:
-            self.ship = self.st.ships_view_one(self.ship_name)
         if self.ship.cargo_units_used != sum(
             [c.units for c in self.ship.cargo_inventory]
         ):
@@ -180,6 +180,13 @@ class Behaviour:
         route = self.pathfinder.plot_system_nav(
             ship.nav.system_symbol, origin_wp, dest_wp, self.ship.fuel_capacity
         )
+        if not route:
+            route = [dest_wp]
+            self.logger.warning(
+                "COULDN'T PLOT ROUTE this shouldn't happen - going direct from %s to %s",
+                origin_wp.symbol,
+                dest_wp.symbol,
+            )
         current_wp = origin_wp
         for point in route.route:
             point: Waypoint
@@ -710,12 +717,12 @@ order by 1 desc """
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             should_chart = False
             if "UNCHARTED" in trait_symbols:
-
                 if len(trait_symbols) == 1:
                     self.sleep_until_ready()
                     wayps = st.ship_scan_waypoints(ship)
-                wayps = [w for w in wayps if w.symbol == waypoint.symbol]
-                waypoint = wayps[0]
+                    if wayps:
+                        wayps = [w for w in wayps if w.symbol == waypoint.symbol]
+                        waypoint = wayps[0]
                 should_chart = True
             if "MARKETPLACE" in trait_symbols:
                 market = st.system_market(waypoint, True)
