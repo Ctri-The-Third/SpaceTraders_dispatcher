@@ -5,6 +5,7 @@ from time import sleep
 from functools import partial
 
 import psycopg2.sql
+from itertools import zip_longest
 
 
 from straders_sdk.local_response import LocalSpaceTradersRespose
@@ -98,6 +99,7 @@ class BehaviourConductor:
         self.haulers = []
         self.commanders = []
         self.hounds = []
+        self.explorers = []
         self.extractors = []
         self.surveyors = []
         self.ships_we_might_buy = ["SHIP_MINING_DRONE"]
@@ -221,21 +223,10 @@ class BehaviourConductor:
         "Where the majority of ship behaviours should be set"
 
         if self.safety_margin == 0:
-            self.safety_margin = 50000 * len(self.haulers + self.commanders)
-
-        # just in case any behaviours have been terminated half way through and ships have stuff they don't know what to do with:
-        for ship in self.commanders + self.haulers:
-            log_task(
-                self.connection,
-                BHVR_SELL_OR_JETTISON_ALL_CARGO,
-                [],
-                ship.nav.system_symbol,
-                5,
-                self.current_agent_symbol,
-                {},
-                self.next_hourly_update,
-                ship.name,
+            self.safety_margin = 150000 * len(
+                self.haulers + self.commanders + self.explorers
             )
+        self.set_explorer_behaviours()
         self.set_hauler_behaviours()
         # self.set_refinery_behaviours(possible_ships)
         self.set_satellite_behaviours()
@@ -306,6 +297,11 @@ class BehaviourConductor:
             if t:
                 self.haulers.append(t)
                 self.set_hauler_behaviours()
+        elif len(self.explorers) < 15:
+            t = maybe_buy_ship_sys(self.st, "SHIP_EXPLORER", self.safety_margin)
+            if t:
+                self.explorers.append(t)
+                self.set_explorer_behaviours()
 
     def get_distinct_coordinates_with_marketplaces(self):
         market_places = self.st.find_waypoints_by_trait(
@@ -426,6 +422,62 @@ class BehaviourConductor:
                 {"waypoint": list(coordinates.values())[i].symbol},
             )
             i += 1
+
+    def set_explorer_behaviours(self):
+        # just in case any behaviours have been terminated half way through and ships have stuff they don't know what to do with:
+        for ship in self.commanders + self.haulers + self.explorers:
+            log_task(
+                self.connection,
+                BHVR_SELL_OR_JETTISON_ALL_CARGO,
+                [],
+                ship.nav.system_symbol,
+                5,
+                self.current_agent_symbol,
+                {},
+                self.next_hourly_update,
+                ship.name,
+            )
+
+        if self.explorers:
+            possible_sites = [
+                "X1-CA38",
+                "X1-GN65",
+                "X1-GU9",
+                "X1-KD25",
+                "X1-KF85",
+                "X1-M41",
+                "X1-QB72",
+                "X1-QC29",
+                "X1-QK35",
+                "X1-VB15",
+                "X1-VR10",
+                "X1-XR77",
+                "X1-XU9",
+                "X1-XV73",
+                "X1-ZR29",
+            ]
+
+            both = zip_longest(self.explorers, possible_sites)
+            for ship, system in zip_longest(self.explorers, possible_sites):
+                if not ship:
+                    break
+                if not system:
+                    break
+                if ship.nav.system_symbol != system:
+                    log_task(
+                        self.connection,
+                        BHVR_EXPLORE_SYSTEM,
+                        [],
+                        system,
+                        5,
+                        self.current_agent_symbol,
+                        {"priority": 3.5, "target_sys": system},
+                        self.next_hourly_update,
+                        ship.name,
+                    )
+                    set_behaviour(
+                        self.connection, ship.name, BHVR_CHAIN_TRADE, {"priority": 3.5}
+                    )
 
     def set_hauler_behaviours(self):
         # set the commander to chain trades.
@@ -668,6 +720,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.extractors = [
             ship for ship in ships if ship.role == "EXCAVATOR" and ship.can_extract
         ]
+        self.explorers = [ship for ship in ships if ship.role == "EXPLORER"]
         self.refiners = [ship for ship in ships if ship.role == "REFINERY"]
         self.surveyors = [ship for ship in ships if ship.role == "SURVEYOR"]
         self.siphoners = [
