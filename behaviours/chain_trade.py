@@ -20,6 +20,7 @@ from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 from straders_sdk.constants import SUPPLY_LEVELS
 import math
 from behaviours.generic_behaviour import Behaviour
+import random
 
 BEHAVIOUR_NAME = "CHAIN_TRADES"
 SAFETY_PADDING = 180
@@ -106,37 +107,7 @@ class ChainTrade(Behaviour):
         )
         if not results:
             return {}
-        best_distance = float("inf")
-        best_result = None
-        for result in results:
-            dest = Waypoint(
-                result[1],
-                result[4],
-                "",
-                result[5],
-                result[6],
-                [],
-                [],
-                {},
-                {},
-                [],
-                False,
-            )
-            if result[4] == self.ship.nav.waypoint_symbol:
-                best_result = result
-                break
-            if (
-                self.pathfinder.calc_distance_between(self.start_wp, dest)
-                < best_distance
-            ):
-                best_distance = self.pathfinder.calc_distance_between(
-                    self.start_wp, dest
-                )
-                best_result = result
-            if best_distance == 0:
-                break
-        if not best_result:
-            return []
+        best_result = random.choice(results)
         params = {
             "tradegood": best_result[2],
             "buy_wp": best_result[4],
