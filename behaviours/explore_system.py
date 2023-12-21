@@ -57,9 +57,12 @@ class ExploreSystem(Behaviour):
 
         self.sleep_until_ready()
         o_sys = st.systems_view_one(ship.nav.system_symbol)
+
         path = None
         if self.behaviour_params and "target_sys" in self.behaviour_params:
             d_sys = st.systems_view_one(self.behaviour_params["target_sys"])
+            jg = st.find_waypoints_by_type_one(d_sys.symbol, "JUMP_GATE")
+            st.system_jumpgate(jg, True)
             path = self.pathfinder.astar(o_sys, d_sys)
         else:
             d_sys = self.find_unexplored_jumpgate()
