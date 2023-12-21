@@ -34,6 +34,7 @@ class GoAndBuyShip(Behaviour):
         )
 
     def run(self):
+        super().run()
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
@@ -67,7 +68,7 @@ class GoAndBuyShip(Behaviour):
 		        from shipyard_types 
 		        where ship_type = %s) 
             from shipyard_types 
-            where ship_type = %s"""
+            where ship_type = %s and ship_cost is not null"""
         results = try_execute_select(self.connection, sql, (ship_symbol, ship_symbol))
 
         current_system = self.st.systems_view_one(self.ship.nav.system_symbol)
@@ -105,10 +106,10 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "4"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"ship_type": "SHIP_LIGHT_HAULER"}
+    behaviour_params = {"ship_type": "SHIP_EXPLORER"}
     bhvr = GoAndBuyShip(agent, ship, behaviour_params or {})
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)

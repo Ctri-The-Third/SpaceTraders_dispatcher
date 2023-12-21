@@ -8,6 +8,8 @@
  * We should apply analysis behaviours to the corresponding TVs before managing the next export up a chain.
  * IRON has grown, but ALUMINUM hasn't - why? let's plot the price differences between  hungry imports and their supplying exports, same with exports - preferably on a box chart.
   * It did eventually grow! They're all sitting at 123 export tradevolum and 180 import tradevolume.
+* a STRONG market produces goods (changes prices) at between 2 and 4 times the speed of a RESTRICTED market. we must prioritise keeping markets out of the the RESTRICTED state, but also be aware that a STRONG market will innvitably grow if prices are less 80% of the max price. Thus, ABUNDANT trading is the best way to keep markets we're not evolving, producing the best we can. Markets that are strong should always be ABUNDANT tradd, and markts that are RESTRICTED should be left more flexible. 
+* Having a chain trader that focuses on restricted markets (Even if they're going to be less profitable less frequently) is a good way to keep things flowing. Specifically, something that prioritises SCARCE then LIMITED imports should keep the exports out of the RESTRICTED state.
 *  Our "build a jump gate" behaviour is functional - we'll definitly get the jump gate done this reset.
 * we were vulnerable to an early game stall - fixed by minimum safety amounts, and buying fewer ships to begin with.
 * during volatile trading with multiple active ships, it was possible to sometimes have no money to buy fuel. We added a minutely retry in this circumstance, and it's shown usefulness in preventing drifts during exceptional situations.
@@ -20,6 +22,8 @@ TODAY TASKS:
   * EXPORT tradevolume, price, supply & activity.
   * IMPORTs tradevolume, PRICE & COMPARISON TO SUPPLY, supply & activity.
 * build a "supply chain trade" behaviour that takes a specific end product and calculates all the requirements, buying and selling up the chain.
+* Note that pure Chain Trading with more than 2 ships at the TradeVolume's we're working with, starts to cause price collision and bad trades. 
+  * We could work around this by having a singleton trade reservation manager that just keeps track of who's doing what, and says no to ships who want to do the same thing.
 
 ## Obsrvations of previous behaviours
 

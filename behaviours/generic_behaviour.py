@@ -92,7 +92,7 @@ class Behaviour:
             self.logger.error("error getting ship, aborting - %s", self.ship.error)
             raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
-        self.sleep_until_ready()
+        # self.sleep_until_ready()
         time.sleep(delay_start)
         # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
@@ -161,7 +161,7 @@ class Behaviour:
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
         if ship.nav.waypoint_symbol == target_wp_symbol:
             if ship.nav.status == "IN_TRANSIT":
-                self.sleep_until_ready()
+                self.sleep_until_arrived()
             else:
                 return LocalSpaceTradersRespose(
                     error="Ship is already at the target waypoint",
@@ -244,7 +244,7 @@ class Behaviour:
                 if not resp:
                     return resp
                 if sleep_till_done:
-                    sleep_until_ready(self.ship)
+                    sleep_till_arrived(self.ship)
                     ship.nav.status = "IN_ORBIT"
                     ship.nav.waypoint_symbol = point.symbol
                     ship.nav_dirty = True
@@ -673,6 +673,7 @@ order by 1 desc """
         marketplaces = (
             st.find_waypoints_by_trait(current_system_sym, "MARKETPLACE") or []
         )
+
         shipyards = st.find_waypoints_by_trait(current_system_sym, "SHIPYARD") or []
         gate = st.find_waypoints_by_type_one(current_system_sym, "JUMP_GATE")
         target_wayps.extend(marketplaces)
@@ -688,7 +689,7 @@ order by 1 desc """
             waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
 
             self.ship_intrasolar(wayp_sym)
-            self.sleep_until_ready()
+            self.sleep_until_arrived()
             trait_symbols = [trait.symbol for trait in waypoint.traits]
             if "MARKETPLACE" in trait_symbols:
                 market = st.system_market(waypoint, True)
@@ -708,9 +709,24 @@ order by 1 desc """
     def sleep_until_ready(self):
         sleep_until_ready(self.ship)
 
-    def ship_extrasolar(self, destination_system: System, route: JumpGateRoute = None):
-        if isinstance(destination_system, str):
-            destination_system = self.st.systems_view_one(destination_system)
+    def sleep_until_arrived(self):
+        sleep_till_arrived(self.ship)
+
+    def ship_extrasolar(
+        self, destination_waypoint_symbol: str, route: JumpGateRoute = None
+    ):
+        if isinstance(destination_waypoint_symbol, System):
+            self.logger.warning(
+                "WARNING - using old system object to perform jump - should be providing destination gate."
+            )
+            destination_system = destination_waypoint_symbol
+            destination_waypoint_symbol = self.st.find_waypoints_by_type_one(
+                destination_waypoint_symbol.symbol, "JUMP_GATE"
+            )
+        else:
+            destination_system = self.st.systems_view_one(
+                waypoint_slicer(destination_waypoint_symbol)
+            )
         st = self.st
         ship = self.ship
         if ship.nav.system_symbol == destination_system.symbol:
@@ -746,9 +762,9 @@ order by 1 desc """
                 return False
         route.route.pop(0)
         for next_sys in route.route:
-            next_sys: System
+            next_sys
             sleep(ship.seconds_until_cooldown)
-            resp = st.ship_jump(ship, next_sys)
+            resp = st.ship_jump(ship, next_sys.gate_symbol)
             if not resp:
                 return resp
             if next_sys == destination_system.symbol:
@@ -918,6 +934,10 @@ order by 1 desc """
 
 def sleep_until_ready(ship: "Ship"):
     sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining) + 0.5)
+
+
+def sleep_till_arrived(ship: "Ship"):
+    sleep(ship.nav.travel_time_remaining + 0.5)
 
 
 if __name__ == "__main__":

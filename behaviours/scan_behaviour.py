@@ -136,7 +136,6 @@ class ScanInBackground(Behaviour):
         select * from waypoints_not_scanned
         where type = %s
         order by random() 
-        limit 20
         """
         return try_execute_select(self.st.db_client.connection, sql, (type,))
 
@@ -144,7 +143,7 @@ class ScanInBackground(Behaviour):
         sql = """ select * from jumpgates_scanned
 where charted and not scanned
 order by random()
-limit 20"""
+"""
         return try_execute_select(self.st.db_client.connection, sql, ())
 
     def get_twenty_unscanned_markets_or_shipyards(self) -> list[str]:
@@ -269,20 +268,14 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 
 if __name__ == "__main__":
-    from dispatcherWK12 import lock_ship
-
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "4"
     ship = f"{agent}-{ship_suffix}"
 
-    bhvr = ScanInBackground(
-        agent, ship, behaviour_params={"asteroid_wp": "X1-CN90-02905X"}
-    )
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    bhvr = ScanInBackground(agent, ship, behaviour_params={})
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
 
     set_logging(level=logging.DEBUG)
