@@ -115,6 +115,7 @@ class BehaviourConductor:
         self.gas_giant = None
         self.gas_exchange = None
         self.fuel_refinery = None
+        self.jump_gate = None
 
         self.tradegood_and_ship_mappings = {
             "SHIP_PARTS": None,
@@ -141,6 +142,7 @@ class BehaviourConductor:
                 self.st.system_shipyard(wp)
             if wp.type == "JUMP_GATE":
                 self.st.system_jumpgate(wp)
+                self.jump_gate = wp
 
     @property
     def max_cargo_available(self):
@@ -504,7 +506,9 @@ class BehaviourConductor:
                     break
                 if not system:
                     break
-                if ship.nav.system_symbol != system:
+                if ship.nav.system_symbol != system or missing_market_prices(
+                    self.connection, system
+                ):
                     log_task(
                         self.connection,
                         BHVR_EXPLORE_SYSTEM,
@@ -523,6 +527,10 @@ class BehaviourConductor:
     def set_hauler_behaviours(self):
         # set the commander to chain trades.
         # we'll want to get a hauler to execute on contracts, but so far we don't know if contracts or chain trading is more effective.
+        self.jump_gate = self.st.waypoints_view_one(
+            self.jump_gate.system_symbol, self.jump_gate.symbol
+        )
+
         set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
         if len(self.haulers) > 0:
             set_behaviour(
@@ -590,7 +598,7 @@ class BehaviourConductor:
 
             else:
                 # this needs to be context aware.
-                if not constructor_ship:
+                if not constructor_ship and self.jump_gate.under_construction:
                     constructor_ship = h
                     set_behaviour(self.connection, h.name, BHVR_CONSTRUCT_JUMP_GATE, {})
                 else:
