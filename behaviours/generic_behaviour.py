@@ -705,6 +705,8 @@ order by 1 desc """
                         print(ship_type)
             if waypoint.type == "JUMP_GATE":
                 jump_gate = st.system_jumpgate(waypoint, True)
+                self.pathfinder._graph = self.pathfinder.load_jump_graph_from_db()
+                self.pathfinder.save_graph()
 
     def sleep_until_ready(self):
         sleep_until_ready(self.ship)
@@ -732,7 +734,7 @@ order by 1 desc """
         if ship.nav.system_symbol == destination_system.symbol:
             return True
         o_sys = st.systems_view_one(ship.nav.system_symbol)
-        route = route or self.pathfinder.astar(o_sys, destination_system)
+        route = route or self.pathfinder.astar(o_sys, destination_system, True)
         if not route:
             self.logger.error(f"Unable to jump to {o_sys.symbol} - no route found")
             return None
