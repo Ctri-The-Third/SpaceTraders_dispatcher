@@ -441,6 +441,8 @@ class BehaviourConductor:
             )
 
         if self.explorers:
+            # disappointingly, many of these systems aren't actually starting systems :(
+            # we'll need to better assess this in advance.
             possible_sites = [
                 "X1-AA37",
                 "X1-AC35",
