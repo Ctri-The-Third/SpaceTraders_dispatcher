@@ -15,7 +15,7 @@ from straders_sdk import SpaceTraders
 from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer, get_and_validate
-
+from straders_sdk.utils import get_name_from_token
 
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
@@ -62,7 +62,7 @@ behaviours_and_classes = {
     BHVR_CHAIN_TRADE: ChainTrade,
     BHVR_EMERGENCY_REBOOT: EmergencyReboot,
     BHVR_EXECUTE_CONTRACTS: ExecuteContracts,
-    BHVR_CHAIN_TRADE_EST: ChainTradeEST
+    BHVR_CHAIN_TRADE_EST: ChainTradeEST,
 }
 
 logger = logging.getLogger("dispatcher")
@@ -621,18 +621,30 @@ if __name__ == "__main__":
     if len(sys.argv) >= 2:
         # no username provided, dispatch for all locally saved agents. (TERRIBLE IDEA GENERALLY)
         target_user = sys.argv[1].upper()
+        users = load_users(target_user)
 
     set_logging(level=logging.DEBUG)
-    users = load_users(target_user)
+    if not target_user:
+        # no username provided, check for a token in the environment variables
+        token = os.environ.get("ST_TOKEN", None)
+        if not token:
+            logging.error("env variable ST_TOKEN is not set. Exiting.")
+            exit()
+
+        user = get_name_from_token(token)
+        if user:
+            users = (token, user)
+
     dips = dispatcher(
         users,
-        os.environ.get("ST_DB_HOST", "DB_HOST_not_set"),
-        os.environ.get("ST_DB_PORT", "DB_PORT_not_set"),
-        os.environ.get("ST_DB_NAME", "DB_NAME_not_set"),
-        os.environ.get("ST_DB_USER", "DB_USER_not_set"),
+        os.environ.get("ST_DB_HOST", "ST_DB_HOST_not_set"),
+        os.environ.get("ST_DB_PORT", None),
+        os.environ.get("ST_DB_NAME", "ST_DB_NAME_not_set"),
+        os.environ.get("ST_DB_USER", "ST_DB_USER_not_set"),
         os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
-    ) 
+    )
     signal.signal(signal.SIGINT, dips.set_exit_flag)
+
     dips.run()
     exit()
     ships = dips.ships_view(True)
