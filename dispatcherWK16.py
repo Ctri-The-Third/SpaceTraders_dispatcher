@@ -78,6 +78,7 @@ class dispatcher:
         db_user: str,
         db_pass: str,
     ) -> None:
+        print(f"provided agents: {agents}")
         self.lock_id = f"{get_fun_name()}"
         self.db_host = db_host
         self.db_port = db_port
@@ -182,11 +183,12 @@ class dispatcher:
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
-            try:
-                self._the_big_loop(ships_and_threads)
-            except Exception as err:
-                self.logger.error("Error in the big loop: %s", err)
-                time.sleep(30)
+            self._the_big_loop(ships_and_threads)
+        #            try:
+        #                self._the_big_loop(ships_and_threads)
+        #            except Exception as err:
+        #                self.logger.error("Error in the big loop: %s", err)
+        #                time.sleep(30)
 
         last_exec = False
         while (
@@ -633,18 +635,21 @@ if __name__ == "__main__":
 
         user = get_name_from_token(token)
         if user:
-            users = (token, user)
-
-    dips = dispatcher(
-        users,
-        os.environ.get("ST_DB_HOST", "ST_DB_HOST_not_set"),
-        os.environ.get("ST_DB_PORT", None),
-        os.environ.get("ST_DB_NAME", "ST_DB_NAME_not_set"),
-        os.environ.get("ST_DB_USER", "ST_DB_USER_not_set"),
-        os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
-    )
-    signal.signal(signal.SIGINT, dips.set_exit_flag)
-
+            users = [(token, user)]
+    try:
+        dips = dispatcher(
+            users,
+            os.environ.get("ST_DB_HOST", "ST_DB_HOST_not_set"),
+            os.environ.get("ST_DB_PORT", None),
+            os.environ.get("ST_DB_NAME", "ST_DB_NAME_not_set"),
+            os.environ.get("ST_DB_USER", "ST_DB_USER_not_set"),
+            os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
+        )
+        signal.signal(signal.SIGINT, dips.set_exit_flag)
+    except Exception as err:
+        logging.error("%s", err)
+        time.sleep(60 * 10)
+        exit()
     dips.run()
     exit()
     ships = dips.ships_view(True)

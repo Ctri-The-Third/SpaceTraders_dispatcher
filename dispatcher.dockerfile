@@ -14,4 +14,5 @@ copy . .
 
 ENV ST_DB_USER=spacetraders 
 
+
 CMD python dispatcherWK16.py 
