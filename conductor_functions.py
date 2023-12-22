@@ -170,10 +170,8 @@ group by mt.market_waypoint
 
 	)
 	select * from info
-	where last_updated < now() - interval '3 hours' or found_listings = 0 0"""
-    results = try_execute_select(
-        connection, sql, (system_symbol, f"{oldest_hours} hours")
-    )
+	where last_updated < now() - interval '3 hours' or found_listings =  0"""
+    results = try_execute_select(connection, sql, (system_symbol,))
     return len(results) > 0
 
 
