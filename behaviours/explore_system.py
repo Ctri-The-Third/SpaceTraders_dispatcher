@@ -147,11 +147,24 @@ if __name__ == "__main__":
 
     ship = bhvr.st.ships_view_one(ship)
     start = bhvr.st.systems_view_one(ship.nav.system_symbol)
-    targets = ["X1-PK16"]
+    targets = [
+        "X1-JX72",
+        "X1-AC35",
+        "X1-DK64",
+        "X1-GU20",
+        "X1-SR25",
+        "X1-X57",
+        "X1-BM12",
+        "X1-RD40",
+        "X1-ZR29",
+        "X1-MY18",
+    ]
+    valid_targets = []
     for t in targets:
         end = bhvr.st.systems_view_one(t)
         route = bhvr.pathfinder.astar(start, end, True)
         if route:
-            (print(t))
+            valid_targets.append(t)
+    print(valid_targets)
     bhvr.run()
     lock_ship(ship, "", bhvr.connection, duration=0)
