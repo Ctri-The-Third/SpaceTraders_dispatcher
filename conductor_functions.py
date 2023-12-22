@@ -159,13 +159,19 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
 def missing_market_prices(connection, system_symbol: str) -> bool:
     "helpful during first setup"
 
-    sql = """select mt.market_waypoint, count(mtl.market_symbol) from market_tradegood mt 
+    sql = """with info as ( 
+select mt.market_waypoint, count(mtl.market_symbol) as found_listings, min(mtl.last_updated) as last_updated from market_tradegood mt 
 left join market_tradegood_listings mtl on mt.market_Waypoint = mtl.market_symbol and mt.symbol = mtl.trade_symbol
 join waypoints w on mt.market_waypoint = w.waypoint_symbol
 where system_symbol = %s
 group by mt.market_waypoint
-having count(mtl.market_symbol) = 0"""
-    results = try_execute_select(connection, sql, (system_symbol,))
+
+	)
+	select * from info
+	where last_updated < now() - interval '3 hours' or found_listings = 0 0"""
+    results = try_execute_select(
+        connection, sql, (system_symbol, f"{oldest_hours} hours")
+    )
     return len(results) > 0
 
 
