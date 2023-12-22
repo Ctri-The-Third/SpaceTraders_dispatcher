@@ -156,7 +156,9 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
     )
 
 
-def missing_market_prices(connection, system_symbol: str) -> bool:
+def missing_market_prices(
+    connection, system_symbol: str, oldest_hours: int = 3
+) -> bool:
     "helpful during first setup"
 
     sql = """with info as ( 
