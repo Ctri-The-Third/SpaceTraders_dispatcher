@@ -59,7 +59,7 @@ Here's what I'll need to get underway - and eventually have procuedurally detect
 * ☑️update the "explore" system with chart behaviour. Don't chart any of the rare goods markts or shipyards that contain non-standard ships.
 * ✅Once there, chain-trade.
 -----
-* Need a way to spot probable systems with healthy lots of trade opportunities - ah! Engineered asteroids.
+* ✅ Need a way to spot probable systems with healthy lots of trade opportunities - ah! Engineered asteroids.
 * Evntually, go exploring for the unlinked systems around the home system - see what they've got.
 * Eventually, send orehounds home to mine the farther asteroids and bring to exchanges. Ships bought should be assigned to a system by the conductor with a task.
 
