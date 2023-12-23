@@ -1,6 +1,13 @@
 
 # week 24 & 25
 
+This reset coincided with the christmas holidays.  
+we completed the jumpgate after 3 days and saw profits begin to dwindle.
+
+We embarked on a big push for containerisation, and added a JSON caching layer to the SDK to reduce strain on the database - this should work for waypoints and systems, but has limitation considerations for temporary modifiers for things like "construction" and "asteroid stability".
+
+
+
 ## Learnings from last week
 * ✅ Contracts are good if we have enough money to execute them
 * ✅ relying purely on the "manage export" behaviour is not good if the suppyling tradevolume is equal to (or less than) the hungry tradevolume, especially for manufactured materials. 
@@ -33,14 +40,9 @@ TODAY TASKS:
 * We previously used "dripfeed" technology to keep prices around their maximums. I'm putting something similar into the chain-trade, specifically filtering it 
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goo
 
+# Managing a system
 ## Chain Trade
-✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goods and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
-
-In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback. 
-ds and start a new chain - until there are no profitable exchanges left (which shouldn't happen if there are siphoners or extractors)
-
-In the event there are no profitable exchange starting points, picking the nearest profitable  trade is a good fallback - if we add some randomness to it.
-When we were chain-trading the best available export -> import, we had collisions. Now we've made it random, we're doing dumb things like trading fuel between exchanges.
+I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Ideally, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point it finds the nearest market with a profitable trade and goes there, rinse and repeat. 
 
 **Outcome:** Incredibly effective. 🥇
 This is shaping up to be the best addition to the script this reset. We've had two full stalls this go around
@@ -49,55 +51,35 @@ This is shaping up to be the best addition to the script this reset. We've had t
 
 In both cases, the CHAIN_TRADES behaviour was crucial in getting things back on track. The first one required a combo of the EMERGENCY_REBOOT behaviour to keep the lights on, and the latter we didn't intervene beyond fixing the code issue, and after 4 hours the system had recovered itself to the point of the command ship (and additional freighters) running full loads again.
 
-## Unlocking the Jump Gate
-
-It's wednesday (3 days into the reset) and we're going to complete our jumpgate this evening. Excellent news. 
-Here's what I'll need to get underway - and eventually have procuedurally detected by the conductor.
-* ✅Take the commander to the faction HQ to buy explorers
-* ✅get a list of accessible HQ systems (those with jump gates and >= 15 planets)
-* ☑️Send an explorer to each (preferably by jump gate, if not figure out warping)
-* ☑️update the "explore" system with chart behaviour. Don't chart any of the rare goods markts or shipyards that contain non-standard ships.
-* ✅Once there, chain-trade.
------
-* ✅ Need a way to spot probable systems with healthy lots of trade opportunities - ah! Engineered asteroids.
-* Evntually, go exploring for the unlinked systems around the home system - see what they've got.
-* Eventually, send orehounds home to mine the farther asteroids and bring to exchanges. Ships bought should be assigned to a system by the conductor with a task.
-
-## REUSING BEHAVIOURS
+## Market Growth & Activity study
 **Musings:**
 
-I already have a good "buy and sell" behaviour. Why not use the chain behaviour like a micro conductor? it can determine where we're at, consult the DB, and then feed that information into the behaviour params for "buy and sell". everything will be under the same session ID but there will still be two BEGIN events, so manybe not :thinking:
+A system has a finite cap on how much value it can produce. There are two factors that determine this - tradevolume and activity. 
+Tradevolume represents how much of a good you can buy / sell before the supply (and thus price) is impacted. Activity we've found is a multiplier on the speed at which the price returns to normal. 
 
-unless!
-we just inherit the "buy_and_sell" behaviour instead of "generic behaviour" and use the fetch half and deliver half methods respectively. 
-
-Rather than having the Chain_Trade behaviour call buy_and_sell, it just has access to those methods and flexibility in how it uses them.
-this keeps the logging clean.
+Ideally we want our most expensive import/export pair to be unrestricted with a high tradevolume. - but how do we make that happen? 
 
 **Outcome:**
-When I went to implement the "manage contracts" behaviour, I realised I was doing enough of the same stuff that I put the "fetch_half" and "deliver_half" into the generic behaviour class after all.
+Understanding, validated by the developers. 🥈 very good, with work still to be done.  
+Market prices update every 15 minutes, which is also when ACTIVITY and SUPPLY calculations are made.  
+Goods that are STRONG change their prices between 2 and 4x the rate of goods that are RESTRICTED. 🚨This is not yet public knowledge.🚨  
+Import goods will not grow to be more than 3* the tradevolume of the export, nor will they evolve with a supply of more than 80% (price is > 80% of max price)  
+Export goods will not grow to be much less than 2:1 of the import tradevolume   
+An amount of time is needed for the market to be in the GROWING state before it will become STRONG, and enable growth.   
 
-## MARKET GROWTH
-**Musings:**
+## INHERITING BEHAVIOURS
 
-I'd already come to the conclusion that I needed to focus market growth behaviour on the base layers of the production chain rather than the highly profitable end-products. Chain Trading is largely taking care of the high-value stuff, and leaving the raw materials to slowly gather their requirements is definitely the best way forwards.
+The question of whether or not to have behaviours based on other behaviours is an interesting one.
+There are behaviours that are very similar to each other that could shar a lot of their methods.
 
-So far, I see that the two explosives imports (nitrogen and hydrogen) are doing well with supplies of LIMITED and MODERATE respectively. Their tradevolumes are at 60 and will need to rise to 180 before the export of explosives can rise beyond its current of 60 - at the time of writing 150 and 165 respectively.
-However, the EXPLOSIVES export is still showing as RESTRICTED, and the supplies are mostly scarce. I'm also seing tha
+Pretty much all our behaviours involve either "go and buy" "go and sell" or "extract until full". 
 
-Likewise the fuel market is in a good state from our work doing EMERGENCY_REBOOT earlier, with an ABUNDANT impport (and crashed prices) and a healthy set of export options. 
-We'll see if the import for that on evolves. Fingers crossed!
+Rather than lengthy inheritence chains, the Generic Behaviour class is swelling with these shared methods - is that the best approach? 
 
-**Outcome:**
-Understanding, validated by the developers. 🥈 very good, work to be done.
-Market prices update every 15 minutes, which is also when ACTIVITY and SUPPLY calculations are made.
-Goods that are STRONG change their prices between 2 and 4x the rate of goods that are RESTRICTED. 🚨This is not yet public knowledge.🚨
-Import goods will not grow to be more than 3* the tradevolume of the export, nor will they evolve with a supply of more than 80% (price is > 80% of max price)
-Export goods will not grow to be much less than 2:1 of the import tradevolume 
-An amount of time is needed for the market to be in the GROWING state before it will become STRONG, and enable growth. 
 
 
 ## Espionage ##
+edit: project shelved until we've got our own systems at least running profitably.
 
 Another player, Justin, has observed a huge CPS spike in their system. It's not clear why or how, but understanding is key.
 They've shared their respository on github so I'm going to spend some time looking at their code and seeing if I can figure out what's going on.
@@ -116,6 +98,26 @@ We need to properly estimate the capacity of a given system for concurrent trade
 --- 
 # Intergalactic operations
 
+
+## Unlocking the Jump Gate
+
+It's wednesday (3 days into the reset) and we're going to complete our jumpgate this evening. Excellent news. 
+Here's what I'll need to get underway - and eventually have procuedurally detected by the conductor.
+* ✅Take the commander to the faction HQ to buy explorers
+* ✅get a list of accessible HQ systems (those with jump gates and >= 15 planets)
+* ☑️Send an explorer to each (preferably by jump gate, if not figure out warping)
+* ☑️update the "explore" system with chart behaviour. Don't chart any of the rare goods markts or shipyards that contain non-standard ships.
+* ✅Once there, chain-trade.
+-----
+* ✅ Need a way to spot probable systems with healthy lots of trade opportunities - ah! Engineered asteroids.
+* Evntually, go exploring for the unlinked systems around the home system - see what they've got.
+* Eventually, send orehounds home to mine the farther asteroids and bring to exchanges. Ships bought should be assigned to a system by the conductor with a task.
+
+## Credit decline
+
+Since opening the gate and sending ships through, we introduced some regression behaviour that has negatively impacted the amount of profit we're making. It's unclear what, or why.
+
+
 * We're hampered by a UI and conductor not designed for multi system operations. Each system we select should be managed. Ideally, this should be shared across agents
 * we need to be able to set jobs on a per-system basis, with requirements.
 * This week we're using explorers but we should have an intermediary step of finding haulers on the jump gate network. 
@@ -125,7 +127,7 @@ We need to properly estimate the capacity of a given system for concurrent trade
 
 
 
-# market evolution investigation
+# market evolution investigation query
 
 
 
