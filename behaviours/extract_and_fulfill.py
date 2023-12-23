@@ -91,7 +91,7 @@ class ExtractAndFulfill_7(Behaviour):
         fulfil_sys = None
         fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         if fulfil_wp_s:
-            fulfil_wp = st.waypoints_view_one(target_sys_sym, fulfil_wp_s)
+            fulfil_wp = st.waypoints_view_one(fulfil_wp_s)
             fulfil_sys = st.systems_view_one(waypoint_slicer(fulfil_wp.symbol))
 
         self.ship_extrasolar(st.systems_view_one(target_sys_sym))

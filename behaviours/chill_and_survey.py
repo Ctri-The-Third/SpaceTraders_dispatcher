@@ -43,9 +43,7 @@ class ChillAndSurvey(Behaviour):
         )
 
         target_sys = st.systems_view_one(waypoint_slicer(self.target_wp_s))
-        target_wp = st.waypoints_view_one(
-            waypoint_slicer(self.target_wp_s), self.target_wp_s
-        )
+        target_wp = st.waypoints_view_one(self.target_wp_s)
         if not target_wp:
             time.sleep(SAFETY_PADDING)
             self.end()

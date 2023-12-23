@@ -84,7 +84,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 self.behaviour_params["buy_wp"],
             ]
             source_wp = st.waypoints_view_one(
-                waypoint_slicer(self.behaviour_params["buy_wp"]),
                 self.behaviour_params["buy_wp"],
             )
             source_system = st.systems_view_one(source_wp.system_symbol)
@@ -94,9 +93,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
             target_waypoints = self.find_cheapest_markets_for_good(target_tradegood)
             best_jumps = math.inf
             for target_waypoint in target_waypoints:
-                potential_wp = st.waypoints_view_one(
-                    waypoint_slicer(target_waypoint), target_waypoint
-                )
+                potential_wp = st.waypoints_view_one(target_waypoint)
                 source_system = st.systems_view_one(potential_wp.system_symbol)
                 route = self.pathfinder.astar(start_system, source_system)
                 if route and route.jumps < best_jumps:
@@ -109,24 +106,18 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["sell_wp"])
             )
-            end_waypoint = st.waypoints_view_one(
-                end_system.symbol, self.behaviour_params["sell_wp"]
-            )
+            end_waypoint = st.waypoints_view_one(self.behaviour_params["sell_wp"])
             end_market = st.system_market(end_waypoint)
             end_listing = end_market.get_tradegood(target_tradegood)
         if "fulfil_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["fulfil_wp"])
             )
-            end_waypoint = st.waypoints_view_one(
-                end_system.symbol, self.behaviour_params["fulfil_wp"]
-            )
+            end_waypoint = st.waypoints_view_one(self.behaviour_params["fulfil_wp"])
         if "transfer_ship" in self.behaviour_params:
             receive_ship = st.ships_view_one(self.behaviour_params["transfer_ship"])
             end_system = st.systems_view_one(receive_ship.nav.system_symbol)
-            end_waypoint = st.waypoints_view_one(
-                end_system.symbol, receive_ship.nav.waypoint_symbol
-            )
+            end_waypoint = st.waypoints_view_one(receive_ship.nav.waypoint_symbol)
 
         #
         # if we've not been given specific instructions about where to sell, sell it at the best price, regardless of distance.
@@ -145,9 +136,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 ):
                     best_potench = potench
                     best_cpd = sell_price / min(route.jumps, 0.01)
-            end_waypoint = st.waypoints_view_one(
-                best_potench[1].symbol, best_potench[0]
-            )
+            end_waypoint = st.waypoints_view_one(best_potench[0])
             end_system = best_potench[1]
 
         if "safety_profit_threshold" in self.behaviour_params:

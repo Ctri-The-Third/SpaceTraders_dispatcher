@@ -156,14 +156,10 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                     self.ship_intrasolar(start_wp_s)
             elif market_wp_s:
                 # we got to the fulfill point but something went horribly wrong
-                market = st.system_market(
-                    st.waypoints_view_one(destination_sys, market_wp_s)
-                )
+                market = st.system_market(st.waypoints_view_one(market_wp_s))
                 resp = self.sell_all_cargo(market=market)
 
-                st.system_market(
-                    st.waypoints_view_one(destination_sys, market_wp_s), True
-                )
+                st.system_market(st.waypoints_view_one(market_wp_s), True)
                 if resp:
                     st.ship_orbit(ship)
                     self.ship_extrasolar(start_sys)

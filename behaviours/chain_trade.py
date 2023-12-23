@@ -65,19 +65,15 @@ class ChainTrade(Behaviour):
         ship: Ship
         agent = self.agent
 
-        self.start_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        self.start_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
         params = self.select_positive_trade()
         if not params:
             self.logger.info("No trades found")
             time.sleep(SAFETY_PADDING)
             return
 
-        buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
-        buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
-        sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
-        sell_wp = st.waypoints_view_one(sell_sys.symbol, params["sell_wp"])
+        buy_wp = st.waypoints_view_one(params["buy_wp"])
+        sell_wp = st.waypoints_view_one(params["sell_wp"])
         tradegood = params["tradegood"]
         pass
         if not tradegood in [x.symbol for x in ship.cargo_inventory]:

@@ -76,7 +76,7 @@ class ExtractAndTransfer_8(Behaviour):
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
                 )
             target_sys_sym = waypoint_slicer(target_wp_sym)
-            target_wp = st.waypoints_view_one(target_sys_sym, target_wp_sym)
+            target_wp = st.waypoints_view_one(target_wp_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")

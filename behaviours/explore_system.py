@@ -63,7 +63,7 @@ class ExploreSystem(Behaviour):
             d_sys = st.systems_view_one(self.behaviour_params["target_sys"])
 
             jg = st.find_waypoints_by_type_one(d_sys.symbol, "JUMP_GATE")
-            st.waypoints_view_one(jg.system_symbol, jg.symbol, True)
+            st.waypoints_view_one(jg.symbol, True)
             st.system_jumpgate(jg, True)
             self.pathfinder._graph = self.pathfinder.load_jump_graph_from_db()
             path = self.pathfinder.astar(o_sys, d_sys, force_recalc=True)

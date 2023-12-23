@@ -92,9 +92,9 @@ class ManageManufactureChain(Behaviour):
             time.sleep(SAFETY_PADDING)
 
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
-        buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
+        buy_wp = st.waypoints_view_one( params["buy_wp"])
         sell_sys = st.systems_view_one(waypoint_slicer(params["sell_wp"]))
-        sell_wp = st.waypoints_view_one(sell_sys.symbol, params["sell_wp"])
+        sell_wp = st.waypoints_view_one(params["sell_wp"])
         tradegood = params["tradegood"]
         pass
         if not tradegood in [x.symbol for x in ship.cargo_inventory]:
@@ -155,7 +155,7 @@ class ManageManufactureChain(Behaviour):
     def get_market(self, market_symbol: str) -> Market:
         if market_symbol in self.markets:
             return self.markets[market_symbol]
-        wp = self.st.waypoints_view_one(waypoint_slicer(market_symbol), market_symbol)
+        wp = self.st.waypoints_view_one( market_symbol)
         market = self.st.system_market(wp)
         self.markets[market_symbol] = market
         return market

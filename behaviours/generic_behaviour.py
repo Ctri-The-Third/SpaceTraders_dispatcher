@@ -155,9 +155,7 @@ class Behaviour:
 
         st = self.st
         ship = self.ship
-        origin_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        origin_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
         target_sys_symbol = waypoint_slicer(target_wp_symbol)
         if ship.nav.waypoint_symbol == target_wp_symbol:
             if ship.nav.status == "IN_TRANSIT":
@@ -176,7 +174,7 @@ class Behaviour:
                 error_code=4202,
                 url=f"{__name__}.ship_intrasolar",
             )
-        dest_wp = self.st.waypoints_view_one(target_sys_symbol, target_wp_symbol)
+        dest_wp = self.st.waypoints_view_one(target_wp_symbol)
         route = self.pathfinder.plot_system_nav(
             ship.nav.system_symbol, origin_wp, dest_wp, self.ship.fuel_capacity
         )
@@ -270,9 +268,7 @@ class Behaviour:
     ) -> Ship or bool:
         ship = self.ship
         st = self.st
-        current_wayp = self.st.waypoints_view_one(
-            self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
-        )
+        current_wayp = self.st.waypoints_view_one(self.ship.nav.waypoint_symbol)
         if tradegoods_to_discard is None:
             tradegoods_to_discard = []
 
@@ -308,9 +304,7 @@ class Behaviour:
         cutoff_cargo_units_used=None,
     ) -> Ship or bool:
         # need to validate that the ship'  s current WP is a valid location
-        current_wayp = self.st.waypoints_view_one(
-            self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
-        )
+        current_wayp = self.st.waypoints_view_one(self.ship.nav.waypoint_symbol)
         if current_wayp.type not in ("ASTEROID", "ENGINEERED_ASTEROID"):
             self.logger.error(
                 "Ship is not at an extractable location, sleeping then aborting"
@@ -319,7 +313,7 @@ class Behaviour:
             return False
 
         wayp_s = self.ship.nav.waypoint_symbol
-        wayp = self.st.waypoints_view_one(self.ship.nav.system_symbol, wayp_s)
+        wayp = self.st.waypoints_view_one(wayp_s)
         if "UNSTABLE" in wayp.modifiers:
             self.logger.error("asteroid %s still unstable, aborting", wayp_s)
             sleep(SAFETY_PADDING * 3)
@@ -367,9 +361,7 @@ class Behaviour:
             if not resp and resp.error_code in [4228]:
                 return False
             elif not resp and resp.error_code == 4253:
-                wayp = self.st.waypoints_view_one(
-                    self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
-                )
+                wayp = self.st.waypoints_view_one(self.ship.nav.waypoint_symbol)
                 if "UNSTABLE" not in wayp.modifiers:
                     wayp.modifiers.append("UNSTABLE")
                     self.st.update(wayp)
@@ -401,9 +393,7 @@ class Behaviour:
         # this used to be "go and refuel."
         # in order try and understand why ships are sometimes drifting, and to take advantage
         # of the fuel-aware pathfinder, we're simplifying this.
-        current_wayp = self.st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        current_wayp = self.st.waypoints_view_one(ship.nav.waypoint_symbol)
         maybe_refuel_points = self.st.find_waypoints_by_trait(
             self.ship.nav.system_symbol, "MARKETPLACE"
         )
@@ -459,7 +449,7 @@ class Behaviour:
             )
         if not market:
             market = self.st.system_market(
-                st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+                st.waypoints_view_one(ship.nav.waypoint_symbol)
             )
         if ship.nav.status != "DOCKED":
             st.ship_dock(ship)
@@ -484,7 +474,7 @@ class Behaviour:
         listings = {}
         if not market:
             market = self.st.system_market(
-                st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+                st.waypoints_view_one(ship.nav.waypoint_symbol)
             )
         if market:
             listings = {listing.symbol: listing for listing in market.listings}
@@ -611,9 +601,7 @@ order by 1 desc """
         if quantity < 0:
             raise ValueError("Quantity must be a positive integer or zero !")
         ship = self.ship
-        current_waypoint = self.st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        current_waypoint = self.st.waypoints_view_one(ship.nav.waypoint_symbol)
         if "MARKETPLACE" not in [trait.symbol for trait in current_waypoint.traits]:
             return LocalSpaceTradersRespose(
                 f"Waypoint {current_waypoint.symbol} is not a marketplace",
@@ -706,11 +694,11 @@ order by 1 desc """
         target_wayps = list(set(target_wayps))
         # remove dupes from target_wayps
 
-        start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+        start = st.waypoints_view_one(ship.nav.waypoint_symbol)
         path = self.nearest_neighbour(target_wayps, start)
 
         for wayp_sym in path:
-            waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
+            waypoint = st.waypoints_view_one(wayp_sym)
 
             self.ship_intrasolar(wayp_sym)
             self.sleep_until_arrived()
@@ -752,19 +740,15 @@ order by 1 desc """
         sleep_till_arrived(self.ship)
 
     def ship_extrasolar(
-        self, destination_waypoint_symbol: str, route: JumpGateRoute = None
+        self, destination_system_symbol: str, route: JumpGateRoute = None
     ):
-        if isinstance(destination_waypoint_symbol, System):
+        if isinstance(destination_system_symbol, System):
             self.logger.warning(
                 "WARNING - using old system object to perform jump - should be providing destination gate."
             )
-            destination_system = destination_waypoint_symbol
-            destination_waypoint_symbol = self.st.find_waypoints_by_type_one(
-                destination_waypoint_symbol.symbol, "JUMP_GATE"
-            )
-        else:
-            destination_system = self.st.systems_view_one(
-                waypoint_slicer(destination_waypoint_symbol)
+            destination_system = destination_system_symbol
+            destination_system_symbol = self.st.find_waypoints_by_type_one(
+                destination_system_symbol.symbol, "JUMP_GATE"
             )
         st = self.st
         ship = self.ship
@@ -781,9 +765,7 @@ order by 1 desc """
             st.ship_orbit(ship)
         if ship.nav.travel_time_remaining > 0 or ship.seconds_until_cooldown > 0:
             self.sleep_until_ready()
-        current_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        current_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
         self.st.logging_client.log_custom_event(
             "BEGIN_EXTRASOLAR_NAVIGATION",
             ship.name,

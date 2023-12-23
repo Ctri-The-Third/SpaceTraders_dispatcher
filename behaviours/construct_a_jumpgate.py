@@ -77,9 +77,7 @@ class ConstructJumpgate(Behaviour):
                 time.sleep(SAFETY_PADDING)
                 return
 
-        jumpgate = st.waypoints_view_one(
-            waypoint_slicer(self.target_waypoint), self.target_waypoint, True
-        )
+        jumpgate = st.waypoints_view_one(self.target_waypoint, True)
         if jumpgate.type != "JUMP_GATE":
             time.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint is not a jumpgate")
@@ -105,7 +103,7 @@ class ConstructJumpgate(Behaviour):
                 r.symbol, highest_tradevolume=True
             )
             for market in markets:
-                wp = st.waypoints_view_one(waypoint_slicer(market), market)
+                wp = st.waypoints_view_one(market)
                 mkt = st.system_market(wp)
                 # if we're specifying markets, they won't all sell all the exports.
                 tg = mkt.get_tradegood(r.symbol)
@@ -189,9 +187,7 @@ class ConstructJumpgate(Behaviour):
 
     def get_market(self, market_symbol: str) -> "Market":
         if market_symbol not in self.markets:
-            wp = self.st.waypoints_view_one(
-                waypoint_slicer(market_symbol), market_symbol
-            )
+            wp = self.st.waypoints_view_one(market_symbol)
             self.markets[market_symbol] = self.st.system_market(wp)
         return self.markets[market_symbol]
 

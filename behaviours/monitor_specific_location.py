@@ -54,7 +54,7 @@ class MonitorPrices(Behaviour):
             )
             time.sleep(SAFETY_PADDING)
             return
-        waypoint = st.waypoints_view_one(waypoint_slicer(destination), destination)
+        waypoint = st.waypoints_view_one(destination)
         waypoint: Waypoint
 
         self.ship_intrasolar(waypoint.symbol)

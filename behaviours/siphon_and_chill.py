@@ -66,7 +66,7 @@ class SiphonAndChill(Behaviour):
 
                 target_wp_sym = target_wp.symbol
             else:
-                target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
+                target_wp = st.waypoints_view_one(target_wp_sym)
 
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)

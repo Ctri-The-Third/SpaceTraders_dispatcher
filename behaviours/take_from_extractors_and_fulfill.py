@@ -90,7 +90,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         #
 
         start_sys = st.systems_view_one(waypoint_slicer(self.start_wp_s))
-        start_wp = st.waypoints_view_one(start_sys.symbol, self.start_wp_s)
+        start_wp = st.waypoints_view_one(self.start_wp_s)
         destination_sys = st.systems_view_one(
             waypoint_slicer(self.market_wp_s or self.fulfil_wp_s)
         )
@@ -160,14 +160,10 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
                     self.ship_intrasolar(self.start_wp_s)
             elif self.market_wp_s:
                 # we got to the fulfill point but something went horribly wrong
-                market = st.system_market(
-                    st.waypoints_view_one(destination_sys, self.market_wp_s)
-                )
+                market = st.system_market(st.waypoints_view_one(self.market_wp_s))
                 resp = self.sell_all_cargo(market=market)
 
-                st.system_market(
-                    st.waypoints_view_one(destination_sys, self.market_wp_s), True
-                )
+                st.system_market(st.waypoints_view_one(self.market_wp_s), True)
 
         else:
             if ship.nav.waypoint_symbol != self.start_wp_s:

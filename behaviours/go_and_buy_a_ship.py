@@ -72,16 +72,14 @@ class GoAndBuyShip(Behaviour):
         results = try_execute_select(self.connection, sql, (ship_symbol, ship_symbol))
 
         current_system = self.st.systems_view_one(self.ship.nav.system_symbol)
-        current_waypoint = self.st.waypoints_view_one(
-            self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol
-        )
+        current_waypoint = self.st.waypoints_view_one(self.ship.nav.waypoint_symbol)
         max_cpd = float("inf")
 
         best_dest = None
 
         for result in results:
             dest_system = self.st.systems_view_one(waypoint_slicer(result[0]))
-            dest_waypoint = self.st.waypoints_view_one(dest_system.symbol, result[0])
+            dest_waypoint = self.st.waypoints_view_one(result[0])
             if dest_system == current_system:
                 if current_waypoint == dest_waypoint:
                     cpd = (result[2] or result[3]) / 1

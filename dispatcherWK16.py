@@ -78,7 +78,6 @@ class dispatcher:
         db_user: str,
         db_pass: str,
     ) -> None:
-        print(f"provided agents: {agents}")
         self.lock_id = f"{get_fun_name()}"
         self.db_host = db_host
         self.db_port = db_port

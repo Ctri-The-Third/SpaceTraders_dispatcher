@@ -96,7 +96,7 @@ class MonitorCheapestShipyard(Behaviour):
             time.sleep(SAFETY_PADDING)
             self.end()
             self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-        wp = st.waypoints_view_one(target_sys_sym, target_wp)
+        wp = st.waypoints_view_one(target_wp)
         if wp.has_shipyard:
             st.system_shipyard(wp, True)
             self.end()
@@ -120,7 +120,7 @@ class MonitorCheapestShipyard(Behaviour):
         )
 
         for wayp in wayps:
-            resp = st.waypoints_view_one(wayp[2], wayp[0], True)
+            resp = st.waypoints_view_one(wayp[0], True)
             time.sleep(1.2)
             if ship.seconds_until_cooldown > 0:
                 continue
@@ -138,11 +138,10 @@ class MonitorCheapestShipyard(Behaviour):
 
         for row in rows:
             jump_gate_sym = row[0]
-            sys = waypoint_slicer(jump_gate_sym)
 
-            wp = st.waypoints_view_one(sys, jump_gate_sym)
+            wp = st.waypoints_view_one(jump_gate_sym)
             if not wp.is_charted:
-                wp = st.waypoints_view_one(sys, jump_gate_sym, True)
+                wp = st.waypoints_view_one(jump_gate_sym, True)
             if not wp.is_charted:
                 time.sleep(1.2)
 
@@ -164,8 +163,8 @@ class MonitorCheapestShipyard(Behaviour):
         rows = self.get_twenty_unscanned_markets_or_shipyards()
         for row in rows:
             wp_sym = row[0]
-            sys = waypoint_slicer(wp_sym)
-            wp = st.waypoints_view_one(sys, wp_sym)
+
+            wp = st.waypoints_view_one(wp_sym)
             if wp.has_market:
                 resp = st.system_market(wp, True)
                 time.sleep(1.2)

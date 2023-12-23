@@ -76,9 +76,9 @@ class ExecuteContracts(Behaviour):
             return
         quantity = params["quantity"]
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
-        buy_wp = st.waypoints_view_one(buy_system.symbol, params["buy_wp"])
+        buy_wp = st.waypoints_view_one(params["buy_wp"])
         fulfil_sys = st.systems_view_one(waypoint_slicer(params["fulfil_wp"]))
-        fulfil_wp = st.waypoints_view_one(fulfil_sys.symbol, params["fulfil_wp"])
+        fulfil_wp = st.waypoints_view_one(params["fulfil_wp"])
         tradegood = params["tradegood"]
 
         if tradegood not in [s.symbol for s in ship.cargo_inventory]:

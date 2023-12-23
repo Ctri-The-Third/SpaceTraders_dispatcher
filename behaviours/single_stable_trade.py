@@ -61,12 +61,8 @@ class SingleStableTrade(Behaviour):
             import_market_s,
             profit_per_unit,
         ) = selected_random_route
-        export_market_wp = st.waypoints_view_one(
-            waypoint_slicer(export_market_s), export_market_s
-        )
-        import_market_wp = st.waypoints_view_one(
-            waypoint_slicer(import_market_s), import_market_s
-        )
+        export_market_wp = st.waypoints_view_one(export_market_s)
+        import_market_wp = st.waypoints_view_one(import_market_s)
         export_market = st.system_market(export_market_wp)
         import_market = st.system_market(import_market_wp)
         export_market_price = export_market.get_tradegood(trade_symbol).purchase_price

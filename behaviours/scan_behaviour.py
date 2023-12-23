@@ -74,7 +74,7 @@ class ScanInBackground(Behaviour):
             )
 
             for wayp in wayps:
-                resp = st.waypoints_view_one(wayp[2], wayp[0], True)
+                resp = st.waypoints_view_one(wayp[0], True)
 
             #
             # get 20 unscanned jump gates
@@ -86,9 +86,9 @@ class ScanInBackground(Behaviour):
                 jump_gate_sym = row[0]
                 sys = waypoint_slicer(jump_gate_sym)
 
-                wp = st.waypoints_view_one(sys, jump_gate_sym)
+                wp = st.waypoints_view_one(jump_gate_sym)
                 if not wp.is_charted:
-                    wp = st.waypoints_view_one(sys, jump_gate_sym, True)
+                    wp = st.waypoints_view_one(jump_gate_sym, True)
                 if not wp.is_charted:
                     continue
                 resp = st.system_jumpgate(wp, True)
@@ -105,7 +105,7 @@ class ScanInBackground(Behaviour):
             for row in rows:
                 wp_sym = row[0]
                 sys = waypoint_slicer(wp_sym)
-                wp = st.waypoints_view_one(sys, wp_sym)
+                wp = st.waypoints_view_one(wp_sym)
                 if wp.has_market:
                     resp = st.system_market(wp, True)
                 if wp.has_shipyard:
@@ -208,11 +208,11 @@ order by random()"""
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
 
-        start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+        start = st.waypoints_view_one(ship.nav.waypoint_symbol)
         path = nearest_neighbour(target_wayps, start)
 
         for wayp_sym in path:
-            waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
+            waypoint = st.waypoints_view_one(wayp_sym)
 
             self.ship_intrasolar(wayp_sym)
 

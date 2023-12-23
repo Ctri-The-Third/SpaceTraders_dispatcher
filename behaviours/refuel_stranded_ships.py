@@ -83,13 +83,11 @@ class ConstructJumpgate(Behaviour):
         # can we buy fuel locally?
         # if so - buy and continue
         all_markets = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-        start_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        start_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
         fuel_market = None
         closest_distance = float("inf")
         for waypoint in waypoints_with_stranded_ships:
-            start_wp = st.waypoints_view_one(ship.nav.system_symbol, waypoint)
+            start_wp = st.waypoints_view_one(waypoint)
             for market_wp in all_markets:
                 market_wp: Waypoint
                 if market_wp.symbol == waypoint:

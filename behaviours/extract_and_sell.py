@@ -66,7 +66,7 @@ class ExtractAndGoSell(Behaviour):
 
                 target_wp_sym = target_wp.symbol
             else:
-                target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
+                target_wp = st.waypoints_view_one(target_wp_sym)
             market_wp_sym = self.behaviour_params.get(
                 "market_wp",
                 None,
@@ -78,9 +78,7 @@ class ExtractAndGoSell(Behaviour):
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
-        current_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        current_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
 
         # in a circumstance where the ship isn't in the specified system, it will go.
         self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
@@ -114,9 +112,7 @@ class ExtractAndGoSell(Behaviour):
             for cargo in ship.cargo_inventory:
                 self.go_and_sell_or_fulfill(cargo.symbol, market_wp_sym)
 
-            market_wp = st.waypoints_view_one(
-                waypoint_slicer(market_wp_sym), market_wp_sym
-            )
+            market_wp = st.waypoints_view_one(market_wp_sym)
 
             distance_to_market = self.pathfinder.calc_distance_between(
                 market_wp, target_wp
@@ -154,9 +150,7 @@ class ExtractAndGoSell(Behaviour):
         market_wp_sym = None
         best_tradegood_option = [None, None]
         # find a market that buys all the cargo we're selling
-        starting_wp = client.waypoints_view_one(
-            waypoint_slicer(starting_wp_s), starting_wp_s
-        )
+        starting_wp = client.waypoints_view_one(starting_wp_s)
         best_total_cph = 0
         start_system = client.systems_view_one(
             waypoint_slicer(starting_wp_s), starting_wp_s
@@ -172,7 +166,7 @@ class ExtractAndGoSell(Behaviour):
             best_tradegood_cph = 0
             for option in options:
                 end_system = option[1]
-                end_wp = self.st.waypoints_view_one(end_system, option[0])
+                end_wp = self.st.waypoints_view_one(option[0])
                 market = self.st.system_market(end_wp)
 
                 # never sell to exporting markets.

@@ -48,9 +48,7 @@ class ManageSpecifcExport(Behaviour):
         self.target_market = self.behaviour_params.get("market_wp", None)
         if self.target_market:
             self.starting_system = waypoint_slicer(self.target_market)
-            self.starting_market_wp = self.st.waypoints_view_one(
-                self.starting_system, self.target_market
-            )
+            self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
         else:
             self.starting_system = self.ship.nav.system_symbol
             self.starting_market_wp = self.ship.nav.waypoint_symbol
@@ -79,9 +77,7 @@ class ManageSpecifcExport(Behaviour):
                 return
             self.target_market = mkts[0]
             self.starting_system = waypoint_slicer(self.target_market)
-            self.starting_market_wp = self.st.waypoints_view_one(
-                self.starting_system, self.target_market
-            )
+            self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
 
         st.ship_cooldown(ship)
 
@@ -89,15 +85,13 @@ class ManageSpecifcExport(Behaviour):
         # if data is old, go to it.
 
         market = self.get_market(self.target_market)
-        export_wp = self.st.waypoints_view_one(
-            waypoint_slicer(self.target_market), self.target_market
-        )
+        export_wp = self.st.waypoints_view_one(self.target_market)
         target_tradegood = market.get_tradegood(self.target_tradegood)
         if target_tradegood.recorded_ts < datetime.utcnow() - timedelta(hours=3):
             self.logger.debug(f"Market data is stale, going to {self.target_market}")
             self.ship_extrasolar(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
-            wp = self.st.waypoints_view_one(self.starting_system, self.target_market)
+            wp = self.st.waypoints_view_one(self.target_market)
             market = self.st.system_market(wp, True)
 
         import_symbols = self.get_matching_imports_for_export(self.target_tradegood)
@@ -174,9 +168,7 @@ class ManageSpecifcExport(Behaviour):
                 required_good_export_tg = market.get_tradegood(required_import_symbol)
                 if not required_good_export_tg:
                     continue
-                wp = self.st.waypoints_view_one(
-                    waypoint_slicer(market.symbol), market.symbol
-                )
+                wp = self.st.waypoints_view_one(market.symbol)
                 distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
                     export_waypoint, wp, self.ship.fuel_capacity
                 )
@@ -229,10 +221,7 @@ class ManageSpecifcExport(Behaviour):
     def maybe_sell_exports(self):
         # take the exports to the best CPH market.
         potential_markets = self.find_best_market_systems_to_sell(self.target_tradegood)
-        waypoints = {
-            m[0]: self.st.waypoints_view_one(waypoint_slicer(m[0]), m[0])
-            for m in potential_markets
-        }
+        waypoints = {m[0]: self.st.waypoints_view_one(m[0]) for m in potential_markets}
         markets = [
             self.get_market(w.symbol)
             for w in waypoints.values()
@@ -352,9 +341,7 @@ group by 1,2 order by 3 desc """
 
     def get_market(self, market_symbol: str) -> "Market":
         if market_symbol not in self.markets:
-            wp = self.st.waypoints_view_one(
-                waypoint_slicer(market_symbol), market_symbol
-            )
+            wp = self.st.waypoints_view_one(market_symbol)
             self.markets[market_symbol] = self.st.system_market(wp)
         return self.markets[market_symbol]
 
