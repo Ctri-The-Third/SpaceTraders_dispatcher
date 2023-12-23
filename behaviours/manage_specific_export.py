@@ -380,12 +380,13 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3F"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
-        "priority": 4.5,
-        "target_tradegood": "FUEL",
-        # "market_wp": "X1-YG29-D43",
+        "priority": 4,
+        "market_wp": "X1-PK16-D50",
+        "script_name": "MANAGE_SPECIFIC_EXPORT",
+        "target_tradegood": "SHIP_PLATING",
     }
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})

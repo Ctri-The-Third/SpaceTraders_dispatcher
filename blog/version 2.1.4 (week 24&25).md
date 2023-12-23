@@ -116,10 +116,12 @@ We need to properly estimate the capacity of a given system for concurrent trade
 --- 
 # Intergalactic operations
 
-* We're hampered by a UI not designed for multi system operations. Each system we select should be managed. Ideally, this should be shared across agents.
+* We're hampered by a UI and conductor not designed for multi system operations. Each system we select should be managed. Ideally, this should be shared across agents
+* we need to be able to set jobs on a per-system basis, with requirements.
 * This week we're using explorers but we should have an intermediary step of finding haulers on the jump gate network. 
-* Identifying starter systems is easy to a human. They have planets with a consistent naming structure, and operate with at least 15 planets/moons.
-  * The non-starter systems that are on the jumpgate network must be explored. Probes may be the best choice for this as they're cheap and the jumpgate is inherently slow.
+* Identifying starter systems is easy to a human. They have planets with a consistent naming structure, an engineered_asteroid and operate with at least 15 planets/moons.
+  * The non-starter systems that are on the jumpgate network must be explored. Probes may be the best choice for this as they're cheap and the jumpgate is inherently slow anyway
+
 
 
 
