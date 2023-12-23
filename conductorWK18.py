@@ -452,7 +452,15 @@ class BehaviourConductor:
                 "X1-X57",
                 "X1-BM12",
                 "X1-ZR29",
+                "X1-BM12",
+                "X1-BM12",
+                "X1-SR25",
+                "X1-SR25",
+                "X1-GU20",
+                "X1-GU20",
+                "X1-DK64",
             ]
+
             both = zip_longest(self.explorers, possible_sites)
             for ship, system in zip_longest(self.explorers, possible_sites):
                 if not ship:
