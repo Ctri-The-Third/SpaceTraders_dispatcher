@@ -47,6 +47,8 @@ class ChainTrade(Behaviour):
         self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
+        self.target_sys_symbol = behaviour_params.get("target_sys", None)
+
     def run(self):
         self.ship = self.st.ships_view_one(self.ship_name)
         self.sleep_until_ready()
@@ -64,6 +66,9 @@ class ChainTrade(Behaviour):
         ship = self.ship  # = st.ships_view_one(self.ship_name, True)
         ship: Ship
         agent = self.agent
+
+        if self.target_sys_symbol:
+            self.ship_extrasolar_jump(self.target_sys_symbol)
 
         self.start_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
         params = self.select_positive_trade()
@@ -160,6 +165,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
+        "target_sys": "X1-BM12",
     }
 
     bhvr = ChainTrade(agent, ship, behaviour_params or {})

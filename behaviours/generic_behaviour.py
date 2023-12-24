@@ -966,14 +966,13 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "THUNDER-PHOENI"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)
     bhvr.st.view_my_self(True)
 
-    bhvr.st.ship_orbit(bhvr.ship)
-    ships = bhvr.st.ship_scan_ships(bhvr.ship)
-
+    bhvr.ship_intrasolar("X1-PK16-A1")
+    nearby = bhvr.st.ship_scan_ships(bhvr.ship)
     pass
