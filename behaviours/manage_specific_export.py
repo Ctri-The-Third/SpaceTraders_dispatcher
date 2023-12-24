@@ -46,12 +46,13 @@ class ManageSpecifcExport(Behaviour):
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
         self.target_tradegood = self.behaviour_params.get("target_tradegood")
         self.target_market = self.behaviour_params.get("market_wp", None)
+        self.ship = None
         if self.target_market:
             self.starting_system = waypoint_slicer(self.target_market)
             self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
         else:
-            self.starting_system = self.ship.nav.system_symbol
-            self.starting_market_wp = self.ship.nav.waypoint_symbol
+            self.starting_system = None
+            self.starting_market_wp = None
         self.markets = {}
 
     def run(self):
@@ -72,6 +73,8 @@ class ManageSpecifcExport(Behaviour):
         )
 
         if not self.target_market:
+            self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
+            self.starting_system = waypoint_slicer(self.target_market)
             mkts = self.find_markets_that_export(self.target_tradegood)
             if len(mkts) == 0:
                 return
