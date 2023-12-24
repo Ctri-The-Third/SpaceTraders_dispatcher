@@ -73,7 +73,7 @@ class SingleStableTrade(Behaviour):
             self.end()
             return
 
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(export_market_s)))
+        self.ship_extrasolar_jump(waypoint_slicer(export_market_s))
         resp = self.ship_intrasolar(export_market_s)
         if not resp:
             time.sleep(SAFETY_PADDING)
@@ -82,7 +82,7 @@ class SingleStableTrade(Behaviour):
             return
         self.st.ship_dock(ship)
         self.purchase_what_you_can(trade_symbol, ship.cargo_space_remaining)
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(import_market_s)))
+        self.ship_extrasolar_jump(waypoint_slicer(import_market_s))
         resp = self.ship_intrasolar(import_market_s)
         if not resp:
             time.sleep(SAFETY_PADDING)

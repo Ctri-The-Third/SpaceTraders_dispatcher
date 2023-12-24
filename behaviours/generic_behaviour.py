@@ -739,27 +739,25 @@ order by 1 desc """
     def sleep_until_arrived(self):
         sleep_till_arrived(self.ship)
 
-    def ship_extrasolar(
-        self, destination_system_symbol: str, route: JumpGateRoute = None
-    ):
-        if isinstance(destination_system_symbol, System):
+    def ship_extrasolar_jump(self, dest_sys_sym: str, route: JumpGateRoute = None):
+        if isinstance(dest_sys_sym, System):
             self.logger.warning(
                 "WARNING - using old system object to perform jump - should be providing destination gate."
             )
-            destination_system = destination_system_symbol
-            destination_system_symbol = self.st.find_waypoints_by_type_one(
-                destination_system_symbol.symbol, "JUMP_GATE"
+            destination_system = dest_sys_sym
+            dest_sys_sym = self.st.find_waypoints_by_type_one(
+                dest_sys_sym.symbol, "JUMP_GATE"
             )
         st = self.st
         ship = self.ship
-        if ship.nav.system_symbol == destination_system.symbol:
+        if ship.nav.system_symbol == dest_sys_sym:
             return True
         o_sys = st.systems_view_one(ship.nav.system_symbol)
-        route = route or self.pathfinder.astar(o_sys, destination_system, True)
+        route = route or self.pathfinder.astar(o_sys, dest_sys_sym, True)
         if not route:
             self.logger.error(f"Unable to jump to {o_sys.symbol} - no route found")
             return None
-        if ship.nav.system_symbol == destination_system.symbol:
+        if ship.nav.system_symbol == dest_sys_sym:
             return True
         if ship.nav.status == "DOCKED":
             st.ship_orbit(ship)
@@ -817,7 +815,7 @@ order by 1 desc """
 
         if target_system and ship.nav.system_symbol != target_system.symbol:
             self.ship_intrasolar(local_jumpgate.symbol)
-            self.ship_extrasolar(target_waypoint, path)
+            self.ship_extrasolar_jump(target_waypoint.system_symbol, path)
         self.ship_intrasolar(target_waypoint.symbol, flight_mode="CRUISE")
 
         st.ship_dock(ship)
@@ -855,7 +853,7 @@ order by 1 desc """
         target_system=None,
     ):
         if target_system:
-            resp = self.ship_extrasolar(target_system)
+            resp = self.ship_extrasolar_jump(target_system)
             if not resp:
                 return False
         resp = self.ship_intrasolar(target_waypoint, flight_mode="CRUISE")
@@ -875,7 +873,7 @@ order by 1 desc """
         return resp
 
     def log_market_changes(self, market_s: str):
-        wp = self.st.waypoints_view_one(waypoint_slicer(market_s), market_s)
+        wp = self.st.waypoints_view_one(market_s)
         pre_market = self.st.system_market(wp)
         post_market = self.st.system_market(wp, True)
 

@@ -57,7 +57,7 @@ class ReceiveAndRefine(Behaviour):
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
 
-        self.ship_extrasolar(start_sys, ship)
+        self.ship_extrasolar_jump(start_sys.symbol)
         self.ship_intrasolar(target_wp_symbol=start_wp_s)
 
         tradegood_symbols = {

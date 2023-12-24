@@ -136,10 +136,10 @@ class ConstructJumpgate(Behaviour):
                 break
 
         if not have_cargo_already:
-            # self.ship_extrasolar(buy_wp.symbol)
+            self.ship_extrasolar_jump(waypoint_slicer(buy_wp.symbol))
             self.ship_intrasolar(buy_wp.symbol)
             self.buy_cargo(tradegood, quantity)
-        # self.ship_extrasolar(build_wp.symbol)
+        self.ship_extrasolar_jump(waypoint_slicer(build_wp.symbol))
         self.ship_intrasolar(build_wp.symbol)
 
         cargo = [ci for ci in self.ship.cargo_inventory if ci.symbol == tradegood]

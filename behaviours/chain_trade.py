@@ -69,6 +69,9 @@ class ChainTrade(Behaviour):
         params = self.select_positive_trade()
         if not params:
             self.logger.info("No trades found")
+
+            # go and tour possible markets
+            self.scan_local_system()
             time.sleep(SAFETY_PADDING)
             return
 
@@ -153,7 +156,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "18"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,

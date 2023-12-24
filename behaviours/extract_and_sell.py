@@ -81,7 +81,7 @@ class ExtractAndGoSell(Behaviour):
         current_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
 
         # in a circumstance where the ship isn't in the specified system, it will go.
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
+        self.ship_extrasolar_jump(waypoint_slicer(target_wp_sym))
         self.ship_intrasolar(target_wp_sym)
         #
         # if we have any fuel in the inventory, refuel.

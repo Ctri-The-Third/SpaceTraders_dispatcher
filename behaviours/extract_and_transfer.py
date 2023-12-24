@@ -84,7 +84,7 @@ class ExtractAndTransfer_8(Behaviour):
             return
 
         self.sleep_until_ready()
-        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
+        self.ship_extrasolar_jump(target_sys_sym)
         self.ship_intrasolar(target_wp_sym)
 
         #

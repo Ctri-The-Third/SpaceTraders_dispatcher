@@ -89,7 +89,7 @@ class ManageSpecifcExport(Behaviour):
         target_tradegood = market.get_tradegood(self.target_tradegood)
         if target_tradegood.recorded_ts < datetime.utcnow() - timedelta(hours=3):
             self.logger.debug(f"Market data is stale, going to {self.target_market}")
-            self.ship_extrasolar(waypoint_slicer(self.target_market))
+            self.ship_extrasolar_jump(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
             wp = self.st.waypoints_view_one(self.target_market)
             market = self.st.system_market(wp, True)
@@ -186,10 +186,10 @@ class ManageSpecifcExport(Behaviour):
                     best_cpd = cpd
 
             if best_source_of_import:
-                self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
+                self.ship_extrasolar_jump(waypoint_slicer(best_source_of_import.symbol))
                 self.ship_intrasolar(best_source_of_import.symbol)
                 self.buy_cargo(required_import_symbol, self.ship.cargo_space_remaining)
-                self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+                self.ship_extrasolar_jump(waypoint_slicer(export_market.symbol))
                 self.ship_intrasolar(export_market.symbol)
                 self.sell_all_cargo()
                 success = True
@@ -209,10 +209,10 @@ class ManageSpecifcExport(Behaviour):
                 continue
 
             waypoint, raw_good, quantity = packages[0]
-            self.ship_extrasolar(waypoint_slicer(waypoint))
+            self.ship_extrasolar_jump(waypoint_slicer(waypoint))
             self.ship_intrasolar(waypoint)
             self.take_cargo_from_neighbouring_extractors(raw_good)
-            self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+            self.ship_extrasolar_jump(waypoint_slicer(export_market.symbol))
             self.ship_intrasolar(export_market.symbol)
             self.sell_all_cargo()
             success = True
@@ -258,7 +258,7 @@ class ManageSpecifcExport(Behaviour):
         if export_tg.purchase_price > import_tg.sell_price:
             return False
         # 2799 3488
-        self.ship_extrasolar(waypoint_slicer(self.target_market))
+        self.ship_extrasolar_jump(waypoint_slicer(self.target_market))
         self.ship_intrasolar(self.target_market)
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
@@ -275,7 +275,7 @@ class ManageSpecifcExport(Behaviour):
             ),
         )
         # self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
-        self.ship_extrasolar(waypoint_slicer(best_sell_market.symbol))
+        self.ship_extrasolar_jump(waypoint_slicer(best_sell_market.symbol))
         self.ship_intrasolar(best_sell_market.symbol)
         self.sell_all_cargo()
 

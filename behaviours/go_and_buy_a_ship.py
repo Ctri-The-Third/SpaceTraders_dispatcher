@@ -51,8 +51,8 @@ class GoAndBuyShip(Behaviour):
             time.sleep(SAFETY_PADDING)
             self.end()
             return
-        target_sys = st.systems_view_one(waypoint_slicer(target_wp.symbol))
-        self.ship_extrasolar(target_sys)
+        target_sys = waypoint_slicer(target_wp.symbol)
+        self.ship_extrasolar_jump(waypoint_slicer)
         self.ship_intrasolar(target_wp.symbol)
 
         resp = st.ships_purchase(target_ship_type, target_wp.symbol)

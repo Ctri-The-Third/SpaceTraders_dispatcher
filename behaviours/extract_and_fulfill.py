@@ -94,7 +94,7 @@ class ExtractAndFulfill_7(Behaviour):
             fulfil_wp = st.waypoints_view_one(fulfil_wp_s)
             fulfil_sys = st.systems_view_one(waypoint_slicer(fulfil_wp.symbol))
 
-        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
+        self.ship_extrasolar_jump(target_sys_sym)
         self.ship_intrasolar(target_wp_sym)
         #
         #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.
@@ -121,7 +121,7 @@ class ExtractAndFulfill_7(Behaviour):
 
         if ship.cargo_units_used > 0:
             if fulfil_sys:
-                self.ship_extrasolar(fulfil_sys)
+                self.ship_extrasolar_jump(fulfil_sys.symbol)
                 self.ship_intrasolar(fulfil_wp.symbol)
                 self.fulfil_any_relevant()
                 self.sell_all_cargo()
