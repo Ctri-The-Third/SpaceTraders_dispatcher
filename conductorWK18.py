@@ -133,9 +133,9 @@ class BehaviourConductor:
         self.st.ships_view(True)
 
         self.starting_system = self.st.systems_view_one(hq_sys, True)
-        self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
+        self.starting_planet = self.st.waypoints_view_one(hq)
         for sym in self.starting_system.waypoints:
-            wp = self.st.waypoints_view_one(self.starting_system.symbol, sym.symbol)
+            wp = self.st.waypoints_view_one(sym.symbol)
             if "MARKETPLACE" in [t.symbol for t in wp.traits]:
                 self.st.system_market(wp)
             if "SHIPYARD" in [t.symbol for t in wp.traits]:
@@ -348,7 +348,7 @@ class BehaviourConductor:
                 exchanges,
                 distance,
             ) = site
-            wayp = self.st.waypoints_view_one(system_symbol, extraction_waypoint)
+            wayp = self.st.waypoints_view_one(extraction_waypoint)
 
             if site_type == "ENGINEERED_ASTEROID":
                 needed_drones = 20
@@ -488,32 +488,48 @@ class BehaviourConductor:
     def set_hauler_behaviours(self):
         # set the commander to chain trades.
         # we'll want to get a hauler to execute on contracts, but so far we don't know if contracts or chain trading is more effective.
-        self.jump_gate = self.st.waypoints_view_one(
-            self.jump_gate.system_symbol, self.jump_gate.symbol
-        )
+        self.jump_gate = self.st.waypoints_view_one(self.jump_gate.symbol)
 
         set_behaviour(self.connection, self.commanders[0].name, BHVR_CHAIN_TRADE, {})
         if len(self.haulers) > 0:
             set_behaviour(
                 self.connection, self.haulers[0].name, BHVR_EXECUTE_CONTRACTS, {}
             )
-
+        if len(self.haulers) > 1:
+            # BHVR_REFUEL_ALL_IN_SYSTEM
+            set_behaviour(self.connection, self.haulers[1].name, "DISABLED", {})
+        possible_ships = self.haulers[2:]
         # at the end of the script, if all the target_tradegoods are being managed, build the jump gate.
-        possible_ships = self.haulers[1:]
 
         # our goal is to get markets that we can manage.
         # however we can't guarantee that the markets will have imports and exports in the given system
         # this script goes through the list of tradegoods and their dependencies, and assigns a ship to each.
         target_tradegoods = [
+            "FUEL",
             "EXPLOSIVES",
             "IRON",
             "COPPER",
             "ALUMINUM",
-            "FUEL",
             "EXPLOSIVES",
-            "FAB_MATS",
+            "FUEL",
         ]
 
+        for i in range(len(self.haulers) - 2):
+            ship = self.haulers[i + 2]
+            if i >= len(target_tradegoods):
+                break
+            params = {
+                "target_tradegood": target_tradegoods[i],
+                # "market_wp": source,
+                "priority": 4,
+            }
+            set_behaviour(
+                self.connection,
+                ship.name,
+                BHVR_MANAGE_SPECIFIC_EXPORT,
+                params,
+            )
+        return
         constructor_ship = None
 
         tradesymbols_and_sources = None
@@ -919,10 +935,8 @@ if __name__ == "__main__":
     conductor = BehaviourConductor(user)
 
     conductor.populate_ships()
+    conductor.set_satellite_behaviours()
+    # conductor.set_hauler_behaviours()
 
-    # goods.update(map_all_goods(conductor.connection, "SHIP_PLATING", "X1-YG29"))
-    # for each tradegood we need a shuttle.
-    # for each tradegood either manage the export, or go collect from extractors.
-
-    # we also need to manually manage FUEL and EXPLOSIVES
+    exit()
     conductor.run()
