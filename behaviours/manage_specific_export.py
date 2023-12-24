@@ -46,37 +46,39 @@ class ManageSpecifcExport(Behaviour):
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
         self.target_tradegood = self.behaviour_params.get("target_tradegood")
         self.target_market = self.behaviour_params.get("market_wp", None)
+        self.ship = None
         if self.target_market:
             self.starting_system = waypoint_slicer(self.target_market)
             self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
         else:
-            self.starting_system = self.ship.nav.system_symbol
-            self.starting_market_wp = self.ship.nav.waypoint_symbol
+            self.starting_system = None
+            self.starting_market_wp = None
         self.markets = {}
 
     def run(self):
+        super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
         self._run()
         self.end()
 
     def _run(self):
-        super().run()
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
-        self.sleep_until_ready()
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME,
-            ship.name,
-            agent.credits,
-            behaviour_params=self.behaviour_params,
-        )
 
         if not self.target_market:
+            self.starting_system = ship.nav.system_symbol
             mkts = self.find_markets_that_export(self.target_tradegood)
             if len(mkts) == 0:
                 return
             self.target_market = mkts[0]
-            self.starting_system = waypoint_slicer(self.target_market)
             self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
 
         st.ship_cooldown(ship)
@@ -367,13 +369,12 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "17"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 4,
-        "market_wp": "X1-PK16-D50",
         "script_name": "MANAGE_SPECIFIC_EXPORT",
-        "target_tradegood": "SHIP_PLATING",
+        "target_tradegood": "FUEL",
     }
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
