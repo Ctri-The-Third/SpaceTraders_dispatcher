@@ -73,9 +73,9 @@ class MonitorPrices(Behaviour):
             coorbitals = st.find_waypoints_by_coords(
                 waypoint.system_symbol, waypoint.x, waypoint.y
             )
-
-            del coorbitals[waypoint.symbol]
-            for coorbital in coorbitals.values():
+            
+            coorbitals.remove(waypoint)
+            for coorbital in coorbitals:
                 coorbital: Waypoint
                 self.ship_intrasolar(coorbital.symbol)
                 if coorbital.has_market:

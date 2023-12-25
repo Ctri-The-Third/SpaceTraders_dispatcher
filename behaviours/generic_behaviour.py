@@ -148,7 +148,7 @@ class Behaviour:
         return path.end_system if path.jumps < 999999 else None
 
     def ship_intrasolar(
-        self, target_wp_symbol: "str", sleep_till_done=True, flight_mode=None
+        self, target_wp_symbol: "str", sleep_till_done=True, flight_mode=None, route = None
     ):
         if isinstance(target_wp_symbol, Waypoint):
             target_wp_symbol = target_wp_symbol.symbol
@@ -175,7 +175,7 @@ class Behaviour:
                 url=f"{__name__}.ship_intrasolar",
             )
         dest_wp = self.st.waypoints_view_one(target_wp_symbol)
-        route = self.pathfinder.plot_system_nav(
+        route = route or self.pathfinder.plot_system_nav(
             ship.nav.system_symbol, origin_wp, dest_wp, self.ship.fuel_capacity
         )
         if not route:
@@ -186,11 +186,11 @@ class Behaviour:
                 dest_wp.symbol,
             )
         current_wp = origin_wp
-        for point in route.route:
-            point: Waypoint
-            if point.symbol == current_wp.symbol:
+        for point_s in route.route:
+            point_s: str
+            if point_s == current_wp.symbol:
                 continue
-
+            point = self.st.waypoints_view_one(point_s)
             temp_flight_mode = flight_mode
 
             if not temp_flight_mode:
@@ -803,6 +803,7 @@ order by 1 desc """
         local_jumpgate: "Waypoint" = None,
         path: list = None,
         max_to_buy: int = None,
+        burn_allowed = False
     ) -> LocalSpaceTradersRespose:
         """Sends the ship to the target system and buys as much of the given target tradegood as possible.
 
@@ -818,7 +819,20 @@ order by 1 desc """
         if target_system and ship.nav.system_symbol != target_system.symbol:
             self.ship_intrasolar(local_jumpgate.symbol)
             self.ship_extrasolar_jump(target_waypoint.system_symbol, path)
-        self.ship_intrasolar(target_waypoint.symbol, flight_mode="CRUISE")
+
+        best_nav = None 
+        flight_mode = "CRUISE"
+        if burn_allowed:
+            current_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
+            burn_nav = self.pathfinder.plot_system_nav(target_waypoint.system_symbol, current_wp, target_waypoint, ship.fuel_capacity/2)
+            cruise_nav = self.pathfinder.plot_system_nav(target_waypoint.system_symbol, current_wp, target_waypoint, ship.fuel_capacity)
+            if (burn_nav.seconds_to_destination)/2 < cruise_nav.seconds_to_destination:
+                best_nav = burn_nav
+                flight_mode = "BURN"
+            else:
+                best_nav = cruise_nav
+
+        self.ship_intrasolar(target_waypoint.symbol, flight_mode=flight_mode, route=best_nav)
 
         st.ship_dock(ship)
         if not current_market:
@@ -853,12 +867,24 @@ order by 1 desc """
         target_tradegood: str,
         target_waypoint: "Waypoint",
         target_system=None,
+        burn_allowed=False
     ):
+        ship = self.ship
         if target_system:
             resp = self.ship_extrasolar_jump(target_system)
             if not resp:
                 return False
-        resp = self.ship_intrasolar(target_waypoint, flight_mode="CRUISE")
+        if burn_allowed:
+            current_wp = self.st.waypoints_view_one(ship.nav.waypoint_symbol)
+            burn_nav = self.pathfinder.plot_system_nav(target_waypoint.system_symbol, current_wp, target_waypoint, ship.fuel_capacity/2)
+            cruise_nav = self.pathfinder.plot_system_nav(target_waypoint.system_symbol, current_wp, target_waypoint, ship.fuel_capacity)
+            if (burn_nav.seconds_to_destination)/2 < cruise_nav.seconds_to_destination:
+                best_nav = burn_nav
+                flight_mode = "BURN"
+            else:
+                best_nav = cruise_nav
+
+        resp = self.ship_intrasolar(target_waypoint, flight_mode=flight_mode)
         if not resp and resp.error_code != 4204:
             return False
         # now that we're here, decide what to do. Options are:
