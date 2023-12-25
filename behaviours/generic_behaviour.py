@@ -753,7 +753,9 @@ order by 1 desc """
         if ship.nav.system_symbol == dest_sys_sym:
             return True
         o_sys = st.systems_view_one(ship.nav.system_symbol)
-        route = route or self.pathfinder.astar(o_sys, dest_sys_sym, True)
+        if not route:
+            dest_sys = st.systems_view_one(dest_sys_sym)
+            self.pathfinder.astar(o_sys, dest_sys, True)
         if not route:
             self.logger.error(f"Unable to jump to {o_sys.symbol} - no route found")
             return None
