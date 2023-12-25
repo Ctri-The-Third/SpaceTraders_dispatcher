@@ -55,7 +55,7 @@ class ExploreSystem(Behaviour):
             behaviour_params=self.behaviour_params,
         )
 
-        self.sleep_until_ready()
+        self.sleep_until_arrived()
         o_sys = st.systems_view_one(ship.nav.system_symbol)
 
         path = None
@@ -65,7 +65,6 @@ class ExploreSystem(Behaviour):
             jg = st.find_waypoints_by_type_one(d_sys.symbol, "JUMP_GATE")
             st.waypoints_view_one(jg.symbol, True)
             st.system_jumpgate(jg, True)
-            self.pathfinder._graph = self.pathfinder.load_jump_graph_from_db()
             path = self.pathfinder.astar(o_sys, d_sys, force_recalc=True)
         else:
             d_sys = self.find_unexplored_jumpgate()
@@ -136,35 +135,14 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5A"
     ship = f"{agent}-{ship_number}"
     behaviour_params = None
-    behaviour_params = {"priority": 3.5}  # X1-TF72 X1-YF83
+    behaviour_params = {"priority": 3.5, "target_sys": "X1-BC28"}  # X1-TF72 X1-YF83
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
 
     lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
     set_logging(logging.DEBUG)
 
-    ship = bhvr.st.ships_view_one(ship)
-    start = bhvr.st.systems_view_one(ship.nav.system_symbol)
-    targets = [
-        "X1-JX72",
-        "X1-AC35",
-        "X1-DK64",
-        "X1-GU20",
-        "X1-SR25",
-        "X1-X57",
-        "X1-BM12",
-        "X1-RD40",
-        "X1-ZR29",
-        "X1-MY18",
-    ]
-    valid_targets = []
-    for t in targets:
-        end = bhvr.st.systems_view_one(t)
-        route = bhvr.pathfinder.astar(start, end, True)
-        if route:
-            valid_targets.append(t)
-    print(valid_targets)
     bhvr.run()
     lock_ship(ship, "", bhvr.connection, duration=0)
