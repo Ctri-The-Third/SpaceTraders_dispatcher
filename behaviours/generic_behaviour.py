@@ -844,8 +844,10 @@ order by 1 desc """
                 ship.fuel_capacity,
             )
             if (
-                burn_nav.seconds_to_destination
-            ) / 2 < cruise_nav.seconds_to_destination:
+                (burn_nav.seconds_to_destination) / 2
+                < cruise_nav.seconds_to_destination
+                and not burn_nav.needs_drifting
+            ):
                 best_nav = burn_nav
                 flight_mode = "BURN"
             else:
@@ -910,8 +912,10 @@ order by 1 desc """
                 ship.fuel_capacity,
             )
             if (
-                burn_nav.seconds_to_destination
-            ) / 2 < cruise_nav.seconds_to_destination:
+                (burn_nav.seconds_to_destination) / 2
+                < cruise_nav.seconds_to_destination
+                and not burn_nav.needs_drifting
+            ):
                 best_nav = burn_nav
                 flight_mode = "BURN"
             else:

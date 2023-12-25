@@ -16,6 +16,7 @@ from straders_sdk.models import Market, Waypoint
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 from straders_sdk.constants import SUPPLY_LEVELS
 from behaviours.generic_behaviour import Behaviour
+from straders_sdk import SpaceTraders
 import random
 
 BEHAVIOUR_NAME = "NEW_BEHAVIOUR"
@@ -69,19 +70,53 @@ class WarpToSystem(Behaviour):
         start_sys = st.systems_view_one(ship.nav.system_symbol)
         end_sys = st.systems_view_one(self.destination_sys)
 
-        route = self.pathfinder.plot_warp_nav(
-            start_sys, end_sys, ship.fuel_capacity, True
-        )
+        route = self.pathfinder.plot_warp_nav(start_sys, end_sys, ship.fuel_capacity)
 
-        distance = route.total_distance
-
+        distance = self.pathfinder.calc_distance_between(start_sys, end_sys)
+        if distance / 100 > ship.fuel_capacity:
+            total_fuel_needed = distance / 100
+            self.top_up_the_tank()
         if not route:
             self.logger.warning("No route found, exiting")
             time.sleep(SAFETY_PADDING)
             return
-
+        route.route.pop(0)
+        last_sys = start_sys
         for node in route.route:
-            st.ship_warp(ship, node.jump_gate_waypoint)
+            sys = st.systems_view_one(node)
+            wayps = st.find_waypoints_by_type(sys.symbol, "ORBITAL_STATION")
+            if not wayps:
+                wayps = st.find_waypoints_by_type(sys.symbol, "PLANET")
+            if not wayps:
+                wayps = st.waypoints_view(sys.symbol)
+            self.sleep_until_arrived()
+            st.ship_scan_waypoints(ship)
+            distance = self.pathfinder.calc_distance_between(last_sys, sys)
+            if distance > ship.fuel_current:
+                resp = st.ship_patch_nav(ship, "DRIFT")
+            else:
+                resp = st.ship_patch_nav(ship, "CRUISE")
+            resp = st.ship_warp(ship, wayps[0].symbol)
+            if not resp:
+                break
+
+            last_sys = sys
+
+    def top_up_the_tank(self, found_wayps: list = None):
+        wayps = found_wayps or []
+        wayps = [w for w in found_wayps if w.has_market]
+        if not wayps:
+            wayps = self.st.find_waypoints_by_trait(
+                self.ship.nav.system_symbol, "MARKETPLACE"
+            )
+        if not wayps:
+            self.scan_local_system()
+            wayps = self.st.find_waypoints_by_trait(
+                self.ship.nav.system_symbol, "MARKETPLACE"
+            )
+        self.ship_intrasolar(wayps[0].symbol)
+        self.go_and_buy("FUEL", wayps[0], max_to_buy=self.ship.fuel_capacity)
+        self.st.ship_refuel(self.ship)
 
 
 #
