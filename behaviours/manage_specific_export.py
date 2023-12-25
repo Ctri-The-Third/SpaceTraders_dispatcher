@@ -25,6 +25,8 @@ SAFETY_PADDING = 60
 
 
 class ManageSpecifcExport(Behaviour):
+    "The goal if this behaviour is to get both the export into the STRONG state and the import tradevolume to be 3:1"
+
     def __init__(
         self,
         agent_name,
@@ -155,10 +157,14 @@ class ManageSpecifcExport(Behaviour):
             # if it's restricted, we need to focus on exporting the export tradegood to free it up
             if import_listing.activity in ("STRONG", "RESTRICTED"):
                 continue
+
+            if import_listing.supply == "ABUNDANT":
+                continue
             # now we know the imports that are needed - we need to go find them at a price that's profitable
             #
             # search for what we can buy
             #
+
             if not options:
                 options = self.find_markets_that_export(required_import_symbol, False)
                 options.extend(self.find_exchanges(required_import_symbol, False))
@@ -232,6 +238,13 @@ class ManageSpecifcExport(Behaviour):
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
         )
+
+        # some safety checks. If the export is strong - we only need to keep the price below 80% of the max - so we can sell it if it's ABUNDANT or HIGH
+        # otherwise, sell whrever there's profit
+        if export_tg.activity == "STRONG" and not export_tg.supply in ("ABUNDANT"):
+            self.logger.info(
+                "Chain trader identifid %s is STRONG and not ABUNDANT, skipping exporting."
+            )
         best_cph = -1
         best_sell_market = None
         for market in markets:

@@ -25,8 +25,8 @@ TODAY TASKS:
 * ☑️ implement monitoring script into node S
   * ☑️ movement, ⌛purchases, ⌛sells, ⌛contracts.
 * ✅ Add return trip planning to extract_and_sell behaviour.
-* Generate historic chart of specific manufacturing element.
-  * EXPORT tradevolume, price, supply & activity.
+* ✅ Generate historic chart of specific manufacturing element.
+  * ✅ EXPORT tradevolume, price, supply & activity.
   * IMPORTs tradevolume, PRICE & COMPARISON TO SUPPLY, supply & activity.
 * build a "supply chain trade" behaviour that takes a specific end product and calculates all the requirements, buying and selling up the chain.
 * Note that pure Chain Trading with more than 2 ships at the TradeVolume's we're working with, starts to cause price collision and bad trades. 
@@ -37,10 +37,16 @@ TODAY TASKS:
 * NodeC had its satelites deploy on a daily refresh, which meant there was many hours between a satellite coming online and it being given instructions
  * To combat this, nodeU reinstruments behaviours every time a new satellite comes online 
 * Node C has run out of money because of construction trades
-* We previously used "dripfeed" technology to keep prices around their maximums. I'm putting something similar into the chain-trade, specifically filtering it 
+* Both node C and node U aren't managing their fuel costs appropriately and those have spiked dangerously. Node V is managing fuel, and is maintaining profitability.
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goo
 
 # Managing a system
+Looks like a system will need:
+
+1 ship focusing on siphoning and taking hydrocarbons to the exchange  
+1 ship focusing on managing the fuel export   
+1 ship per untethered import (e.g. food, clothing, advanced circuitry) doing supply chain trading  
+possibly ore_hounds.  
 ## Chain Trade
 I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Ideally, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point it finds the nearest market with a profitable trade and goes there, rinse and repeat. 
 
@@ -50,6 +56,9 @@ This is shaping up to be the best addition to the script this reset. We've had t
 2. because of an edge case, too many haulers were concurrently instructed to build the jump gate, and we emptied our money on ADVANCED_CIRCUITS
 
 In both cases, the CHAIN_TRADES behaviour was crucial in getting things back on track. The first one required a combo of the EMERGENCY_REBOOT behaviour to keep the lights on, and the latter we didn't intervene beyond fixing the code issue, and after 4 hours the system had recovered itself to the point of the command ship (and additional freighters) running full loads again.
+
+
+
 
 ## Market Growth & Activity study
 **Musings:**
