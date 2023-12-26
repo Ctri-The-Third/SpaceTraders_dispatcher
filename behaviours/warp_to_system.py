@@ -19,7 +19,7 @@ from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
 import random
 
-BEHAVIOUR_NAME = "NEW_BEHAVIOUR"
+BEHAVIOUR_NAME = "WARP_TO_SYSTEM"
 SAFETY_PADDING = 180
 
 
@@ -73,8 +73,8 @@ class WarpToSystem(Behaviour):
         route = self.pathfinder.plot_warp_nav(start_sys, end_sys, ship.fuel_capacity)
 
         distance = self.pathfinder.calc_distance_between(start_sys, end_sys)
-        if distance / 100 > ship.fuel_capacity:
-            total_fuel_needed = distance / 100
+        if distance > ship.fuel_capacity:
+            total_fuel_needed = (distance - ship.fuel_current) / 100
             self.top_up_the_tank()
         if not route:
             self.logger.warning("No route found, exiting")
@@ -88,7 +88,10 @@ class WarpToSystem(Behaviour):
             if not wayps:
                 wayps = st.find_waypoints_by_type(sys.symbol, "PLANET")
             if not wayps:
-                wayps = st.waypoints_view(sys.symbol)
+                wayps = st.find_waypoints_by_type(sys.symbol, "GAS_GIANT")
+            if not wayps:
+                wayps = list(st.waypoints_view(sys.symbol).values())
+
             self.sleep_until_arrived()
             st.ship_scan_waypoints(ship)
             distance = self.pathfinder.calc_distance_between(last_sys, sys)
@@ -104,7 +107,7 @@ class WarpToSystem(Behaviour):
 
     def top_up_the_tank(self, found_wayps: list = None):
         wayps = found_wayps or []
-        wayps = [w for w in found_wayps if w.has_market]
+        wayps = [w for w in wayps if w.has_market]
         if not wayps:
             wayps = self.st.find_waypoints_by_trait(
                 self.ship.nav.system_symbol, "MARKETPLACE"
@@ -114,6 +117,8 @@ class WarpToSystem(Behaviour):
             wayps = self.st.find_waypoints_by_trait(
                 self.ship.nav.system_symbol, "MARKETPLACE"
             )
+        if not wayps:
+            return
         self.ship_intrasolar(wayps[0].symbol)
         self.go_and_buy("FUEL", wayps[0], max_to_buy=self.ship.fuel_capacity)
         self.st.ship_refuel(self.ship)

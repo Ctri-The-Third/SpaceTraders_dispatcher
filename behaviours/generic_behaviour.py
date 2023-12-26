@@ -698,7 +698,8 @@ order by 1 desc """
         target_wayps.append(gate)
         target_wayps = list(set(target_wayps))
         # remove dupes from target_wayps
-
+        if not target_wayps or target_wayps[0] is None:
+            return
         start = st.waypoints_view_one(ship.nav.waypoint_symbol)
         path = self.nearest_neighbour(target_wayps, start)
 
@@ -897,6 +898,7 @@ order by 1 desc """
             resp = self.ship_extrasolar_jump(target_system)
             if not resp:
                 return False
+        flight_mode = "CRUISE"
         if burn_allowed:
             current_wp = self.st.waypoints_view_one(ship.nav.waypoint_symbol)
             burn_nav = self.pathfinder.plot_system_nav(
@@ -921,7 +923,9 @@ order by 1 desc """
             else:
                 best_nav = cruise_nav
 
-        resp = self.ship_intrasolar(target_waypoint, flight_mode=flight_mode)
+        resp = self.ship_intrasolar(
+            target_waypoint, flight_mode=flight_mode, route=best_nav
+        )
         if not resp and resp.error_code != 4204:
             return False
         # now that we're here, decide what to do. Options are:
@@ -1037,7 +1041,28 @@ if __name__ == "__main__":
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)
     bhvr.st.view_my_self(True)
+    self = bhvr
+    st = self.st
+    ship = self.ship
 
-    bhvr.ship_intrasolar("X1-PK16-A1")
-    nearby = bhvr.st.ship_scan_ships(bhvr.ship)
-    pass
+    current_wp = st.waypoints_view_one("X1-BM12-D46")
+    target_waypoint = st.waypoints_view_one("X1-BM12-J61")
+    burn_nav = self.pathfinder.plot_system_nav(
+        target_waypoint.system_symbol,
+        current_wp,
+        target_waypoint,
+        ship.fuel_capacity / 2,
+    )
+    cruise_nav = self.pathfinder.plot_system_nav(
+        target_waypoint.system_symbol,
+        current_wp,
+        target_waypoint,
+        ship.fuel_capacity,
+    )
+    if (
+        burn_nav.seconds_to_destination
+    ) / 2 < cruise_nav.seconds_to_destination and not burn_nav.needs_drifting:
+        best_nav = burn_nav
+        flight_mode = "BURN"
+    else:
+        best_nav = cruise_nav
