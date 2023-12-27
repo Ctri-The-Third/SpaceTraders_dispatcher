@@ -191,6 +191,9 @@ class Behaviour:
             )
         current_wp = origin_wp
         for point_s in route.route:
+            if isinstance(point_s, Waypoint):
+                point = point_s
+                point_s = point.symbol
             point_s: str
             if point_s == current_wp.symbol:
                 continue
@@ -216,7 +219,6 @@ class Behaviour:
                 attempts += 1
                 resp = self.refuel_locally()
                 if not resp and resp.error_code == 4600:  # not enough credits
-                    # expect to drift
                     time.sleep(60)
                     pass
 
@@ -266,6 +268,25 @@ class Behaviour:
                 current_wp = point
 
         return True
+
+    def route_to_nearest_marketplace(self, waypoint_symbol: str, fuel_capacity: int):
+        current_location = self.st.waypoints_view_one(waypoint_symbol)
+        wayps = self.st.find_waypoints_by_trait(
+            waypoint_slicer(waypoint_symbol), "MARKETPLACE"
+        )
+        if not wayps:
+            return None
+        # sort the wayps by distance
+        wayps = sorted(
+            wayps,
+            key=lambda x: self.pathfinder.calc_distance_between(current_location, x),
+        )
+        return self.pathfinder.plot_system_nav(
+            current_location.system_symbol,
+            current_location,
+            wayps[0],
+            fuel_capacity,
+        )
 
     def siphon_till_full(
         self, cutoff_cargo_units_used=None, tradegoods_to_discard: list[str] = None

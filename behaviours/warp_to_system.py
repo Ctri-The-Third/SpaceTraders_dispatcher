@@ -83,6 +83,9 @@ class WarpToSystem(Behaviour):
         route.route.pop(0)
         last_sys = start_sys
         for node in route.route:
+            self.sleep_until_arrived()
+            st.ship_scan_waypoints(ship)
+
             sys = st.systems_view_one(node)
             wayps = st.find_waypoints_by_type(sys.symbol, "ORBITAL_STATION")
             if not wayps:
@@ -92,13 +95,16 @@ class WarpToSystem(Behaviour):
             if not wayps:
                 wayps = list(st.waypoints_view(sys.symbol).values())
 
-            self.sleep_until_arrived()
-            st.ship_scan_waypoints(ship)
             distance = self.pathfinder.calc_distance_between(last_sys, sys)
-            if distance > ship.fuel_current:
+            if distance >= ship.fuel_current:
+                st.ship_refuel(ship, True)
+            if distance > ship.fuel_current and ship.nav.flight_mode != "DRIFT":
                 resp = st.ship_patch_nav(ship, "DRIFT")
-            else:
+            elif distance <= ship.fuel_current and ship.nav.flight_mode != "CRUISE":
                 resp = st.ship_patch_nav(ship, "CRUISE")
+
+            if ship.nav.status != "IN_ORBIT":
+                st.ship_orbit(ship)
             resp = st.ship_warp(ship, wayps[0].symbol)
             if not resp:
                 break
