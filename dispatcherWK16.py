@@ -23,11 +23,6 @@ from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
 from datetime import datetime, timedelta
 
-BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
-BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
-BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
-
 RQ_DRONE = "REQUIRE_DRONE"
 RQ_EXPLORER = "EXPLORER"
 RQ_HEAVY_FREIGHTER = "HEAVY_FREIGHTER"
@@ -36,34 +31,7 @@ RQ_CARGO = "_CARGO"
 RQ_FUEL = "_FUEL"
 
 from behaviour_constants import *
-
-behaviours_and_classes = {
-    BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
-    BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
-    BHVR_EXTRACT_AND_TRANSFER: ExtractAndTransfer_8,
-    # BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
-    BHVR_EXPLORE_SYSTEM: ExploreSystem,
-    BHVR_MONITOR_CHEAPEST_PRICE: MonitorCheapestShipyard,
-    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
-    # BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
-    BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
-    BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
-    BHVR_CHILL_AND_SURVEY: ChillAndSurvey,
-    BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
-    BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
-    BHVR_BUY_AND_SELL_DRIPFEED: BuyAndSellDripfeed,
-    BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
-    BHVR_EXTRACT_AND_CHILL: ExtractAndChill,
-    BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
-    BHVR_SIPHON_AND_CHILL: SiphonAndChill,
-    BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
-    BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
-    BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
-    BHVR_CHAIN_TRADE: ChainTrade,
-    BHVR_EMERGENCY_REBOOT: EmergencyReboot,
-    BHVR_EXECUTE_CONTRACTS: ExecuteContracts,
-    BHVR_CHAIN_TRADE_EST: ChainTradeEST,
-}
+from behaviour_constants import behaviours_and_classes
 
 logger = logging.getLogger("dispatcher")
 

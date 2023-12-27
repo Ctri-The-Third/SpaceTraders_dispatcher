@@ -95,5 +95,41 @@ from behaviours.manage_contracts import (
 )
 
 from behaviours.chain_trade_est import (
-    ChainTradeEST, BEHAVIOUR_NAME as BHVR_CHAIN_TRADE_EST
+    ChainTradeEST,
+    BEHAVIOUR_NAME as BHVR_CHAIN_TRADE_EST,
 )
+
+from behaviours.go_and_buy_a_ship import (
+    GoAndBuyShip,
+    BEHAVIOUR_NAME as BHVR_GO_AND_BUY_A_SHIP,
+)
+
+
+behaviours_and_classes = {
+    BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
+    BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
+    BHVR_EXTRACT_AND_TRANSFER: ExtractAndTransfer_8,
+    # BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
+    BHVR_EXPLORE_SYSTEM: ExploreSystem,
+    BHVR_MONITOR_CHEAPEST_PRICE: MonitorCheapestShipyard,
+    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
+    # BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
+    BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
+    BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
+    BHVR_CHILL_AND_SURVEY: ChillAndSurvey,
+    BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
+    BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
+    BHVR_BUY_AND_SELL_DRIPFEED: BuyAndSellDripfeed,
+    BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
+    BHVR_EXTRACT_AND_CHILL: ExtractAndChill,
+    BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
+    BHVR_SIPHON_AND_CHILL: SiphonAndChill,
+    BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
+    BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
+    BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
+    BHVR_CHAIN_TRADE: ChainTrade,
+    BHVR_EMERGENCY_REBOOT: EmergencyReboot,
+    BHVR_EXECUTE_CONTRACTS: ExecuteContracts,
+    BHVR_CHAIN_TRADE_EST: ChainTradeEST,
+    BHVR_GO_AND_BUY_A_SHIP: GoAndBuyShip,
+}
