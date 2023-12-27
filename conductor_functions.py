@@ -9,6 +9,7 @@ from straders_sdk.utils import (
 from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.models import System
 
+# import conductorWK25 as c25
 import datetime
 import logging
 import json
@@ -214,6 +215,27 @@ def log_task(
     )
 
     return hash_str if resp else resp
+
+
+def maybe_buy_ship_sys2(
+    client: SpaceTraders,
+    system: "ConductorSystem",
+    ship_type: str,
+    safety_margin: int = 0,
+) -> "Ship" or None:
+    "Attempts to buy a ship in the local system, returns the ship object if successful, or None if not"
+    if ship_type not in system.ship_type_shipyards:
+        logging.warning(
+            f"Tried to buy a ship {ship_type} but couldn't find one - import it."
+        )
+        return False
+
+    shipyard_s = system.ship_type_shipyards[ship_type]
+
+    shipyard_wp = client.waypoints_view_one(shipyard_s)
+    shipyard = client.system_shipyard(shipyard_wp)
+
+    return _maybe_buy_ship(client, shipyard, ship_type, safety_margin)
 
 
 def maybe_buy_ship_sys(
