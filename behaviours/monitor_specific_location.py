@@ -58,14 +58,6 @@ class MonitorPrices(Behaviour):
         waypoint: Waypoint
 
         self.ship_intrasolar(waypoint.symbol)
-        if "MARKETPLACE" not in [t.symbol for t in waypoint.traits]:
-            logging.error("No marketplace at destination")
-            self.end()
-            self.st.logging_client.log_ending(
-                BEHAVIOUR_NAME, ship.name, self.agent.credits
-            )
-            time.sleep(SAFETY_PADDING)
-            return
 
         market = st.system_market(waypoint)
 
@@ -73,7 +65,7 @@ class MonitorPrices(Behaviour):
             coorbitals = st.find_waypoints_by_coords(
                 waypoint.system_symbol, waypoint.x, waypoint.y
             )
-            
+
             coorbitals.remove(waypoint)
             for coorbital in coorbitals:
                 coorbital: Waypoint
@@ -90,6 +82,15 @@ class MonitorPrices(Behaviour):
         time.sleep(SAFETY_PADDING)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
         self.end()
+
+    def monitor_market(self, waypoint_symbol):
+        st = self.st
+        waypoint = st.waypoints_view_one(waypoint_symbol)
+        waypoint: Waypoint
+        if waypoint.has_market:
+            self.log_market_changes(waypoint.symbol)
+        if waypoint.has_shipyard:
+            self.st.system_shipyard(waypoint, True)
 
 
 if __name__ == "__main__":

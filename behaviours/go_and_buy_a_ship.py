@@ -46,13 +46,17 @@ class GoAndBuyShip(Behaviour):
         )
 
         target_ship_type = self.behaviour_params.get("ship_type", None)
-        target_wp = self.find_shipyards(target_ship_type)
+        target_wp = self.behaviour_params.get("target_wp", None)
+        if target_wp:
+            target_wp = st.waypoints_view_one(target_wp)
+        elif not target_wp:
+            target_wp = self.find_shipyards(target_ship_type)
         if not target_wp:
             time.sleep(SAFETY_PADDING)
             self.end()
             return
         target_sys = waypoint_slicer(target_wp.symbol)
-        self.ship_extrasolar_jump(waypoint_slicer)
+        self.ship_extrasolar_jump(target_sys)
         self.ship_intrasolar(target_wp.symbol)
 
         resp = st.ships_purchase(target_ship_type, target_wp.symbol)
@@ -104,9 +108,9 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5B"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"ship_type": "SHIP_EXPLORER"}
+    behaviour_params = {"ship_type": "SHIP_PROBE", "target_wp": "X1-GU20-C37"}
     bhvr = GoAndBuyShip(agent, ship, behaviour_params or {})
     lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()
