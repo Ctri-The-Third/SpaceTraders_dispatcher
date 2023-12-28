@@ -1,10 +1,13 @@
 
 # week 24 & 25
 
-This reset coincided with the christmas holidays.  
+This reset coincided with the christmas holidays - very larg amount of dev time. 
+
 we completed the jumpgate after 3 days and saw profits begin to dwindle.
 
 We embarked on a big push for containerisation, and added a JSON caching layer to the SDK to reduce strain on the database - this should work for waypoints and systems, but has limitation considerations for temporary modifiers for things like "construction" and "asteroid stability".
+
+We build a new kind of Conductor for managing multiple systems - but it uses a JSON file for configuration with hard coded values, which is incompatibl with our goal of "fire and forget" gameplay.
 
 
 
@@ -41,9 +44,14 @@ TODAY TASKS:
 ✅ I'm going to implement a "chain trade" behaviour, expanding off the old "single stable trade" concept. Essentially, the commander will pinball between the stations in a chain, buying exports and selling them to matching imports until it eventually reaches a market without any exports. At that point, it'll try and find a profitable exchange based market selling raw goo
 
 # Managing a system
-Looks like a system will need:
 
-1 ship focusing on siphoning and taking hydrocarbons to the exchange  
+Once our jump gate is complete, the entire galaxy is opened to us. We could use the strategy of putting 1 explorer in every starting system and then chain trading ceaselessly. Whilst this would earn lots of money, it wouldn't grow the amount of mony that a system could earn, since the high value markets wouldn't produce as much as they could.
+
+So, parameterising the behaviour we've gotten in our start system so we can apply it wholesale or piecemeal to other systems. This leads us to `Conductor25` - our latest task assigner. Rather than scale to values hardcoded into the system, it scales to values as configured in a file - and reloads that file hourly. 
+
+With this, we should be able to manage any system that we've expanded to BUT this really messes up the automated "fire and forget" nature of our weekly tests.
+
+1 ship focusing on siphoning and taking hydrocarbons to the exchange - could be an explorer but that's quit a waste  
 1 ship focusing on managing the fuel export   
 1 ship per untethered import (e.g. food, clothing, advanced circuitry) doing supply chain trading  
 possibly ore_hounds.  
@@ -103,6 +111,9 @@ They have a probe that pings markets on a loop instead of our static sentries - 
 They have 5 haulers doing chain trades instead of my 1 (and managed goods) - I'm going to investigate a SUPPLY_CHAIN_TRADE behaviour
 
 We need to properly estimate the capacity of a given system for concurrent traders. This needs to factor in tradevolume, and total distance between imports and their exports.
+
+
+The approach used in their conductor of using configuration and attaching ships to jobs is one we've emulated in our Conductor25 - to allow more seamless code diting.
 
 --- 
 # Intergalactic operations

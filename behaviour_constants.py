@@ -104,6 +104,10 @@ from behaviours.go_and_buy_a_ship import (
     BEHAVIOUR_NAME as BHVR_GO_AND_BUY_A_SHIP,
 )
 
+from behaviours.warp_to_system import (
+    WarpToSystem,
+    BEHAVIOUR_NAME as BHVR_WARP_TO_SYSTEM,
+)
 
 behaviours_and_classes = {
     BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
@@ -132,4 +136,5 @@ behaviours_and_classes = {
     BHVR_EXECUTE_CONTRACTS: ExecuteContracts,
     BHVR_CHAIN_TRADE_EST: ChainTradeEST,
     BHVR_GO_AND_BUY_A_SHIP: GoAndBuyShip,
+    BHVR_WARP_TO_SYSTEM: WarpToSystem,
 }

@@ -69,10 +69,13 @@ class WarpToSystem(Behaviour):
             return
         start_sys = st.systems_view_one(ship.nav.system_symbol)
         end_sys = st.systems_view_one(self.destination_sys)
+        # For a ship that's got a fuel of 800, assume 700 - this means we'll never have to waste a fuel unit if we're needing to fill up to 750.
 
-        route = self.pathfinder.plot_warp_nav(start_sys, end_sys, ship.fuel_capacity)
+        route = self.pathfinder.plot_warp_nav(
+            start_sys, end_sys, max(ship.fuel_capacity - 100, 100)
+        )
 
-        distance = self.pathfinder.calc_distance_between(start_sys, end_sys)
+        distance = route.total_distance
         if distance > ship.fuel_capacity:
             total_fuel_needed = (distance - ship.fuel_current) / 100
             self.top_up_the_tank()
@@ -80,14 +83,21 @@ class WarpToSystem(Behaviour):
             self.logger.warning("No route found, exiting")
             time.sleep(SAFETY_PADDING)
             return
-        route.route.pop(0)
+        route.route.pop(0)  # remove the first system, as we're already there.
         last_sys = start_sys
+        distance_remaining = route.total_distance
+        fuel_in_tank = (
+            sum([c.units for c in ship.cargo_inventory if c.symbol == "FUEL"]) * 100
+        )
         for node in route.route:
             self.sleep_until_arrived()
+            ship.nav.status = "IN_ORBIT"
             st.ship_scan_waypoints(ship)
 
             sys = st.systems_view_one(node)
             wayps = st.find_waypoints_by_type(sys.symbol, "ORBITAL_STATION")
+            if not wayps:
+                wayps = st.find_waypoints_by_type(sys.symbol, "JUMP_GATE")
             if not wayps:
                 wayps = st.find_waypoints_by_type(sys.symbol, "PLANET")
             if not wayps:
@@ -96,8 +106,22 @@ class WarpToSystem(Behaviour):
                 wayps = list(st.waypoints_view(sys.symbol).values())
 
             distance = self.pathfinder.calc_distance_between(last_sys, sys)
+            # print(
+            #    f"distance: {round(distance,2)}, fuel: {ship.fuel_current} - projected fuel: { ship.fuel_current - distance}"
+            # )
+            if distance_remaining > ship.fuel_current + fuel_in_tank:
+                self.top_up_the_tank(wayps)
+                fuel_in_tank = (
+                    sum([c.units for c in ship.cargo_inventory if c.symbol == "FUEL"])
+                    * 100
+                )
             if distance >= ship.fuel_current:
                 st.ship_refuel(ship, True)
+                fuel_in_tank = (
+                    sum([c.units for c in ship.cargo_inventory if c.symbol == "FUEL"])
+                    * 100
+                )
+            # if there's a market in the system - we need to go there and top up the tank.
             if distance > ship.fuel_current and ship.nav.flight_mode != "DRIFT":
                 resp = st.ship_patch_nav(ship, "DRIFT")
             elif distance <= ship.fuel_current and ship.nav.flight_mode != "CRUISE":
@@ -106,6 +130,7 @@ class WarpToSystem(Behaviour):
             if ship.nav.status != "IN_ORBIT":
                 st.ship_orbit(ship)
             resp = st.ship_warp(ship, wayps[0].symbol)
+            distance_remaining -= distance
             if not resp:
                 break
 

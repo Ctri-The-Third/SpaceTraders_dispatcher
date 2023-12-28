@@ -369,7 +369,7 @@ class BehaviourConductor:
                     {"waypoint": symbol, "priority": 5},
                 )
             probe_jobs += len(coords)
-            return probe_jobs
+        return probe_jobs
 
     def set_hauler_tasks(self, system: "ConductorSystem") -> int:
         hauler_jobs = (
@@ -384,8 +384,6 @@ class BehaviourConductor:
             if len(ships) == 0:
                 break
             if tradegood not in system.tradegoods_exported:
-                continue
-            if tradegood not in system.tradegoods_imported:
                 continue
 
             for target_wayp in system.tradegoods_exported[tradegood]:
