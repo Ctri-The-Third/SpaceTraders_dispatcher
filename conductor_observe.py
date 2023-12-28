@@ -124,7 +124,7 @@ class ObservationConductor:
         self.starting_system = self.st.systems_view_one(hq_sys, True)
         self.starting_planet = self.st.waypoints_view_one(hq_sys, hq)
         for sym in self.starting_system.waypoints:
-            wp = self.st.waypoints_view_one(self.starting_system.symbol, sym.symbol)
+            wp = self.st.waypoints_view_one(sym.symbol)
             if "MARKETPLACE" in [t.symbol for t in wp.traits]:
                 self.st.system_market(wp)
             if "SHIPYARD" in [t.symbol for t in wp.traits]:
@@ -357,6 +357,7 @@ where trade_symbol ilike 'mount_surveyor_%%'"""
         self.siphoners = [
             ship for ship in ships if ship.role == "EXCAVATOR" and ship.can_siphon
         ]
+        self.explorers = [ship for ship in ships if ship.role == "EXPLORER"]
 
     def log_tasks_for_contracts(self):
         contracts = self.st.view_my_contracts()
@@ -478,9 +479,163 @@ if __name__ == "__main__":
 
     conductor.populate_ships()
 
-    # goods.update(map_all_goods(conductor.connection, "SHIP_PLATING", "X1-YG29"))
-    # for each tradegood we need a shuttle.
-    # for each tradegood either manage the export, or go collect from extractors.
+    # ships  CTRI-U--58, 5A, 63, 66
+    # need their behaviour set to chain trade in X1-BM12
+    from dispatcherWK16 import lock_ship
+    import behaviour_constants as bhvr
+    from conductor_functions import _maybe_buy_ship
 
-    # we also need to manually manage FUEL and EXPLOSIVES
-    conductor.run()
+    systems = [
+        "X1-K78",
+        "X1-DK79",
+        "X1-YD4",
+        "X1-DD34",
+        "X1-JT75",
+        "X1-C2",
+        "X1-DQ17",
+        "X1-PZ28",
+        "X1-NY24",
+        "X1-FQ81",
+        "X1-PM69",
+        "X1-RS98",
+        "X1-XC94",
+        "X1-VR40",
+        "X1-JG37",
+        "X1-SS7",
+        "X1-QY33",
+        "X1-KJ61",
+        "X1-GZ91",
+        "X1-FC21",
+        "X1-DJ25",
+        "X1-QY46",
+        "X1-JN40",
+        "X1-TY55",
+        "X1-DD91",
+        "X1-AN96",
+        "X1-UC93",
+        "X1-DJ15",
+        "X1-CA4",
+        "X1-YQ25",
+        "X1-BZ11",
+        "X1-T61",
+        "X1-DZ18",
+        "X1-CK45",
+        "X1-FV72",
+        "X1-SG44",
+        "X1-SJ79",
+        "X1-YK48",
+        "X1-J24",
+        "X1-XU48",
+        "X1-R24",
+        "X1-FP30",
+        "X1-NB46",
+        "X1-BF98",
+        "X1-VC98",
+        "X1-RY93",
+        "X1-MH84",
+        "X1-NT4",
+        "X1-DX88",
+        "X1-X53",
+        "X1-M25",
+        "X1-DQ88",
+        "X1-UB92",
+        "X1-GT12",
+        "X1-HD42",
+        "X1-HX35",
+        "X1-SK76",
+        "X1-YF55",
+        "X1-QS54",
+        "X1-YG4",
+        "X1-NG55",
+        "X1-VC19",
+        "X1-BV72",
+        "X1-KN16",
+        "X1-SR73",
+        "X1-SJ68",
+        "X1-U53",
+        "X1-RB46",
+        "X1-JB26",
+        "X1-NH27",
+        "X1-UY38",
+        "X1-JT94",
+        "X1-YN71",
+        "X1-NH49",
+        "X1-RU31",
+        "X1-YU19",
+        "X1-DK53",
+        "X1-YG90",
+        "X1-XV40",
+        "X1-XC10",
+        "X1-ZY65",
+        "X1-HX34",
+        "X1-AA18",
+        "X1-NJ69",
+        "X1-AY38",
+        "X1-XU12",
+        "X1-KY59",
+        "X1-AK97",
+        "X1-FJ68",
+        "X1-XU90",
+        "X1-VK59",
+        "X1-NU29",
+        "X1-ZP43",
+        "X1-VX48",
+        "X1-MP60",
+        "X1-QD37",
+        "X1-JT49",
+        "X1-AM5",
+        "X1-VP51",
+        "X1-YN46",
+        "X1-FG87",
+        "X1-QJ84",
+        "X1-RV95",
+        "X1-SB77",
+        "X1-XA77",
+        "X1-XZ35",
+        "X1-HH87",
+        "X1-GY17",
+        "X1-YT88",
+        "X1-RZ22",
+        "X1-AS53",
+        "X1-PU23",
+        "X1-PY82",
+        "X1-TB30",
+        "X1-Y89",
+        "X1-QD76",
+        "X1-HX68",
+        "X1-BT20",
+        "X1-GT43",
+        "X1-DA85",
+        "X1-VZ66",
+        "X1-MT7",
+        "X1-RD40",
+    ]
+    wp = conductor.st.waypoints_view_one("X1-GU20-A2")
+    sy = conductor.st.system_shipyard(wp)
+
+    for i in range(10):
+        # lets buy 5 ships and send them to the next system.
+        ship = _maybe_buy_ship(
+            conductor.st,
+            sy,
+            "SHIP_EXPLORER",
+            safety_margin=len(conductor.explorers) * 500000,
+        )
+        conductor.explorers.append(ship)
+
+        next_system = systems[len(conductor.explorers) - 1]
+        log_task(
+            conductor.connection,
+            bhvr.BHVR_WARP_TO_SYSTEM,
+            [],
+            next_system,
+            1,
+            conductor.current_agent_symbol,
+            {"priority": 3, "target_sys": next_system},
+            specific_ship_symbol=ship.name,
+        )
+
+
+#    "9E" -> "A7"
+#    "9E" X1-UC93
+#    "AF" X1-DJ15
