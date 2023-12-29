@@ -1,0 +1,80 @@
+{
+    "systems": [
+        {
+            "system_symbol": "X1-PK16",
+            "commander_trades": false,
+            "hauler_tradegood_manage_jobs": [
+                "SHIP_PARTS",
+                "SHIP_PLATING",
+                "JEWELRY",
+                "MEDICINE",
+                "CLOTHING",
+                "FOOD",
+                "FUEL",
+                "FUEL"
+            ],
+            "probes_to_monitor_markets": true,
+            "probes_to_monitor_shipyards": true,
+            "use_explorers_as_haulers": false,
+            "mining_sites": [
+                "X1-PK16-AE5E"
+            ],
+            "extractors_per_asteroid": 0,
+            "extractors_per_engineered_asteroid": 20,
+            "extractors_per_gas_giant": 0,
+            "extractor_type_to_use": "SHIP_MINING_DRONE",
+            "surveyors_per_asteroid": 0,
+            "haulers_chain_trading": 2
+        },
+        {
+            "system_symbol": "X1-GU20",
+            "commander_trades": false,
+            "hauler_tradegood_manage_jobs": [
+                "ANTIMATTER",
+                "SHIP_PARTS",
+                "SHIP_PLATING",
+                "JEWELRY",
+                "MEDICINE",
+                "CLOTHING",
+                "FOOD",
+                "FUEL",
+                "FUEL"
+            ],
+            "probes_to_monitor_markets": true,
+            "probes_to_monitor_shipyards": true,
+            "use_explorers_as_haulers": true,
+            "mining_sites": [],
+            "extractors_per_asteroid": 0,
+            "extractors_per_engineered_asteroid": 0,
+            "extractors_per_gas_giant": 0,
+            "extractor_type_to_use": "SHIP_MINING_DRONE",
+            "surveyors_per_asteroid": 0,
+            "haulers_chain_trading": 4
+        },
+        {
+            "system_symbol": "X1-ZR29",
+            "commander_trades": true,
+            "hauler_tradegood_manage_jobs": [
+                "ANTIMATTER",
+                "SHIP_PARTS",
+                "SHIP_PLATING",
+                "JEWELRY",
+                "MEDICINE",
+                "CLOTHING",
+                "FOOD",
+                "FUEL",
+                "FUEL"
+            ],
+            "probes_to_monitor_markets": true,
+            "probes_to_monitor_shipyards": true,
+            "use_explorers_as_haulers": true,
+            "mining_sites": [],
+            "extractors_per_asteroid": 0,
+            "extractors_per_engineered_asteroid": 0,
+            "extractors_per_gas_giant": 0,
+            "extractor_type_to_use": "SHIP_MINING_DRONE",
+            "surveyors_per_asteroid": 0,
+            "haulers_chain_trading": 4
+        }
+    ]
+}

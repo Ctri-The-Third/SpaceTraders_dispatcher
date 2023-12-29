@@ -768,9 +768,6 @@ order by 1 desc """
 
     def ship_extrasolar_jump(self, dest_sys_sym: str, route: JumpGateRoute = None):
         if isinstance(dest_sys_sym, System):
-            self.logger.warning(
-                "WARNING - using old system object to perform jump - should be providing destination gate."
-            )
             dest_sys = dest_sys_sym
             dest_sys_sym = self.st.find_waypoints_by_type_one(
                 dest_sys_sym.symbol, "JUMP_GATE"
@@ -1065,25 +1062,3 @@ if __name__ == "__main__":
     self = bhvr
     st = self.st
     ship = self.ship
-
-    current_wp = st.waypoints_view_one("X1-BM12-D46")
-    target_waypoint = st.waypoints_view_one("X1-BM12-J61")
-    burn_nav = self.pathfinder.plot_system_nav(
-        target_waypoint.system_symbol,
-        current_wp,
-        target_waypoint,
-        ship.fuel_capacity / 2,
-    )
-    cruise_nav = self.pathfinder.plot_system_nav(
-        target_waypoint.system_symbol,
-        current_wp,
-        target_waypoint,
-        ship.fuel_capacity,
-    )
-    if (
-        burn_nav.seconds_to_destination
-    ) / 2 < cruise_nav.seconds_to_destination and not burn_nav.needs_drifting:
-        best_nav = burn_nav
-        flight_mode = "BURN"
-    else:
-        best_nav = cruise_nav

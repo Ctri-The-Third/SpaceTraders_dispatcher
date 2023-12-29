@@ -1,18 +1,12 @@
 from datetime import datetime, timedelta
-import logging, math
+import logging
 import json
 from time import sleep
-from functools import partial
 
-import psycopg2.sql
-from itertools import zip_longest
-
-
-from straders_sdk.local_response import LocalSpaceTradersRespose
-from straders_sdk.models import Shipyard, ShipyardShip, Waypoint, Agent, Market
+import threading
+from straders_sdk.models import Waypoint, Faction
 from straders_sdk.ship import Ship
 from straders_sdk.client_mediator import SpaceTradersMediatorClient as SpaceTraders
-from straders_sdk.contracts import Contract
 from straders_sdk.pathfinder import PathFinder
 from straders_sdk.utils import (
     set_logging,
@@ -37,17 +31,11 @@ from dispatcherWK16 import (
     RQ_FUEL,
     RQ_HEAVY_FREIGHTER,
 )
-from behaviours.generic_behaviour import Behaviour as GenericBehaviour
 
 from conductor_functions import (
-    process_contracts,
-    get_prices_for,
     set_behaviour,
     maybe_buy_ship_sys2,
     log_task,
-    log_shallow_trade_tasks,
-    log_mining_package_deliveries,
-    missing_market_prices,
     wait_until_reset,
 )
 
@@ -75,6 +63,7 @@ class BehaviourConductor:
             self.current_agent_symbol = user.get("agents")[0]["username"]
             self.current_agent_token = user.get("agents")[0]["token"]
 
+        self.game_plan_path = user.get("custom_game_plan", "game_plan.json")
         client = self.st = SpaceTraders(
             self.current_agent_token,
             db_host=user["db_host"],
@@ -100,7 +89,7 @@ class BehaviourConductor:
         self.starting_system = None
         self.safety_margin = 0
 
-        self.managed_systems = list[ConductorSystem]
+        self.managed_systems: list[ConductorSystem] = []
 
         # * progress missions
         hq = self.st.view_my_self().headquarters
@@ -146,6 +135,7 @@ class BehaviourConductor:
         #
         ships = self.all_ships = list(self.st.ships_view().values())
         ships.sort(key=lambda ship: ship.index)
+        self._refresh_game_plan(self.game_plan_path)
         # rerun the hourly thing after we've calculated "ships we might buy"
         starting_run = True
         while True:
@@ -157,7 +147,7 @@ class BehaviourConductor:
             if self.next_daily_update < datetime.now() or starting_run:
                 self.next_daily_update = datetime.now() + timedelta(days=1)
                 # daily tasks like DB maintenance
-                self.daily_update()
+                self.global_daily_update()
 
             if self.next_hourly_update < datetime.now() or starting_run:
                 self.global_hourly_update()
@@ -172,7 +162,7 @@ class BehaviourConductor:
                 if self.next_daily_update < datetime.now():
                     self.next_daily_update = datetime.now() + timedelta(days=1)
                     # daily tasks like DB maintenance
-                    self.daily_update()
+                    self.global_daily_update()
 
                 if self.next_hourly_update < datetime.now():
                     self.next_hourly_update = datetime.now() + timedelta(hours=1)
@@ -197,8 +187,25 @@ class BehaviourConductor:
 
             sleep(60)
 
-    def daily_update(self):
+    def global_daily_update(self):
         """Reset uncharted waypoints and refresh materialised views."""
+
+        # step 1 - reset the uncharted waypoints. Mark them as "unchecked" and remove the uncharted trait.
+
+        sql = """update waypoints  set checked = False where waypoint_symbol in (
+            select waypoint_symbol from waypoint_traits wt where wt.trait_symbol = 'UNCHARTED' 
+        );
+        delete from waypoint_traits where trait_symbol = 'UNCHARTED';
+
+        """
+        result = try_execute_upsert(self.connection, sql, ())
+
+        # step 2 - refresh the materialised views
+        # this takes over 10 minutes, let's _not_ do it like this, and rethink. or at least do it on a seperate thread so it's not blocking.
+
+        # step 3 - set default game plan
+        self._generate_game_plan()
+        self._refresh_game_plan()
         pass
 
     def system_daily_update(self, system: "ConductorSystem"):
@@ -206,7 +213,7 @@ class BehaviourConductor:
 
     def global_hourly_update(self):
         """Set ship behaviours and tasks"""
-        self._refresh_game_plan()
+        self._refresh_game_plan(self.game_plan_path)
 
         pass
 
@@ -226,6 +233,7 @@ class BehaviourConductor:
                     self.current_agent_symbol,
                     specific_ship_symbol=ship.name,
                 )
+        self.set_commander_tasks(system)
         system._probe_job_count = self.set_probe_tasks(system)
         system._hauler_job_count = self.set_hauler_tasks(system)
         system._extractor_job_count = self.set_extractor_tasks(system)
@@ -440,6 +448,16 @@ class BehaviourConductor:
                 )
         return extractor_jobs
 
+    def set_commander_tasks(self, system: "ConductorSystem") -> int:
+        if system.commander_trades:
+            commander = self.st.ships_view_one(f"{self.current_agent_symbol}-1")
+            set_behaviour(
+                self.connection,
+                commander.name,
+                BHVR_CHAIN_TRADE,
+                {"priority": 3, "target_sys": system.system_symbol},
+            )
+
     def populate_ships(self, ships: list[Ship], system: "ConductorSystem"):
         "Set the conductor's ship lists, and subdivides them into roles."
         ships = [
@@ -460,13 +478,113 @@ class BehaviourConductor:
             ship for ship in ships if ship.role == "EXCAVATOR" and ship.can_siphon
         ]
 
-    def _refresh_game_plan(self):
+    def _generate_game_plan(self, filename="game_plan.json"):
+        st = self.st
+        #
+        # STARTING SYSTEM
+        #
+        systems_being_managed = [s.system_symbol for s in self.managed_systems]
+        start_system_s = waypoint_slicer(st.view_my_self().headquarters)
+        start_system_obj = st.systems_view_one(waypoint_slicer(start_system_s))
+
+        start_system = ConductorSystem(system_symbol=start_system_s)
+
+        if start_system_s not in systems_being_managed:
+            # we need to do some of this below anyway - but only want to add it if we're not already managing it.
+            self.managed_systems.append(start_system)
+        # trading & hauler stuff
+        start_system.hauler_tradegood_manage_jobs = [
+            "SHIP_PARTS",
+            "SHIP_PLATING",
+            "JEWELRY",
+            "MEDICINE",
+            "CLOTHING",
+            "FOOD",
+            "FUEL",
+            "FUEL",
+        ]
+        start_system.haulers_chain_trading = 2
+        start_system.probes_to_monitor_shipyards = True
+        start_system.probes_to_monitor_markets = True
+        start_system.haulers_doing_missions = 1
+        gate_complete = True
+        start_gate = st.find_waypoints_by_type(start_system_s, "JUMP_GATE")
+        if start_gate:
+            gate = start_gate[0]
+            gate: Waypoint
+            gate_complete = gate.under_construction
+            if gate.under_construction:
+                start_system.construct_jump_gate = True
+                start_system.commander_trades = True
+            else:
+                start_system.commander_trades = False
+                # reset this so the commander can be used to seed the system.
+                for l_system in self.managed_systems:
+                    l_system.commander_trades = False
+        # extractors and siphoners
+        start_system.siphoners_per_gas_giant = 5
+
+        start_system.extractors_per_engineered_asteroid = 20
+        e = st.find_waypoints_by_type(start_system_s, "ENGINEERED_ASTEROID")
+        if e:
+            start_system.mining_sites = [w.symbol for w in e]
+
+        if not gate_complete:
+            # we need populate the next HQ system - starting with our own.
+            factions = st.list_factions()
+            # sort them by distance to our location
+            factions = [f for f in factions if f.is_recruiting]
+            faction = factions[len(self.managed_systems) - 2]
+
+            faction: Faction
+            faction.headquarters
+            faction_hq_syss = [
+                st.systems_view_one(waypoint_slicer(s.headquarters)) for s in factions
+            ]
+            faction_hq_syss.sort(
+                key=lambda s: self.pathfinder.calc_distance_between(start_system_obj, s)
+            )
+            # there's at least one managed system, so we can pick the next one based on the length of the managed systems property
+            next_system = faction_hq_syss[len(self.managed_systems) - 2]
+            next_system = ConductorSystem(system_symbol=next_system.symbol)
+            self.managed_systems.append(next_system)
+
+            next_system.commander_trades = True
+            next_system.hauler_tradegood_manage_jobs = ["ANTIMATTER"]
+            for i in range(1):
+                symbols = [
+                    "SHIP_PARTS",
+                    "SHIP_PLATING",
+                    "JEWELRY",
+                    "MEDICINE",
+                    "CLOTHING",
+                    "FOOD",
+                    "FUEL",
+                    "FUEL",
+                ]
+                for s in symbols:
+                    next_system.hauler_tradegood_manage_jobs.append(s)
+            next_system.haulers_chain_trading = 4
+            next_system.probes_to_monitor_markets = True
+            next_system.probes_to_monitor_shipyards = True
+            next_system.use_explorers_as_haulers = True
+            next_system.siphoners_per_gas_giant = 10
+            next_system.commander_trades = True
+
+        self._save_game_plan("game_plan.json")
+
+    def _save_game_plan(self, filename="game_plan.json"):
+        with open(filename, "w") as f:
+            jso = {"systems": [s.to_dict() for s in self.managed_systems]}
+            json.dump(jso, f, indent=4)
+
+    def _refresh_game_plan(self, filename="game_plan.json"):
         "load the game_plan.json file"
         # this is overriding everything and loading it again needlessly.
         # it's not even using local caches for the market and shipyard - you'll want to change this to update managed_systems with new values instead.
 
         try:
-            with open("game_plan.json") as f:
+            with open(filename) as f:
                 jso = json.load(f)
                 self.managed_systems = [
                     ConductorSystem.from_dict(d) for d in jso["systems"]
@@ -526,13 +644,15 @@ class BehaviourConductor:
 class ConductorSystem:
     system_symbol: str
     # in order of priority
+    commander_trades: bool = False
 
     hauler_tradegood_manage_jobs: list[str] = []
     haulers_chain_trading: int = 0
+    haulers_doing_missions: int = 0
     probes_to_monitor_markets: bool = False
     probes_to_monitor_shipyards: bool = False
     use_explorers_as_haulers: bool = False
-
+    construct_jump_gate: bool = False
     mining_sites: list[str] = []
 
     extractors_per_asteroid: int = 0
@@ -540,6 +660,8 @@ class ConductorSystem:
     extractors_per_gas_giant: int = 0
     extractor_type_to_use: str = "SHIP_MINING_DRONE"
     surveyors_per_asteroid: int = 0
+
+    siphoners_per_gas_giant: int = 0
 
     commanders: list[Ship] = []
     satellites: list[Ship] = []
@@ -574,7 +696,8 @@ class ConductorSystem:
     def to_dict(self):
         return {
             "system_symbol": self.system_symbol,
-            "tradegood_manage_jobs": self.hauler_tradegood_manage_jobs,
+            "commander_trades": self.commander_trades,
+            "hauler_tradegood_manage_jobs": self.hauler_tradegood_manage_jobs,
             "probes_to_monitor_markets": self.probes_to_monitor_markets,
             "probes_to_monitor_shipyards": self.probes_to_monitor_shipyards,
             "use_explorers_as_haulers": self.use_explorers_as_haulers,
@@ -604,8 +727,6 @@ if __name__ == "__main__":
     user = json.load(open("user.json"))
     logger.info("Starting up conductor, preparing to connect to database")
     logger.info("Connected to database")
-    agents = []
-    agents_and_clients: dict[str:SpaceTraders] = {}
 
     #    `tradegood`: the symbol of the tradegood to buy\n
     # optional:\n
@@ -615,27 +736,5 @@ if __name__ == "__main__":
     # `max_buy_price`: if you want to limit the purchase price, set it here\n
     # `min_sell_price`: if you want to limit the sell price, set it here\n
     conductor = BehaviourConductor(user)
-
-    system = ConductorSystem()
-    system.system_symbol = "PK-16"
-    system.hauler_tradegood_manage_jobs = [
-        "SHIP_PARTS",
-        "SHIP_PLATING",
-        "ADVANCED_CIRCUITRY",
-        "ELECTRONICS",
-        "MICROPROCESSORS",
-        "EXPLOSIVES",
-        "COPPER",
-        "FUEL",
-    ]
-    system.probes_to_monitor_markets = True
-    system.probes_to_monitor_shipyards = True
-    system.use_explorers_as_haulers = True
-    system.mining_sites = ["X1-PK16-AE5E", "X1-PK16-B40", "X1-PK16-B44"]
-    system.extractors_per_asteroid = 10
-    system.extractors_per_engineered_asteroid = 10
-    system.extractor_type_to_use = "SHIP_MINING_DRONE"
-    system.extractors_per_gas_giant = 10
-    system.surveyors_per_asteroid = 2
 
     conductor.run()
