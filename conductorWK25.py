@@ -151,7 +151,9 @@ class BehaviourConductor:
 
             if self.next_hourly_update < datetime.now() or starting_run:
                 self.global_hourly_update()
-
+            reset_quarterly = False
+            reset_hourly = False
+            reset_daily = False
             for system in self.managed_systems:
                 self.populate_ships(ships, system)
                 # daily reset uncharted waypoints.
@@ -160,17 +162,17 @@ class BehaviourConductor:
                 # minutely try and buy new ships
 
                 if self.next_daily_update < datetime.now():
-                    self.next_daily_update = datetime.now() + timedelta(days=1)
+                    reset_daily = True
                     # daily tasks like DB maintenance
                     self.global_daily_update()
 
                 if self.next_hourly_update < datetime.now():
-                    self.next_hourly_update = datetime.now() + timedelta(hours=1)
+                    reset_hourly = True
                     self.system_hourly_update(system)
                     # hourly tasks - for setting behaviours and such
 
                 if self.next_quarterly_update < datetime.now():
-                    self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
+                    reset_quarterly = True
                     self.system_quarterly_update(system)
                     # quartrly tasks - doesn't do anything presently
 
@@ -179,6 +181,12 @@ class BehaviourConductor:
                     self.system_hourly_update(system)
                     self.system_quarterly_update(system)
 
+                if reset_quarterly:
+                    self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
+                if reset_hourly:
+                    self.next_hourly_update = datetime.now() + timedelta(hours=1)
+                if reset_daily:
+                    self.next_daily_update = datetime.now() + timedelta(days=1)
                 self.system_minutely_update(system)
             starting_run = False
             # here for testing purposes only - remove this
@@ -294,7 +302,7 @@ class BehaviourConductor:
                 self.st,
                 system,
                 hauler_type,
-                len(system.haulers) * 50000,
+                len(system.haulers) * 50000 + 150000,
             )
             if resp:
                 self.set_hauler_tasks(system)
@@ -306,7 +314,7 @@ class BehaviourConductor:
                 self.st,
                 system,
                 system.extractor_type_to_use,
-                len(system.haulers) * 50000,
+                len(system.haulers) * 50000 + 150000,
             )
             if resp:
                 self.set_extractor_tasks(system)
