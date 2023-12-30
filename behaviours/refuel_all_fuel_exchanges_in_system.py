@@ -9,7 +9,7 @@ from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
 from straders_sdk.models import Waypoint, System, Market, MarketTradeGoodListing
 
 BEHAVIOUR_NAME = "REFUEL_ALL_IN_SYSTEM"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class RefuelAnExchange(Behaviour):

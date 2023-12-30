@@ -15,7 +15,7 @@ import math
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "UPGRADE_TO_SPEC"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class FindMountsAndEquip(Behaviour):
@@ -113,10 +113,9 @@ class FindMountsAndEquip(Behaviour):
                 self.logger.error("Couldn't find mount %s", target_mount)
                 time.sleep(SAFETY_PADDING)
                 continue
-            system_sym = waypoint_slicer(destination_wp_sym)
-            destination_sys = st.systems_view_one(system_sym)
-            if ship.nav.system_symbol != system_sym:
-                resp = self.ship_extrasolar(destination_sys)
+            destination_sys = waypoint_slicer(destination_wp_sym)
+            if ship.nav.system_symbol != destination_sys:
+                resp = self.ship_extrasolar_jump(destination_sys)
                 if not resp:
                     time.sleep(SAFETY_PADDING)
                     continue
@@ -188,7 +187,7 @@ class FindMountsAndEquip(Behaviour):
                     best_distance = distance
                     best_destination_sys = dest_sys
                     best_destination_wp = destination[0]
-            self.ship_extrasolar(best_destination_sys)
+            self.ship_extrasolar_jump(best_destination_sys)
             self.ship_intrasolar(best_destination_wp)
             st.ship_dock(ship)
             st.ship_sell(ship, item.symbol, item.units)
@@ -201,13 +200,12 @@ class FindMountsAndEquip(Behaviour):
             starting_system, "SHIPYARD", 50000, True
         )
 
-        if not target_system.symbol:
+        if not target_system:
             self.logger.error("Couldn't find a shipyard to sell excess mounts to!")
             time.sleep(SAFETY_PADDING)
         else:
-            target_system = st.systems_view_one(target_system.symbol)
-            target_wp = st.find_waypoints_by_trait_one(target_system.symbol, "SHIPYARD")
-            self.ship_extrasolar(target_system)
+            target_wp = st.find_waypoints_by_trait_one(target_system, "SHIPYARD")
+            self.ship_extrasolar_jump(target_system)
             self.ship_intrasolar(target_wp)
 
     def find_cheapest_markets_for_good(

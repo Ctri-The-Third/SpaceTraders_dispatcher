@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "CONSTRUCT_JUMPGATE"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ConstructJumpgate(Behaviour):
@@ -77,9 +77,7 @@ class ConstructJumpgate(Behaviour):
                 time.sleep(SAFETY_PADDING)
                 return
 
-        jumpgate = st.waypoints_view_one(
-            waypoint_slicer(self.target_waypoint), self.target_waypoint, True
-        )
+        jumpgate = st.waypoints_view_one(self.target_waypoint, True)
         if jumpgate.type != "JUMP_GATE":
             time.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint is not a jumpgate")
@@ -105,7 +103,7 @@ class ConstructJumpgate(Behaviour):
                 r.symbol, highest_tradevolume=True
             )
             for market in markets:
-                wp = st.waypoints_view_one(waypoint_slicer(market), market)
+                wp = st.waypoints_view_one(market)
                 mkt = st.system_market(wp)
                 # if we're specifying markets, they won't all sell all the exports.
                 tg = mkt.get_tradegood(r.symbol)
@@ -138,10 +136,10 @@ class ConstructJumpgate(Behaviour):
                 break
 
         if not have_cargo_already:
-            # self.ship_extrasolar(buy_wp.symbol)
+            self.ship_extrasolar_jump(waypoint_slicer(buy_wp.symbol))
             self.ship_intrasolar(buy_wp.symbol)
             self.buy_cargo(tradegood, quantity)
-        # self.ship_extrasolar(build_wp.symbol)
+        self.ship_extrasolar_jump(waypoint_slicer(build_wp.symbol))
         self.ship_intrasolar(build_wp.symbol)
 
         cargo = [ci for ci in self.ship.cargo_inventory if ci.symbol == tradegood]
@@ -189,9 +187,7 @@ class ConstructJumpgate(Behaviour):
 
     def get_market(self, market_symbol: str) -> "Market":
         if market_symbol not in self.markets:
-            wp = self.st.waypoints_view_one(
-                waypoint_slicer(market_symbol), market_symbol
-            )
+            wp = self.st.waypoints_view_one(market_symbol)
             self.markets[market_symbol] = self.st.system_market(wp)
         return self.markets[market_symbol]
 

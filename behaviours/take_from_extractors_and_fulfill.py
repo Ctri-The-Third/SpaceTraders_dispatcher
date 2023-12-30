@@ -15,7 +15,7 @@ from straders_sdk.ship import Ship
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 
 BEHAVIOUR_NAME = "TAKE_FROM_EXTRACTORS_AND_GO_SELL_9"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
@@ -39,9 +39,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
 
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
-        self.start_wp_s = self.behaviour_params.get(
-            "asteroid_wp", self.determine_start_wp()
-        )
+        self.start_wp_s = self.behaviour_params.get("asteroid_wp", None)
         self.market_wp_s = self.behaviour_params.get("market_wp", None)
         self.exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
 
@@ -59,7 +57,8 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         st = self.st
         ship = self.ship
         # we have to use the API call since we don't have inventory in the DB
-
+        if not self.start_wp_s:
+            self.start_wp_s = self.determine_start_wp()
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
@@ -70,7 +69,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         if not self.start_wp_s:
             # we couldn't find any asteroids with the desired cargo
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             return
         if not self.market_wp_s and not self.fulfil_wp_s:
             self.market_wp_s = self.determine_market_wp()
@@ -89,13 +88,13 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         # 2. preflight checks (refuel and desintation checking)
         #
 
-        start_sys = st.systems_view_one(waypoint_slicer(self.start_wp_s))
-        start_wp = st.waypoints_view_one(start_sys.symbol, self.start_wp_s)
+        start_sys = waypoint_slicer(self.start_wp_s)
+        start_wp = st.waypoints_view_one(self.start_wp_s)
         destination_sys = st.systems_view_one(
             waypoint_slicer(self.market_wp_s or self.fulfil_wp_s)
         )
 
-        self.ship_extrasolar(start_sys)
+        self.ship_extrasolar_jump(start_sys)
         self.ship_intrasolar(start_wp.symbol)
 
         #
@@ -144,7 +143,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
             #                cargo_to_skip.append(item.symbol)
 
             st.ship_orbit(ship)
-            self.ship_extrasolar(destination_sys)
+            self.ship_extrasolar_jump(destination_sys)
             self.ship_intrasolar(self.fulfil_wp_s or self.market_wp_s)
 
             st.ship_dock(ship)
@@ -156,22 +155,18 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
                     managed_to_fulfill = True
                     # we fulfilled something, so we should be able to sell the rest
                     st.ship_orbit(ship)
-                    self.ship_extrasolar(start_sys)
+                    self.ship_extrasolar_jump(start_sys)
                     self.ship_intrasolar(self.start_wp_s)
             elif self.market_wp_s:
                 # we got to the fulfill point but something went horribly wrong
-                market = st.system_market(
-                    st.waypoints_view_one(destination_sys, self.market_wp_s)
-                )
+                market = st.system_market(st.waypoints_view_one(self.market_wp_s))
                 resp = self.sell_all_cargo(market=market)
 
-                st.system_market(
-                    st.waypoints_view_one(destination_sys, self.market_wp_s), True
-                )
+                st.system_market(st.waypoints_view_one(self.market_wp_s), True)
 
         else:
             if ship.nav.waypoint_symbol != self.start_wp_s:
-                self.ship_extrasolar(start_sys)
+                self.ship_extrasolar_jump(start_sys)
                 self.ship_intrasolar(self.start_wp_s)
             else:
                 time.sleep(SAFETY_PADDING)
@@ -201,7 +196,7 @@ order by 3 desc """
         # determine the best source
         else:
             self.logger.debug("No asteroids found with desired cargo")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
 
     def determine_market_wp(self):
         # find the nearest market with the desired cargo

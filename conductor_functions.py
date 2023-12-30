@@ -9,6 +9,7 @@ from straders_sdk.utils import (
 from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.models import System
 
+# import conductorWK25 as c25
 import datetime
 import logging
 import json
@@ -20,7 +21,11 @@ def process_contracts(client: SpaceTraders, recurse=True):
     contracts = client.view_my_contracts()
     need_to_negotiate = True
 
-    for con in contracts:
+    open_contracts = [
+        con for con in contracts if not con.fulfilled and not con.is_expired
+    ]
+
+    for con in open_contracts:
         con: Contract
         should_we_complete = False
 
@@ -152,15 +157,21 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
     )
 
 
-def missing_market_prices(connection, system_symbol: str) -> bool:
+def missing_market_prices(
+    connection, system_symbol: str, oldest_hours: int = 3
+) -> bool:
     "helpful during first setup"
 
-    sql = """select mt.market_waypoint, count(mtl.market_symbol) from market_tradegood mt 
+    sql = """with info as ( 
+select mt.market_waypoint, count(mtl.market_symbol) as found_listings, min(mtl.last_updated) as last_updated from market_tradegood mt 
 left join market_tradegood_listings mtl on mt.market_Waypoint = mtl.market_symbol and mt.symbol = mtl.trade_symbol
 join waypoints w on mt.market_waypoint = w.waypoint_symbol
 where system_symbol = %s
 group by mt.market_waypoint
-having count(mtl.market_symbol) = 0"""
+
+	)
+	select * from info
+	where last_updated < now() - interval '3 hours' or found_listings =  0"""
     results = try_execute_select(connection, sql, (system_symbol,))
     return len(results) > 0
 
@@ -204,6 +215,27 @@ def log_task(
     )
 
     return hash_str if resp else resp
+
+
+def maybe_buy_ship_sys2(
+    client: SpaceTraders,
+    system: "ConductorSystem",
+    ship_type: str,
+    safety_margin: int = 0,
+) -> "Ship" or None:
+    "Attempts to buy a ship in the local system, returns the ship object if successful, or None if not"
+    if ship_type not in system.ship_type_shipyards:
+        logging.warning(
+            f"Tried to buy a ship {ship_type} but couldn't find one - import it."
+        )
+        return False
+
+    shipyard_s = system.ship_type_shipyards[ship_type]
+
+    shipyard_wp = client.waypoints_view_one(shipyard_s)
+    shipyard = client.system_shipyard(shipyard_wp)
+
+    return _maybe_buy_ship(client, shipyard, ship_type, safety_margin)
 
 
 def maybe_buy_ship_sys(

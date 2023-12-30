@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "SELL_OR_JETTISON_ALL_CARGO"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class SellOrDitch(Behaviour):
@@ -64,9 +64,14 @@ class SellOrDitch(Behaviour):
         agent = st.view_my_self()
 
         markets = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-        markets = [
-            st.system_market(m) for m in markets if m.symbol != ship.nav.waypoint_symbol
-        ]
+        if markets:
+            markets = [
+                st.system_market(m)
+                for m in markets
+                if m.symbol != ship.nav.waypoint_symbol
+            ]
+        else:
+            markets = []
         for cargo in ship.cargo_inventory:
             best_market = None
             best_value = 0
@@ -78,9 +83,17 @@ class SellOrDitch(Behaviour):
                     best_market = m
                     best_value = tg.sell_price
             if best_market:
+                tg = best_market.get_tradegood(cargo.symbol)
                 self.ship_intrasolar(best_market.symbol)
                 st.ship_dock(ship)
-                st.ship_sell(ship, cargo.symbol, cargo.units)
+                resp = st.ship_sell(
+                    ship, cargo.symbol, min(cargo.units, tg.trade_volume)
+                )
+                if not resp:
+                    self.logger.error(
+                        f"Failed to sell {cargo.symbol} because {resp.error}"
+                    )
+                    continue
             else:
                 st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
 
@@ -90,7 +103,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5C"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,

@@ -26,6 +26,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+resources/*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -131,5 +132,9 @@ user.json
 overview.md
 overview_ships.md
 sc_http_throttler.py
-resources/graph.json
-resources/routes/*
+
+resources/*
+conductor_frustrate.py
+scripts/PRD-build_and_run_dispatcher_container.bat
+behaviours/Z_repro_pathfinder_issue
+game_plan.json

@@ -109,7 +109,7 @@ class BuyAndSellDripfeed(Behaviour):
     def buy_half(self):
         ship = self.ship
         st = self.st
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(self.purchase_market)))
+        self.ship_extrasolar_jump(waypoint_slicer(self.purchase_market))
         self.ship_intrasolar(self.purchase_market)
         # check if the export price is below the max purchase price
         # if it is, buy 1 tradevolume, and check the price and repeat.
@@ -118,9 +118,7 @@ class BuyAndSellDripfeed(Behaviour):
         # once at sell market, check if import price is above the min sell price
         # if it is, sell 1 tradevolume, and check the price and repeat.
         # if not, sleep for 5 minutes then try again
-        purchase_market_wp = self.st.waypoints_view_one(
-            waypoint_slicer(self.purchase_market), self.purchase_market
-        )
+        purchase_market_wp = self.st.waypoints_view_one(self.purchase_market)
         tradegood = self.st.system_market(purchase_market_wp).get_tradegood(
             self.target_tradegood
         )
@@ -156,11 +154,9 @@ class BuyAndSellDripfeed(Behaviour):
     def sell_half(self):
         ship = self.ship
         sell_system = self.st.systems_view_one(waypoint_slicer(self.sell_market))
-        self.ship_extrasolar(sell_system)
+        self.ship_extrasolar_jump(sell_system)
         self.ship_intrasolar(self.sell_market)
-        sell_market_wp = self.st.waypoints_view_one(
-            waypoint_slicer(self.sell_market), self.sell_market
-        )
+        sell_market_wp = self.st.waypoints_view_one(self.sell_market)
         tradegood = self.st.system_market(sell_market_wp).get_tradegood(
             self.target_tradegood
         )

@@ -77,7 +77,7 @@ class ExtractAndTransferOrSell_4(Behaviour):
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
-        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
+        self.ship_extrasolar_jump(st.systems_view_one(target_sys_sym))
         self.ship_intrasolar(target_wp_sym)
         #
         #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.

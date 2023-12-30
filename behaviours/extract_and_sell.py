@@ -9,8 +9,10 @@ from straders_sdk.utils import set_logging, waypoint_slicer
 import logging
 from behaviours.generic_behaviour import Behaviour
 import time
+import math
 
 BEHAVIOUR_NAME = "EXTRACT_AND_GO_SELL"
+SAFETY_PADDING = 180
 
 
 class ExtractAndGoSell(Behaviour):
@@ -41,7 +43,7 @@ class ExtractAndGoSell(Behaviour):
         starting_credts = self.agent.credits
 
         # this behaviour involves inventory, which isn't stashed in the SDK yet
-        ship = self.ship = self.st.ships_view_one(self.ship.name, True)
+        ship = self.ship  # = self.st.ships_view_one(self.ship.name, True)
         self.st.ship_cooldown(ship)
         st = self.st
         agent = self.agent
@@ -49,7 +51,7 @@ class ExtractAndGoSell(Behaviour):
             return
         # move ship to a waypoint in its system with
         st.logging_client.log_beginning(
-            "EXTRACT_AND_SELL",
+            BEHAVIOUR_NAME,
             ship.name,
             agent.credits,
             behaviour_params=self.behaviour_params,
@@ -64,7 +66,7 @@ class ExtractAndGoSell(Behaviour):
 
                 target_wp_sym = target_wp.symbol
             else:
-                target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
+                target_wp = st.waypoints_view_one(target_wp_sym)
             market_wp_sym = self.behaviour_params.get(
                 "market_wp",
                 None,
@@ -76,13 +78,15 @@ class ExtractAndGoSell(Behaviour):
             st.waypoints_view(ship.nav.system_symbol, True)
             return
 
-        current_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
-        # in a circumstance where the ship isn't in the specified system, it will go.
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
-        self.ship_intrasolar(target_wp_sym)
+        current_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
 
+        # in a circumstance where the ship isn't in the specified system, it will go.
+        self.ship_extrasolar_jump(waypoint_slicer(target_wp_sym))
+        self.ship_intrasolar(target_wp_sym)
+        #
+        # if we have any fuel in the inventory, refuel.
+        #
+        self.maybe_refuel_from_cargo()
         if ship.can_survey and target_wp.type in (
             "ASTEROID",
             "ENGINEERED_ASTEROID",
@@ -105,10 +109,21 @@ class ExtractAndGoSell(Behaviour):
                 ship, st, current_wp.symbol
             )
         if market_wp_sym:
-            self.ship_intrasolar(market_wp_sym)
-            self.sell_all_cargo()
-        else:
-            self.jettison_all_cargo()
+            for cargo in ship.cargo_inventory:
+                self.go_and_sell_or_fulfill(cargo.symbol, market_wp_sym)
+
+            market_wp = st.waypoints_view_one(market_wp_sym)
+
+            distance_to_market = self.pathfinder.calc_distance_between(
+                market_wp, target_wp
+            )
+
+            fuel_capacity = ship.fuel_capacity
+            fuel_capacity = 80
+
+            if distance_to_market > fuel_capacity / 2:
+                self.buy_cargo("FUEL", math.ceil(((distance_to_market / 2) / 100)))
+            # CHECK DISTANCE BACK TO ASTEROID. If it's more than half our fuel capacity, buy one fuel.
 
         self.end()
         st.logging_client.log_ending("EXTRACT_AND_SELL", ship.name, agent.credits)
@@ -118,15 +133,24 @@ class ExtractAndGoSell(Behaviour):
             agent.credits - starting_credts,
         )
 
+    def maybe_refuel_from_cargo(self):
+        ship = self.ship
+        st = self.st
+        # fuel missing = fuel capacity - fuel level
+        fuel_missing = math.ceil((ship.fuel_capacity - ship.fuel_current) / 100)
+        if fuel_missing > 0:
+            for cargo in ship.cargo_inventory:
+                if cargo.symbol == "FUEL":
+                    st.ship_dock(ship)
+                    st.ship_refuel(ship, True)
+
     def get_market_and_jettison_waste(
         self, ship: Ship, client: SpaceTraders, starting_wp_s: str
     ) -> str:
         market_wp_sym = None
         best_tradegood_option = [None, None]
         # find a market that buys all the cargo we're selling
-        starting_wp = client.waypoints_view_one(
-            waypoint_slicer(starting_wp_s), starting_wp_s
-        )
+        starting_wp = client.waypoints_view_one(starting_wp_s)
         best_total_cph = 0
         start_system = client.systems_view_one(
             waypoint_slicer(starting_wp_s), starting_wp_s
@@ -142,7 +166,7 @@ class ExtractAndGoSell(Behaviour):
             best_tradegood_cph = 0
             for option in options:
                 end_system = option[1]
-                end_wp = self.st.waypoints_view_one(end_system, option[0])
+                end_wp = self.st.waypoints_view_one(option[0])
                 market = self.st.system_market(end_wp)
 
                 # never sell to exporting markets.
@@ -187,16 +211,16 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "19"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {
-        "asteroid_wp": "X1-KM71-CZ5B",
+        "asteroid_wp": "X1-PK16-B40",
         "script_name": "EXTRACT_AND_SELL",
         "cargo_to_transfer": ["*"],
     }
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    lock_ship(ship, "MANUAL", bhvr.connection, duration=60 * 24)
     set_logging(logging.DEBUG)
     bhvr.run()
     lock_ship(ship, "", bhvr.connection, duration=0)

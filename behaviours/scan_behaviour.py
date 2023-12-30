@@ -74,7 +74,7 @@ class ScanInBackground(Behaviour):
             )
 
             for wayp in wayps:
-                resp = st.waypoints_view_one(wayp[2], wayp[0], True)
+                resp = st.waypoints_view_one(wayp[0], True)
 
             #
             # get 20 unscanned jump gates
@@ -86,9 +86,9 @@ class ScanInBackground(Behaviour):
                 jump_gate_sym = row[0]
                 sys = waypoint_slicer(jump_gate_sym)
 
-                wp = st.waypoints_view_one(sys, jump_gate_sym)
+                wp = st.waypoints_view_one(jump_gate_sym)
                 if not wp.is_charted:
-                    wp = st.waypoints_view_one(sys, jump_gate_sym, True)
+                    wp = st.waypoints_view_one(jump_gate_sym, True)
                 if not wp.is_charted:
                     continue
                 resp = st.system_jumpgate(wp, True)
@@ -105,7 +105,7 @@ class ScanInBackground(Behaviour):
             for row in rows:
                 wp_sym = row[0]
                 sys = waypoint_slicer(wp_sym)
-                wp = st.waypoints_view_one(sys, wp_sym)
+                wp = st.waypoints_view_one(wp_sym)
                 if wp.has_market:
                     resp = st.system_market(wp, True)
                 if wp.has_shipyard:
@@ -136,7 +136,6 @@ class ScanInBackground(Behaviour):
         select * from waypoints_not_scanned
         where type = %s
         order by random() 
-        limit 20
         """
         return try_execute_select(self.st.db_client.connection, sql, (type,))
 
@@ -144,7 +143,7 @@ class ScanInBackground(Behaviour):
         sql = """ select * from jumpgates_scanned
 where charted and not scanned
 order by random()
-limit 20"""
+"""
         return try_execute_select(self.st.db_client.connection, sql, ())
 
     def get_twenty_unscanned_markets_or_shipyards(self) -> list[str]:
@@ -209,11 +208,11 @@ order by random()"""
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
 
-        start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+        start = st.waypoints_view_one(ship.nav.waypoint_symbol)
         path = nearest_neighbour(target_wayps, start)
 
         for wayp_sym in path:
-            waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
+            waypoint = st.waypoints_view_one(wayp_sym)
 
             self.ship_intrasolar(wayp_sym)
 
@@ -269,20 +268,14 @@ def calculate_distance(src: Waypoint, dest: Waypoint):
 
 
 if __name__ == "__main__":
-    from dispatcherWK12 import lock_ship
-
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     # 3, 4,5,6,7,8,9
     # A is the surveyor
     ship_suffix = sys.argv[2] if len(sys.argv) > 2 else "4"
     ship = f"{agent}-{ship_suffix}"
 
-    bhvr = ScanInBackground(
-        agent, ship, behaviour_params={"asteroid_wp": "X1-CN90-02905X"}
-    )
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    bhvr = ScanInBackground(agent, ship, behaviour_params={})
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
 
     set_logging(level=logging.DEBUG)

@@ -15,96 +15,13 @@ from straders_sdk import SpaceTraders
 from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer, get_and_validate
-from behaviours.extract_and_chill import (
-    ExtractAndChill,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_CHILL,
-)
-from behaviours.buy_and_sell_dripfeed import (
-    BuyAndSellDripfeed,
-    BEHAVIOUR_NAME as BHVR_BUY_AND_SELL_DRIPFEED,
-)
-from behaviours.extract_and_sell import (
-    ExtractAndGoSell,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_GO_SELL,
-)
-from behaviours.receive_and_fulfill import (
-    ReceiveAndFulfillOrSell_3,
-    BEHAVIOUR_NAME as BHVR_RECEIVE_AND_FULFILL,
-)
-from behaviours.generic_behaviour import Behaviour
-from behaviours.extract_and_transfer import (
-    ExtractAndTransfer_8,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_TRANSFER,
-)
-from behaviours.explore_system import (
-    ExploreSystem,
-    BEHAVIOUR_NAME as BHVR_EXPLORE_SYSTEM,
-)
-from behaviours.monitor_cheapest_price import (
-    MonitorCheapestShipyard,
-    BEHAVIOUR_NAME as BHVR_MONITOR_CHEAPEST_PRICE,
-)
-from behaviours.buy_and_deliver_or_sell import (
-    BuyAndDeliverOrSell_6,
-    BEHAVIOUR_NAME as BHVR_BUY_AND_DELIVER_OR_SELL,
-)
+from straders_sdk.utils import get_name_from_token
 
-from behaviours.receive_and_refine import (
-    ReceiveAndRefine,
-    BEHAVIOUR_NAME as BHVR_RECEIVE_AND_REFINE,
-)
-from behaviours.extract_and_fulfill import (
-    ExtractAndFulfill_7,
-    BEHAVIOUR_NAME as BHVR_EXTRACT_AND_FULFILL,
-)
-
-from behaviours.upgrade_ship_to_specs import (
-    FindMountsAndEquip,
-    BEHAVIOUR_NAME as BHVR_UPGRADE_TO_SPEC,
-)
-from behaviours.chill_and_survey import (
-    ChillAndSurvey,
-    BEHAVIOUR_NAME as BHVR_CHILL_AND_SURVEY,
-)
-from behaviours.refuel_all_fuel_exchanges_in_system import (
-    RefuelAnExchange,
-    BEHAVIOUR_NAME as BHVR_REFUEL_ALL_IN_SYSTEM,
-)
-from behaviours.single_stable_trade import (
-    SingleStableTrade,
-    BEHAVIOUR_NAME as BHVR_SINGLE_STABLE_TRADE,
-)
-from behaviours.monitor_specific_location import (
-    MonitorPrices,
-    BEHAVIOUR_NAME as BHVR_MONITOR_SPECIFIC_LOCATION,
-)
-from behaviours.take_from_extractors_and_fulfill import (
-    TakeFromExactorsAndFulfillOrSell_9,
-    BEHAVIOUR_NAME as BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL,
-)
-from behaviours.siphon_and_chill import (
-    SiphonAndChill,
-    BEHAVIOUR_NAME as BHVR_SIPHON_AND_CHILL,
-)
-from behaviours.manage_specific_export import (
-    ManageSpecifcExport,
-    BEHAVIOUR_NAME as BHVR_MANAGE_SPECIFIC_EXPORT,
-)
-from behaviours.construct_a_jumpgate import (
-    ConstructJumpgate,
-    BEHAVIOUR_NAME as BHVR_CONSTRUCT_JUMP_GATE,
-)
-from behaviours.sell_or_jettison_all_cargo import ( SellOrDitch, BEHAVIOUR_NAME as BHVR_SELL_OR_JETTISON_ALL_CARGO)
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
 from straders_sdk.utils import try_execute_select, try_execute_upsert
 from straders_sdk.pathfinder import PathFinder
 from datetime import datetime, timedelta
-
-BHVR_RECEIVE_AND_SELL = "RECEIVE_AND_SELL"
-BHVR_EXTRACT_AND_TRANSFER_HIGHEST = "EXTRACT_AND_TRANSFER_HIGHEST"
-BHVR_EXPLORE_CURRENT_SYSTEM = "EXPLORE_CURRENT_SYSTEM"
-BHVR_EXTRACT_AND_TRANSFER_ALL = "EXTRACT_AND_TRANSFER_ALL"
 
 RQ_DRONE = "REQUIRE_DRONE"
 RQ_EXPLORER = "EXPLORER"
@@ -113,30 +30,8 @@ RQ_ANY_FREIGHTER = "ANY_FREIGHTER"
 RQ_CARGO = "_CARGO"
 RQ_FUEL = "_FUEL"
 
-behaviours_and_classes = {
-    BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
-    BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
-    BHVR_EXTRACT_AND_TRANSFER: ExtractAndTransfer_8,
-    # BHVR_REMOTE_SCAN_AND_SURV: RemoteScanWaypoints,
-    BHVR_EXPLORE_SYSTEM: ExploreSystem,
-    BHVR_MONITOR_CHEAPEST_PRICE: MonitorCheapestShipyard,
-    BHVR_BUY_AND_DELIVER_OR_SELL: BuyAndDeliverOrSell_6,
-    # BHVR_EXTRACT_AND_FULFILL: ExtractAndFulfill_7,
-    BHVR_RECEIVE_AND_REFINE: ReceiveAndRefine,
-    BHVR_UPGRADE_TO_SPEC: FindMountsAndEquip,
-    BHVR_CHILL_AND_SURVEY: ChillAndSurvey,
-    BHVR_REFUEL_ALL_IN_SYSTEM: RefuelAnExchange,
-    BHVR_SINGLE_STABLE_TRADE: SingleStableTrade,
-    BHVR_BUY_AND_SELL_DRIPFEED: BuyAndSellDripfeed,
-    BHVR_MONITOR_SPECIFIC_LOCATION: MonitorPrices,
-    BHVR_EXTRACT_AND_CHILL: ExtractAndChill,
-    BHVR_TAKE_FROM_EXTRACTORS_AND_FULFILL: TakeFromExactorsAndFulfillOrSell_9,
-    BHVR_SIPHON_AND_CHILL: SiphonAndChill,
-    BHVR_MANAGE_SPECIFIC_EXPORT: ManageSpecifcExport,
-    BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
-    BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
-    
-}
+from behaviour_constants import *
+from behaviour_constants import behaviours_and_classes
 
 logger = logging.getLogger("dispatcher")
 
@@ -255,11 +150,12 @@ class dispatcher:
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
-            try:
-                self._the_big_loop(ships_and_threads)
-            except Exception as err:
-                self.logger.error("Error in the big loop: %s", err)
-                time.sleep(30)
+            self._the_big_loop(ships_and_threads)
+        #            try:
+        #                self._the_big_loop(ships_and_threads)
+        #            except Exception as err:
+        #                self.logger.error("Error in the big loop: %s", err)
+        #                time.sleep(30)
 
         last_exec = False
         while (
@@ -267,17 +163,25 @@ class dispatcher:
             or last_exec
         ):
             ships_to_pop = []
-            last_exec = False
+
             for ship_id, thread in ships_and_threads.items():
                 if not thread.is_alive():
                     thread.join()
                     print(f"ship {ship_id} has finished - releasing")
                     lock_ship(ship_id, self.lock_id, self.connection, duration=0)
                     ships_to_pop.append(ship_id)
+
             for ship_id in ships_to_pop:
                 ships_and_threads.pop(ship_id)
                 last_exec = len(ships_and_threads) == 0
             time.sleep(1)
+        # release the final ship
+        for ship_id, thread in ships_and_threads.items():
+            if not thread.is_alive():
+                thread.join()
+                print(f"FINAL RELEASE - ship {ship_id} has finished - releasing")
+                lock_ship(ship_id, self.lock_id, self.connection, duration=0)
+
         self.consumer.stop()
 
     def _the_big_loop(self, ships_and_threads):
@@ -318,10 +222,12 @@ class dispatcher:
                 )
                 if len(unlocked_ships) > 10:
                     set_logging(level=logging.INFO)
+                    consumer_logger = logging.getLogger("RequestConsumer")
+                    consumer_logger.setLevel(logging.CRITICAL)
                     api_logger = logging.getLogger("API-Client")
                     api_logger.setLevel(logging.CRITICAL)
                     self.logger.level = logging.INFO
-                    logging.getLogger().setLevel(logging.WARNING)
+                    logging.getLogger().setLevel(logging.INFO)
                     pass
                 # if we're running a ship and the lock has expired during execution, what do we do?
                 # do we relock the ship whilst we're running it, or terminate the thread
@@ -332,32 +238,33 @@ class dispatcher:
             #
 
             for ship_and_behaviour in unlocked_ships:
-                if ship_and_behaviour["name"] in ships_and_threads:
-                    thread = ships_and_threads[ship_and_behaviour["name"]]
+                ship_name = ship_and_behaviour["name"]
+                if ship_name in ships_and_threads:
+                    thread = ships_and_threads[ship_name]
                     thread: threading.Thread
                     if thread.is_alive():
                         continue
                     else:
-                        del ships_and_threads[ship_and_behaviour["name"]]
+                        del ships_and_threads[ship_name]
 
                 #
                 # is there a task the ship can execute? if not, go to behaviour scripts instead.
                 #
-                task = self.get_task_for_ships(self.client, ship_and_behaviour["name"])
+                task = self.get_task_for_ships(self.client, ship_name)
                 if task:
                     if task["claimed_by"] is None or task["claimed_by"] == "":
-                        self.claim_task(task["task_hash"], ship_and_behaviour["name"])
+                        self.claim_task(task["task_hash"], ship_name)
                     task["behaviour_params"]["task_hash"] = task["task_hash"]
 
                     bhvr = self.map_behaviour_to_class(
                         task["behaviour_id"],
-                        ship_and_behaviour["name"],
+                        ship_name,
                         task["behaviour_params"],
                         agent_symbol,
                     )
                     doing_task = self.lock_and_execute(
                         ships_and_threads,
-                        ship_and_behaviour["name"],
+                        ship_name,
                         bhvr,
                         task["behaviour_id"],
                     )
@@ -373,14 +280,14 @@ class dispatcher:
                 bhvr = None
                 bhvr = self.map_behaviour_to_class(
                     ship_and_behaviour["behaviour_id"],
-                    ship_and_behaviour["name"],
+                    ship_name,
                     ship_and_behaviour["behaviour_params"],
                     agent_symbol,
                 )
 
                 self.lock_and_execute(
                     ships_and_threads,
-                    ship_and_behaviour["name"],
+                    ship_name,
                     bhvr,
                     ship_and_behaviour["behaviour_id"],
                 )
@@ -683,18 +590,33 @@ if __name__ == "__main__":
     if len(sys.argv) >= 2:
         # no username provided, dispatch for all locally saved agents. (TERRIBLE IDEA GENERALLY)
         target_user = sys.argv[1].upper()
+        users = load_users(target_user)
 
     set_logging(level=logging.DEBUG)
-    users = load_users(target_user)
-    dips = dispatcher(
-        users,
-        os.environ.get("ST_DB_HOST", "DB_HOST_not_set"),
-        os.environ.get("ST_DB_PORT", "DB_PORT_not_set"),
-        os.environ.get("ST_DB_NAME", "DB_NAME_not_set"),
-        os.environ.get("ST_DB_USER", "DB_USER_not_set"),
-        os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
-    )
-    signal.signal(signal.SIGINT, dips.set_exit_flag)
+    if not target_user:
+        # no username provided, check for a token in the environment variables
+        token = os.environ.get("ST_TOKEN", None)
+        if not token:
+            logging.error("env variable ST_TOKEN is not set. Exiting.")
+            exit()
+
+        user = get_name_from_token(token)
+        if user:
+            users = [(token, user)]
+    try:
+        dips = dispatcher(
+            users,
+            os.environ.get("ST_DB_HOST", "ST_DB_HOST_not_set"),
+            os.environ.get("ST_DB_PORT", None),
+            os.environ.get("ST_DB_NAME", "ST_DB_NAME_not_set"),
+            os.environ.get("ST_DB_USER", "ST_DB_USER_not_set"),
+            os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
+        )
+        signal.signal(signal.SIGINT, dips.set_exit_flag)
+    except Exception as err:
+        logging.error("%s", err)
+        time.sleep(60 * 10)
+        exit()
     dips.run()
     exit()
     ships = dips.ships_view(True)

@@ -11,6 +11,7 @@ from behaviours.generic_behaviour import Behaviour
 import time
 
 BEHAVIOUR_NAME = "SIPHON_AND_CHILL"
+SAFETY_PADDING = 180
 
 
 class SiphonAndChill(Behaviour):
@@ -55,7 +56,7 @@ class SiphonAndChill(Behaviour):
         )
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:
@@ -65,7 +66,7 @@ class SiphonAndChill(Behaviour):
 
                 target_wp_sym = target_wp.symbol
             else:
-                target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
+                target_wp = st.waypoints_view_one(target_wp_sym)
 
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
@@ -74,7 +75,7 @@ class SiphonAndChill(Behaviour):
             return
 
         # in a circumstance where the ship isn't in the specified system, it will go.
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
+        self.ship_extrasolar_jump(waypoint_slicer(target_wp_sym))
         self.ship_intrasolar(target_wp_sym)
         self.sleep_until_ready()
 

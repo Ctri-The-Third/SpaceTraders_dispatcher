@@ -8,6 +8,7 @@ import time
 from straders_sdk.utils import set_logging, waypoint_slicer
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL_8"
+SAFETY_PADDING = 180
 
 
 class ExtractAndTransfer_8(Behaviour):
@@ -75,7 +76,7 @@ class ExtractAndTransfer_8(Behaviour):
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
                 )
             target_sys_sym = waypoint_slicer(target_wp_sym)
-            target_wp = st.waypoints_view_one(target_sys_sym, target_wp_sym)
+            target_wp = st.waypoints_view_one(target_wp_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
@@ -83,7 +84,7 @@ class ExtractAndTransfer_8(Behaviour):
             return
 
         self.sleep_until_ready()
-        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
+        self.ship_extrasolar_jump(target_sys_sym)
         self.ship_intrasolar(target_wp_sym)
 
         #
@@ -115,7 +116,7 @@ class ExtractAndTransfer_8(Behaviour):
                 agent.credits,
                 agent.credits - starting_credts,
             )
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
             return
 
         cutoff_cargo_limit = None
@@ -172,7 +173,7 @@ class ExtractAndTransfer_8(Behaviour):
             self.logger.info(
                 "Ship unable to do anything, sleeping for 1 minute - hoping for a transport."
             )
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
 
         #
         # end of script.
