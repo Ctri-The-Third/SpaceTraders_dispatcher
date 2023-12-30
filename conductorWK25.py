@@ -293,6 +293,8 @@ class BehaviourConductor:
         )
 
         if len(haulers) < system._hauler_job_count:
+            if len(system.ship_type_shipyards) == 0:
+                return
             if "SHIP_HEAVY_FREIGHTER" in system.ship_type_shipyards:
                 hauler_type = "SHIP_HEAVY_FREIGHTER"
             elif (
