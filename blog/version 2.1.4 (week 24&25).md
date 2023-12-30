@@ -135,16 +135,32 @@ Here's what I'll need to get underway - and eventually have procuedurally detect
 
 ## Credit decline
 
-Since opening the gate and sending ships through, we introduced some regression behaviour that has negatively impacted the amount of profit we're making. It's unclear what, or why.
+Since opening the gate and sending ships through, we introduced some regression behaviour that has negatively impacted the amount of profit we're making. It's unclear what, or why.  
+(it was fuel costs spiking - either due to system overuse or lack of dedicated management)
 
 
-* We're hampered by a UI and conductor not designed for multi system operations. Each system we select should be managed. Ideally, this should be shared across agents
+* ✅ We're hampered by a UI and conductor not designed for multi system operations. Each system we select should be managed. Ideally, this should be shared across agents
 * we need to be able to set jobs on a per-system basis, with requirements.
-* This week we're using explorers but we should have an intermediary step of finding haulers on the jump gate network. 
-* Identifying starter systems is easy to a human. They have planets with a consistent naming structure, an engineered_asteroid and operate with at least 15 planets/moons.
-  * The non-starter systems that are on the jumpgate network must be explored. Probes may be the best choice for this as they're cheap and the jumpgate is inherently slow anyway
+* ✅ This week we're using explorers but we should have an intermediary step of finding haulers on the jump gate network. 
+* ✅ Identifying starter systems is easy to a human. They have planets with a consistent naming structure, an engineered_asteroid and operate with at least 15 planets/moons.
+  * ✅ The non-starter systems that are on the jumpgate network must be explored. Probes may be the best choice for this as they're cheap and the jumpgate is inherently slow anyway
 
 
+# end of week 25
+
+
+| stat              | Node U (exp) | node V (21) | node C (23) | 
+| ---               | ------------ | ----------  | --------------- |
+| total uptime      | 238.31h      | 198.89h     | 229.13h         |
+| total ships       | 228          | 57          | 58              |
+| contracts         | 18           | 0           | 29              |
+| contract_earnings | 3,427,586    | 7,925       | 13,606,877      |
+| trade_earnings    | 298,802,283  | 54,413,924  | 2,385,943       |
+| total_earnings    | 302,229,869  | 54,421,849  | 15,992,820      |
+| requests          | 1,084,083    | 761,029     | 1,643,168       |
+| average delay     | 3.16         | 1.38        | 5.26            |
+| CPH               | 1,268,221.51 | 3826.38     | 69,798.02       |
+| CPR               | 278.78       | 71.51       | 9.74            |
 
 
 # market evolution investigation query

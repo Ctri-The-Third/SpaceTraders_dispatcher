@@ -126,7 +126,7 @@ class BehaviourConductor:
         #
         # * scale regularly and set defaults
 
-        self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
+        self.next_quarterly_update = datetime.now() + timedelta(minutes=1)
         self.next_hourly_update = datetime.now() + timedelta(hours=1)
 
         self.next_daily_update = datetime.now() + timedelta(days=1)
@@ -138,8 +138,11 @@ class BehaviourConductor:
         self._refresh_game_plan(self.game_plan_path)
         # rerun the hourly thing after we've calculated "ships we might buy"
         starting_run = True
+
         while True:
-            logging.info("Conductor is running")
+            logging.info(
+                f"Conductor is running - Q{self.next_quarterly_update.strftime('%H:%M:%S')}, H{self.next_hourly_update.strftime('%H:%M:%S')}, D{self.next_daily_update.strftime('%H:%M:%S')}"
+            )
             self.st.view_my_self()
             ships = list(self.st.ships_view().values())
             ships.sort(key=lambda ship: ship.index)
@@ -181,13 +184,13 @@ class BehaviourConductor:
                     self.system_hourly_update(system)
                     self.system_quarterly_update(system)
 
-                if reset_quarterly:
-                    self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
-                if reset_hourly:
-                    self.next_hourly_update = datetime.now() + timedelta(hours=1)
-                if reset_daily:
-                    self.next_daily_update = datetime.now() + timedelta(days=1)
-                self.system_minutely_update(system)
+            if reset_quarterly:
+                self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
+            if reset_hourly:
+                self.next_hourly_update = datetime.now() + timedelta(hours=1)
+            if reset_daily:
+                self.next_daily_update = datetime.now() + timedelta(days=1)
+            self.system_minutely_update(system)
             starting_run = False
             # here for testing purposes only - remove this
 
@@ -253,10 +256,13 @@ class BehaviourConductor:
             best_ship = None
             if len(system.explorers) > 0:
                 best_ship = system.explorers[0]
+            elif len(system.commanders) > 0:
+                best_ship = system.commanders[0]
             elif len(system.haulers) > 0:
                 best_ship = system.haulers[0]
             elif len(system.satellites) > 0:
                 best_ship = system.satellites[0]
+
             if best_ship:
                 log_task(
                     self.connection,
@@ -266,7 +272,7 @@ class BehaviourConductor:
                     1,
                     self.current_agent_symbol,
                     {"ship_type": system._next_ship_to_buy},
-                    self.next_quarterly_update,
+                    self.next_quarterly_update + timedelta(minutes=15),
                     best_ship.name,
                 )
                 system._next_ship_to_buy = None
