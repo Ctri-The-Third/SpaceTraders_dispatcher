@@ -293,27 +293,29 @@ class BehaviourConductor:
         )
 
         if len(haulers) < system._hauler_job_count:
+            hauler_type = None
             if "SHIP_HEAVY_FREIGHTER" in system.ship_type_shipyards:
                 hauler_type = "SHIP_HEAVY_FREIGHTER"
             elif (
                 system.use_explorers_as_haulers
                 and "SHIP_EXPLORER" in system.ship_type_shipyards
             ):
-                hauler_type = "SHIP_EXPLORER"
+                hauler_type = "SHIP_EXPLORER"`
             elif "SHIP_LIGHT_HAULER" in system.ship_type_shipyards:
                 hauler_type = "SHIP_LIGHT_HAULER"
             elif "SHIP_LIGHT_SHUTTLE" in system.ship_type_shipyards:
                 hauler_type = "SHIP_LIGHT_SHUTTLE"
-            resp = maybe_buy_ship_sys2(
-                self.st,
-                system,
-                hauler_type,
-                len(system.haulers) * 50000 + 150000,
-            )
-            if resp:
-                self.set_hauler_tasks(system)
-            else:
-                system._next_ship_to_buy = hauler_type
+            if hauler_type:
+                resp = maybe_buy_ship_sys2(
+                    self.st,
+                    system,
+                    hauler_type,
+                    len(system.haulers) * 50000 + 150000,
+                )
+                if resp:
+                    self.set_hauler_tasks(system)
+                else:
+                    system._next_ship_to_buy = hauler_type
 
         if len(system.extractors) < system._extractor_job_count:
             resp = maybe_buy_ship_sys2(
