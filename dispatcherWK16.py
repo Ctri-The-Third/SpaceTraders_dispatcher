@@ -213,12 +213,13 @@ class dispatcher:
                 )
 
                 logging.info(
-                    "dispatcher %s found %d unlocked ships for agent %s - %s active (%s%%)",
+                    "dispatcher %s found %d unlocked ships for agent %s - %s active (%s%%). Request consumer is_alive? %s",
                     self.lock_id,
                     len(unlocked_ships),
                     agent_symbol,
                     active_ships,
                     round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
+                    self.consumer._consumer_thread.is_alive(),
                 )
                 if len(unlocked_ships) > 10:
                     set_logging(level=logging.INFO)

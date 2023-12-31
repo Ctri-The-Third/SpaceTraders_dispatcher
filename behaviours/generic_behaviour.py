@@ -917,6 +917,7 @@ order by 1 desc """
             if not resp:
                 return False
         flight_mode = "CRUISE"
+        best_nav = None
         if burn_allowed:
             current_wp = self.st.waypoints_view_one(ship.nav.waypoint_symbol)
             burn_nav = self.pathfinder.plot_system_nav(
