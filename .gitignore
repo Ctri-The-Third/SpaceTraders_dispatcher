@@ -138,3 +138,4 @@ conductor_frustrate.py
 scripts/PRD-build_and_run_dispatcher_container.bat
 behaviours/Z_repro_pathfinder_issue
 game_plan.json
+custom_game_plan.json

@@ -1053,8 +1053,8 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-W-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)

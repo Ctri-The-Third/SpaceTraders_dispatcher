@@ -110,9 +110,9 @@ def wait_until_reset(url, user_file: dict):
                 logging.info("It's coming!")
         except Exception as err:
             logging.error("Error %s", err)
-        finally:
-            had_to_wait = True
-            time.sleep(5)
+
+        time.sleep(5)
+        had_to_wait = True
 
 
 def get_prices_for(connection, tradegood: str, agent_symbol="@"):

@@ -417,6 +417,8 @@ class BehaviourConductor:
                 pass
         i = 0
         for satellite in self.satellites[len(types) + 1 :]:
+            if i >= len(coordinates):
+                break
             set_behaviour(
                 self.connection,
                 satellite.name,

@@ -300,7 +300,7 @@ class BehaviourConductor:
                 system.use_explorers_as_haulers
                 and "SHIP_EXPLORER" in system.ship_type_shipyards
             ):
-                hauler_type = "SHIP_EXPLORER"`
+                hauler_type = "SHIP_EXPLORER"
             elif "SHIP_LIGHT_HAULER" in system.ship_type_shipyards:
                 hauler_type = "SHIP_LIGHT_HAULER"
             elif "SHIP_LIGHT_SHUTTLE" in system.ship_type_shipyards:
@@ -381,7 +381,6 @@ class BehaviourConductor:
             for symbol in market_symbols:
                 wp = self.st.waypoints_view_one(symbol)
                 coords[f"{wp.x},{wp.y}"] = symbol
-            satellites = system.satellites
             for symbol in market_symbols:
                 if len(satellites) == 0:
                     break
