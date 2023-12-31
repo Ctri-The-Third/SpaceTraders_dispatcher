@@ -81,6 +81,7 @@ class BehaviourConductor:
         self.extractors = []
         self.surveyors = []
         self.satellites = []
+        self.siphoners = []
         self.refiners = []
         self.pathfinder = PathFinder(connection=self.connection)
 
@@ -183,6 +184,7 @@ class BehaviourConductor:
                     self.system_daily_update(system)
                     self.system_hourly_update(system)
                     self.system_quarterly_update(system)
+                self.system_minutely_update(system)
 
             if reset_quarterly:
                 self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
@@ -190,7 +192,6 @@ class BehaviourConductor:
                 self.next_hourly_update = datetime.now() + timedelta(hours=1)
             if reset_daily:
                 self.next_daily_update = datetime.now() + timedelta(days=1)
-            self.system_minutely_update(system)
             starting_run = False
             # here for testing purposes only - remove this
 
@@ -248,6 +249,7 @@ class BehaviourConductor:
         system._probe_job_count = self.set_probe_tasks(system)
         system._hauler_job_count = self.set_hauler_tasks(system)
         system._extractor_job_count = self.set_extractor_tasks(system)
+        system._siphoner_job_count = self.set_siphoner_tasks(system)
 
     def system_quarterly_update(self, system: "ConductorSystem"):
         # if the system's "buy_next_ship" attribute is set, log a task to buy it.
@@ -313,6 +315,7 @@ class BehaviourConductor:
                     len(system.haulers) * 50000 + 150000,
                 )
                 if resp:
+                    self.haulers.append(resp)
                     self.set_hauler_tasks(system)
                 else:
                     system._next_ship_to_buy = hauler_type
@@ -325,9 +328,23 @@ class BehaviourConductor:
                 len(system.haulers) * 50000 + 150000,
             )
             if resp:
+                self.extractors.append(resp)
                 self.set_extractor_tasks(system)
             else:
                 system._next_ship_to_buy = system.extractor_type_to_use
+        if len(system.siphoners) < system._siphoner_job_count:
+            resp = maybe_buy_ship_sys2(
+                self.st,
+                system,
+                "SHIP_SIPHON_DRONE",
+                len(system.haulers) * 50000 + 150000,
+            )
+            if resp:
+                self.siphoners.append(resp)
+                self.set_siphoner_tasks(system)
+            else:
+                system._next_ship_to_buy = "SHIP_SIPHON_DRONE"
+
         if len(system.satellites) < system._probe_job_count:
             if "SHIP_PROBE" in system.ship_type_shipyards:
                 resp = maybe_buy_ship_sys2(
@@ -337,6 +354,7 @@ class BehaviourConductor:
                     len(system.haulers) * 50000,
                 )
                 if resp:
+                    self.satellites.append(resp)
                     self.set_probe_tasks(system)
                 else:
                     system._next_ship_to_buy = "SHIP_PROBE"
@@ -461,7 +479,30 @@ class BehaviourConductor:
                     BHVR_EXTRACT_AND_GO_SELL,
                     {"asteroid_wp": wayp_s},
                 )
+
         return extractor_jobs
+
+    def set_siphoner_tasks(self, system: "ConductorSystem") -> int:
+        siphoner_jobs = 0
+        siphoners = system.siphoners[:]
+        gas_giants = self.st.find_waypoints_by_type(system.system_symbol, "GAS_GIANT")
+        for wayp in gas_giants:
+            wayp
+            siphoners_for_wayp = 0
+            if wayp.type == "GAS_GIANT":
+                siphoner_jobs += system.siphoners_per_gas_giant
+                siphoners_for_wayp = system.siphoners_per_gas_giant
+            for i in range(siphoners_for_wayp):
+                if len(siphoners) == 0:
+                    break
+                siphoner = siphoners.pop(0)
+                set_behaviour(
+                    self.connection,
+                    siphoner.name,
+                    BHVR_EXTRACT_AND_GO_SELL,
+                    {"asteroid_wp": wayp.symbol},
+                )
+        return siphoner_jobs
 
     def set_commander_tasks(self, system: "ConductorSystem") -> int:
         if system.commander_trades:
@@ -544,7 +585,8 @@ class BehaviourConductor:
         if e:
             start_system.mining_sites = [w.symbol for w in e]
 
-        if not gate_complete:
+        if gate_complete:
+            start_system.construct_jump_gate = False
             # we need populate the next HQ system - starting with our own.
             factions = st.list_factions()
             # sort them by distance to our location
@@ -583,8 +625,10 @@ class BehaviourConductor:
             next_system.probes_to_monitor_markets = True
             next_system.probes_to_monitor_shipyards = True
             next_system.use_explorers_as_haulers = True
-            next_system.siphoners_per_gas_giant = 10
+            next_system.siphoners_per_gas_giant = 0
             next_system.commander_trades = True
+        else:
+            start_system.construct_jump_gate = True
 
         self._save_game_plan("game_plan.json")
 
@@ -700,6 +744,7 @@ class ConductorSystem:
     _probe_job_count = 0
     _hauler_job_count = 0  # haulers are also explorers if the setting is on
     _extractor_job_count = 0
+    _siphoner_job_count = 0
 
     def __init__(self, **kwargs) -> None:
         self.__dict__.update(kwargs)
@@ -723,6 +768,9 @@ class ConductorSystem:
             "extractor_type_to_use": self.extractor_type_to_use,
             "surveyors_per_asteroid": self.surveyors_per_asteroid,
             "haulers_chain_trading": self.haulers_chain_trading,
+            "haulers_doing_missions": self.haulers_doing_missions,
+            "construct_jump_gate": self.construct_jump_gate,
+            "siphoners_per_gas_giant": self.siphoners_per_gas_giant,
         }
 
     @classmethod
