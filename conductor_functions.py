@@ -288,8 +288,9 @@ def _maybe_buy_ship(
                     return resp[0]
             else:
                 logging.warning(
-                    f"Tried to buy a ship {ship_symbol} but didn't have enough credits ({agent.credits}))"
+                    f"Tried to buy a ship {ship_symbol} but didn't have enough credits ({agent.credits} / {detail.purchase_price + safety_margin})"
                 )
+
                 return False
 
 
