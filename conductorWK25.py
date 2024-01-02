@@ -37,6 +37,7 @@ from conductor_functions import (
     maybe_buy_ship_sys2,
     log_task,
     wait_until_reset,
+    missing_market_prices,
 )
 
 
@@ -245,6 +246,26 @@ class BehaviourConductor:
                     self.current_agent_symbol,
                     specific_ship_symbol=ship.name,
                 )
+
+        if missing_market_prices(self.connection, system.system_symbol, 3):
+            best_ship = system.commanders[0] if len(system.commanders) > 0 else None
+            if not best_ship:
+                best_ship = system.explorers[0] if len(system.explorers) > 0 else None
+            if not best_ship:
+                best_ship = system.haulers[0] if len(system.haulers) > 0 else None
+            if not best_ship:
+                best_ship = system.satellites[0] if len(system.satellites) > 0 else None
+            log_task(
+                self.connection,
+                bhvr.BHVR_EXPLORE_SYSTEM,
+                [],
+                system.system_symbol,
+                5,
+                self.current_agent_symbol,
+                {"target_sys": system.system_symbol, "priority": 3},
+                specific_ship_symbol=best_ship.name,
+                expiry=self.next_hourly_update + timedelta(hours=1),
+            )
         self.set_commander_tasks(system)
         system._probe_job_count = self.set_probe_tasks(system)
         system._hauler_job_count = self.set_hauler_tasks(system)
@@ -414,13 +435,18 @@ class BehaviourConductor:
 
     def set_hauler_tasks(self, system: "ConductorSystem") -> int:
         hauler_jobs = (
-            len(system.hauler_tradegood_manage_jobs) + system.haulers_chain_trading
+            len(system.hauler_tradegood_manage_jobs)
+            + system.haulers_chain_trading
+            + system.haulers_doing_missions
+            + 1
+            if system.construct_jump_gate
+            else 0
         )
         # set up the haulers to go to the markets and buy stuff
         if system.use_explorers_as_haulers:
             ships = system.explorers[:] + system.haulers[:]
         else:
-            ships = system.haulers
+            ships = system.haulers[:]
         for tradegood in system.hauler_tradegood_manage_jobs:
             if len(ships) == 0:
                 break
@@ -454,6 +480,36 @@ class BehaviourConductor:
                 BHVR_CHAIN_TRADE,
                 {"priority": 3},
                 # {} "tradegood": tradegood, "buy_wp": import_wp, "sell_wp": export_wp},
+            )
+
+        for i in range(system.haulers_doing_missions):
+            if len(ships) == 0:
+                break
+            hauler = ships.pop(0)
+            set_behaviour(
+                self.connection,
+                hauler.name,
+                bhvr.BHVR_EXECUTE_CONTRACTS,
+                {"priority": 3},
+            )
+        if system.construct_jump_gate:
+            if len(ships) == 0:
+                return hauler_jobs
+            hauler = ships.pop(0)
+            set_behaviour(
+                self.connection,
+                hauler.name,
+                bhvr.BHVR_CONSTRUCT_JUMP_GATE,
+                {"priority": 4, "target_sys": system.system_symbol},
+            )
+
+        while len(ships) > 0:
+            hauler = ships.pop(0)
+            set_behaviour(
+                self.connection,
+                hauler.name,
+                "EXCESS TO SYSTEM GAME PLAN",
+                {"priority": 5},
             )
         return hauler_jobs
 

@@ -10,9 +10,17 @@ We finished in 2nd last reset, incredible performance.
 * ✅ Week 24/25 (node W) - sent the starting probe to the wrong waypoint, so couldn't buy and more probes. The conductor was having market monitoring override shipyard monitoring tasks.
 * ✅ The DB container didn't have ship_mounts table populated because that came from the `reset_db.py` script that we're not using.   Changed to materialized view - fixed node V and C's conductors from failing.
 * ❓ Command ship W--1 drifting for chain trades. 
+  * Observed again. It's using a cached route so I'ma purge the cache.
 * ❓ Performance of UI / DB is attrocious
-* ❓ The request consumer terminated, and there is no "restart" Behaviour.
-
+* ✅ The request consumer terminated, and there is no "restart" Behaviour - it was actually stuck waiting for a request to return, as there wasn't a timeout attach to the send instruction
+* ✅ The conductor didn't (And isn't) performing sweeps of the start system to fill in missing market data - forgot to implement this
+* ✅ The conductor wasn't ordering jumpgate construction or mission orchestration - forgot to implement this 
+* ❓ For some reason timzone info is making its way into the ship cooldown field, causing a type-mismatch. - not sure why, not coming from the DB.
+ * Needs fixing in the ship constructor
+* Connection limit being hit on the DB - need to figure out 
+  * data persistance (mounted volumes)
+  * getting the postgrel.conf file into the image
+* The manage export behaviour is utilising all the ADVANCED_CIRCUITRY for profit. This behaviour needs reworked to the manage_supply_chain ideal.
 ## softer ramp test
 
 Experiment to see if we can be more effictive in our ramp, get traders earlier before we get hunners of probes.
@@ -22,3 +30,5 @@ Experiment to see if we can be more effictive in our ramp, get traders earlier b
 * 1 extra chain trader
 * 1 on missions
 * no jump gate
+
+Outcome - seems to be outperforming W, which has stalled on credits. Need to put some condition for expanding the probes further out
