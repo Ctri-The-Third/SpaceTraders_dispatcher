@@ -5,13 +5,17 @@ We finished in 2nd last reset, incredible performance.
 
 
 
-## Issues 
+## Issues  
 
 * ✅ Week 24/25 (node W) - sent the starting probe to the wrong waypoint, so couldn't buy and more probes. The conductor was having market monitoring override shipyard monitoring tasks.
 * ✅ The DB container didn't have ship_mounts table populated because that came from the `reset_db.py` script that we're not using.   Changed to materialized view - fixed node V and C's conductors from failing.
 * ❓ Command ship W--1 drifting for chain trades. 
   * Observed again. It's using a cached route so I'ma purge the cache.
 * ❓ Performance of UI / DB is attrocious
+* the scan thread doesn't continually run
+* no way in the UI of observing request utilisation - need a graph
+* UI needs some mechanism for indicating when loading is happening / has finished, with a note if a bad statuscode was returned
+
 * ✅ The request consumer terminated, and there is no "restart" Behaviour - it was actually stuck waiting for a request to return, as there wasn't a timeout attach to the send instruction
 * ✅ The conductor didn't (And isn't) performing sweeps of the start system to fill in missing market data - forgot to implement this
 * ✅ The conductor wasn't ordering jumpgate construction or mission orchestration - forgot to implement this 
