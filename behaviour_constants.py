@@ -85,7 +85,7 @@ from behaviours.chain_trade import ChainTrade, BEHAVIOUR_NAME as BHVR_CHAIN_TRAD
 
 from behaviours.manage_supply_chain import (
     ManageManufactureChain,
-    TRADE_SUPPLY_CHAIN as BHVR_MANAGE_SUPPLY_CHAIN,
+    BEHAVIOUR_NAME as BHVR_MANAGE_SUPPLY_CHAIN,
 )
 
 from behaviours.emergency_reboot import (
