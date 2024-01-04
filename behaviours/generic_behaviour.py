@@ -180,7 +180,10 @@ class Behaviour:
             )
         dest_wp = self.st.waypoints_view_one(target_wp_symbol)
         route = route or self.pathfinder.plot_system_nav(
-            ship.nav.system_symbol, origin_wp, dest_wp, self.ship.fuel_capacity
+            ship.nav.system_symbol,
+            origin_wp,
+            dest_wp,
+            self.ship.fuel_capacity,
         )
         if not route:
             route = [dest_wp]
@@ -239,9 +242,10 @@ class Behaviour:
                 and ship.nav.flight_mode != "DRIFT"
             ):
                 self.logger.warn(
-                    "DRIFT ALERT - Cached values: Current fuel %s, fuel cost %s",
+                    "DRIFT ALERT - Cached values: Current fuel %s, fuel cost %s, route = %s",
                     ship.fuel_current,
                     fuel_cost,
+                    [w.symbol for w in route.route],
                 )
                 st.ship_patch_nav(ship, "DRIFT")
             elif ship.nav.flight_mode != temp_flight_mode:

@@ -83,6 +83,10 @@ from behaviours.sell_or_jettison_all_cargo import (
 )
 from behaviours.chain_trade import ChainTrade, BEHAVIOUR_NAME as BHVR_CHAIN_TRADE
 
+from behaviours.manage_supply_chain import (
+    ManageManufactureChain,
+    TRADE_SUPPLY_CHAIN as BHVR_MANAGE_SUPPLY_CHAIN,
+)
 
 from behaviours.emergency_reboot import (
     EmergencyReboot,
@@ -132,6 +136,7 @@ behaviours_and_classes = {
     BHVR_CONSTRUCT_JUMP_GATE: ConstructJumpgate,
     BHVR_SELL_OR_JETTISON_ALL_CARGO: SellOrDitch,
     BHVR_CHAIN_TRADE: ChainTrade,
+    BHVR_MANAGE_SUPPLY_CHAIN: ManageManufactureChain,
     BHVR_EMERGENCY_REBOOT: EmergencyReboot,
     BHVR_EXECUTE_CONTRACTS: ExecuteContracts,
     BHVR_CHAIN_TRADE_EST: ChainTradeEST,
