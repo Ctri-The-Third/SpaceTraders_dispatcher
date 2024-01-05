@@ -50,7 +50,7 @@ class EmergencyReboot(Behaviour):
         self.sell_wp = self.behaviour_params.get("sell_wp", None)
 
     def run(self):
-        self.sleep_until_ready()
+        super().run()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
             self.ship.name,
@@ -71,6 +71,11 @@ class EmergencyReboot(Behaviour):
         # find the market that imports h
         # ydrocarbon and exports fuel
         # travel there, sell, refuel.
+        if not ship.can_siphon:
+            self.logger.error(
+                "Ship cannot siphon - this behaviour should only be used by the COMMANDER or an EXPLORER"
+            )
+            return
 
         if not self.asteroid_wp:
             try:
@@ -150,5 +155,7 @@ if __name__ == "__main__":
     bhvr = EmergencyReboot(agent, ship, behaviour_params or {})
 
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    bhvr.run()
+    bhvr.st.ships_view_one(ship, True)
+    while True:
+        bhvr.run()
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
