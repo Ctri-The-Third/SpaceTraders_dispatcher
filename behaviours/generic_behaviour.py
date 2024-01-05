@@ -245,7 +245,7 @@ class Behaviour:
                     "DRIFT ALERT - Cached values: Current fuel %s, fuel cost %s, route = %s",
                     ship.fuel_current,
                     fuel_cost,
-                    [w.symbol for w in route.route],
+                    [w for w in route.route],
                 )
                 st.ship_patch_nav(ship, "DRIFT")
             elif ship.nav.flight_mode != temp_flight_mode:
@@ -895,6 +895,7 @@ order by 1 desc """
         )
         if not resp:
             self.st.view_my_self(True)
+            self.st.ships_view_one(ship.name, True)
             resp = self.purchase_what_you_can(
                 target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
             )
