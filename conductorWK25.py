@@ -255,6 +255,9 @@ class BehaviourConductor:
                 best_ship = system.haulers[0] if len(system.haulers) > 0 else None
             if not best_ship:
                 best_ship = system.satellites[0] if len(system.satellites) > 0 else None
+            if not best_ship:
+                # the system is empty, so we should log this task to a globally available ship.
+                return
             log_task(
                 self.connection,
                 bhvr.BHVR_EXPLORE_SYSTEM,
