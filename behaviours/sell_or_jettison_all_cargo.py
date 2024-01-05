@@ -62,12 +62,13 @@ class SellOrDitch(Behaviour):
         ship = self.ship = st.ships_view_one(self.ship_name, True)
         ship: Ship
         agent = st.view_my_self()
-
-        markets = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-        if markets:
+        current_location = st.waypoints_view_one(ship.nav.waypoint_symbol)
+        waypoints = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
+        waypoints_d = {w.symbol: w for w in waypoints}
+        if waypoints:
             markets = [
                 st.system_market(m)
-                for m in markets
+                for m in waypoints
                 if m.symbol != ship.nav.waypoint_symbol
             ]
         else:
@@ -79,9 +80,14 @@ class SellOrDitch(Behaviour):
                 tg = m.get_tradegood(cargo.symbol)
                 if not tg:
                     continue
-                if tg.sell_price > best_value:
+                wp = waypoints_d[m.symbol]
+                distance = (
+                    self.pathfinder.calc_distance_between(current_location, wp) + 15
+                )
+
+                if tg.sell_price / distance > best_value:
                     best_market = m
-                    best_value = tg.sell_price
+                    best_value = tg.sell_price / distance
             if best_market:
                 tg = best_market.get_tradegood(cargo.symbol)
                 self.ship_intrasolar(best_market.symbol)
@@ -103,7 +109,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "5C"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
