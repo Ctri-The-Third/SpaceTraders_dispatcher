@@ -27,6 +27,8 @@ We finished in 2nd last reset, incredible performance.
 * The manage export behaviour is utilising all the ADVANCED_CIRCUITRY for profit. This behaviour needs reworked to the manage_supply_chain ideal.
   * Our first effort at a "manage supply chain" has succeeded in boosting the imports of Liquid Nitrogen and Fertiliser, but not the export of Fertiliser.
   * It was unbounded and bankrupted us.
+  * ~~We're making it a "force evolution" script that won't be profitable - but will see evolution slowly propagate through the supply chain~~
+  * forcing evolution takes to long, so instead we're just going to make it focus on keeping things unrestricted.
 ## softer ramp test
 
 Experiment to see if we can be more effictive in our ramp, get traders earlier before we get hunners of probes.

@@ -32,7 +32,7 @@ from straders_sdk.constants import SUPPLY_LEVELS, MANUFACTURED_BY
 import math
 from behaviours.generic_behaviour import Behaviour
 
-BEHAVIOUR_NAME = "TRADE_SUPPLY_CHAIN"
+BEHAVIOUR_NAME = "EVOLVE_AND_MAINTAIN_SUPPLY_CHAIN"
 SAFETY_PADDING = 180
 
 
@@ -56,7 +56,7 @@ class ManageManufactureChain(Behaviour):
         )
         self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
-        self.target_tradegood = self.behaviour_params.get("tradegood", None)
+        self.target_tradegood = self.behaviour_params.get("target_tradegood", None)
         self.chain = None
         self.max_import_tv = self.behaviour_params.get("max_tv", 180)
         self.max_export_tv = math.floor(self.max_import_tv * (2 / 3))
@@ -111,7 +111,7 @@ class ManageManufactureChain(Behaviour):
                 time.sleep(SAFETY_PADDING)
             buy_wp_s = best_market.symbol
         if not next_link:
-            next_link = self.search_deeper_for_under_evolved_export(self.chain)
+            # next_link = self.search_deeper_for_under_evolved_export(self.chain)
             if next_link:
                 next_good = next_link.export_symbol
                 buy_wp_s = next_link.market_symbol
@@ -503,7 +503,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"priority": 3, "tradegood": "CLOTHING", "max_tv": 180}
+    behaviour_params = {"priority": 3, "target_tradegood": "CLOTHING", "max_tv": 180}
 
     while True:
         bhvr = ManageManufactureChain(agent, ship, behaviour_params or {})

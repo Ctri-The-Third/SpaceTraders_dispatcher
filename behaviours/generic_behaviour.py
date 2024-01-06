@@ -318,6 +318,8 @@ class Behaviour:
             self.sleep_until_ready()
 
             resp = st.ship_siphon(ship)
+            if not resp and resp.error_code == 4228:
+                return False
             for cargo in ship.cargo_inventory:
                 if cargo.symbol in tradegoods_to_discard:
                     st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
@@ -377,6 +379,7 @@ class Behaviour:
             self.sleep_until_ready()
 
             resp = st.ship_extract(ship, survey)
+
             if cargo_to_discard:
                 for cargo in ship.cargo_inventory:
                     if cargo.symbol in cargo_to_discard:
