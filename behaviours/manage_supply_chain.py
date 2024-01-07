@@ -113,6 +113,8 @@ class ManageManufactureChain(Behaviour):
         if not next_link:
             # next_link = self.search_deeper_for_under_evolved_export(self.chain)
             if next_link:
+                next_link: ChainLink
+
                 next_good = next_link.export_symbol
                 buy_wp_s = next_link.market_symbol
                 sell_wp_s = self.find_import_market_for_export_from_chain(
@@ -134,6 +136,14 @@ class ManageManufactureChain(Behaviour):
 
         if not next_good:
             self.logger.info("No unrestricted trades found")
+        params = {}
+        if not params:
+            params = self.select_deepest_restricted_trade(self.chain, "")
+        if not params:
+            # params = select_most_profitable_line(self.chain)
+            params = None
+        if not params:
+            self.logger.info("No trades found")
             time.sleep(SAFETY_PADDING)
         first_market = True
         did_something = False
