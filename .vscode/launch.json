@@ -15,7 +15,10 @@
             "request": "launch",
             "program": "conductorWK25.py",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": false,
+            "args": [
+                "custum_game_plan.json"
+            ]
         },
         {
             "name": "dispatcher -U",

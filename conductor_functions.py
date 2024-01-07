@@ -49,6 +49,8 @@ def process_contracts(client: SpaceTraders, recurse=True):
         ships = client.ships_view()
         satelite = [ship for ship in ships.values() if ship.role == "SATELLITE"][0]
         resp = client.ship_negotiate(satelite)
+        if not resp:
+            client.view_my_contracts(True)
         if resp and recurse:
             logging.info("Negotiated a contract %s", resp)
             process_contracts(client, False)

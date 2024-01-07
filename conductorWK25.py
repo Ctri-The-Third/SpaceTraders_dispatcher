@@ -22,7 +22,7 @@ from dispatcherWK16 import (
     BHVR_CHAIN_TRADE,
 )
 import behaviour_constants as bhvr
-
+import os
 from dispatcherWK16 import (
     RQ_ANY_FREIGHTER,
     RQ_CARGO,
@@ -65,13 +65,16 @@ class BehaviourConductor:
             self.current_agent_token = user.get("agents")[0]["token"]
 
         self.game_plan_path = user.get("custom_game_plan", "game_plan.json")
+        password = os.environ.get("ST_DB_PASS", None)
+        if not password:
+            password = os.environ.get("ST_DB_PASSWORD", None)
         client = self.st = SpaceTraders(
             self.current_agent_token,
-            db_host=user["db_host"],
-            db_port=user["db_port"],
-            db_name=user["db_name"],
-            db_user=user["db_user"],
-            db_pass=user["db_pass"],
+            db_host=os.environ.get("ST_DB_HOST", None),
+            db_port=os.environ.get("ST_DB_PORT", None),
+            db_name=os.environ.get("ST_DB_NAME", None),
+            db_user=os.environ.get("ST_DB_USER", None),
+            db_pass=password,
             current_agent_symbol=self.current_agent_symbol,
         )
         self.connection = client.connection
@@ -575,6 +578,7 @@ class BehaviourConductor:
 
     def populate_ships(self, ships: list[Ship], system: "ConductorSystem"):
         "Set the conductor's ship lists, and subdivides them into roles."
+        pass
         ships = [
             ship for ship in ships if ship.nav.system_symbol == system.system_symbol
         ]
