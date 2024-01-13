@@ -44,11 +44,16 @@ select agent_symbol, count(*) from contracts
 where fulfilled = true
 group by 1 ;
 
---earnings
+--trade earnings
 select agent_name, sum(case when type = 'PURCHASE' THEN total_price * -1 else total_price END ) 
 from transactions t 
 join ships s on t.ship_Symbol = s.ship_symbol
 group by 1;
+
+--contract earnings
+select agent_symbol, sum(payment_upfront + payment_on_completion) as earnings From contracts
+group by agent_symbol
+order by agent_symbol;
 
 --requests (excluding 429 responses)
 
@@ -61,6 +66,4 @@ from logging l  join session_and_agents saa on l.session_id = saa.session_id
  where status_code >= 200 and status_code < 500
   and status_code != 429
 group by 1 
-
-
 ```

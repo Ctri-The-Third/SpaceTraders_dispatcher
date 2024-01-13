@@ -8,6 +8,7 @@ from straders_sdk.models import Waypoint, System
 import time, math, threading
 
 BEHAVIOUR_NAME = "MONITOR_CHEAPEST_SHIPYARD_PRICE"
+SAFETY_PADDING = 180
 
 
 class MonitorCheapestShipyard(Behaviour):
@@ -43,9 +44,14 @@ class MonitorCheapestShipyard(Behaviour):
         )
         # scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            ship.name,
+            agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
-        time.sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining))
+        self.sleep_until_ready()
 
         sql = """select st.*, s.system_symbol, s.x, s.y from shipyard_types st
         join waypoints w on st.shipyard_symbol = w.waypoint_symbol
@@ -60,7 +66,7 @@ class MonitorCheapestShipyard(Behaviour):
             self.logger.error(
                 "Couldn't find ship type %s", self.behaviour_params["ship_type"]
             )
-            time.sleep(30)
+            self.st.sleep(180)
             return
         route = None
         for row in rows:
@@ -72,7 +78,7 @@ class MonitorCheapestShipyard(Behaviour):
                 break
         if not route:
             print(f"Couldn't find a route to any shipyards that sell {rows[0][1]}!")
-            time.sleep(60)
+            self.st.sleep(SAFETY_PADDING)
             return
         else:
             # print(
@@ -84,110 +90,21 @@ class MonitorCheapestShipyard(Behaviour):
         target_sys_sym = waypoint_slicer(target_wp)
         target_sys = st.systems_view_one(target_sys_sym)
         self.sleep_until_ready()
-        self.ship_extrasolar(target_sys)
+        self.ship_extrasolar_jump(target_sys.symbol)
         resp = self.ship_intrasolar(target_wp)
         if not resp:
-            time.sleep(60)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-        wp = st.waypoints_view_one(target_sys_sym, target_wp)
+        wp = st.waypoints_view_one(target_wp)
         if wp.has_shipyard:
             st.system_shipyard(wp, True)
             self.end()
 
-            time.sleep(60)
+            self.st.sleep(SAFETY_PADDING)
         if scan_thread.is_alive():
             scan_thread.join()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
-
-    def scan_waypoints(self):
-        st = self.st
-        ship = self.ship
-        #
-        # get 20 unscanned waypoints, focusing on stations, asteroids, and gates
-        #
-        wayps = (
-            self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
-            or self.get_twenty_unscanned_waypoints("ASTEROID_FIELD")
-            or self.get_twenty_unscanned_waypoints("JUMP_GATE")
-            or []
-        )
-
-        for wayp in wayps:
-            resp = st.waypoints_view_one(wayp[2], wayp[0], True)
-            time.sleep(1.2)
-            if ship.seconds_until_cooldown > 0:
-                continue
-            if ship.nav.travel_time_remaining > 0:
-                continue
-            if ship.can_survey:
-                st.ship_survey(ship)
-                time.sleep(0.5)
-
-        #
-        # get 20 unscanned jump gates
-        #
-
-        rows = self.get_twenty_unscanned_jumpgates()
-
-        for row in rows:
-            jump_gate_sym = row[0]
-            sys = waypoint_slicer(jump_gate_sym)
-
-            wp = st.waypoints_view_one(sys, jump_gate_sym)
-            if not wp.is_charted:
-                wp = st.waypoints_view_one(sys, jump_gate_sym, True)
-            if not wp.is_charted:
-                time.sleep(1.2)
-
-                continue
-            resp = st.system_jumpgate(wp, True)
-            time.sleep(1.2)
-            if ship.seconds_until_cooldown > 0:
-                continue
-            if ship.nav.travel_time_remaining > 0:
-                continue
-            if ship.can_survey:
-                st.ship_survey(ship)
-                time.sleep(0.5)
-
-        #
-        # MARKETS and SHIPYARDS
-        #
-
-        rows = self.get_twenty_unscanned_markets_or_shipyards()
-        for row in rows:
-            wp_sym = row[0]
-            sys = waypoint_slicer(wp_sym)
-            wp = st.waypoints_view_one(sys, wp_sym)
-            if wp.has_market:
-                resp = st.system_market(wp, True)
-                time.sleep(1.2)
-            if wp.has_shipyard:
-                resp = st.system_shipyard(wp, True)
-                time.sleep(1.2)
-
-    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[str]:
-        sql = """
-        select * from waypoints_not_scanned
-        where type = %s
-        order by random() 
-        limit 20
-        """
-        return try_execute_select(self.st.db_client.connection, sql, (type,))
-
-    def get_twenty_unscanned_jumpgates(self) -> list[str]:
-        sql = """ select * from jumpgates_scanned
-where charted and not scanned
-order by random()
-limit 20"""
-        return try_execute_select(self.st.db_client.connection, sql, ())
-
-    def get_twenty_unscanned_markets_or_shipyards(self) -> list[str]:
-        sql = """select * from mkt_shpyrds_waypoints_scanned
-where not scanned
-order by random()"""
-        return try_execute_select(self.st.db_client.connection, sql, ())
 
 
 if __name__ == "__main__":
@@ -200,7 +117,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_suffix}"
     params = {"ship_type": "SHIP_SIPHON_DRONE"}
     bhvr = MonitorCheapestShipyard(agent, f"{ship}", params)
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
+    lock_ship(ship, "", duration=0)

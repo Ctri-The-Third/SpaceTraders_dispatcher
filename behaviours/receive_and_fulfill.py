@@ -13,7 +13,7 @@ from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 from straders_sdk.utils import waypoint_slicer, set_logging
 
 BEHAVIOUR_NAME = "RECEIVE_AND_FULFILL"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ReceiveAndFulfillOrSell_3(Behaviour):
@@ -47,7 +47,9 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
@@ -138,7 +140,7 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
             #                cargo_to_skip.append(item.symbol)
 
             st.ship_orbit(ship)
-            self.ship_extrasolar(destination_sys)
+            self.ship_extrasolar_jump(destination_sys.symbol)
             self.ship_intrasolar(fulfil_wp_s or market_wp_s)
 
             st.ship_dock(ship)
@@ -150,21 +152,17 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
                     managed_to_fulfill = True
                     # we fulfilled something, so we should be able to sell the rest
                     st.ship_orbit(ship)
-                    self.ship_extrasolar(start_sys)
+                    self.ship_extrasolar_jump(start_sys.symbol)
                     self.ship_intrasolar(start_wp_s)
             elif market_wp_s:
                 # we got to the fulfill point but something went horribly wrong
-                market = st.system_market(
-                    st.waypoints_view_one(destination_sys, market_wp_s)
-                )
+                market = st.system_market(st.waypoints_view_one(market_wp_s))
                 resp = self.sell_all_cargo(market=market)
 
-                st.system_market(
-                    st.waypoints_view_one(destination_sys, market_wp_s), True
-                )
+                st.system_market(st.waypoints_view_one(market_wp_s), True)
                 if resp:
                     st.ship_orbit(ship)
-                    self.ship_extrasolar(start_sys)
+                    self.ship_extrasolar_jump(start_sys.symbol)
                     self.ship_intrasolar(start_wp_s)
 
                     # we added this in for circumstances when we've incorrect, left over cargo in the hold that needs drained. Might need a "vent all" option too.
@@ -172,12 +170,12 @@ class ReceiveAndFulfillOrSell_3(Behaviour):
 
             if ship.cargo_units_used >= ship.cargo_capacity - 10:
                 # something's gone horribly wrong, we couldn't sell or fulfill at the destination - are our orders stale?
-                self.ship_extrasolar(start_sys)
+                self.ship_extrasolar_jump(start_sys.symbol)
                 self.ship_intrasolar(start_wp_s)
 
         else:
             if ship.nav.waypoint_symbol != start_wp_s:
-                self.ship_extrasolar(start_sys)
+                self.ship_extrasolar_jump(start_sys.symbol)
                 self.ship_intrasolar(start_wp_s)
             else:
                 time.sleep(SAFETY_PADDING)

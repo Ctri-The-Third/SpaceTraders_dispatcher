@@ -38,7 +38,9 @@ class RemoteScanWaypoints(Behaviour):
         hq_system = waypoint_slicer(agent.headquarters)
         st = self.st
         # check all markets in the system
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         agent = self.agent
         if ship.can_survey:
@@ -92,7 +94,7 @@ class RemoteScanWaypoints(Behaviour):
         )
 
         for wayp in wayps:
-            resp = st.waypoints_view_one(wayp[2], wayp[0], True)
+            resp = st.waypoints_view_one(wayp[0], True)
             time.sleep(1.2)
             if ship.seconds_until_cooldown > 0:
                 continue
@@ -112,9 +114,9 @@ class RemoteScanWaypoints(Behaviour):
             jump_gate_sym = row[0]
             sys = waypoint_slicer(jump_gate_sym)
 
-            wp = st.waypoints_view_one(sys, jump_gate_sym)
+            wp = st.waypoints_view_one(jump_gate_sym)
             if not wp.is_charted:
-                wp = st.waypoints_view_one(sys, jump_gate_sym, True)
+                wp = st.waypoints_view_one(jump_gate_sym, True)
             if not wp.is_charted:
                 time.sleep(1.2)
 
@@ -137,7 +139,7 @@ class RemoteScanWaypoints(Behaviour):
         for row in rows:
             wp_sym = row[0]
             sys = waypoint_slicer(wp_sym)
-            wp = st.waypoints_view_one(sys, wp_sym)
+            wp = st.waypoints_view_one(wp_sym)
             if wp.has_market:
                 resp = st.system_market(wp, True)
                 time.sleep(1.2)
@@ -246,11 +248,11 @@ order by random()"""
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
 
-        start = st.waypoints_view_one(ship.nav.system_symbol, ship.nav.waypoint_symbol)
+        start = st.waypoints_view_one(ship.nav.waypoint_symbol)
         path = nearest_neighbour(target_wayps, start)
 
         for wayp_sym in path:
-            waypoint = st.waypoints_view_one(ship.nav.system_symbol, wayp_sym)
+            waypoint = st.waypoints_view_one(wayp_sym)
 
             self.ship_intrasolar(wayp_sym)
 

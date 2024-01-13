@@ -37,7 +37,6 @@ class BuyAndSellDripfeed(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
-        connection=None,
     ) -> None:
         super().__init__(
             agent_name,
@@ -45,7 +44,6 @@ class BuyAndSellDripfeed(Behaviour):
             behaviour_params,
             config_file_name,
             session,
-            connection,
         )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
@@ -60,14 +58,17 @@ class BuyAndSellDripfeed(Behaviour):
         st = self.st
         ship = self.ship = self.st.ships_view_one(self.ship.name, True)
         agent = self.agent
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         #
         # setup initial parameters and preflight checks
         #
 
         if "tradegood" not in self.behaviour_params:
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         self.target_tradegood = self.behaviour_params["tradegood"]
@@ -107,7 +108,7 @@ class BuyAndSellDripfeed(Behaviour):
     def buy_half(self):
         ship = self.ship
         st = self.st
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(self.purchase_market)))
+        self.ship_extrasolar_jump(waypoint_slicer(self.purchase_market))
         self.ship_intrasolar(self.purchase_market)
         # check if the export price is below the max purchase price
         # if it is, buy 1 tradevolume, and check the price and repeat.
@@ -116,9 +117,7 @@ class BuyAndSellDripfeed(Behaviour):
         # once at sell market, check if import price is above the min sell price
         # if it is, sell 1 tradevolume, and check the price and repeat.
         # if not, sleep for 5 minutes then try again
-        purchase_market_wp = self.st.waypoints_view_one(
-            waypoint_slicer(self.purchase_market), self.purchase_market
-        )
+        purchase_market_wp = self.st.waypoints_view_one(self.purchase_market)
         tradegood = self.st.system_market(purchase_market_wp).get_tradegood(
             self.target_tradegood
         )
@@ -137,7 +136,8 @@ class BuyAndSellDripfeed(Behaviour):
                     tradegood.purchase_price,
                     self.max_purchase_price,
                 )
-                time.sleep(300)
+                self.st.release_connection()
+                self.st.sleep(300)
                 return False
             amount_to_buy = min(ship.cargo_space_remaining, tradegood.trade_volume)
             resp = self.buy_cargo(self.target_tradegood, amount_to_buy)
@@ -148,17 +148,16 @@ class BuyAndSellDripfeed(Behaviour):
                     self.logger.debug(
                         "Couldn't buy cargo, none in inventory (can't afford?) - sleeping"
                     )
-                    time.sleep(300)
+                    self.st.release_connection()
+                    self.st.sleep(300)
         return True
 
     def sell_half(self):
         ship = self.ship
         sell_system = self.st.systems_view_one(waypoint_slicer(self.sell_market))
-        self.ship_extrasolar(sell_system)
+        self.ship_extrasolar_jump(sell_system)
         self.ship_intrasolar(self.sell_market)
-        sell_market_wp = self.st.waypoints_view_one(
-            waypoint_slicer(self.sell_market), self.sell_market
-        )
+        sell_market_wp = self.st.waypoints_view_one(self.sell_market)
         tradegood = self.st.system_market(sell_market_wp).get_tradegood(
             self.target_tradegood
         )
@@ -173,7 +172,8 @@ class BuyAndSellDripfeed(Behaviour):
                     tradegood.sell_price,
                     self.min_sell_price,
                 )
-                time.sleep(300)
+                self.st.release_connection()
+                self.st.sleep(300)
                 return
             amount_to_sell = min(ship.cargo_units_used, tradegood.trade_volume)
             self.sell_cargo(self.target_tradegood, amount_to_sell, sell_market_mkt)
@@ -185,7 +185,8 @@ class BuyAndSellDripfeed(Behaviour):
         )
         if error:
             self.logger.error(error)
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings
@@ -218,8 +219,8 @@ if __name__ == "__main__":
             "min_sell_price": 18200,
         },
     )
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
 
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=0)
+    lock_ship(ship, "MANUAL", duration=0)

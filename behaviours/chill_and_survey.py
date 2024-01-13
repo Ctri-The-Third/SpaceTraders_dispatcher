@@ -9,7 +9,7 @@ from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
 from straders_sdk.models import Waypoint, System
 
 BEHAVIOUR_NAME = "CHILL_AND_SURVEY"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ChillAndSurvey(Behaviour):
@@ -38,22 +38,21 @@ class ChillAndSurvey(Behaviour):
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
-
-        target_sys = st.systems_view_one(waypoint_slicer(self.target_wp_s))
-        target_wp = st.waypoints_view_one(
-            waypoint_slicer(self.target_wp_s), self.target_wp_s
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
         )
+
+        target_wp = st.waypoints_view_one(self.target_wp_s)
         if not target_wp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
-        self.ship_extrasolar(target_sys)
+        self.ship_extrasolar_jump(target_wp.system_symbol)
         self.ship_intrasolar(target_wp.symbol)
         self.sleep_until_ready()
         resp = st.ship_survey(ship)
         if not resp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
         self.end()

@@ -15,7 +15,7 @@ from straders_sdk.ship import Ship
 from straders_sdk.utils import waypoint_slicer, set_logging, try_execute_select
 
 BEHAVIOUR_NAME = "TAKE_FROM_EXTRACTORS_AND_GO_SELL_9"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
@@ -37,36 +37,46 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
             connection,
         )
 
-        self.logger = logging.getLogger("bhvr_receive_and_fulfill")
+        self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
-        self.start_wp_s = self.behaviour_params.get(
-            "asteroid_wp", self.determine_start_wp()
-        )
+        self.start_wp_s = self.behaviour_params.get("asteroid_wp", None)
         self.market_wp_s = self.behaviour_params.get("market_wp", None)
         self.exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
 
     def run(self):
         super().run()
+        self._run()
 
+        self.st.logging_client.log_ending(
+            BEHAVIOUR_NAME, self.ship.name, self.agent.credits
+        )
+
+        self.end()
+
+    def _run(self):
         st = self.st
         ship = self.ship
         # we have to use the API call since we don't have inventory in the DB
-
+        if not self.start_wp_s:
+            self.start_wp_s = self.determine_start_wp()
         st.ship_cooldown(ship)
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         if not self.start_wp_s:
             # we couldn't find any asteroids with the desired cargo
             st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            time.sleep(SAFETY_PADDING)
+            return
         if not self.market_wp_s and not self.fulfil_wp_s:
             self.market_wp_s = self.determine_market_wp()
 
             # find all extractors with the desired cargo, group by waypoint
             # calculate distance per good
             # determine the best source
-
         #
         # 1. DEFAULT BEHAVIOUR (for if we've not got active orders)
         # 1.1 check what cargo we already have
@@ -78,13 +88,13 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         # 2. preflight checks (refuel and desintation checking)
         #
 
-        start_sys = st.systems_view_one(waypoint_slicer(self.start_wp_s))
-        start_wp = st.waypoints_view_one(start_sys.symbol, self.start_wp_s)
+        start_sys = waypoint_slicer(self.start_wp_s)
+        start_wp = st.waypoints_view_one(self.start_wp_s)
         destination_sys = st.systems_view_one(
             waypoint_slicer(self.market_wp_s or self.fulfil_wp_s)
         )
 
-        self.ship_extrasolar(start_sys)
+        self.ship_extrasolar_jump(start_sys)
         self.ship_intrasolar(start_wp.symbol)
 
         #
@@ -133,7 +143,7 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
             #                cargo_to_skip.append(item.symbol)
 
             st.ship_orbit(ship)
-            self.ship_extrasolar(destination_sys)
+            self.ship_extrasolar_jump(destination_sys)
             self.ship_intrasolar(self.fulfil_wp_s or self.market_wp_s)
 
             st.ship_dock(ship)
@@ -145,54 +155,48 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
                     managed_to_fulfill = True
                     # we fulfilled something, so we should be able to sell the rest
                     st.ship_orbit(ship)
-                    self.ship_extrasolar(start_sys)
+                    self.ship_extrasolar_jump(start_sys)
                     self.ship_intrasolar(self.start_wp_s)
             elif self.market_wp_s:
                 # we got to the fulfill point but something went horribly wrong
-                market = st.system_market(
-                    st.waypoints_view_one(destination_sys, self.market_wp_s)
-                )
+                market = st.system_market(st.waypoints_view_one(self.market_wp_s))
                 resp = self.sell_all_cargo(market=market)
 
-                st.system_market(
-                    st.waypoints_view_one(destination_sys, self.market_wp_s), True
-                )
+                st.system_market(st.waypoints_view_one(self.market_wp_s), True)
 
         else:
             if ship.nav.waypoint_symbol != self.start_wp_s:
-                self.ship_extrasolar(start_sys)
+                self.ship_extrasolar_jump(start_sys)
                 self.ship_intrasolar(self.start_wp_s)
             else:
                 time.sleep(SAFETY_PADDING)
             # sleep for 60 seconds
 
-        self.sleep_until_ready()
-        self.end()
-        st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         # if we've left over cargo to fulfill, fulfill it.
         # Not sure if it's more efficient to fill up the cargo hold and then fulfill, or to fulfill as we go.
 
     def determine_start_wp(self):
-        sql = """select system_symbol, waypoint_symbol, sum(quantity) from ship_cargo sc 
-join  ship_nav sn on sc.ship_symbol = sn.ship_symbol
-join ships s on s.ship_symbol = sc.ship_symbol
-where trade_symbol in %s
+        sql = """select sn.waypoint_symbol, trade_symbol, sum(quantity)  from ship_cargo sc 
+join ship_nav sn on sc.ship_symbol = sn.ship_symbol
+join ships s on sc.ship_symbol = s.ship_symbol 
+where s.ship_role = 'EXCAVATOR'
+and trade_symbol in %s
 and system_symbol = %s
-and ship_role = 'EXCAVATOR'
-group by 1,2"""
+group by 1,2
+order by 3 desc """
 
         target = self.behaviour_params.get("cargo_to_receive", None)
         system = self.ship.nav.system_symbol
         results = try_execute_select(self.connection, sql, (tuple(target), system))
         if results:
-            return results[0][1]
+            return results[0][0]
         # find the nearest asteroid with the desired cargo
         # find all extractors with the desired cargo, group by waypoint
         # calculate distance per good
         # determine the best source
         else:
             self.logger.debug("No asteroids found with desired cargo")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
 
     def determine_market_wp(self):
         # find the nearest market with the desired cargo
@@ -221,12 +225,7 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "3E"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {
-        "priority": 4,
-        # "market_wp": "X1-YG29-F47",
-        # "asteroid_wp": "X1-YG29-EB5E",
-        "cargo_to_receive": ["COPPER_ORE"],
-    }
+    behaviour_params = {"priority": 4, "cargo_to_receive": ["COPPER_ORE"]}
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})
     lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
     bhvr.run()

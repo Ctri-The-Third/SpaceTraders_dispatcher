@@ -14,6 +14,7 @@ from straders_sdk.utils import waypoint_slicer, set_logging
 import time
 
 BEHAVIOUR_NAME = "RECEIVE_AND_REFINE"
+SAFETY_PADDING = 180
 
 
 class ReceiveAndRefine(Behaviour):
@@ -49,12 +50,14 @@ class ReceiveAndRefine(Behaviour):
         did_something = False
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
+        st.logging_client.log_beginning(
+            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
+        )
 
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))
 
-        self.ship_extrasolar(start_sys, ship)
+        self.ship_extrasolar_jump(start_sys.symbol)
         self.ship_intrasolar(target_wp_symbol=start_wp_s)
 
         tradegood_symbols = {
@@ -143,7 +146,7 @@ class ReceiveAndRefine(Behaviour):
 
         if not did_something:
             self.logger.debug("Nothing to do, sleeping for 60s")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
         self.end()
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)

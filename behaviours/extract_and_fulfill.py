@@ -8,6 +8,7 @@ import time
 from straders_sdk.utils import set_logging, waypoint_slicer
 
 BEHAVIOUR_NAME = "EXTRACT_AND_FULFILL_7"
+SAFETY_PADDING = 180
 
 
 class ExtractAndFulfill_7(Behaviour):
@@ -51,7 +52,12 @@ class ExtractAndFulfill_7(Behaviour):
         #
 
         if not ship.can_extract:
-            st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
+            st.logging_client.log_ending(
+                BEHAVIOUR_NAME,
+                ship.name,
+                agent.credits,
+                behaviour_params=self.behaviour_params,
+            )
             return
 
         st.logging_client.log_beginning(BEHAVIOUR_NAME, ship.name, agent.credits)
@@ -85,10 +91,10 @@ class ExtractAndFulfill_7(Behaviour):
         fulfil_sys = None
         fulfil_wp_s = self.behaviour_params.get("fulfil_wp", None)
         if fulfil_wp_s:
-            fulfil_wp = st.waypoints_view_one(target_sys_sym, fulfil_wp_s)
+            fulfil_wp = st.waypoints_view_one(fulfil_wp_s)
             fulfil_sys = st.systems_view_one(waypoint_slicer(fulfil_wp.symbol))
 
-        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
+        self.ship_extrasolar_jump(target_sys_sym)
         self.ship_intrasolar(target_wp_sym)
         #
         #  - identify precious cargo materials - we will use surveys for these and transfer to hauler.
@@ -112,9 +118,10 @@ class ExtractAndFulfill_7(Behaviour):
         #
         # check remaining cargo after selling spillover
         #
+
         if ship.cargo_units_used > 0:
             if fulfil_sys:
-                self.ship_extrasolar(fulfil_sys)
+                self.ship_extrasolar_jump(fulfil_sys.symbol)
                 self.ship_intrasolar(fulfil_wp.symbol)
                 self.fulfil_any_relevant()
                 self.sell_all_cargo()
@@ -129,7 +136,7 @@ class ExtractAndFulfill_7(Behaviour):
         #
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
-            time.sleep(300)
+            self.st.sleep(300)
 
         #
         # end of script.
