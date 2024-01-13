@@ -78,15 +78,12 @@ Impact:
 * So far we're not seeing connections being closed unexpectedly, hanging and deadlocking the system, or reaching the connection limit with 45 ships. I expect if we breach the warp gate and scale to that degre we will have ships waiting for connctions.
 
 
-| stat              | Node U (exp) | node V (21) | node C (23)     | Node W (25) 
-| ---               | ------------ | ----------  | --------------- |
-| total uptime      | 238.31h      | 198.89h     | 229.13h         |
-| total ships       | 228          | 57          | 58              |
-| contracts         | 18           | 0           | 29              |
-| contract_earnings | 3,427,586    | 7,925       | 13,606,877      |
-| trade_earnings    | 298,802,283  | 54,413,924  | 2,385,943       |
-| total_earnings    | 302,229,869  | 54,421,849  | 15,992,820      |
-| requests          | 1,084,083    | 761,029     | 1,643,168       |
-| average delay     | 3.16         | 1.38        | 5.26            |
-| CPH               | 1,268,221.51 | 3826.38     | 69,798.02       |
-| CPR               | 278.78       | 71.51       | 9.74            |
+
+# Stats
+
+No stats this week due to several database rebuilds and poor uptime across all builds.
+In summary, all agents except C failed.
+We will restart concurrent versioning as of week 28
+* 27 on node V
+* 28/29 on node U
+* 23 on node C 

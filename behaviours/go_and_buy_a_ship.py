@@ -73,7 +73,7 @@ class GoAndBuyShip(Behaviour):
 		        where ship_type = %s) 
             from shipyard_types 
             where ship_type = %s and ship_cost is not null"""
-        results = try_execute_select(self.connection, sql, (ship_symbol, ship_symbol))
+        results = try_execute_select(sql, (ship_symbol, ship_symbol), self.connection)
 
         current_system = self.st.systems_view_one(self.ship.nav.system_symbol)
         current_waypoint = self.st.waypoints_view_one(self.ship.nav.waypoint_symbol)

@@ -240,6 +240,7 @@ class BehaviourConductor:
         ):
             if ship.cargo_units_used > 0:
                 log_task(
+                    self.st.connection,
                     BHVR_SELL_OR_JETTISON_ALL_CARGO,
                     [],
                     system.system_symbol,
@@ -248,7 +249,7 @@ class BehaviourConductor:
                     specific_ship_symbol=ship.name,
                 )
 
-        if missing_market_prices(system.system_symbol, 3):
+        if missing_market_prices(system.system_symbol, self.st.connection, 3):
             best_ship = system.commanders[0] if len(system.commanders) > 0 else None
             if not best_ship:
                 best_ship = system.explorers[0] if len(system.explorers) > 0 else None
@@ -260,6 +261,7 @@ class BehaviourConductor:
                 # the system is empty, so we should log this task to a globally available ship.
                 return
             log_task(
+                self.st.connection,
                 bhvr.BHVR_EXPLORE_SYSTEM,
                 [],
                 system.system_symbol,
@@ -291,6 +293,7 @@ class BehaviourConductor:
 
             if best_ship:
                 log_task(
+                    self.st.connection,
                     bhvr.BHVR_GO_AND_BUY_A_SHIP,
                     [],
                     system.system_symbol,

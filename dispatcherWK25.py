@@ -585,7 +585,7 @@ if __name__ == "__main__":
         signal.signal(signal.SIGINT, dips.set_exit_flag)
     except Exception as err:
         logging.error("%s", err)
-        self.client.sleep(60 * 10)
+        time.sleep(60 * 10)
         exit()
     dips.run()
     exit()
