@@ -38,6 +38,7 @@ from conductor_functions import (
     log_task,
     wait_until_reset,
     missing_market_prices,
+    get_ship_price_in_system,
 )
 
 
@@ -281,7 +282,15 @@ class BehaviourConductor:
         # if the system's "buy_next_ship" attribute is set, log a task to buy it.
 
         if system._next_ship_to_buy:
+            price = get_ship_price_in_system(
+                system._next_ship_to_buy, system.system_symbol, self.st.connection
+            )
+            if price and price > self.st.view_my_self().credits:
+                # we can't afford it, so we'll need to wait until we can.
+                return
             best_ship = None
+            # check we can afford it
+
             if len(system.explorers) > 0:
                 best_ship = system.explorers[0]
             elif len(system.commanders) > 0:
@@ -560,8 +569,8 @@ class BehaviourConductor:
             commander = self.st.ships_view_one(f"{self.current_agent_symbol}-1")
             set_behaviour(
                 commander.name,
-                BHVR_CHAIN_TRADE,
-                {"priority": 3, "target_sys": system.system_symbol},
+                bhvr.BHVR_TRADE_BEST_INTRASOLAR,
+                {"priority": 2, "target_sys": system.system_symbol},
             )
 
     def populate_ships(self, ships: list[Ship], system: "ConductorSystem"):

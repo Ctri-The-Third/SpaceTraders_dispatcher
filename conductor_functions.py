@@ -220,6 +220,17 @@ def log_task(
     return hash_str if resp else resp
 
 
+def get_ship_price_in_system(ship_type: str, system_symbol: str, connection):
+    sql = """select avg(ship_cost) from shipyard_Types 
+where ship_Type = %s
+and shipyard_symbol ilike %s"""
+    results = try_execute_select(sql, (ship_type, f"{system_symbol}%"), connection)
+    if not results:
+        return None
+
+    return results[0][0]
+
+
 def maybe_buy_ship_sys2(
     client: SpaceTraders,
     system: "ConductorSystem",
