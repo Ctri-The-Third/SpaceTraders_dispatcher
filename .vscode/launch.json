@@ -17,14 +17,14 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "custum_game_plan.json"
+                "custom_game_plan.json"
             ]
         },
         {
             "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK16.py",
+            "program": "dispatcherWK25.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -35,7 +35,7 @@
             "name": "dispatcher -V",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK16.py",
+            "program": "dispatcherWK25.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [

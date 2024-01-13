@@ -38,7 +38,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
-        connection=None,
     ) -> None:
         super().__init__(
             agent_name,
@@ -46,7 +45,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
             behaviour_params,
             config_file_name,
             session,
-            connection,
         )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
@@ -64,7 +62,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
         #
 
         if "tradegood" not in self.behaviour_params:
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         target_tradegood = self.behaviour_params["tradegood"]
@@ -164,7 +163,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
                     return
 
         if not target_waypoints:
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("No waypoint found for tradegood %s", target_tradegood)
             raise ValueError("No waypoint found for tradegood %s" % target_tradegood)
 
@@ -190,7 +190,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 target_tradegood, source_wp, source_system, max_to_buy=max_to_buy
             )
             if not resp:
-                time.sleep(SAFETY_PADDING)
+                self.st.release_connection()
+                self.st.sleep(SAFETY_PADDING)
                 self.logger.error(
                     "Couldn't fetch any %s from %s, because %s",
                     target_tradegood,
@@ -208,7 +209,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
         sql = """select market_symbol from market_tradegood_listings
 where trade_symbol = %s
 order by purchase_price asc """
-        wayps = try_execute_select(self.connection, sql, (tradegood_sym,))
+        wayps = try_execute_select(sql, (tradegood_sym,))
 
         if not wayps:
             self.logger.error(
@@ -231,7 +232,6 @@ select sell_price from market_tradegood_listings
 	) 	
 	select *, (sell_price - purchase_price) as profit_per_unit, (sell_price - purchase_price) > 0 as still_good  from pp join sp on true """
         results = try_execute_select(
-            self.connection,
             sql,
             (
                 origin_market,
@@ -264,8 +264,8 @@ if __name__ == "__main__":
         # "safety_profit_threshold": 1107,
     }
     bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=params)
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
     bhvr.st.view_my_self(True)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=0)
+    lock_ship(ship, "MANUAL", duration=0)

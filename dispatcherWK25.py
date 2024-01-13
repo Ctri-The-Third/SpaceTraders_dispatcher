@@ -13,6 +13,7 @@ from requests.adapters import HTTPAdapter
 from straders_sdk.models import Agent
 from straders_sdk import SpaceTraders
 from straders_sdk.request_consumer import RequestConsumer
+from straders_sdk.pg_connection_pool import PGConnectionPool
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer, get_and_validate
 from straders_sdk.utils import get_name_from_token
@@ -52,11 +53,10 @@ class dispatcher:
         self.db_name = db_name
         self.db_user = db_user
         self.db_pass = db_pass
-        self._connection = None
-        self.connection_pool = []
-        self.max_connections = 100
-        self.last_connection = 0
-        self.pathfinder = PathFinder(connection=self.connection)
+        self.connection_pool = PGConnectionPool(
+            db_user, db_pass, db_host, db_name, db_port
+        )
+        self.pathfinder = PathFinder()
         self.logger = logging.getLogger("dispatcher")
         self.agents = agents
 
@@ -65,9 +65,10 @@ class dispatcher:
         self.tasks_last_updated = datetime.min
         self.task_refresh_period = timedelta(minutes=1)
         self.tasks = {}
-        self.generic_behaviour = Behaviour("", "", connection=self.connection)
+        self.generic_behaviour = Behaviour("", "")
         self.client = self.generic_behaviour.st
         self.exit_flag = False
+        self.connection = self.connection_pool.get_connection()
 
     def set_exit_flag(self, signum, frame):
         self.exit_flag = True
@@ -83,7 +84,7 @@ class dispatcher:
     and (locked_until <= (now() at time zone 'utc') or locked_until is null or locked_by = %s)
     order by last_updated asc """
         rows = try_execute_select(
-            self.connection, sql, (current_agent_symbol, self.lock_id)
+            sql, (current_agent_symbol, self.lock_id), self.connection
         )
         if not rows:
             return []
@@ -92,47 +93,13 @@ class dispatcher:
             for row in rows
         ]
 
-    def unlock_ship(self, connect, ship_symbol, lock_id):
+    def unlock_ship(self, ship_symbol, lock_id):
         sql = """UPDATE ship_behaviours SET locked_by = null, locked_until = null
                 WHERE ship_symbol = %s and locked_by = %s"""
-        self.query(sql, (ship_symbol, lock_id))
-
-    @property
-    def connection(self):
-        if self._connection is None or self._connection.closed > 0:
-            self._connection = psycopg2.connect(
-                host=self.db_host,
-                port=self.db_port,
-                database=self.db_name,
-                user=self.db_user,
-                password=self.db_pass,
-            )
-            self._connection.autocommit = True
-        return self._connection
-
-    def get_connection(self):
-        # switching this from a pool to just a connection generator that passes one connection down to the mediator (Which itself distributes it to the db and pg client)
-        # generated connections appear to fail unpredictably during execution.
-        # they seemed to be timing out / "closed unexpectedly" either immediately, or between surveys. Suspect keepalive shenanigans.
-
-        return None
-        new_con = psycopg2.connect(
-            host=self.db_host,
-            port=self.db_port,
-            database=self.db_name,
-            user=self.db_user,
-            password=self.db_pass,
-            application_name=self.lock_id,
-            # keepalives=1,
-            # keepalives_idle=30,
-            # keepalives_interval=10,
-            # keepalives_count=3,  # connection terminates after 30 seconds of silence
-        )
-
-        return new_con
+        try_execute_upsert(sql, (ship_symbol, lock_id), self.connection)
 
     def query(self, sql, args: list):
-        return try_execute_select(self.connection, sql, args)
+        return try_execute_select(sql, args)
 
     def run(self):
         print(f"-----  DISPATCHER [{self.lock_id}] ACTIVATED ------")
@@ -155,7 +122,7 @@ class dispatcher:
         #                self._the_big_loop(ships_and_threads)
         #            except Exception as err:
         #                self.logger.error("Error in the big loop: %s", err)
-        #                time.sleep(30)
+        #                self.st.sleep(30)
 
         last_exec = False
         while (
@@ -168,19 +135,19 @@ class dispatcher:
                 if not thread.is_alive():
                     thread.join()
                     print(f"ship {ship_id} has finished - releasing")
-                    lock_ship(ship_id, self.lock_id, self.connection, duration=0)
+                    lock_ship(ship_id, self.lock_id, duration=0)
                     ships_to_pop.append(ship_id)
 
             for ship_id in ships_to_pop:
                 ships_and_threads.pop(ship_id)
                 last_exec = len(ships_and_threads) == 0
-            time.sleep(1)
+            self.client.sleep(1)
         # release the final ship
         for ship_id, thread in ships_and_threads.items():
             if not thread.is_alive():
                 thread.join()
                 print(f"FINAL RELEASE - ship {ship_id} has finished - releasing")
-                lock_ship(ship_id, self.lock_id, self.connection, duration=0)
+                lock_ship(ship_id, self.lock_id, duration=0)
 
         self.consumer.stop()
 
@@ -221,15 +188,16 @@ class dispatcher:
                     round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
                     self.consumer._consumer_thread.is_alive(),
                 )
-                if len(unlocked_ships) > 10:
-                    set_logging(level=logging.INFO)
-                    consumer_logger = logging.getLogger("RequestConsumer")
-                    consumer_logger.setLevel(logging.CRITICAL)
-                    api_logger = logging.getLogger("API-Client")
-                    api_logger.setLevel(logging.CRITICAL)
-                    self.logger.level = logging.INFO
-                    logging.getLogger().setLevel(logging.INFO)
-                    pass
+                if False:
+                    if len(unlocked_ships) > 10:
+                        set_logging(level=logging.INFO)
+                        consumer_logger = logging.getLogger("RequestConsumer")
+                        consumer_logger.setLevel(logging.CRITICAL)
+                        api_logger = logging.getLogger("API-Client")
+                        api_logger.setLevel(logging.CRITICAL)
+                        self.logger.level = logging.INFO
+                        logging.getLogger().setLevel(logging.INFO)
+                        pass
                 # if we're running a ship and the lock has expired during execution, what do we do?
                 # do we relock the ship whilst we're running it, or terminate the thread
                 # I say terminate.
@@ -292,10 +260,10 @@ class dispatcher:
                     bhvr,
                     ship_and_behaviour["behaviour_id"],
                 )
-                # time.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
+                # self.client.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
                 pass
 
-            time.sleep(1)
+            self.client.sleep(1)
 
     def lock_and_execute(
         self, ships_and_threads: dict, ship_symbol: str, bhvr: Behaviour, bhvr_id
@@ -303,7 +271,7 @@ class dispatcher:
         if not bhvr:
             return False
 
-        lock_r = lock_ship(ship_symbol, self.lock_id, self.connection)
+        lock_r = lock_ship(ship_symbol, self.lock_id, connection=self.connection)
         if lock_r is None:
             return False
         # we know this is behaviour, so lock it and start it.
@@ -320,7 +288,7 @@ class dispatcher:
             UPDATE public.ship_tasks
 	        SET  claimed_by= %s
 	        WHERE task_hash = %s;"""
-        try_execute_upsert(self.connection, sql, (ship_symbol, task_hash))
+        try_execute_upsert(sql, (ship_symbol, task_hash))
         pass
 
     def get_task_for_ships(self, client: SpaceTraders, ship_symbol):
@@ -337,7 +305,7 @@ class dispatcher:
 
                 """
             results = try_execute_select(
-                self.connection, sql, (ship_symbol, client.current_agent_symbol)
+                sql, (ship_symbol, client.current_agent_symbol), self.connection
             )
             self.tasks = {
                 row[0]: {
@@ -465,6 +433,7 @@ def get_fun_name():
         "omega",
         "phoenix",
         "pandora",
+        "squirrel",
         "serpent",
         "zephyr",
         "tide",
@@ -574,14 +543,16 @@ def wait_until_reset(url, user_file: dict):
             time.sleep(5)
 
 
-def lock_ship(ship_symbol, lock_id, duration=60):
+def lock_ship(ship_symbol, lock_id, duration=60, connection=None):
     sql = """INSERT INTO ship_behaviours (ship_symbol, locked_by, locked_until)
     VALUES (%s, %s, (now() at time zone 'utc') + interval '%s minutes')
     ON CONFLICT (ship_symbol) DO UPDATE SET
         locked_by = %s,
         locked_until = (now() at time zone 'utc') + interval '%s minutes';"""
 
-    return try_execute_upsert(sql, (ship_symbol, lock_id, duration, lock_id, duration))
+    return try_execute_upsert(
+        sql, (ship_symbol, lock_id, duration, lock_id, duration), connection
+    )
 
 
 if __name__ == "__main__":
@@ -614,7 +585,7 @@ if __name__ == "__main__":
         signal.signal(signal.SIGINT, dips.set_exit_flag)
     except Exception as err:
         logging.error("%s", err)
-        time.sleep(60 * 10)
+        self.client.sleep(60 * 10)
         exit()
     dips.run()
     exit()

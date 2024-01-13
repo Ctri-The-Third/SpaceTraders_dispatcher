@@ -17,6 +17,7 @@ import math
 import networkx
 import heapq
 import threading
+import os
 
 SAFETY_PADDING = 60
 
@@ -36,11 +37,13 @@ class Behaviour:
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.behaviour_params = behaviour_params or {}
-
+        if connection:
+            self.logger.warning(
+                "you're passing the connection in again, shouldn't be doing that. "
+            )
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
         self.priority = self.behaviour_params.get("priority", 5)
-        self._connection = connection
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
                 token = agent["token"]
@@ -48,11 +51,13 @@ class Behaviour:
         if not token:
             # register the user
             pass
-        db_host = saved_data.get("db_host", None)
-        db_port = saved_data.get("db_port", None)
-        db_name = saved_data.get("db_name", None)
-        db_user = saved_data.get("db_user", None)
-        db_pass = saved_data.get("db_pass", None)
+        db_host = os.environ.get("ST_DB_HOST", None)
+        db_port = os.environ.get("ST_DB_PORT", None)
+        db_name = os.environ.get("ST_DB_NAME", None)
+        db_user = os.environ.get("ST_DB_USER", None)
+        db_pass = os.environ.get("ST_DB_PASS", None)
+        if not db_pass:
+            db_pass = os.environ.get("ST_DB_PASSWORD", None)
         self.st = SpaceTraders(
             token,
             db_host=db_host,
@@ -62,10 +67,9 @@ class Behaviour:
             db_pass=db_pass,
             current_agent_symbol=agent_name,
             session=session,
-            connection=connection,
             priority=self.priority,
         )
-        self.pathfinder = PathFinder(connection=self.connection)
+        self.pathfinder = PathFinder()
         self.ship_name = ship_name
         self.ship = None
         self._graph = None
@@ -75,10 +79,7 @@ class Behaviour:
 
     @property
     def connection(self):
-        if not self._connection or self._connection.closed > 0:
-            self._connection = self.st.db_client.connection
-        # self.logger.debug("connection PID: %s", self._connection.get_backend_pid())
-        return self._connection
+        return self.st.connection
 
     def run(self):
         self.ship = self.st.ships_view_one(self.ship_name)
@@ -93,7 +94,7 @@ class Behaviour:
             raise Exception("error getting ship, aborting - %s", self.ship.error)
         self.st.ship_cooldown(self.ship)
         # self.sleep_until_ready()
-        time.sleep(delay_start)
+        self.st.sleep(delay_start)
         # get the cooldown info as well from the DB
         self.agent = self.st.view_my_self()
 
@@ -124,7 +125,6 @@ class Behaviour:
 
         """
         results = try_execute_select(
-            self.connection,
             sql,
             (
                 source_system.symbol,
@@ -134,6 +134,7 @@ class Behaviour:
                 range,
                 range,
             ),
+            self.connection,
         )
 
         if not jumpgate_only:
@@ -222,7 +223,7 @@ class Behaviour:
                 attempts += 1
                 resp = self.refuel_locally()
                 if not resp and resp.error_code == 4600:  # not enough credits
-                    time.sleep(60)
+                    self.st.sleep(60)
                     pass
 
                 elif not resp:
@@ -259,7 +260,7 @@ class Behaviour:
                 if not resp:
                     return resp
                 if sleep_till_done:
-                    sleep_till_arrived(self.ship)
+                    self.sleep_until_arrived()
                     ship.nav.status = "IN_ORBIT"
                     ship.nav.waypoint_symbol = point.symbol
                     ship.nav_dirty = True
@@ -418,8 +419,11 @@ class Behaviour:
         ship = self.ship
         if ship.fuel_capacity == 0:
             return
-        self.st.ship_dock(ship)
+        if ship.nav.status != "DOCKED":
+            self.st.ship_dock(ship)
         resp = self.st.ship_refuel(ship)
+        if not resp:
+            self.logger.error("error refueling ship %s", resp.error)
         return resp
 
         # this used to be "go and refuel."
@@ -608,7 +612,7 @@ join waypoints w on mtl.market_symbol = w.waypoint_Symbol
 join systems s on w.system_symbol = s.system_symbol
 where mtl.trade_symbol = %s
 order by 1 desc """
-        results = try_execute_select(self.connection, sql, (trade_symbol,))
+        results = try_execute_select(sql, (trade_symbol,), self.connection)
         return_obj = []
         for row in results or []:
             sys = System(row[2], row[3], row[4], row[5], row[6], [])
@@ -767,12 +771,6 @@ order by 1 desc """
                 self.pathfinder._graph = self.pathfinder.load_jump_graph_from_db()
                 self.pathfinder.save_graph()
 
-    def sleep_until_ready(self):
-        sleep_until_ready(self.ship)
-
-    def sleep_until_arrived(self):
-        sleep_till_arrived(self.ship)
-
     def ship_extrasolar_jump(self, dest_sys_sym: str, route: JumpGateRoute = None):
         if isinstance(dest_sys_sym, System):
             dest_sys = dest_sys_sym
@@ -888,7 +886,7 @@ order by 1 desc """
             self.logger.error(
                 "No market found at waypoint %s", ship.nav.waypoint_symbol
             )
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             return current_market
 
         # empty anything that's not the goal.
@@ -1040,19 +1038,25 @@ order by 1 desc """
         if "task_hash" in self.behaviour_params:
             sql = """update ship_tasks set completed = true where task_hash = %s"""
             try_execute_upsert(
-                self.connection, sql, (self.behaviour_params["task_hash"],)
+                sql, (self.behaviour_params["task_hash"],), self.connection
             )
-            time.sleep(20)
+            self.st.sleep(20)
+        self.st.release_connection()
         # self.st.db_client.connection.close()
         # self.st.logging_client.connection.close()
 
+    def sleep_until_ready(self):
+        if (
+            self.ship.seconds_until_cooldown > 0
+            or self.ship.nav.travel_time_remaining > 0
+        ):
+            self.st.release_connection()
+            self.st.sleep(self.ship.seconds_until_cooldown + 1)
 
-def sleep_until_ready(ship: "Ship"):
-    sleep(max(ship.seconds_until_cooldown, ship.nav.travel_time_remaining) + 0.5)
-
-
-def sleep_till_arrived(ship: "Ship"):
-    sleep(ship.nav.travel_time_remaining + 0.5)
+    def sleep_until_arrived(self):
+        if self.ship.nav.travel_time_remaining > 0:
+            self.st.release_connection()
+            self.st.sleep(self.ship.nav.travel_time_remaining + 1)
 
 
 if __name__ == "__main__":
@@ -1062,8 +1066,8 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     set_logging(level=logging.DEBUG)
-    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-W-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "2"
+    agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)

@@ -74,23 +74,23 @@ class ConstructJumpgate(Behaviour):
                 self.target_waypoint = wayp.symbol
             else:
                 self.logger.error("No jumpgate found")
-                time.sleep(SAFETY_PADDING)
+                self.st.sleep(SAFETY_PADDING)
                 return
 
         jumpgate = st.waypoints_view_one(self.target_waypoint, True)
         if jumpgate.type != "JUMP_GATE":
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint is not a jumpgate")
             self.end("Target waypoint is not a jumpgate")
 
         if not jumpgate.under_construction:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint is complete!")
             self.end("Target waypoint is complete!")
 
         j_construction_site = st.system_construction(jumpgate)
         if not j_construction_site:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint has no construction site!")
             self.end("Target waypoint has no construction site!")
 
@@ -150,7 +150,7 @@ class ConstructJumpgate(Behaviour):
             )
             if not resp:
                 self.logger.error("Failed to supply construction site")
-                time.sleep(SAFETY_PADDING)
+                self.st.sleep(SAFETY_PADDING)
 
     def find_markets_that_export(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "25"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
@@ -208,6 +208,6 @@ if __name__ == "__main__":
 
     bhvr = ConstructJumpgate(agent, ship, behaviour_params or {})
 
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

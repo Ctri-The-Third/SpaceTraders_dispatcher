@@ -30,7 +30,6 @@ class NewBehaviour(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
-        connection=None,
     ) -> None:
         super().__init__(
             agent_name,
@@ -38,7 +37,6 @@ class NewBehaviour(Behaviour):
             behaviour_params,
             config_file_name,
             session,
-            connection,
         )
         self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)

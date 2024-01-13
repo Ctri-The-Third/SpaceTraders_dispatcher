@@ -134,7 +134,7 @@ class ManageSpecifcExport(Behaviour):
             self.logger.debug(
                 f"Export for {target_tradegood.symbol} is {target_tradegood.supply}, activity is {target_tradegood.activity} - resting"
             )
-            time.sleep(60)
+            self.st.sleep(60)
 
             return
 
@@ -265,7 +265,7 @@ class ManageSpecifcExport(Behaviour):
             self.logger.debug(
                 f"No profitable markets found, and we're not SCARCE yet - something's wrong downstream. "
             )
-            time.sleep(60)
+            self.st.sleep(60)
         if not best_sell_market:
             return False
         import_tg = best_sell_market.get_tradegood(self.target_tradegood)
@@ -336,7 +336,7 @@ class ManageSpecifcExport(Behaviour):
     def get_matching_imports_for_export(self, export_symbol: str):
         sql = """select import_tradegoods from manufacture_relationships
         where export_tradegood = %s"""
-        rows = try_execute_select(self.connection, sql, (export_symbol,))
+        rows = try_execute_select(sql, (export_symbol,), self.connection)
         if not rows:
             return []
         return rows[0][0]
@@ -349,7 +349,7 @@ join ships s on sc.ship_symbol = s.ship_symbol
 where ship_role = 'EXCAVATOR'
 and trade_symbol = %s
 group by 1,2 order by 3 desc """
-        packages = try_execute_select(self.connection, sql, (raw_good,))
+        packages = try_execute_select(sql, (raw_good,), self.connection)
         if not packages:
             return []
         return packages
@@ -391,6 +391,6 @@ if __name__ == "__main__":
     }
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

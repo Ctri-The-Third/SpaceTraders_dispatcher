@@ -84,6 +84,7 @@ class ManageManufactureChain(Behaviour):
         self.chain = self.populate_chain(self.target_tradegood)
 
         next_link = self.select_deepest_restricted_trade(self.chain)
+
         if next_link:
             next_good = next_link.export_symbol
             sell_wp_s = next_link.market_symbol
@@ -91,24 +92,25 @@ class ManageManufactureChain(Behaviour):
             sell_market = self.get_market(sell_wp_s)
             best_market = self.get_market(sell_wp_s)
             best_cost = float("inf")
-            for item in next_link.import_symbols:
-                tg = sell_market.get_tradegood(item)
-                if SUPPLY_LEVELS[tg.supply] == 1:
-                    markets = self.find_markets_that_trade(
-                        item, self.ship.nav.system_symbol
-                    )
-                    for market in markets:
-                        tg = market.get_tradegood(item)
-                        if tg is None:
-                            continue
-                        if tg.type in ("EXPORT", "EXCHANGE"):
-                            if tg.purchase_price < best_cost:
-                                best_market = market
-                                best_cost = tg.purchase_price
-                                next_good = item
+            if len(next_link.import_symbols) > 0:
+                for item in next_link.import_symbols:
+                    tg = sell_market.get_tradegood(item)
+                    if SUPPLY_LEVELS[tg.supply] == 1:
+                        markets = self.find_markets_that_trade(
+                            item, self.ship.nav.system_symbol
+                        )
+                        for market in markets:
+                            tg = market.get_tradegood(item)
+                            if tg is None:
+                                continue
+                            if tg.type in ("EXPORT", "EXCHANGE"):
+                                if tg.purchase_price < best_cost:
+                                    best_market = market
+                                    best_cost = tg.purchase_price
+                                    next_good = item
             if not best_market:
                 self.logger.info("No unrestricted trades found")
-                time.sleep(SAFETY_PADDING)
+                self.st.sleep(SAFETY_PADDING)
             buy_wp_s = best_market.symbol
         if not next_link:
             # next_link = self.search_deeper_for_under_evolved_export(self.chain)
@@ -118,7 +120,7 @@ class ManageManufactureChain(Behaviour):
                 next_good = next_link.export_symbol
                 buy_wp_s = next_link.market_symbol
                 sell_wp_s = self.find_import_market_for_export_from_chain(
-                    self.chain, next_link.export_symbol
+                    self.chain, next_link.export_symbol, buy_wp_s
                 )
             # currently this returns the buy link, not the import link.
 
@@ -128,32 +130,24 @@ class ManageManufactureChain(Behaviour):
                 next_good = next_link.export_symbol
                 buy_wp_s = next_link.market_symbol
                 sell_wp_s = self.find_import_market_for_export_from_chain(
-                    self.chain, next_link.export_symbol
+                    self.chain, next_link.export_symbol, buy_wp_s
                 )
-
         # for the export market, we need to find its imports. for its imports we need to find ANY source, and supply.
         # next_good, sell_wp_s = self.find_export_from_import(self.chain, next_good)
-
-        if not next_good:
-            self.logger.info("No unrestricted trades found")
-        params = {}
-        if not params:
-            params = self.select_deepest_restricted_trade(self.chain, "")
-        if not params:
-            # params = select_most_profitable_line(self.chain)
-            params = None
-        if not params:
-            self.logger.info("No trades found")
-            time.sleep(SAFETY_PADDING)
         first_market = True
+        last_run = False
         did_something = False
-        while next_good and sell_wp_s:
+        while (next_link and next_good and sell_wp_s) or (last_run and sell_wp_s):
             buy_system = st.systems_view_one(waypoint_slicer(buy_wp_s))
             buy_wp = st.waypoints_view_one(buy_wp_s)
             sell_sys = st.systems_view_one(waypoint_slicer(sell_wp_s))
             sell_wp = st.waypoints_view_one(sell_wp_s)
             buy_market_tg = self.get_market(buy_wp_s).get_tradegood(next_good)
             sell_market_tg = self.get_market(sell_wp_s).get_tradegood(next_good)
+
+            print(
+                f"we're going from {buy_wp_s} to {sell_wp_s} for {next_good} - which is useful for {next_link}"
+            )
             # only execute this link if it's going to be profitable. any profit is fine.
             # actually no - our goal is evolution, so we can make a degree of loss to push the first / focus market into a better state.
             # If we have to push a supply market quite deep into unprofitability to get it to evolve, that's okay :)
@@ -169,16 +163,31 @@ class ManageManufactureChain(Behaviour):
                 did_something = True
 
             # J62 -> 55
+
+            # our current approach assumes an import only gets used once - but if we're importing silicon crystals for microprocessors and electronics - how will it pick the correct next step?
+            # we need to get multiple answers from this.
+            # the issue here is because the chain links only have children, not parents so we can't direct refer up the way.
+            # how would we add this? probably with a "from" array.
+
+            # our current link is copper - our next good needs to be the export of the current link
+            if not next_link:
+                break
+            next_good = next_link.export_symbol
+
             buy_wp_s = sell_wp_s
-            next_good, _ = self.find_export_from_import(self.chain, next_good)
-            sell_wp_s = self.find_import_market_for_export_from_chain(
-                self.chain, next_good
-            )
-            if not sell_wp_s:
+            if not next_link.parent_link and not last_run:
                 sell_wp_s = self.find_import_market_in_system(next_good)
+                next_link = next_link.parent_link
+                last_run = True
+            elif last_run:
+                next_link = None
+            else:
+                next_link = next_link.parent_link
+                sell_wp_s = next_link.market_symbol
+
         if not did_something:
             self.logger.info("No unrestricted, unevolved trades found")
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
 
     def select_positive_trade(self):
         # this gets all viable trades for a given system
@@ -194,7 +203,6 @@ class ManageManufactureChain(Behaviour):
     order by export_market = %s desc, route_value desc
     """
         results = try_execute_select(
-            self.st.db_client.connection,
             sql,
             (
                 self.ship.nav.system_symbol,
@@ -221,10 +229,10 @@ class ManageManufactureChain(Behaviour):
     def select_deepest_restricted_trade(self, chain, best_result=None) -> str:
         # we need to go down the chain until we find a restricted import - then go the rest of the way down that chain and start from there
         # we should find the deepest restricted import, and trade it.
-        return self.search_deeper_for_restricted(chain, best_depth=0)
+        return self.search_deeper_for_restricted(chain, best_depth=0, came_from={})
 
     def search_deeper_for_restricted(
-        self, chain: "ChainLink", best_depth=0, restricted_good=None
+        self, chain: "ChainLink", best_depth=0, restricted_good=None, came_from={}
     ) -> "ChainLink":
         "returns a tuple of (trade_symbol, market_symbol)"
         mkts = self.find_markets_that_trade(
@@ -239,10 +247,14 @@ class ManageManufactureChain(Behaviour):
                 tg.type == "EXPORT"
                 and tg.activity == "RESTRICTED"
                 and chain.depth >= best_depth
+                # we check for import symbols for situations where we have a market that exports something (e.g. COPPER_ORE) but we've deliberately hidden the imports (e.g. EXPLOSIVES)
+                and len(chain.import_symbols) > 0
             ):
                 restricted_good = chain
 
                 break
+            else:
+                pass
         if chain.import_links:
             for link in chain.import_links:
                 restricted_good = self.search_deeper_for_restricted(
@@ -292,6 +304,8 @@ class ManageManufactureChain(Behaviour):
 
     def search_deeper_for_abundant_export(self, chain: "ChainLink", best_depth=0):
         # if all markets are now unrestricted, then we need to check that exports aren't sitting in the ABUNDANT (>80% of maximum price) range, and bring them down to High or Moderate
+        if not chain or not chain.market_symbol:
+            return
         export = self.get_market(chain.market_symbol).get_tradegood(chain.export_symbol)
 
         for link in chain.import_links:
@@ -299,9 +313,11 @@ class ManageManufactureChain(Behaviour):
             if chain:
                 return chain
         if SUPPLY_LEVELS[export.supply] == 5 and export.type == "EXPORT":
-            import_market_symbol = self.find_import_market_in_system(
-                chain.export_symbol
-            )
+            import_market_symbol = self.find_import_market_in_system(export.symbol)
+            # if there's no import market, then we it's not a valid abundant export.
+            # for things like FAB_MATS, and the super advanced goods in a system.
+            if not import_market_symbol:
+                return
             import_market = self.get_market(import_market_symbol)
             import_tg = import_market.get_tradegood(chain.export_symbol)
             if (
@@ -312,13 +328,19 @@ class ManageManufactureChain(Behaviour):
                 return chain
 
     def find_import_market_for_export_from_chain(
-        self, chain: "ChainLink", target_good: str
+        self, chain: "ChainLink", target_good: str, source_market
     ) -> str:
         # starting at the top of the chain, recurse down it until you find the target good being exported, and consumed by something else.
-        if target_good in chain.import_symbols:
-            return chain.market_symbol
+
+        if target_good == chain.export_symbol and chain.market_symbol == source_market:
+            if chain.parent_link:
+                return chain.parent_link.market_symbol
+            else:
+                return None
         for link in chain.import_links:
-            mkt = self.find_import_market_for_export_from_chain(link, target_good)
+            mkt = self.find_import_market_for_export_from_chain(
+                link, target_good, source_market
+            )
             if mkt:
                 return mkt
 
@@ -336,7 +358,7 @@ class ManageManufactureChain(Behaviour):
     and trade_symbol = %s
     and type = 'IMPORT'"""
             results = try_execute_select(
-                self.connection, sql, (f"{self.ship.nav.system_symbol}%", target_good)
+                sql, (f"{self.ship.nav.system_symbol}%", target_good)
             )
             for result in results:
                 possibilities.append(self.get_market(result[0]))
@@ -424,7 +446,12 @@ class ManageManufactureChain(Behaviour):
         return chain
 
     def _recurse_chain(
-        self, relationships: dict, export_being_inspected, depth=0, all_symbols=[]
+        self,
+        relationships: dict,
+        export_being_inspected,
+        depth=0,
+        all_symbols=[],
+        parent_link=None,
     ) -> "ChainLink":
         # chain is the current node
         # but if we pass the current node all the way down to the bottom, we don't get a tree
@@ -445,6 +472,7 @@ class ManageManufactureChain(Behaviour):
             relationships.get(export_being_inspected, []),
             depth=depth,
             market_symbol=market_export_location,
+            parent_link=parent_link,
         )
         all_symbols.append(export_being_inspected)
         if export_being_inspected in relationships:
@@ -453,7 +481,10 @@ class ManageManufactureChain(Behaviour):
                 chain.all_symbols = all_symbols
                 chain.import_links.append(
                     self._recurse_chain(
-                        relationships, import_being_inspected, depth + 1
+                        relationships,
+                        import_being_inspected,
+                        depth + 1,
+                        parent_link=chain,
                     )
                 )
 
@@ -469,6 +500,7 @@ class ChainLink:
         all_symbols: list[str] = None,
         market_symbol: str = None,
         depth=0,
+        parent_link: "ChainLink" = None,
     ) -> None:
         if not import_links:
             import_links = []
@@ -478,6 +510,7 @@ class ChainLink:
         self.depth = depth
         self.all_symbols = all_symbols or []
         self.market_symbol = market_symbol
+        self.parent_link = parent_link
 
     def __repr__(self) -> str:
         return f"ChainLink({self.export_symbol} <- {self.import_symbols}  [{self.depth}]@{self.market_symbol})"
@@ -513,12 +546,16 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
-    behaviour_params = {"priority": 3, "target_tradegood": "CLOTHING", "max_tv": 180}
+    behaviour_params = {
+        "priority": 3,
+        "target_tradegood": "ADVANCED_CIRCUITRY",
+        "max_tv": 180,
+    }
 
     while True:
         bhvr = ManageManufactureChain(agent, ship, behaviour_params or {})
 
-        lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+        lock_ship(ship, "MANUAL", 60 * 24)
 
         bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

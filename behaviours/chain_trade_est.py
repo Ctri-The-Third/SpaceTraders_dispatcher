@@ -69,7 +69,9 @@ class ChainTradeEST(Behaviour):
         params = self.select_positive_trade(self.target_tradegoods)
         if not params:
             self.logger.info("No trades found")
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+
+            self.st.sleep(SAFETY_PADDING)
 
         buy_wp = st.waypoints_view_one(params["buy_wp"])
         sell_wp = st.waypoints_view_one(params["sell_wp"])

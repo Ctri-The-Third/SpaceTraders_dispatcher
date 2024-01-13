@@ -115,6 +115,7 @@ class ScanInBackground(Behaviour):
             self.logger.warning(
                 "No unscanned waypoints found. stalling for 10 minutes and exiting."
             )
+            self.st.release_connection()
             time.sleep(600)
 
         # orbital stations
@@ -137,27 +138,25 @@ class ScanInBackground(Behaviour):
         where type = %s
         order by random() 
         """
-        return try_execute_select(self.st.db_client.connection, sql, (type,))
+        return try_execute_select(sql, (type,), self.connection)
 
     def get_twenty_unscanned_jumpgates(self) -> list[str]:
         sql = """ select * from jumpgates_scanned
 where charted and not scanned
 order by random()
 """
-        return try_execute_select(self.st.db_client.connection, sql, ())
+        return try_execute_select(sql, (), self.connection)
 
     def get_twenty_unscanned_markets_or_shipyards(self) -> list[str]:
         sql = """select * from mkt_shpyrds_waypoints_scanned
 where not scanned
 order by random()"""
-        return try_execute_select(self.st.db_client.connection, sql, ())
+        return try_execute_select(sql, (), self.connection)
 
     def have_we_all_the_systems(self):
         sql = """select count(distinct system_symbol) from systems"""
-        cursor = self.st.db_client.connection.cursor()
-        cursor.execute(sql, ())
-        row = cursor.fetchone()
-        db_systems = row[0]
+        rows = try_execute_select(sql, (), self.connection)
+        db_systems = rows[0][0]
 
         status = self.st.game_status()
         api_systems = status.total_systems

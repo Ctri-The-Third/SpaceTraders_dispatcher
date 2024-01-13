@@ -77,7 +77,6 @@ class BehaviourConductor:
             db_pass=password,
             current_agent_symbol=self.current_agent_symbol,
         )
-        self.connection = client.connection
         self.haulers = []
         self.commanders = []
         self.hounds = []
@@ -87,7 +86,7 @@ class BehaviourConductor:
         self.satellites = []
         self.siphoners = []
         self.refiners = []
-        self.pathfinder = PathFinder(connection=self.connection)
+        self.pathfinder = PathFinder()
 
         self.next_quarterly_update = None
         self.next_daily_update = None
@@ -201,7 +200,7 @@ class BehaviourConductor:
 
             # minutely tasks, for scaling ships if possible.
 
-            sleep(60)
+            self.st.sleep(60)
 
     def global_daily_update(self):
         """Reset uncharted waypoints and refresh materialised views."""
@@ -214,7 +213,7 @@ class BehaviourConductor:
         delete from waypoint_traits where trait_symbol = 'UNCHARTED';
 
         """
-        result = try_execute_upsert(self.connection, sql, ())
+        result = try_execute_upsert(sql, ())
 
         # step 2 - refresh the materialised views
         # this takes over 10 minutes, let's _not_ do it like this, and rethink. or at least do it on a seperate thread so it's not blocking.
@@ -241,7 +240,6 @@ class BehaviourConductor:
         ):
             if ship.cargo_units_used > 0:
                 log_task(
-                    self.connection,
                     BHVR_SELL_OR_JETTISON_ALL_CARGO,
                     [],
                     system.system_symbol,
@@ -250,7 +248,7 @@ class BehaviourConductor:
                     specific_ship_symbol=ship.name,
                 )
 
-        if missing_market_prices(self.connection, system.system_symbol, 3):
+        if missing_market_prices(system.system_symbol, 3):
             best_ship = system.commanders[0] if len(system.commanders) > 0 else None
             if not best_ship:
                 best_ship = system.explorers[0] if len(system.explorers) > 0 else None
@@ -262,7 +260,6 @@ class BehaviourConductor:
                 # the system is empty, so we should log this task to a globally available ship.
                 return
             log_task(
-                self.connection,
                 bhvr.BHVR_EXPLORE_SYSTEM,
                 [],
                 system.system_symbol,
@@ -294,7 +291,6 @@ class BehaviourConductor:
 
             if best_ship:
                 log_task(
-                    self.connection,
                     bhvr.BHVR_GO_AND_BUY_A_SHIP,
                     [],
                     system.system_symbol,
@@ -399,7 +395,6 @@ class BehaviourConductor:
                     return len(shipyards) + 1
                 probe = satellites.pop(0)
                 set_behaviour(
-                    self.connection,
                     probe.name,
                     BHVR_MONITOR_SPECIFIC_LOCATION,
                     {"waypoint": target_waypoint},
@@ -409,7 +404,6 @@ class BehaviourConductor:
                     break
                 probe = satellites.pop(0)
                 set_behaviour(
-                    self.connection,
                     probe.name,
                     BHVR_MONITOR_SPECIFIC_LOCATION,
                     {"waypoint": shipyard},
@@ -431,7 +425,6 @@ class BehaviourConductor:
                     break
                 probe = satellites.pop(0)
                 set_behaviour(
-                    self.connection,
                     probe.name,
                     BHVR_MONITOR_SPECIFIC_LOCATION,
                     {"waypoint": symbol, "priority": 5},
@@ -464,7 +457,6 @@ class BehaviourConductor:
                     break
                 hauler = ships.pop(0)
                 set_behaviour(
-                    self.connection,
                     hauler.name,
                     # for now manage single, eventually manage supply chain
                     BHVR_MANAGE_SPECIFIC_EXPORT,
@@ -480,7 +472,6 @@ class BehaviourConductor:
                 break
             hauler = ships.pop(0)
             set_behaviour(
-                self.connection,
                 hauler.name,
                 # for now manage single, eventually manage supply chain
                 BHVR_CHAIN_TRADE,
@@ -493,7 +484,6 @@ class BehaviourConductor:
                 break
             hauler = ships.pop(0)
             set_behaviour(
-                self.connection,
                 hauler.name,
                 bhvr.BHVR_EXECUTE_CONTRACTS,
                 {"priority": 3},
@@ -503,7 +493,6 @@ class BehaviourConductor:
                 return hauler_jobs
             hauler = ships.pop(0)
             set_behaviour(
-                self.connection,
                 hauler.name,
                 bhvr.BHVR_CONSTRUCT_JUMP_GATE,
                 {"priority": 4, "target_sys": system.system_symbol},
@@ -512,7 +501,6 @@ class BehaviourConductor:
         while len(ships) > 0:
             hauler = ships.pop(0)
             set_behaviour(
-                self.connection,
                 hauler.name,
                 "EXCESS TO SYSTEM GAME PLAN",
                 {"priority": 5},
@@ -536,7 +524,6 @@ class BehaviourConductor:
                     break
                 extractor = extractors.pop(0)
                 set_behaviour(
-                    self.connection,
                     extractor.name,
                     BHVR_EXTRACT_AND_GO_SELL,
                     {"asteroid_wp": wayp_s},
@@ -559,7 +546,6 @@ class BehaviourConductor:
                     break
                 siphoner = siphoners.pop(0)
                 set_behaviour(
-                    self.connection,
                     siphoner.name,
                     BHVR_EXTRACT_AND_GO_SELL,
                     {"asteroid_wp": wayp.symbol},
@@ -570,7 +556,6 @@ class BehaviourConductor:
         if system.commander_trades:
             commander = self.st.ships_view_one(f"{self.current_agent_symbol}-1")
             set_behaviour(
-                self.connection,
                 commander.name,
                 BHVR_CHAIN_TRADE,
                 {"priority": 3, "target_sys": system.system_symbol},

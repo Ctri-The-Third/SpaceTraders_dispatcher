@@ -26,7 +26,6 @@ class MonitorPrices(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
-        connection=None,
     ) -> None:
         super().__init__(
             agent_name,
@@ -34,7 +33,6 @@ class MonitorPrices(Behaviour):
             behaviour_params,
             config_file_name,
             session,
-            connection,
         )
         self
 
@@ -79,7 +77,7 @@ class MonitorPrices(Behaviour):
             self.log_market_changes(waypoint.symbol)
         if waypoint.has_shipyard:
             self.st.system_shipyard(waypoint, True)
-        time.sleep(SAFETY_PADDING)
+        self.st.sleep(SAFETY_PADDING)
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
         self.end()
 

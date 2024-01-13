@@ -89,7 +89,7 @@ class ExploreSystem(Behaviour):
                     self.logger.error(
                         "Couldn't find any systems with jump gates! sleeping  10 mins then exiting!"
                     )
-                    time.sleep(600)
+                    self.st.sleep(600)
                     return
                 target = resp[0]
 

@@ -170,7 +170,8 @@ class ExtractAndGoSell(Behaviour):
                 market = self.st.system_market(end_wp)
 
                 # never sell to exporting markets.
-                if market.get_tradegood(tradegood.symbol).type not in (
+                tg = market.get_tradegood(tradegood.symbol)
+                if tg and tg.type not in (
                     "EXCHANGE",
                     "IMPORT",
                 ):
@@ -220,7 +221,7 @@ if __name__ == "__main__":
         "cargo_to_transfer": ["*"],
     }
     bhvr = ExtractAndGoSell(agent, ship, behaviour_params)
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=60 * 24)
+    lock_ship(ship, "MANUAL", duration=60 * 24)
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
+    lock_ship(ship, "", duration=0)

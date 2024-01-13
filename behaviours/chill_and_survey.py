@@ -44,7 +44,7 @@ class ChillAndSurvey(Behaviour):
 
         target_wp = st.waypoints_view_one(self.target_wp_s)
         if not target_wp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
         self.ship_extrasolar_jump(target_wp.system_symbol)
@@ -52,7 +52,7 @@ class ChillAndSurvey(Behaviour):
         self.sleep_until_ready()
         resp = st.ship_survey(ship)
         if not resp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
         self.end()

@@ -72,7 +72,7 @@ class ExecuteContracts(Behaviour):
         params = self.behaviour_params
         if "quantity" not in params:
             self.logger.warning("No active contract found, sleeping")
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             return
         quantity = params["quantity"]
         buy_system = st.systems_view_one(waypoint_slicer(params["buy_wp"]))
@@ -100,7 +100,6 @@ class ExecuteContracts(Behaviour):
     where system_symbol = %s and trade_symbol = %s
     and agent_symbol = %s"""
                 results = try_execute_select(
-                    self.connection,
                     sql,
                     (
                         self.ship.nav.system_symbol,
@@ -136,7 +135,6 @@ class ExecuteContracts(Behaviour):
     order by export_market = %s desc, route_value desc
     """
         results = try_execute_select(
-            self.st.db_client.connection,
             sql,
             (self.ship.nav.system_symbol, self.ship.nav.waypoint_symbol),
         )
@@ -167,6 +165,6 @@ if __name__ == "__main__":
     bhvr = ExecuteContracts(agent, ship, behaviour_params or {})
 
     while True:
-        lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+        lock_ship(ship, "MANUAL", 60 * 24)
         bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)

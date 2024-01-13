@@ -180,7 +180,7 @@ class ObservationConductor:
                 starting_run = False
             self.minutely_update()
 
-            sleep(60)
+            self.st.sleep(60)
 
     def daily_update(self):
         """Reset uncharted waypoints and refresh materialised views."""

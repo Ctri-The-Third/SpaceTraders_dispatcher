@@ -136,7 +136,7 @@ class ExtractAndFulfill_7(Behaviour):
         #
         if ship.cargo_units_used == ship.cargo_capacity:
             self.logger.info("Ship unable to do anything, sleeping for 300s")
-            time.sleep(300)
+            self.st.sleep(300)
 
         #
         # end of script.

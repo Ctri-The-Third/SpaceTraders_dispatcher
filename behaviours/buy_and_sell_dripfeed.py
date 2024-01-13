@@ -37,7 +37,6 @@ class BuyAndSellDripfeed(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
-        connection=None,
     ) -> None:
         super().__init__(
             agent_name,
@@ -45,7 +44,6 @@ class BuyAndSellDripfeed(Behaviour):
             behaviour_params,
             config_file_name,
             session,
-            connection,
         )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
@@ -69,7 +67,8 @@ class BuyAndSellDripfeed(Behaviour):
         #
 
         if "tradegood" not in self.behaviour_params:
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         self.target_tradegood = self.behaviour_params["tradegood"]
@@ -137,7 +136,8 @@ class BuyAndSellDripfeed(Behaviour):
                     tradegood.purchase_price,
                     self.max_purchase_price,
                 )
-                time.sleep(300)
+                self.st.release_connection()
+                self.st.sleep(300)
                 return False
             amount_to_buy = min(ship.cargo_space_remaining, tradegood.trade_volume)
             resp = self.buy_cargo(self.target_tradegood, amount_to_buy)
@@ -148,7 +148,8 @@ class BuyAndSellDripfeed(Behaviour):
                     self.logger.debug(
                         "Couldn't buy cargo, none in inventory (can't afford?) - sleeping"
                     )
-                    time.sleep(300)
+                    self.st.release_connection()
+                    self.st.sleep(300)
         return True
 
     def sell_half(self):
@@ -171,7 +172,8 @@ class BuyAndSellDripfeed(Behaviour):
                     tradegood.sell_price,
                     self.min_sell_price,
                 )
-                time.sleep(300)
+                self.st.release_connection()
+                self.st.sleep(300)
                 return
             amount_to_sell = min(ship.cargo_units_used, tradegood.trade_volume)
             self.sell_cargo(self.target_tradegood, amount_to_sell, sell_market_mkt)
@@ -183,7 +185,8 @@ class BuyAndSellDripfeed(Behaviour):
         )
         if error:
             self.logger.error(error)
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings
@@ -216,8 +219,8 @@ if __name__ == "__main__":
             "min_sell_price": 18200,
         },
     )
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
 
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=0)
+    lock_ship(ship, "MANUAL", duration=0)

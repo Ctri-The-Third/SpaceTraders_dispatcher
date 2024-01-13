@@ -52,7 +52,7 @@ class GoAndBuyShip(Behaviour):
         elif not target_wp:
             target_wp = self.find_shipyards(target_ship_type)
         if not target_wp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
         target_sys = waypoint_slicer(target_wp.symbol)
@@ -61,7 +61,7 @@ class GoAndBuyShip(Behaviour):
 
         resp = st.ships_purchase(target_ship_type, target_wp.symbol)
         if not resp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
         self.end()

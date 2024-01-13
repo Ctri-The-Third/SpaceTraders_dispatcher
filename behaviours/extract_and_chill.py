@@ -59,7 +59,7 @@ class ExtractAndChill(Behaviour):
         )
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:

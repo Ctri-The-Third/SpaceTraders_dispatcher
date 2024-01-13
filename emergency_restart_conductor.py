@@ -172,7 +172,7 @@ class BehaviourConductor:
 
             # minutely tasks, for scaling ships if possible.
 
-            sleep(60)
+            self.st.sleep(60)
 
     def system_daily_update(self, system: "ConductorSystem"):
         """Set ship behaviours and tasks"""
@@ -181,12 +181,11 @@ class BehaviourConductor:
         """Set ship behaviours and tasks"""
 
         for ship in self.all_ships:
-            set_behaviour(self.connection, ship.name, "DISABLED FOR EMERGENCY", {})
+            set_behaviour(ship.name, "DISABLED FOR EMERGENCY", {})
 
         self.set_probe_tasks(system)
         for commander in system.commanders:
             set_behaviour(
-                self.connection,
                 commander.name,
                 bhvr.BHVR_EMERGENCY_REBOOT,
                 {"priority": 3},
@@ -195,7 +194,7 @@ class BehaviourConductor:
         for i in range(possible_haulers):
             if system.haulers:
                 hauler = system.haulers.pop(0)
-                set_behaviour(self.connection, hauler.name, bhvr.BHVR_CHAIN_TRADE, {})
+                set_behaviour(hauler.name, bhvr.BHVR_CHAIN_TRADE, {})
 
     def set_probe_tasks(self, system: "ConductorSystem") -> int:
         satellites = system.satellites[:]
@@ -210,7 +209,6 @@ class BehaviourConductor:
                     return len(shipyards) + 1
                 probe = satellites.pop(0)
                 set_behaviour(
-                    self.connection,
                     probe.name,
                     BHVR_MONITOR_SPECIFIC_LOCATION,
                     {"waypoint": target_waypoint},

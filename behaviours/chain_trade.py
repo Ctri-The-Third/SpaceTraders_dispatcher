@@ -78,7 +78,8 @@ class ChainTrade(Behaviour):
 
             # go and tour possible markets
             self.scan_local_system()
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             return
 
         buy_wp = st.waypoints_view_one(params["buy_wp"])
@@ -86,7 +87,12 @@ class ChainTrade(Behaviour):
         tradegood = params["tradegood"]
         pass
         if not tradegood in [x.symbol for x in ship.cargo_inventory]:
-            self.go_and_buy(tradegood, buy_wp, max_to_buy=self.ship.cargo_capacity, burn_allowed =True)
+            self.go_and_buy(
+                tradegood,
+                buy_wp,
+                max_to_buy=self.ship.cargo_capacity,
+                burn_allowed=True,
+            )
 
         self.go_and_sell_or_fulfill(tradegood, sell_wp, burn_allowed=True)
 
@@ -94,8 +100,8 @@ class ChainTrade(Behaviour):
         # this gets all viable trades for a given system
         # it lists all the trades from the current market first, then all others afterwards#
         # it will then go by the most profitable (profit per distance).
-        results = None 
-        if len(self.ship.cargo_inventory) > 0 :
+        results = None
+        if len(self.ship.cargo_inventory) > 0:
             cargo_symbols = tuple([c.symbol for c in self.ship.cargo_inventory])
             sql = """
     SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, sell_price, supply_value,  supply_text, import_supply, market_depth, import_market, import_x, import_y, distance, export_activity
@@ -106,16 +112,16 @@ class ChainTrade(Behaviour):
     and ((supply_value >= 4 and export_activity = 'STRONG') or supply_value >= 3)
     order by export_market = %s desc, route_value desc
     """
-            results =  try_execute_select(
-            self.st.db_client.connection,
-            sql,
-            (
-                self.ship.nav.system_symbol,
-                cargo_symbols,
-
-                self.agent.credits,
-                self.ship.nav.waypoint_symbol,
-            ))
+            results = try_execute_select(
+                sql,
+                (
+                    self.ship.nav.system_symbol,
+                    cargo_symbols,
+                    self.agent.credits,
+                    self.ship.nav.waypoint_symbol,
+                ),
+                self.connection,
+            )
         if not results:
             sql = """   SELECT route_value, system_symbol, trade_symbol, profit_per_unit, export_market, export_x, export_y, purchase_price, sell_price, supply_value,  supply_text, import_supply, market_depth, import_market, import_x, import_y, distance, export_activity
 	FROM public.trade_routes_intrasystem
@@ -125,14 +131,14 @@ class ChainTrade(Behaviour):
     and ((supply_value >= 4 and export_activity = 'STRONG') or supply_value >= 3)
     order by export_market = %s desc, route_value desc"""
             results = try_execute_select(
-            self.st.db_client.connection,
-            sql,
-            (
-                self.ship.nav.system_symbol,
-                self.agent.credits,
-                self.ship.nav.waypoint_symbol,
+                sql,
+                (
+                    self.ship.nav.system_symbol,
+                    self.agent.credits,
+                    self.ship.nav.waypoint_symbol,
+                ),
+                self.connection,
             )
-        )
         if not results:
             return {}
         best_distance = float("inf")
@@ -185,11 +191,15 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
     ship_number = sys.argv[2] if len(sys.argv) > 2 else "5A"
     ship = f"{agent}-{ship_number}"
-    behaviour_params =  {'priority': 3, 'target_sys': 'X1-BM12', 'script_name': 'CHAIN_TRADES'} 
+    behaviour_params = {
+        "priority": 3,
+        "target_sys": "X1-BM12",
+        "script_name": "CHAIN_TRADES",
+    }
 
     bhvr = ChainTrade(agent, ship, behaviour_params or {})
 
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
 
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

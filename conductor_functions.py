@@ -66,7 +66,7 @@ def should_we_accept_contract(client: SpaceTraders, contract: Contract):
     total_value = contract.payment_completion + contract.payment_upfront
     total_cost = 0
     for deliverable in contract.deliverables:
-        cost = get_prices_for(client.db_client.connection, deliverable.symbol)
+        cost = get_prices_for(deliverable.symbol)
         if not cost:
             logging.warning(
                 "Couldn't find a market for %s, I don't think we should accept this contract %s ",
@@ -117,12 +117,12 @@ def wait_until_reset(url, user_file: dict):
         had_to_wait = True
 
 
-def get_prices_for(connection, tradegood: str, agent_symbol="@"):
+def get_prices_for(tradegood: str, agent_symbol="@"):
     sql = """select mp.trade_Symbol, coalesce(export_price, galactic_average) as export_price, coalesce(import_price, galactic_average) as import_price from market_prices mp 
 where mp.trade_Symbol = %s
 
 """
-    rows = try_execute_select(connection, sql, (tradegood,))
+    rows = try_execute_select(sql, (tradegood,))
     if rows and len(rows) > 0:
         row = rows[0]
         average_price_buy = row[1]
@@ -134,7 +134,7 @@ where mp.trade_Symbol = %s
     return []
 
 
-def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
+def set_behaviour(ship_symbol, behaviour_id, behaviour_params=None):
     sql = """INSERT INTO ship_behaviours (ship_symbol, behaviour_id, behaviour_params)
     VALUES (%s, %s, %s)
     ON CONFLICT (ship_symbol) DO UPDATE SET
@@ -147,7 +147,6 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
     )
 
     return try_execute_upsert(
-        connection,
         sql,
         (
             ship_symbol,
@@ -159,9 +158,7 @@ def set_behaviour(connection, ship_symbol, behaviour_id, behaviour_params=None):
     )
 
 
-def missing_market_prices(
-    connection, system_symbol: str, oldest_hours: int = 3
-) -> bool:
+def missing_market_prices(system_symbol: str, oldest_hours: int = 3) -> bool:
     "helpful during first setup"
 
     sql = """with info as ( 
@@ -174,12 +171,11 @@ group by mt.market_waypoint
 	)
 	select * from info
 	where last_updated < now() - interval '3 hours' or found_listings =  0"""
-    results = try_execute_select(connection, sql, (system_symbol,))
+    results = try_execute_select(sql, (system_symbol,))
     return len(results) > 0
 
 
 def log_task(
-    connection,
     behaviour_id: str,
     requirements: list,
     target_system: str,
@@ -201,7 +197,6 @@ def log_task(
     """
 
     resp = try_execute_upsert(
-        connection,
         sql,
         (
             hash_str,
@@ -250,8 +245,7 @@ where s.agent_name = %s
 and st.ship_type = %s
 order by ship_cost desc """
     rows = try_execute_select(
-        client.db_client.connection,
-        location_sql,
+        client.db_client.location_sql,
         (client.current_agent_symbol, ship_symbol),
     )
     if len(rows) == 0:
@@ -334,16 +328,14 @@ def register_and_store_user(
     return resp.data["token"]
 
 
-def find_best_market_systems_to_sell(
-    connection, trade_symbol: str
-) -> list[(str, System, int)]:
+def find_best_market_systems_to_sell(trade_symbol: str) -> list[(str, System, int)]:
     "returns market_waypoint, system obj, price as int"
     sql = """select sell_price, w.waypoint_symbol, s.system_symbol, s.sector_Symbol, s.type, s.x,s.y from market_tradegood_listings mtl 
 join waypoints w on mtl.market_symbol = w.waypoint_Symbol
 join systems s on w.system_symbol = s.system_symbol
 where mtl.trade_symbol = %s
 order by 1 desc """
-    results = try_execute_select(connection, sql, (trade_symbol,))
+    results = try_execute_select(sql, (trade_symbol,))
     return_obj = []
     for row in results or []:
         sys = System(row[2], row[3], row[4], row[5], row[6], [])
@@ -354,7 +346,6 @@ order by 1 desc """
 
 
 def log_mining_package_deliveries(
-    connection,
     collection_task_id: str,
     current_agent_symbol: str,
     current_system_symbol: str,
@@ -376,12 +367,11 @@ select trade_symbols, source_waypoint,market_symbol, package_value, distance fro
 
 order by package_value/greatest(distance,1) desc;"""
     rows = try_execute_select(
-        connection, sql, (f"{current_system_symbol}%", f"{current_system_symbol}%")
+        sql, (f"{current_system_symbol}%", f"{current_system_symbol}%")
     )
     for row in rows:
         trade_symbols, source_waypoint, market_symbol, package_value, distance = row
         task_id = log_task(
-            connection,
             collection_task_id,
             ["40_CARGO", "ANY_FREIGHTER"],
             waypoint_slicer(market_symbol),
@@ -398,7 +388,6 @@ order by package_value/greatest(distance,1) desc;"""
 
 
 def log_shallow_trade_tasks(
-    connection,
     credits_available: int,
     trade_task_id: str,
     current_agent_symbol: str,
@@ -408,7 +397,6 @@ def log_shallow_trade_tasks(
 ) -> int:
     capital_reserve = 0
     routes = get_99pct_shallow_trades(
-        connection,
         credits_available,
         target_system,
         limit=max_tasks,
@@ -418,7 +406,6 @@ def log_shallow_trade_tasks(
             f"No optimum shallow trades found {credits_available} cr, limit of {max_tasks}"
         )
         routes = get_abundant_scarce_trades(
-            connection,
             credits_available,
             target_system,
             limit=max_tasks,
@@ -439,7 +426,6 @@ def log_shallow_trade_tasks(
         ) = route
         capital_reserve += cost_to_execute
         task_id = log_task(
-            connection,
             trade_task_id,
             ["ANY_FREIGHTER"],
             waypoint_slicer(import_market),
@@ -463,7 +449,6 @@ def log_shallow_trade_tasks(
 
 
 def get_imports_for_export(
-    connection,
     trade_symbol: str,
     export_waypoint: str,
     specific_system: str = None,
@@ -474,7 +459,6 @@ def get_imports_for_export(
     and (case when %s is not True then export_system = %s else True end) """
 
     results = try_execute_select(
-        connection,
         sql,
         (
             specific_system is not None,
@@ -489,7 +473,7 @@ def get_imports_for_export(
 
 
 def get_99pct_shallow_trades(
-    connection, working_capital: int, target_system_symbol: str, limit=50
+    working_capital: int, target_system_symbol: str, limit=50
 ) -> list[tuple]:
     sql = """select tri.trade_symbol, system_symbol, profit_per_unit, export_market, import_market, market_depth, purchase_price * market_depth
     from trade_routes_intrasystem tri 
@@ -501,7 +485,6 @@ def get_99pct_shallow_trades(
     limit %s"""
 
     routes = try_execute_select(
-        connection,
         sql,
         (
             working_capital,
@@ -515,7 +498,7 @@ def get_99pct_shallow_trades(
 
 
 def get_abundant_scarce_trades(
-    connection, working_capital: int, target_system_symbol: str, limit=50
+    working_capital: int, target_system_symbol: str, limit=50
 ) -> list[tuple]:
     sql = """select trade_symbol, system_symbol, profit_per_unit, export_market, import_market,  market_depth, purchase_price * market_depth
     from trade_routes_intrasystem tri 
@@ -526,7 +509,6 @@ def get_abundant_scarce_trades(
     limit %s"""
 
     routes = try_execute_select(
-        connection,
         sql,
         (
             working_capital,
