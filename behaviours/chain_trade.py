@@ -85,13 +85,18 @@ class ChainTrade(Behaviour):
         buy_wp = st.waypoints_view_one(params["buy_wp"])
         sell_wp = st.waypoints_view_one(params["sell_wp"])
         tradegood = params["tradegood"]
+        buy_market = st.system_market(buy_wp)
+        target_tg = buy_market.get_tradegood(params["tradegood"])
+        max_to_buy = ship.cargo_capacity
+        if target_tg:
+            max_to_buy = target_tg.trade_volume * 2
         pass
         if not tradegood in [x.symbol for x in ship.cargo_inventory]:
             self.go_and_buy(
                 tradegood,
                 buy_wp,
-                max_to_buy=self.ship.cargo_capacity,
                 burn_allowed=True,
+                max_to_buy=max_to_buy,
             )
 
         self.go_and_sell_or_fulfill(tradegood, sell_wp, burn_allowed=True)

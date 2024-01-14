@@ -151,11 +151,11 @@ if __name__ == "__main__":
     behaviour_params = {
         "priority": 3,
     }
-
     bhvr = EmergencyReboot(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    bhvr.st.ships_view_one(ship, True)
+    lock_ship(ship_number, "MANUAL", 60 * 24)
     while True:
+        bhvr.st.ships_view_one(ship, True)
+
         bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)
