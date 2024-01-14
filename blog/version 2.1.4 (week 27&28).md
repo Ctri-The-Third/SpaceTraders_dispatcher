@@ -13,7 +13,12 @@ Chain trading is pretty good for efficiency, but during the ramp up we really wa
 
 I've created a simple "trade best" behaviour that will look at the best trade available and execute it. It can be optimised by factoring in the distance to the starting location. The commander is set to use this behaviour when it's trading.
 
-:
+## Ramp up improvements - "Manage supply chain"
+so far we've not automated the fancy supply chain managment behaviour from last time - but additionally we observed markets evolving whilst restricted. This means that restricted doesn't block evolution, but does slow price changes. Evolving a restricted market is easier whilst they're restricted. Thus, focusing on evolution step by step is the best way, not trading exports UNTIL their imports are evolved. That's unlikely to happen since our other trade routes are going to want to trade the those exports, and we don't have a reservation system.
+
+
+## Ramp up improvements - "Evolve"
+Evolution and managing of markets ar actually super seperate, so before we start managing a chain we should evolve it to its best possible state.
 
 ## Command and control
 
