@@ -846,6 +846,8 @@ order by 1 desc """
         ship = self.ship
         st = self.st
         current_market = st.system_market(target_waypoint)
+        if not max_to_buy:
+            max_to_buy = ship.cargo_space_remaining
 
         if target_system and ship.nav.system_symbol != target_system.symbol:
             self.ship_intrasolar(local_jumpgate.symbol)

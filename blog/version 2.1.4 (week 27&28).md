@@ -28,3 +28,12 @@ We're at the point where we want to be able to make instructions via the UI.
     * Log task for ship
 * Set behaviour for ship
 * direct move, buy, sell instructions.
+
+
+
+## performance
+
+* Node C (22-23)- Didn't do initial exploration and entered a crash loop. to be retired.
+* Node V (26-27) - Did initial exploration, but kept instructing the commander to go buy a ship that it couldn't afford. Terminating the conductor for an hour or two should unpick that.
+* Node U 
+  * Crashed itself buying too many ships, performing high-volume low-marketdepth trades, and keeping the jump gate constructor on whilst ramping.
