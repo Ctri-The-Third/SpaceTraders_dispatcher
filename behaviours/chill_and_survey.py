@@ -32,7 +32,7 @@ class ChillAndSurvey(Behaviour):
             session,
             connection,
         )
-        self.target_wp_s = behaviour_params["asteroid_wp"]
+        self.target_wp_s = behaviour_params.get("asteroid_wp", None)
 
     def default_params_obj(self):
         return_obj = super().default_params_obj()

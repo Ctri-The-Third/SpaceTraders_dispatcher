@@ -45,6 +45,11 @@ class SellOrDitch(Behaviour):
 
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+
+        return return_obj
+
     def run(self):
         super().run()
         self.sleep_until_ready()

@@ -49,6 +49,12 @@ class ChainTrade(Behaviour):
 
         self.target_sys_symbol = behaviour_params.get("target_sys", None)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_sys"] = "X1-TEST"
+
+        return return_obj
+
     def run(self):
         self.ship = self.st.ships_view_one(self.ship_name)
         self.sleep_until_ready()

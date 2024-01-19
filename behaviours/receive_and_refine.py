@@ -41,6 +41,8 @@ class ReceiveAndRefine(Behaviour):
     def default_params_obj(self):
         return_obj = super().default_params_obj()
         return_obj["asteroid_wp"] = "X1-PK16-AB12"
+        return_obj["cargo_to_transfer"] = ["*"]
+
         return return_obj
 
     def run(self):

@@ -120,6 +120,8 @@ class dispatcher:
 
         scan_thread = threading.Thread(target=self.maybe_scan_all_systems, daemon=True)
         scan_thread.start()
+
+        self.upload_behaviour_definitions()
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
@@ -424,6 +426,16 @@ class dispatcher:
         if id in behaviours_and_classes:
             bhvr = behaviours_and_classes[id](aname, sname, bhvr_params)
             return bhvr
+
+    def upload_behaviour_definitions(self):
+        for behaviour_id, bhvr_class in behaviours_and_classes.items():
+            bhvr_obj = bhvr_class("", "", {})
+            bhvr_obj: Behaviour
+
+            params = json.dumps(bhvr_obj.default_params_obj())
+            sql = "insert into behaviour_definitions (behaviour_id, default_params) values (%s, %s) on conflict (behaviour_id) do update set default_params = EXCLUDED.default_params;"
+            try_execute_upsert(sql, (behaviour_id, params), self.connection)
+        pass
 
     def maybe_scan_all_systems(self):
         ships = self.client.ships_view()

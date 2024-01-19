@@ -31,7 +31,6 @@ class MonitorCheapestShipyard(Behaviour):
             session,
             connection,
         )
-        self
 
     def default_params_obj(self):
         return_obj = super().default_params_obj()
