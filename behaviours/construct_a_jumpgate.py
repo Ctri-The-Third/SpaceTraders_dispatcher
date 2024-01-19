@@ -61,6 +61,12 @@ class ConstructJumpgate(Behaviour):
         self._run()
         self.end()
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+
+        return return_obj
+
     def _run(self):
         st = self.st
         ship = self.ship

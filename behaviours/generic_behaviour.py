@@ -100,6 +100,9 @@ class Behaviour:
 
         pass
 
+    def default_params_obj(self):
+        return {"priority": 5, "delay_start": 0}
+
     def find_nearest_systems_by_waypoint_trait(
         self,
         source_system: System,

@@ -33,20 +33,38 @@ class GoAndBuyShip(Behaviour):
             connection,
         )
 
+        self.target_ship_type = self.behaviour_params.get("ship_type", None)
+        self.target_wp = self.behaviour_params.get("target_wp", None)
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["ship_type"] = "SHIP_PROBE"
+        return_obj["target_wp"] = "X1-TEST-A2"
+
+        return return_obj
+
     def run(self):
         super().run()
-        st = self.st
-        ship = self.ship
-        agent = st.view_my_self()
-        st.logging_client.log_beginning(
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
-            ship.name,
-            agent.credits,
+            self.ship.name,
+            self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
 
-        target_ship_type = self.behaviour_params.get("ship_type", None)
-        target_wp = self.behaviour_params.get("target_wp", None)
+        self._run()
+        self.end()
+
+    def _run(self):
+        st = self.st
+        ship = self.ship
+        agent = st.view_my_self()
+
+        target_ship_type = self.target_ship_type
+        target_wp = self.target_wp
+
         if target_wp:
             target_wp = st.waypoints_view_one(target_wp)
         elif not target_wp:
@@ -112,6 +130,6 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {"ship_type": "SHIP_PROBE", "target_wp": "X1-GU20-C37"}
     bhvr = GoAndBuyShip(agent, ship, behaviour_params or {})
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

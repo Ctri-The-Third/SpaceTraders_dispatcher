@@ -36,9 +36,30 @@ class SiphonAndChill(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.cargo_to_target = self.behaviour_params.get("cargo_to_transfer", None)
         self.cargo_to_jettison = self.behaviour_params.get("cargo_to_jettison", [])
+        self.asteroid_wp = self.behaviour_params.get("asteroid_wp", None)
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["cargo_to_transfer"] = ["*"]
+        return_obj["cargo_to_jettison"] = []
+        return_obj["asteroid_wp"] = "X1-PK16-C4"
+
+        return return_obj
 
     def run(self):
         super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         # all  threads should have this.
 
         starting_credts = self.agent.credits
@@ -51,9 +72,6 @@ class SiphonAndChill(Behaviour):
             return
         # move ship to a waypoint in its system with
 
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
             time.sleep(SAFETY_PADDING)
@@ -113,7 +131,7 @@ if __name__ == "__main__":
     set_logging(logging.DEBUG)
     behaviour_params = {"asteroid_wp": "X1-YG29-C39", "cargo_to_transfer": ["*"]}
     bhvr = SiphonAndChill(agent, ship, behaviour_params)
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
+    lock_ship(ship, "", duration=0)

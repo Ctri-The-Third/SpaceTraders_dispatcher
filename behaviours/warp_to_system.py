@@ -46,6 +46,12 @@ class WarpToSystem(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.destination_sys = self.behaviour_params.get("target_sys", None)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_sys"] = "X1-TEST"
+
+        return return_obj
+
     def run(self):
         self.ship = self.st.ships_view_one(self.ship_name)
         self.sleep_until_ready()
@@ -274,6 +280,6 @@ if __name__ == "__main__":
 
     bhvr = WarpToSystem(agent, ship, behaviour_params or {})
     bhvr.ship = bhvr.st.ships_view_one(ship)
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

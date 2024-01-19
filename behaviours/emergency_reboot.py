@@ -51,6 +51,7 @@ class EmergencyReboot(Behaviour):
 
     def run(self):
         super().run()
+        self.sleep_until_ready()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
             self.ship.name,
@@ -59,6 +60,13 @@ class EmergencyReboot(Behaviour):
         )
         self._run()
         self.end()
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-GAS1"
+        return_obj["sell_wp"] = "X1-TEST-KMKT"
+
+        return return_obj
 
     def _run(self):
         st = self.st

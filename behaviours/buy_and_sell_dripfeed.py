@@ -55,12 +55,25 @@ class BuyAndSellDripfeed(Behaviour):
 
     def run(self):
         super().run()
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self._run()
+        self.end()
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return return_obj
+
+    def _run(self):
         st = self.st
         ship = self.ship = self.st.ships_view_one(self.ship.name, True)
         agent = self.agent
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
 
         #
         # setup initial parameters and preflight checks
@@ -178,7 +191,7 @@ class BuyAndSellDripfeed(Behaviour):
             amount_to_sell = min(ship.cargo_units_used, tradegood.trade_volume)
             self.sell_cargo(self.target_tradegood, amount_to_sell, sell_market_mkt)
 
-    def end(self, error):
+    def end(self, error=None):
         super().end()
         self.st.logging_client.log_ending(
             BEHAVIOUR_NAME, self.ship.name, self.agent.credits

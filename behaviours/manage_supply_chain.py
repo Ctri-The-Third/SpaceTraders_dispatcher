@@ -63,15 +63,22 @@ class ManageManufactureChain(Behaviour):
         self.markets = {}
         self.tg_s_markets = {}
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_tradegood"] = "CLOTHING"
+        return_obj["max_tv"] = 180
+
+        return return_obj
+
     def run(self):
-        self.ship = self.st.ships_view_one(self.ship_name)
-        self.sleep_until_ready()
+        super().run()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
             self.ship.name,
             self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
+        self.sleep_until_ready()
 
         self._run()
         self.end()

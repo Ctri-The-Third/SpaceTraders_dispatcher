@@ -37,8 +37,28 @@ class ExtractAndChill(Behaviour):
         self.cargo_to_target = self.behaviour_params.get("cargo_to_transfer", None)
         self.cargo_to_jettison = self.behaviour_params.get("cargo_to_jettison", [])
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["cargo_to_transfer"] = ["*"]
+        return_obj["cargo_to_jettison"] = []
+
+        return return_obj
+
     def run(self):
         super().run()
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+
+        self._run()
+        self.end()
+
+    def _run(self):
         # all  threads should have this.
 
         starting_credts = self.agent.credits
@@ -121,7 +141,7 @@ if __name__ == "__main__":
     set_logging(logging.DEBUG)
     behaviour_params = {"asteroid_wp": "X1-YG29-C39", "cargo_to_transfer": ["*"]}
     bhvr = ExtractAndChill(agent, ship, behaviour_params)
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
+    lock_ship(ship, "", duration=0)

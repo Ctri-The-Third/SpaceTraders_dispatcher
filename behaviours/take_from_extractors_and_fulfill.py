@@ -43,6 +43,15 @@ class TakeFromExactorsAndFulfillOrSell_9(Behaviour):
         self.market_wp_s = self.behaviour_params.get("market_wp", None)
         self.exclusive_cargo_items = self.behaviour_params.get("cargo_to_receive", None)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["fulfil_wp"] = ""
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+        return_obj["market_wp"] = "X!-TEST-A1"
+        return_obj["cargo_to_receive"] = []
+
+        return return_obj
+
     def run(self):
         super().run()
         self._run()
@@ -227,6 +236,6 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {"priority": 4, "cargo_to_receive": ["COPPER_ORE"]}
     bhvr = TakeFromExactorsAndFulfillOrSell_9(agent, ship, behaviour_params or {})
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship_number, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)

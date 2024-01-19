@@ -41,15 +41,20 @@ class TradeBestInSystem(Behaviour):
         self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return return_obj
+
     def run(self):
-        self.ship = self.st.ships_view_one(self.ship_name)
-        self.sleep_until_ready()
+        super().run()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
             self.ship.name,
             self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
+        self.sleep_until_ready()
+
         self._run()
         self.end()
 

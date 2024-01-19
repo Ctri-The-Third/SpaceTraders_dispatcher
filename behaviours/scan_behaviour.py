@@ -31,16 +31,33 @@ class ScanInBackground(Behaviour):
             connection,
         )
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj[
+            "note"
+        ] = "this doesn't need to attach to a ship - all it does is scan systems or charted waypoints in the background "
+        return_obj["priority"] = 10
+        return return_obj
+
     def run(self):
         super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         ship = self.ship
         agent = self.agent
         hq_system = waypoint_slicer(agent.headquarters)
         st = self.st
         # check all markets in the system
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
 
         systems_sweep = self.have_we_all_the_systems()
         if not systems_sweep[0]:

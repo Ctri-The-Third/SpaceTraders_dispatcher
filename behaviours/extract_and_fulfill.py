@@ -37,8 +37,29 @@ class ExtractAndFulfill_7(Behaviour):
         )
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+        return_obj["cargo_to_transfer"] = ["*"]
+        return_obj["fulfil_wp"] = "X1-TEST-AB12"
+
+        return return_obj
+
     def run(self):
         super().run()
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+
+        self._run()
+        self.end()
+
+    def _run(self):
         starting_credts = self.st.view_my_self().credits
 
         st = self.st

@@ -53,6 +53,9 @@ class NewBehaviour(Behaviour):
         self._run()
         self.end()
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+
     def _run(self):
         st = self.st
         ship = self.ship  # = st.ships_view_one(self.ship_name, True)
@@ -78,7 +81,7 @@ if __name__ == "__main__":
 
     bhvr = NewBehaviour(agent, ship, behaviour_params or {})
 
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
 
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

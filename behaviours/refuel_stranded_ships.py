@@ -46,15 +46,24 @@ class ConstructJumpgate(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.target_ships = self.behaviour_params.get("target_ships", [])
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_ships"] = [
+            "AGENT-1",
+        ]
+
+        return return_obj
+
     def run(self):
         super().run()
-        self.sleep_until_ready()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
             self.ship.name,
             self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
+        self.sleep_until_ready()
+
         self._run()
         self.end()
 
@@ -163,6 +172,6 @@ if __name__ == "__main__":
 
     bhvr = ConstructJumpgate(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship_number, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)

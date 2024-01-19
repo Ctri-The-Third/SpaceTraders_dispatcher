@@ -57,6 +57,13 @@ class ManageSpecifcExport(Behaviour):
             self.starting_market_wp = None
         self.markets = {}
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_tradegood"] = "FUEL"
+        return_obj["market_wp"] = "X1-TEST-A1"
+
+        return return_obj
+
     def run(self):
         super().run()
         self.st.logging_client.log_beginning(

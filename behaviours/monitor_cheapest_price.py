@@ -33,25 +33,34 @@ class MonitorCheapestShipyard(Behaviour):
         )
         self
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["ship_type"] = "SHIP_SIPHON_DRONE"
+
+        return return_obj
+
     def run(self):
+        super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         super().run()
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
         # check all markets in the system
-        scan_thread = threading.Thread(
-            target=self.scan_waypoints, daemon=False, name="scan_thread"
-        )
+
         # scan_thread.start()
         starting_system = st.systems_view_one(ship.nav.system_symbol)
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME,
-            ship.name,
-            agent.credits,
-            behaviour_params=self.behaviour_params,
-        )
-
-        self.sleep_until_ready()
 
         sql = """select st.*, s.system_symbol, s.x, s.y from shipyard_types st
         join waypoints w on st.shipyard_symbol = w.waypoint_symbol
@@ -102,8 +111,7 @@ class MonitorCheapestShipyard(Behaviour):
             self.end()
 
             self.st.sleep(SAFETY_PADDING)
-        if scan_thread.is_alive():
-            scan_thread.join()
+
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
 

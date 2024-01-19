@@ -31,16 +31,31 @@ class RemoteScanWaypoints(Behaviour):
             connection,
         )
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+
+        return return_obj
+
     def run(self):
         super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         ship = self.ship
         agent = self.agent
         hq_system = waypoint_slicer(agent.headquarters)
         st = self.st
         # check all markets in the system
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
 
         agent = self.agent
         if ship.can_survey:

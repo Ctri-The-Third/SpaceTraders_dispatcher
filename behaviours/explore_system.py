@@ -44,18 +44,27 @@ class ExploreSystem(Behaviour):
 
     def run(self):
         super().run()
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self._run()
+        self.end()
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_sys"] = "X1-BC28"
+
+        return return_obj
+
+    def _run(self):
         ship = self.ship
         st = self.st
         agent = st.view_my_self()
         # check all markets in the system
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME,
-            ship.name,
-            agent.credits,
-            behaviour_params=self.behaviour_params,
-        )
-
-        self.sleep_until_arrived()
         o_sys = st.systems_view_one(ship.nav.system_symbol)
 
         path = None
@@ -141,8 +150,8 @@ if __name__ == "__main__":
     behaviour_params = {"priority": 3.5, "target_sys": "X1-BC28"}  # X1-TF72 X1-YF83
     bhvr = ExploreSystem(agent, ship, behaviour_params or {})
 
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
 
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
+    lock_ship(ship, "", duration=0)

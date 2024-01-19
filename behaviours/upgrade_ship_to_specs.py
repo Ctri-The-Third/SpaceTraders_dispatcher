@@ -43,6 +43,16 @@ class FindMountsAndEquip(Behaviour):
         )
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["mounts"] = [
+            "MOUNT_MINING_LASER_II",
+            "MOUNT_MINING_LASER_II",
+            "MOUNT_MINING_LASER_I",
+        ]
+
+        return return_obj
+
     def run(self):
         super().run()
         ship = self.ship

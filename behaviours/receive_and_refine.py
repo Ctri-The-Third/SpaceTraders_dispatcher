@@ -38,8 +38,25 @@ class ReceiveAndRefine(Behaviour):
 
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-PK16-AB12"
+        return return_obj
+
     def run(self):
         super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         st = self.st
         ship = self.ship
         st.ship_cooldown(ship)
@@ -50,9 +67,6 @@ class ReceiveAndRefine(Behaviour):
         did_something = False
 
         agent = st.view_my_self()
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
 
         start_wp_s = self.behaviour_params.get("asteroid_wp", ship.nav.waypoint_symbol)
         start_sys = st.systems_view_one(waypoint_slicer(start_wp_s))

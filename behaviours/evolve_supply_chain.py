@@ -63,7 +63,15 @@ class EvolveSupplyChain(Behaviour):
         self.markets = {}
         self.tg_s_markets = {}
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_tradegoods"] = ["CLOTHING", "FOOD"]
+        return_obj["max_tv"] = 180
+
+        return return_obj
+
     def run(self):
+        super().run()
         self.ship = self.st.ships_view_one(self.ship_name)
         self.sleep_until_ready()
         self.st.logging_client.log_beginning(
