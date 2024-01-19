@@ -32,7 +32,7 @@ from straders_sdk.constants import SUPPLY_LEVELS, MANUFACTURED_BY
 import math
 from behaviours.generic_behaviour import Behaviour
 
-BEHAVIOUR_NAME = "EVOLVE_AND_MAINTAIN_SUPPLY_CHAIN"
+BEHAVIOUR_NAME = "MAINTAIN_SUPPLY_CHAIN"
 SAFETY_PADDING = 180
 
 
@@ -319,10 +319,10 @@ class ManageManufactureChain(Behaviour):
             if not import_market_symbol:
                 return
             import_market = self.get_market(import_market_symbol)
-            import_tg = import_market.get_tradegood(chain.export_symbol)
+            import_tg = import_market.get_tradegood(export.symbol)
             if (
                 import_tg
-                and import_tg.supply > 1
+                and SUPPLY_LEVELS[import_tg.supply] > 1
                 and export.purchase_price < import_tg.purchase_price
             ):
                 return chain
@@ -544,12 +544,11 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "11"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
-        "target_tradegood": "ADVANCED_CIRCUITRY",
-        "max_tv": 180,
+        "target_tradegood": "CLOTHING",
     }
 
     while True:

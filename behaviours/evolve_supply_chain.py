@@ -32,11 +32,11 @@ from straders_sdk.constants import SUPPLY_LEVELS, MANUFACTURED_BY
 import math
 from behaviours.generic_behaviour import Behaviour
 
-BEHAVIOUR_NAME = "EVOLVE_AND_MAINTAIN_SUPPLY_CHAIN"
+BEHAVIOUR_NAME = "EVOLVE_SUPPLY_CHAIN"
 SAFETY_PADDING = 180
 
 
-class ManageManufactureChain(Behaviour):
+class EvolveSupplyChain(Behaviour):
     def __init__(
         self,
         agent_name,
@@ -56,7 +56,7 @@ class ManageManufactureChain(Behaviour):
         )
         self.agent = self.st.view_my_self()
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
-        self.target_tradegood = self.behaviour_params.get("target_tradegood", None)
+        self.target_tradegoods = self.behaviour_params.get("target_tradegoods", None)
         self.chain = None
         self.max_tv = self.behaviour_params.get("max_tv", 180)
         self.max_export_tv = math.floor(self.max_tv * (2 / 3))
@@ -81,71 +81,135 @@ class ManageManufactureChain(Behaviour):
         ship = self.ship  # = st.ships_view_one(self.ship_name, True)
         ship: Ship
         agent = self.agent
-        self.chain = self.populate_chain(self.target_tradegood)
 
-        target_link = self.search_deeper_for_under_evolved_export(self.chain)
-        max_import_tv = math.floor(self.max_tv * ((2 / 3) ** target_link.import_height))
-        max_export_tv = math.floor(max_import_tv * (2 / 3))
-        # for each import, check the supply level. If it's 3, then we need to fill it to abundant.
-        # then for the export, check the supply level - if it's 3 then we need to drain it to scarce.
-        main_market = self.get_market(target_link.market_symbol)
-        main_waypoint = self.st.waypoints_view_one(target_link.market_symbol)
-        for i in target_link.import_symbols:
-            tg = main_market.get_tradegood(i)
-            if tg and tg.trade_volume < max_import_tv and SUPPLY_LEVELS[tg.supply] <= 3:
-                while (
-                    SUPPLY_LEVELS[tg.supply] < 5 and not self.termination_event.is_set()
+        target_tradegoods = self.target_tradegoods
+        had_to_do_something = False
+        for target_tradegood in target_tradegoods:
+            self.chain = self.populate_chain(target_tradegood)
+
+            target_link = self.search_deeper_for_under_evolved_export(self.chain)
+            if not target_link:
+                continue
+            max_import_tv = math.floor(
+                self.max_tv * ((2 / 3) ** target_link.import_height)
+            )
+            max_export_tv = math.floor(max_import_tv * (2 / 3))
+            # for each import, check the supply level. If it's 3, then we need to fill it to abundant.
+            # then for the export, check the supply level - if it's 3 then we need to drain it to scarce.
+            main_market = self.get_market(target_link.market_symbol)
+            main_waypoint = self.st.waypoints_view_one(target_link.market_symbol)
+            for i in target_link.import_symbols:
+                tg = main_market.get_tradegood(i)
+                if (
+                    tg
+                    and tg.trade_volume < max_import_tv
+                    and SUPPLY_LEVELS[tg.supply] <= 4
                 ):
-                    possible_sources = self.find_markets_that_trade(
-                        i, self.ship.nav.system_symbol
-                    )
-                    purchase_waypoint = self.pick_nearest_profitable_market(
-                        possible_sources, main_waypoint, tg.symbol, tg.sell_price
-                    )
+                    while (
+                        SUPPLY_LEVELS[tg.supply] < 5
+                        and not self.termination_event.is_set()
+                    ):
+                        possible_sources = self.find_markets_that_trade(
+                            i, self.ship.nav.system_symbol
+                        )
+                        possible_market_symbols = [m.symbol for m in possible_sources]
+                        purchase_waypoint = self.pick_nearest_profitable_market_to_buy(
+                            possible_market_symbols,
+                            main_waypoint,
+                            tg.symbol,
+                            tg.sell_price,
+                        )
+                        if not purchase_waypoint:
+                            self.logger.warning(
+                                "Can't find a profitable export of %s to fill import!! Evolution cannot continue.",
+                                i,
+                            )
+                            break
+                        had_to_do_something = True
+
+                        purchase_waypoint = self.st.waypoints_view_one(
+                            purchase_waypoint
+                        )
+                        # source market = closest profitable market that sells the import
+                        resp = self.go_and_buy(i, purchase_waypoint)
+                        if not resp:
+                            st.sleep(SAFETY_PADDING)
+                            break
+                        resp = self.go_and_sell_or_fulfill(i, main_waypoint)
+                        if not resp:
+                            st.sleep(SAFETY_PADDING)
+                            break
+                        # this refreshed market is still giving "moderate" - something not quite right here.
+                        main_market = self.get_market(target_link.market_symbol, True)
+                        tg = main_market.get_tradegood(i)
+
+            tg = main_market.get_tradegood(target_link.export_symbol)
+            if tg and tg.trade_volume < max_export_tv and SUPPLY_LEVELS[tg.supply] >= 2:
+                while (
+                    SUPPLY_LEVELS[tg.supply] > 1 and not self.termination_event.is_set()
+                ):
+                    if target_link.parent_link:
+                        possible_destination = target_link.parent_link.market_symbol
+                    else:
+                        # needs trimmed
+                        possible_destinations = self.find_best_market_systems_to_sell(
+                            target_link.export_symbol
+                        )
+                        possible_market_symbols = [m[0] for m in possible_destinations]
+                        possible_destination = (
+                            self.pick_nearest_profitable_market_to_buy(
+                                possible_market_symbols,
+                                main_waypoint,
+                                tg.symbol,
+                                tg.purchase_price,
+                            )
+                        )
+                    if not possible_destination:
+                        self.logger.warning(
+                            "Can't find a profitable import of %s to drain export!! Evolution cannot continue.",
+                            target_link.export_symbol,
+                        )
+                        break
+                    had_to_do_something = True
 
                     # source market = closest profitable market that sells the import
-                    self.go_and_buy(i, purchase_waypoint)
-                    self.go_and_sell_or_fulfill(i, main_waypoint)
-                    main_market = self.get_market(target_link.market_symbol, True)
-                    tg = main_market.get_tradegood(i)
-
-        tg = main_market.get_tradegood(target_link.export_symbol)
-        if tg and tg.trade_volume < max_export_tv and SUPPLY_LEVELS[tg.supply] >= 3:
-            while SUPPLY_LEVELS[tg.supply] > 1 and not self.termination_event.is_set():
-                if target_link.parent_link:
-                    possible_destination = target_link.parent_link.market_symbol
-                else:
-                    # needs trimmed
-                    possible_destination = self.find_best_market_systems_to_sell(
-                        target_link.export_symbol
+                    resp = self.go_and_buy(
+                        target_link.export_symbol,
+                        st.waypoints_view_one(target_link.market_symbol),
                     )
-                # source market = closest profitable market that sells the import
-                self.go_and_buy(
-                    target_link.export_symbol,
-                    st.waypoints_view_one(target_link.market_symbol),
-                )
-                self.go_and_sell_or_fulfill(
-                    target_link.export_symbol,
-                    st.waypoints_view_one(possible_destination),
-                )
-            main_market = self.get_market(target_link.market_symbol)
-            tg = main_market.get_tradegood(target_link.export_symbol)
-        if not target_link:
+                    if not resp:
+                        self.st.sleep(SAFETY_PADDING)
+                        break
+
+                    resp = self.go_and_sell_or_fulfill(
+                        target_link.export_symbol,
+                        st.waypoints_view_one(possible_destination),
+                    )
+                    if not resp:
+                        self.st.sleep(SAFETY_PADDING)
+                        break
+                    main_market = self.get_market(target_link.market_symbol, True)
+                    tg = main_market.get_tradegood(target_link.export_symbol)
+        if not had_to_do_something:
+            # if we're here, all actions have been completed and we can rest as this step needs to percolate and evolve before it's done.
+            #
+            self.log_market_changes(main_market.symbol)
             st.sleep(SAFETY_PADDING)
             return
 
         # find the best markt that sells the necessary import
 
-    def pick_nearest_profitable_market(
+    def pick_nearest_profitable_market_to_buy(
         self,
-        markets: list[Market],
+        markets: list[tuple],
         comparrison_waypoint: Waypoint,
         target_tradegood,
         target_sell_price,
     ):
         best_waypoint = None
         best_distance = float("inf")
-        for market in markets:
+        for market_s in markets:
+            market = self.get_market(market_s)
             tg = market.get_tradegood(target_tradegood)
 
             waypoint = self.st.waypoints_view_one(market.symbol)
@@ -153,7 +217,29 @@ class ManageManufactureChain(Behaviour):
                 comparrison_waypoint, waypoint
             )
             if tg.purchase_price < target_sell_price and distance < best_distance:
-                best_waypoint = waypoint
+                best_waypoint = waypoint.symbol
+                best_distance = distance
+        return best_waypoint
+
+    def pick_nearest_profitable_market_to_sell(
+        self,
+        markets: list[tuple],
+        comparrison_waypoint: Waypoint,
+        target_tradegood,
+        target_buy_price,
+    ):
+        best_waypoint = None
+        best_distance = float("inf")
+        for market_s in markets:
+            market = self.get_market(market_s)
+            tg = market.get_tradegood(target_tradegood)
+
+            waypoint = self.st.waypoints_view_one(market.symbol)
+            distance = self.pathfinder.calc_distance_between(
+                comparrison_waypoint, waypoint
+            )
+            if tg.sell_price > target_buy_price and distance < best_distance:
+                best_waypoint = waypoint.symbol
                 best_distance = distance
         return best_waypoint
 
@@ -242,19 +328,22 @@ class ManageManufactureChain(Behaviour):
                 return next_link
         if not chain.import_symbols:
             return
+
         if chain.import_height < best_height:
-            # let's find out if this isn't evolved.
-            target_tv = math.floor(self.max_tv * ((2 / 3) ** chain.import_height))
+            market = self.get_market(chain.market_symbol)
+            tg = market.get_tradegood(chain.export_symbol)
+            import_max_tv = math.floor(self.max_tv * ((2 / 3) ** chain.import_height))
+            export_max_tv = math.floor(import_max_tv * (2 / 3))
+            if tg and tg.trade_volume < export_max_tv:
+                return chain
 
             for symbol in chain.import_symbols:
-                market = self.get_market(chain.market_symbol)
                 tg = market.get_tradegood(symbol)
 
-                if tg and tg.trade_volume < target_tv:
+                # it's actually okay if imports DEvolve their TV, so long as it's at least equal to the import.
+                # 1:1 ratio is actually ideal (instead of 3:2) since it saves on time spend fueling lower stages of the process.
+                if tg and tg.trade_volume < export_max_tv:
                     return chain
-            tg = market.get_tradegood(chain.export_symbol)
-            if tg and tg.trade_volume > math.floor(target_tv * (2 / 3)):
-                return chain
 
     def find_import_market_for_export_from_chain(
         self, chain: "ChainLink", target_good: str, source_market
@@ -456,16 +545,15 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1A"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
-        "priority": 3,
-        "target_tradegood": "CLOTHING",
-        "max_tv": 180,
+        "priority": 4,
+        "script_name": "EVOLVE_SUPPLY_CHAIN",
+        "target_tradegoods": ["CLOTHING", "FOOD", "MEDICINE", "FUEL"],
     }
-
     while True:
-        bhvr = ManageManufactureChain(agent, ship, behaviour_params or {})
+        bhvr = EvolveSupplyChain(agent, ship, behaviour_params or {})
 
         lock_ship(ship, "MANUAL", 60 * 24)
 
