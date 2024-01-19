@@ -681,7 +681,7 @@ order by 1 desc """
             )
             cargo_to_buy -= trade_volume
             if not resp:
-                break
+                return resp
 
         self.log_market_changes(current_waypoint.symbol)
         if not resp:

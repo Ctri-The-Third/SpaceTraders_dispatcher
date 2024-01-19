@@ -104,6 +104,8 @@ class EmergencyReboot(Behaviour):
         self.ship_intrasolar(self.asteroid_wp, flight_mode="CRUISE")
         self.siphon_till_full(ship.cargo_capacity)
 
+        self.refuel_nearby()
+
         self.go_and_sell_or_fulfill(tradegood, self.sell_wp)
         self.jettison_all_cargo(["HYDROCARBON"])
 
@@ -139,6 +141,20 @@ class EmergencyReboot(Behaviour):
             "safety_profit_threshold": (results[0][8] - results[0][7]) / 2,
         }
         return params
+
+    def refuel_nearby(self):
+        current_wayp = self.st.waypoints_view_one(self.ship.nav.waypoint_symbol)
+        if "MARKETPLACE" in [t.symbol for t in current_wayp.traits]:
+            self.refuel_locally()
+            return
+        wayps = self.st.find_waypoints_by_coords(
+            current_wayp.system_symbol, current_wayp.x, current_wayp.y
+        )
+        for i in wayps:
+            if "MARKETPLACE" in [t.symbol for t in i.traits]:
+                self.ship_intrasolar(i.symbol)
+                self.refuel_locally()
+                return
 
 
 if __name__ == "__main__":
