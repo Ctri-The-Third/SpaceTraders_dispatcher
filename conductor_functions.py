@@ -1,5 +1,6 @@
 from straders_sdk import SpaceTraders
 from straders_sdk.contracts import Contract
+from straders_sdk.models import Waypoint
 from straders_sdk.utils import (
     try_execute_select,
     try_execute_upsert,
@@ -54,6 +55,30 @@ def process_contracts(client: SpaceTraders, recurse=True):
         if resp and recurse:
             logging.info("Negotiated a contract %s", resp)
             process_contracts(client, False)
+
+
+def find_nearest_exchange_for_good(
+    client, pathfinder, comparrison_waypoint: "Waypoint", trade_symbol
+) -> Waypoint:
+    connection = client.connection
+
+    system_symbol = comparrison_waypoint.system_symbol
+    sql = """select  w.system_symbol, w.waypoint_symbol, w.type, w.x, w.y 
+from market_tradegood_listings mtl 
+join waypoints w on mtl.market_symbol = w.waypoint_symbol
+where trade_symbol = %s And mtl.type = 'EXCHANGE'
+and w.system_symbol = %s """
+    wayp_rows = try_execute_select(sql, (trade_symbol, system_symbol), connection)
+    wayps = [Waypoint(*row) for row in wayp_rows]
+    best_waypoint = None
+    best_distance = float("inf")
+    for wayp in wayps:
+        distance = pathfinder.calc_distance_between(comparrison_waypoint, wayp)
+        if distance < best_distance:
+            best_distance = distance
+            best_waypoint = wayp
+
+    return best_waypoint
 
 
 def should_we_accept_contract(client: SpaceTraders, contract: Contract):

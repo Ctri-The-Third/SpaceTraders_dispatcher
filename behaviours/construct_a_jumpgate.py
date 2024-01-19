@@ -136,6 +136,23 @@ class ConstructJumpgate(Behaviour):
                 break
 
         if not have_cargo_already:
+            target_tg = self.get_market(buy_wp.symbol).get_tradegood(tradegood)
+            if target_tg:
+                # we want to ensure there's at least double what we're buying in the bank afterwards.
+                available_credits = (
+                    self.agent.credits
+                    - (target_tg.purchase_price * target_tg.trade_volume) * 2
+                )
+                quantity = min(
+                    available_credits // target_tg.purchase_price,
+                    target_tg.trade_volume,
+                )
+                if quantity <= 0:
+                    self.logger.warning(
+                        "Not enough credits to safely buy anything - sleeping"
+                    )
+                    self.st.sleep(SAFETY_PADDING)
+                    return
             self.ship_extrasolar_jump(waypoint_slicer(buy_wp.symbol))
             self.ship_intrasolar(buy_wp.symbol)
             self.buy_cargo(tradegood, quantity)
@@ -197,7 +214,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "25"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1A"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
