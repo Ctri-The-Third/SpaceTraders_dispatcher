@@ -118,6 +118,11 @@ from behaviours.trade_best_intrasolar import (
     BEHAVIOUR_NAME as BHVR_TRADE_BEST_INTRASOLAR,
 )
 
+from behaviours.evolve_supply_chain import (
+    EvolveSupplyChain,
+    BEHAVIOUR_NAME as BHVR_EVOLVE_SUPPLY_CHAIN,
+)
+
 behaviours_and_classes = {
     BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
     BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
@@ -148,4 +153,5 @@ behaviours_and_classes = {
     BHVR_GO_AND_BUY_A_SHIP: GoAndBuyShip,
     BHVR_WARP_TO_SYSTEM: WarpToSystem,
     BHVR_TRADE_BEST_INTRASOLAR: TradeBestInSystem,
+    BHVR_EVOLVE_SUPPLY_CHAIN: EvolveSupplyChain,
 }
