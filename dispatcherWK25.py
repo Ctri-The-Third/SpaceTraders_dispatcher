@@ -68,7 +68,13 @@ class dispatcher:
         self.generic_behaviour = Behaviour("", "")
         self.client = self.generic_behaviour.st
         self.exit_flag = False
-        self.connection = self.connection_pool.get_connection()
+        self._connection = None
+
+    @property
+    def connection(self):
+        if not self._connection or self._connection.closed > 0:
+            self._connection = self.connection_pool.get_connection()
+        return self._connection
 
     def set_exit_flag(self, signum, frame):
         self.exit_flag = True
@@ -160,6 +166,9 @@ class dispatcher:
         #
         # every 15 seconds update the list of unlocked ships with a DB query
         #
+        if not self.connection or self.connection.closed > 0:
+            self.connection_pool.return_connection(self.connection)
+            self.connection = self.connection_pool.get_connection()
         for token, agent_symbol in self.agents:
             self.client.current_agent_symbol = agent_symbol
             self.client.set_current_agent(agent_symbol, token)

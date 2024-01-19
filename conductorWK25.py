@@ -40,6 +40,7 @@ from conductor_functions import (
     missing_market_prices,
     get_ship_price_in_system,
 )
+import conductor_functions as cf
 
 
 logger = logging.getLogger(__name__)
@@ -236,8 +237,10 @@ class BehaviourConductor:
     def system_hourly_update(self, system: "ConductorSystem"):
         """Set ship behaviours and tasks"""
         # jettison for all haulers in th system - explorers too if setting is on.
-        for ship in system.haulers + (
-            system.explorers if system.use_explorers_as_haulers else []
+        for ship in (
+            system.haulers
+            + (system.explorers if system.use_explorers_as_haulers else [])
+            + system.commanders
         ):
             if ship.cargo_units_used > 0:
                 log_task(
@@ -245,7 +248,7 @@ class BehaviourConductor:
                     BHVR_SELL_OR_JETTISON_ALL_CARGO,
                     [],
                     system.system_symbol,
-                    5,
+                    1,
                     self.current_agent_symbol,
                     specific_ship_symbol=ship.name,
                 )
@@ -272,11 +275,12 @@ class BehaviourConductor:
                 specific_ship_symbol=best_ship.name,
                 expiry=self.next_hourly_update + timedelta(hours=1),
             )
-        self.set_commander_tasks(system)
         system._probe_job_count = self.set_probe_tasks(system)
-        system._hauler_job_count = self.set_hauler_tasks(system)
         system._extractor_job_count = self.set_extractor_tasks(system)
         system._siphoner_job_count = self.set_siphoner_tasks(system)
+        system._hauler_job_count = self.set_hauler_tasks(system)
+
+        self.set_commander_tasks(system)
 
     def system_quarterly_update(self, system: "ConductorSystem"):
         # if the system's "buy_next_ship" attribute is set, log a task to buy it.
@@ -446,48 +450,57 @@ class BehaviourConductor:
 
     def set_hauler_tasks(self, system: "ConductorSystem") -> int:
         hauler_jobs = (
-            len(system.hauler_tradegood_manage_jobs)
+            len(system.hauler_tradechain_maintain_goods)
             + system.haulers_chain_trading
             + system.haulers_doing_missions
+            + system.haulers_evolving_markets
             + 1
             if system.construct_jump_gate
             else 0
         )
         # set up the haulers to go to the markets and buy stuff
+        # chain trade 3
+        # manage supply chain 4
+        # evolve markets 4
+        # do missions 4.5
+        # build jump gate 4.5
         if system.use_explorers_as_haulers:
             ships = system.explorers[:] + system.haulers[:]
         else:
             ships = system.haulers[:]
-        for tradegood in system.hauler_tradegood_manage_jobs:
-            if len(ships) == 0:
-                break
-            if tradegood not in system.tradegoods_exported:
-                continue
-
-            for target_wayp in system.tradegoods_exported[tradegood]:
-                if len(ships) == 0:
-                    break
-                hauler = ships.pop(0)
-                set_behaviour(
-                    hauler.name,
-                    # for now manage single, eventually manage supply chain
-                    BHVR_MANAGE_SPECIFIC_EXPORT,
-                    {
-                        "target_tradegood": tradegood,
-                        "market_wp": target_wayp,
-                        "priority": 4,
-                    },
-                    # {} "tradegood": tradegood, "buy_wp": import_wp, "sell_wp": export_wp},
-                )
         for i in range(system.haulers_chain_trading):
             if len(ships) == 0:
                 break
             hauler = ships.pop(0)
             set_behaviour(
                 hauler.name,
-                # for now manage single, eventually manage supply chain
-                BHVR_CHAIN_TRADE,
+                bhvr.BHVR_CHAIN_TRADE,
                 {"priority": 3},
+            )
+        for target_tradegood in system.hauler_tradechain_maintain_goods:
+            if len(ships) == 0:
+                break
+            hauler = ships.pop(0)
+            set_behaviour(
+                hauler.name,
+                bhvr.BHVR_MANAGE_SUPPLY_CHAIN,
+                {"priority": 4, "target_tradegood": target_tradegood},
+            )
+        for i in range(system.haulers_evolving_markets):
+            if len(ships) == 0:
+                break
+            if not system.hauler_tradechain_evolve_prioity:
+                continue
+
+            hauler = ships.pop(0)
+            set_behaviour(
+                hauler.name,
+                # forevo now manage single, eventually manage supply chain
+                bhvr.BHVR_EVOLVE_SUPPLY_CHAIN,
+                {
+                    "target_tradegoods": system.hauler_tradechain_evolve_prioity,
+                    "priority": 4,
+                },
                 # {} "tradegood": tradegood, "buy_wp": import_wp, "sell_wp": export_wp},
             )
 
@@ -547,12 +560,21 @@ class BehaviourConductor:
         siphoner_jobs = 0
         siphoners = system.siphoners[:]
         gas_giants = self.st.find_waypoints_by_type(system.system_symbol, "GAS_GIANT")
+
         for wayp in gas_giants:
             wayp
             siphoners_for_wayp = 0
             if wayp.type == "GAS_GIANT":
                 siphoner_jobs += system.siphoners_per_gas_giant
                 siphoners_for_wayp = system.siphoners_per_gas_giant
+                nearest_exchange_s = cf.find_nearest_exchange_for_good(
+                    self.st, self.pathfinder, wayp, "HYDROCARBON"
+                )
+
+                params = {"asteroid_wp": wayp.symbol}
+                if nearest_exchange_s:
+                    params["market_wp"] = nearest_exchange_s.symbol
+
             for i in range(siphoners_for_wayp):
                 if len(siphoners) == 0:
                     break
@@ -560,7 +582,7 @@ class BehaviourConductor:
                 set_behaviour(
                     siphoner.name,
                     BHVR_EXTRACT_AND_GO_SELL,
-                    {"asteroid_wp": wayp.symbol},
+                    params,
                 )
         return siphoner_jobs
 
@@ -609,7 +631,7 @@ class BehaviourConductor:
             # we need to do some of this below anyway - but only want to add it if we're not already managing it.
             self.managed_systems.append(start_system)
         # trading & hauler stuff
-        start_system.hauler_tradegood_manage_jobs = [
+        start_system.hauler_tradechain_evolve_prioity = [
             "SHIP_PARTS",
             "SHIP_PLATING",
             "JEWELRY",
@@ -667,7 +689,7 @@ class BehaviourConductor:
             self.managed_systems.append(next_system)
 
             next_system.commander_trades = True
-            next_system.hauler_tradegood_manage_jobs = ["ANTIMATTER"]
+            next_system.hauler_tradechain_evolve_prioity = ["ANTIMATTER"]
             for i in range(1):
                 symbols = [
                     "SHIP_PARTS",
@@ -680,7 +702,7 @@ class BehaviourConductor:
                     "FUEL",
                 ]
                 for s in symbols:
-                    next_system.hauler_tradegood_manage_jobs.append(s)
+                    next_system.hauler_tradechain_evolve_prioity.append(s)
             next_system.haulers_chain_trading = 4
             next_system.probes_to_monitor_markets = True
             next_system.probes_to_monitor_shipyards = True
@@ -765,7 +787,7 @@ class ConductorSystem:
     # in order of priority
     commander_trades: bool = False
 
-    hauler_tradegood_manage_jobs: list[str] = []
+    hauler_tradechain_evolve_prioity: list[str] = []
     haulers_chain_trading: int = 0
     haulers_doing_missions: int = 0
     probes_to_monitor_markets: bool = False
@@ -773,6 +795,9 @@ class ConductorSystem:
     use_explorers_as_haulers: bool = False
     construct_jump_gate: bool = False
     mining_sites: list[str] = []
+
+    hauler_tradechain_maintain_goods: int = []
+    haulers_evolving_markets: int = 0
 
     extractors_per_asteroid: int = 0
     extractors_per_engineered_asteroid: int = 0
@@ -817,7 +842,6 @@ class ConductorSystem:
         return {
             "system_symbol": self.system_symbol,
             "commander_trades": self.commander_trades,
-            "hauler_tradegood_manage_jobs": self.hauler_tradegood_manage_jobs,
             "probes_to_monitor_markets": self.probes_to_monitor_markets,
             "probes_to_monitor_shipyards": self.probes_to_monitor_shipyards,
             "use_explorers_as_haulers": self.use_explorers_as_haulers,
@@ -828,6 +852,9 @@ class ConductorSystem:
             "extractor_type_to_use": self.extractor_type_to_use,
             "surveyors_per_asteroid": self.surveyors_per_asteroid,
             "haulers_chain_trading": self.haulers_chain_trading,
+            "hauler_tradechain_maintain_goods": self.hauler_tradechain_maintain_goods,
+            "haulers_evolving_markets": self.haulers_evolving_markets,
+            "hauler_tradechain_evolve_prioity": self.hauler_tradechain_evolve_prioity,
             "haulers_doing_missions": self.haulers_doing_missions,
             "construct_jump_gate": self.construct_jump_gate,
             "siphoners_per_gas_giant": self.siphoners_per_gas_giant,
