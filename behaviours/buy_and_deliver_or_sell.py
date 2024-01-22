@@ -61,6 +61,12 @@ class BuyAndDeliverOrSell_6(Behaviour):
         self._run()
         self.end()
 
+    def end(self):
+        self.st.logging_client.log_ending(
+            BEHAVIOUR_NAME, self.ship.name, self.st.view_my_self().credits
+        )
+        super().end()
+
     def default_params_obj(self):
         return_obj = super().default_params_obj()
         return return_obj

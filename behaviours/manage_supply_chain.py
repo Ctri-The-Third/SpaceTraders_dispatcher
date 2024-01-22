@@ -83,6 +83,12 @@ class ManageManufactureChain(Behaviour):
         self._run()
         self.end()
 
+    def end(self):
+        self.st.logging_client.log_ending(
+            BEHAVIOUR_NAME, self.ship.name, self.st.view_my_self().credits
+        )
+        super().end()
+
     def _run(self):
         st = self.st
         ship = self.ship  # = st.ships_view_one(self.ship_name, True)
@@ -115,9 +121,10 @@ class ManageManufactureChain(Behaviour):
                                     best_market = market
                                     best_cost = tg.purchase_price
                                     next_good = item
-            if not best_market:
-                self.logger.info("No unrestricted trades found")
+            if best_market.symbol == sell_market.symbol:
+                self.logger.info("No suitable source of %s found", next_good)
                 self.st.sleep(SAFETY_PADDING)
+                return
             buy_wp_s = best_market.symbol
         if not next_link:
             # next_link = self.search_deeper_for_under_evolved_export(self.chain)
@@ -551,11 +558,11 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "11"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "4A"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
-        "target_tradegood": "CLOTHING",
+        "target_tradegood": "ANTIMATTER",
     }
 
     while True:

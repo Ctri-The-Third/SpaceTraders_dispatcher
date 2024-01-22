@@ -454,9 +454,9 @@ class BehaviourConductor:
             + system.haulers_chain_trading
             + system.haulers_doing_missions
             + system.haulers_evolving_markets
-            + 1
+            + (1
             if system.construct_jump_gate
-            else 0
+            else 0)
         )
         # set up the haulers to go to the markets and buy stuff
         # chain trade 3
@@ -650,7 +650,7 @@ class BehaviourConductor:
         if start_gate:
             gate = start_gate[0]
             gate: Waypoint
-            gate_complete = gate.under_construction
+            gate_complete = not gate.under_construction
             if gate.under_construction:
                 start_system.construct_jump_gate = True
                 start_system.commander_trades = True

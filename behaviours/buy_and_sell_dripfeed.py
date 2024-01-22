@@ -66,6 +66,19 @@ class BuyAndSellDripfeed(Behaviour):
         self._run()
         self.end()
 
+    def end(self, error=None):
+        super().end()
+        self.st.logging_client.log_ending(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            {"end_reason": error} if error else None,
+        )
+        if error:
+            self.logger.error(error)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
+
     def default_params_obj(self):
         return_obj = super().default_params_obj()
         return return_obj
