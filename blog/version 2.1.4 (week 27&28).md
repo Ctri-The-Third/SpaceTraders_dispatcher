@@ -2,10 +2,8 @@
 
 Database instability continues to be our woe - and we're now back to "idle in transaction" issues causing the database to be locked. 
 
-The first transaction to lock itself was one on node U - ship CTRI--4  
-`select total_seconds, expiration from ship_cooldown where ship_symbol = 'CTRI-U--4'`
-
-Intestingly, the thread appears to have moved beyond the database (perhaps because it got a bad response from a timeout) and is now stuck waiting for the request consumer, which has jammed. Attempts to pause it and inspect are failing, which is fascinating.
+* We've finally solved this with a mixture of restoring our old settings and properly applying them to the DB, and also implimenting connection pooling.
+* Putting "Maintain supply chain" haulers onto the fab_mats and advanced_circuitry markets had a huge impact on the speed of construction.
 
 ## ramp up improvements - "Trade best"
 
@@ -27,6 +25,8 @@ Evolution and managing of markets ar actually super seperate, so before we start
 * Difficulty! Because the local exchanges have TVs of 180, it takes a _while_ to push them into states where they're profitable to inflate their matching imports to ABUNDANT. So far we've seen liquid nitrogent frequently get up to HIGH and bump to 81TV. The exchange price for liquid nitrogen is around 32, and the the optimum sell price is something like 28. As such, I've increased the number of siphoners, since we're definitely extracting less than we need.
 
 * Through this we've learned that a STRONG market generates/consumes 2*TV an hour, which is long enough to let a market slide ABUNDANT to HIGH. This is an opportunity for the task system, but leaves ships idle once the optimal state is achieved. Presently we've been saying "go and enhance the next market" but I think we might want might want to install traders with a singleton trade coordinator that guarantees collision avoidance. That way when finished doing an EVOLVE or MAINTAIN CHAIN they can do the nearest best trade instead, returning if necessary.
+* Further conversation with a dev clarified why evolution doesn't occur immediately. the WEAK, GROWING, and STRONG values on the Activity enum are not reflections of 3 different states, instead much supply they map to a more granular variable that reflects the amount of a good that's consumed per hour. at STRONG this is 2*TV, at WEAK it's 1*TV (with some margin on either side.). RESTRICTED overrides this.  
+We were given a hint that MODERATE is enough to make this variable increase - once the variable is high enough (e.g. we're STRONG) we should tip the imports the rest of the way to trigger growth.
 
 ## Command and control
 

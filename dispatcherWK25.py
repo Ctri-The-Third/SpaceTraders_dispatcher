@@ -105,7 +105,7 @@ class dispatcher:
         try_execute_upsert(sql, (ship_symbol, lock_id), self.connection)
 
     def query(self, sql, args: list):
-        return try_execute_select(sql, args)
+        return try_execute_select(self.connection, sql, args)
 
     def run(self):
         print(f"-----  DISPATCHER [{self.lock_id}] ACTIVATED ------")
@@ -299,7 +299,7 @@ class dispatcher:
             UPDATE public.ship_tasks
 	        SET  claimed_by= %s
 	        WHERE task_hash = %s;"""
-        try_execute_upsert(sql, (ship_symbol, task_hash))
+        try_execute_upsert(self.connection, sql, (ship_symbol, task_hash))
         pass
 
     def get_task_for_ships(self, client: SpaceTraders, ship_symbol):
@@ -447,7 +447,17 @@ class dispatcher:
 
 
 def get_fun_name():
-    prefixes = ["shadow", "crimson", "midnight", "dark", "mercury", "crimson", "black"]
+    prefixes = [
+        "shadow",
+        "crimson",
+        "midnight",
+        "dark",
+        "mercury",
+        "crimson",
+        "black",
+        "delta",
+        "gamma",
+    ]
     mid_parts = [
         "fall",
         "epsilon",
@@ -467,8 +477,9 @@ def get_fun_name():
         "sky",
         "titan",
         "helios",
+        "nightmare",
     ]
-    suffixes = ["five", "seven", "nine", "prime"]
+    suffixes = ["five", "seven", "nine", "prime", "green"]
     prefix_index = random.randint(0, len(mid_parts) - 1)
     mid_index = random.randint(0, len(mid_parts) - 1)
     suffix_index = random.randint(0, len(mid_parts) - 1)

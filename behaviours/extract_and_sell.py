@@ -58,7 +58,7 @@ class ExtractAndGoSell(Behaviour):
         self._run()
         self.end()
 
-    def run(self):
+    def _run(self):
         # all  threads should have this.
 
         starting_credts = self.agent.credits
