@@ -80,39 +80,30 @@ class ScanInBackground(Behaviour):
         #
         rows = [1]
         wayps = [1]
+        self.pathfinder.load_jump_graph_from_db()
+        self.pathfinder.save_graph()
+
         while len(wayps) > 0 or len(rows) > 0:
             wayps = (
-                self.get_twenty_unscanned_waypoints("ORBITAL_STATION")
-                or self.get_twenty_unscanned_waypoints("ASTEROID_FIELD")
-                or self.get_twenty_unscanned_waypoints("JUMP_GATE")
-                or self.get_twenty_unscanned_waypoints("PLANET")
-                or self.get_twenty_unscanned_waypoints("MOON")
-                or []
+                self.get_unscanned_waypoints("JUMP_GATE")
+                + self.get_unscanned_waypoints("ORBITAL_STATION")
+                + self.get_unscanned_waypoints("ASTEROID_FIELD")
+                + self.get_unscanned_waypoints("PLANET")
+                + self.get_unscanned_waypoints("MOON")
             )
 
             for wayp in wayps:
                 resp = st.waypoints_view_one(wayp[0], True)
+                if resp.type == "JUMP_GATE":
+                    st.system_jumpgate(resp, True)
+                if "MARKETPLACE" in [trait.symbol for trait in resp.traits]:
+                    st.system_market(resp, True)
+                if "SHIPYARD" in [trait.symbol for trait in resp.traits]:
+                    st.system_shipyard(resp, True)
 
             #
             # get 20 unscanned jump gates
             #
-
-            rows = self.get_twenty_unscanned_jumpgates()
-
-            for row in rows:
-                jump_gate_sym = row[0]
-                sys = waypoint_slicer(jump_gate_sym)
-
-                wp = st.waypoints_view_one(jump_gate_sym)
-                if not wp.is_charted:
-                    wp = st.waypoints_view_one(jump_gate_sym, True)
-                if not wp.is_charted:
-                    continue
-                resp = st.system_jumpgate(wp, True)
-                if ship.seconds_until_cooldown > 0:
-                    continue
-                if ship.nav.travel_time_remaining > 0:
-                    continue
 
             #
             # MARKETS and SHIPYARDS
@@ -149,7 +140,7 @@ class ScanInBackground(Behaviour):
 
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
 
-    def get_twenty_unscanned_waypoints(self, type: str = r"%s") -> list[str]:
+    def get_unscanned_waypoints(self, type: str = r"%s") -> list[str]:
         sql = """
         select * from waypoints_not_scanned
         where type = %s

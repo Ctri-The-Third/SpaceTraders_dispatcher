@@ -233,11 +233,11 @@ if __name__ == "__main__":
     from dispatcherWK16 import lock_ship
 
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "23"
     ship = f"{agent}-{ship_number}"
     set_logging(logging.DEBUG)
     behaviour_params = {
-        "asteroid_wp": "X1-PK16-B40",
+        "asteroid_wp": "X1-TN14-C40",
         "script_name": "EXTRACT_AND_SELL",
         "cargo_to_transfer": ["*"],
     }

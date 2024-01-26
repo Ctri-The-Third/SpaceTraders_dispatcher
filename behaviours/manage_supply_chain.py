@@ -84,9 +84,10 @@ class ManageManufactureChain(Behaviour):
         self.end()
 
     def end(self):
-        self.st.logging_client.log_ending(
-            BEHAVIOUR_NAME, self.ship.name, self.st.view_my_self().credits
-        )
+        if self.ship:
+            self.st.logging_client.log_ending(
+                BEHAVIOUR_NAME, self.ship.name, self.st.view_my_self().credits
+            )
         super().end()
 
     def _run(self):
