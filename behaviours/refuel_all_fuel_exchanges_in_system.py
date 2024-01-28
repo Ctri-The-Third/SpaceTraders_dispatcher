@@ -9,7 +9,7 @@ from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
 from straders_sdk.models import Waypoint, System, Market, MarketTradeGoodListing
 
 BEHAVIOUR_NAME = "REFUEL_ALL_IN_SYSTEM"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class RefuelAnExchange(Behaviour):
@@ -38,10 +38,26 @@ class RefuelAnExchange(Behaviour):
         self.target_system = behaviour_params.get("target_system", None)
         self.agent = self.st.view_my_self()
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_system"] = "X1-TEST"
+
+        return return_obj
+
     def run(self):
+        super().run()
         self.st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, self.ship.name, self.agent.credits, self.behaviour_params
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
         )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         st = self.st
         ship = st.ships_view_one(self.ship.name, True)
         if not self.target_system:
@@ -146,7 +162,7 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     bhvr = RefuelAnExchange(agent, ship, {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship_number, "MANUAL", 60 * 24)
 
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)

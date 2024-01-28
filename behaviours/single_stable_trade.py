@@ -10,7 +10,7 @@ from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
 from straders_sdk.models import Waypoint, System
 
 BEHAVIOUR_NAME = "SINGLE_STABLE_TRADE"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class SingleStableTrade(Behaviour):
@@ -33,6 +33,11 @@ class SingleStableTrade(Behaviour):
             session,
             connection,
         )
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+
+        return return_obj
 
     def run(self):
         st = self.st
@@ -61,12 +66,8 @@ class SingleStableTrade(Behaviour):
             import_market_s,
             profit_per_unit,
         ) = selected_random_route
-        export_market_wp = st.waypoints_view_one(
-            waypoint_slicer(export_market_s), export_market_s
-        )
-        import_market_wp = st.waypoints_view_one(
-            waypoint_slicer(import_market_s), import_market_s
-        )
+        export_market_wp = st.waypoints_view_one(export_market_s)
+        import_market_wp = st.waypoints_view_one(import_market_s)
         export_market = st.system_market(export_market_wp)
         import_market = st.system_market(import_market_wp)
         export_market_price = export_market.get_tradegood(trade_symbol).purchase_price
@@ -77,7 +78,7 @@ class SingleStableTrade(Behaviour):
             self.end()
             return
 
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(export_market_s)))
+        self.ship_extrasolar_jump(waypoint_slicer(export_market_s))
         resp = self.ship_intrasolar(export_market_s)
         if not resp:
             time.sleep(SAFETY_PADDING)
@@ -86,7 +87,7 @@ class SingleStableTrade(Behaviour):
             return
         self.st.ship_dock(ship)
         self.purchase_what_you_can(trade_symbol, ship.cargo_space_remaining)
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(import_market_s)))
+        self.ship_extrasolar_jump(waypoint_slicer(import_market_s))
         resp = self.ship_intrasolar(import_market_s)
         if not resp:
             time.sleep(SAFETY_PADDING)
@@ -126,6 +127,6 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {}
     bhvr = SingleStableTrade(agent, ship, behaviour_params or {})
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

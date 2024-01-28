@@ -25,6 +25,8 @@ SAFETY_PADDING = 60
 
 
 class ManageSpecifcExport(Behaviour):
+    "The goal if this behaviour is to get both the export into the STRONG state and the import tradevolume to be 3:1"
+
     def __init__(
         self,
         agent_name,
@@ -46,42 +48,47 @@ class ManageSpecifcExport(Behaviour):
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
         self.target_tradegood = self.behaviour_params.get("target_tradegood")
         self.target_market = self.behaviour_params.get("market_wp", None)
+        self.ship = None
         if self.target_market:
             self.starting_system = waypoint_slicer(self.target_market)
-            self.starting_market_wp = self.st.waypoints_view_one(
-                self.starting_system, self.target_market
-            )
+            self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
         else:
-            self.starting_system = self.ship.nav.system_symbol
-            self.starting_market_wp = self.ship.nav.waypoint_symbol
+            self.starting_system = None
+            self.starting_market_wp = None
         self.markets = {}
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_tradegood"] = "FUEL"
+        return_obj["market_wp"] = "X1-TEST-A1"
+
+        return return_obj
+
     def run(self):
+        super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
         self._run()
         self.end()
 
     def _run(self):
-        super().run()
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
-        self.sleep_until_ready()
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME,
-            ship.name,
-            agent.credits,
-            behaviour_params=self.behaviour_params,
-        )
 
         if not self.target_market:
+            self.starting_system = ship.nav.system_symbol
             mkts = self.find_markets_that_export(self.target_tradegood)
             if len(mkts) == 0:
                 return
             self.target_market = mkts[0]
-            self.starting_system = waypoint_slicer(self.target_market)
-            self.starting_market_wp = self.st.waypoints_view_one(
-                self.starting_system, self.target_market
-            )
+            self.starting_market_wp = self.st.waypoints_view_one(self.target_market)
 
         st.ship_cooldown(ship)
 
@@ -89,15 +96,13 @@ class ManageSpecifcExport(Behaviour):
         # if data is old, go to it.
 
         market = self.get_market(self.target_market)
-        export_wp = self.st.waypoints_view_one(
-            waypoint_slicer(self.target_market), self.target_market
-        )
+        export_wp = self.st.waypoints_view_one(self.target_market)
         target_tradegood = market.get_tradegood(self.target_tradegood)
         if target_tradegood.recorded_ts < datetime.utcnow() - timedelta(hours=3):
             self.logger.debug(f"Market data is stale, going to {self.target_market}")
-            self.ship_extrasolar(waypoint_slicer(self.target_market))
+            self.ship_extrasolar_jump(waypoint_slicer(self.target_market))
             self.ship_intrasolar(self.target_market)
-            wp = self.st.waypoints_view_one(self.starting_system, self.target_market)
+            wp = self.st.waypoints_view_one(self.target_market)
             market = self.st.system_market(wp, True)
 
         import_symbols = self.get_matching_imports_for_export(self.target_tradegood)
@@ -136,7 +141,7 @@ class ManageSpecifcExport(Behaviour):
             self.logger.debug(
                 f"Export for {target_tradegood.symbol} is {target_tradegood.supply}, activity is {target_tradegood.activity} - resting"
             )
-            time.sleep(60)
+            self.st.sleep(60)
 
             return
 
@@ -159,10 +164,14 @@ class ManageSpecifcExport(Behaviour):
             # if it's restricted, we need to focus on exporting the export tradegood to free it up
             if import_listing.activity in ("STRONG", "RESTRICTED"):
                 continue
+
+            if import_listing.supply == "ABUNDANT":
+                continue
             # now we know the imports that are needed - we need to go find them at a price that's profitable
             #
             # search for what we can buy
             #
+
             if not options:
                 options = self.find_markets_that_export(required_import_symbol, False)
                 options.extend(self.find_exchanges(required_import_symbol, False))
@@ -174,9 +183,7 @@ class ManageSpecifcExport(Behaviour):
                 required_good_export_tg = market.get_tradegood(required_import_symbol)
                 if not required_good_export_tg:
                     continue
-                wp = self.st.waypoints_view_one(
-                    waypoint_slicer(market.symbol), market.symbol
-                )
+                wp = self.st.waypoints_view_one(market.symbol)
                 distance = self.pathfinder.calc_travel_time_between_wps_with_fuel(
                     export_waypoint, wp, self.ship.fuel_capacity
                 )
@@ -187,17 +194,17 @@ class ManageSpecifcExport(Behaviour):
                 if required_good_export_tg.supply == "SCARCE":
                     continue
                 cpd = (
-                    export_tg.sell_price - required_good_export_tg.purchase_price
+                    import_listing.sell_price - required_good_export_tg.purchase_price
                 ) / distance
                 if cpd > best_cpd:
                     best_source_of_import = market
                     best_cpd = cpd
 
             if best_source_of_import:
-                self.ship_extrasolar(waypoint_slicer(best_source_of_import.symbol))
+                self.ship_extrasolar_jump(waypoint_slicer(best_source_of_import.symbol))
                 self.ship_intrasolar(best_source_of_import.symbol)
                 self.buy_cargo(required_import_symbol, self.ship.cargo_space_remaining)
-                self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+                self.ship_extrasolar_jump(waypoint_slicer(export_market.symbol))
                 self.ship_intrasolar(export_market.symbol)
                 self.sell_all_cargo()
                 success = True
@@ -206,7 +213,9 @@ class ManageSpecifcExport(Behaviour):
             #
             # if we get here, there's no profitable exports matching our hungry imports
             # we should sweep for raw goods in extractors just in case.
-            #
+            # decided not to do this, and instead move on to the next import
+            continue
+
             packages = self.find_extractors_with_raw_goods(required_import_symbol)
             if not packages:
                 self.logger.debug(
@@ -215,10 +224,10 @@ class ManageSpecifcExport(Behaviour):
                 continue
 
             waypoint, raw_good, quantity = packages[0]
-            self.ship_extrasolar(waypoint_slicer(waypoint))
+            self.ship_extrasolar_jump(waypoint_slicer(waypoint))
             self.ship_intrasolar(waypoint)
             self.take_cargo_from_neighbouring_extractors(raw_good)
-            self.ship_extrasolar(waypoint_slicer(export_market.symbol))
+            self.ship_extrasolar_jump(waypoint_slicer(export_market.symbol))
             self.ship_intrasolar(export_market.symbol)
             self.sell_all_cargo()
             success = True
@@ -227,10 +236,7 @@ class ManageSpecifcExport(Behaviour):
     def maybe_sell_exports(self):
         # take the exports to the best CPH market.
         potential_markets = self.find_best_market_systems_to_sell(self.target_tradegood)
-        waypoints = {
-            m[0]: self.st.waypoints_view_one(waypoint_slicer(m[0]), m[0])
-            for m in potential_markets
-        }
+        waypoints = {m[0]: self.st.waypoints_view_one(m[0]) for m in potential_markets}
         markets = [
             self.get_market(w.symbol)
             for w in waypoints.values()
@@ -239,7 +245,14 @@ class ManageSpecifcExport(Behaviour):
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
         )
-        best_cph = 0
+
+        # some safety checks. If the export is strong - we only need to keep the price below 80% of the max - so we can sell it if it's ABUNDANT or HIGH
+        # otherwise, sell whrever there's profit
+        if export_tg.activity == "STRONG" and not export_tg.supply in ("ABUNDANT"):
+            self.logger.info(
+                "Chain trader identifid %s is STRONG and not ABUNDANT, skipping exporting."
+            )
+        best_cph = -1
         best_sell_market = None
         for market in markets:
             wp = waypoints[market.symbol]
@@ -259,15 +272,15 @@ class ManageSpecifcExport(Behaviour):
             self.logger.debug(
                 f"No profitable markets found, and we're not SCARCE yet - something's wrong downstream. "
             )
-            time.sleep(60)
+            self.st.sleep(60)
         if not best_sell_market:
             return False
         import_tg = best_sell_market.get_tradegood(self.target_tradegood)
 
-        if export_tg.purchase_price >= import_tg.sell_price:
+        if export_tg.purchase_price > import_tg.sell_price:
             return False
         # 2799 3488
-        self.ship_extrasolar(waypoint_slicer(self.target_market))
+        self.ship_extrasolar_jump(waypoint_slicer(self.target_market))
         self.ship_intrasolar(self.target_market)
         export_tg = self.get_market(self.target_market).get_tradegood(
             self.target_tradegood
@@ -284,7 +297,7 @@ class ManageSpecifcExport(Behaviour):
             ),
         )
         # self.buy_cargo(self.target_tradegood, self.ship.cargo_space_remaining)
-        self.ship_extrasolar(waypoint_slicer(best_sell_market.symbol))
+        self.ship_extrasolar_jump(waypoint_slicer(best_sell_market.symbol))
         self.ship_intrasolar(best_sell_market.symbol)
         self.sell_all_cargo()
 
@@ -330,7 +343,7 @@ class ManageSpecifcExport(Behaviour):
     def get_matching_imports_for_export(self, export_symbol: str):
         sql = """select import_tradegoods from manufacture_relationships
         where export_tradegood = %s"""
-        rows = try_execute_select(self.connection, sql, (export_symbol,))
+        rows = try_execute_select(sql, (export_symbol,), self.connection)
         if not rows:
             return []
         return rows[0][0]
@@ -343,16 +356,14 @@ join ships s on sc.ship_symbol = s.ship_symbol
 where ship_role = 'EXCAVATOR'
 and trade_symbol = %s
 group by 1,2 order by 3 desc """
-        packages = try_execute_select(self.connection, sql, (raw_good,))
+        packages = try_execute_select(sql, (raw_good,), self.connection)
         if not packages:
             return []
         return packages
 
     def get_market(self, market_symbol: str) -> "Market":
         if market_symbol not in self.markets:
-            wp = self.st.waypoints_view_one(
-                waypoint_slicer(market_symbol), market_symbol
-            )
+            wp = self.st.waypoints_view_one(market_symbol)
             self.markets[market_symbol] = self.st.system_market(wp)
         return self.markets[market_symbol]
 
@@ -378,16 +389,15 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "27"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "17"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
-        "priority": 4.5,
-        "target_tradegood": "EQUIPMENT",
-        # "market_wp": "X1-YG29-D43",
+        "priority": 4,
+        "script_name": "MANAGE_SPECIFIC_EXPORT",
+        "target_tradegood": "FUEL",
     }
 
     bhvr = ManageSpecifcExport(agent, ship, behaviour_params or {})
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
-    for i in range(30):
-        bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 60 * 24)
+    bhvr.run()
+    lock_ship(ship, "MANUAL", 0)

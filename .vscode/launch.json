@@ -13,15 +13,18 @@
             "name": "conductor",
             "type": "python",
             "request": "launch",
-            "program": "conductorWK18.py",
+            "program": "conductorWK25.py",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": false,
+            "args": [
+                "custom_game_plan.json"
+            ]
         },
         {
             "name": "dispatcher -U",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK16.py",
+            "program": "dispatcherWK25.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -32,7 +35,7 @@
             "name": "dispatcher -V",
             "type": "python",
             "request": "launch",
-            "program": "dispatcherWK16.py",
+            "program": "dispatcherWK25.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [

@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "CONSTRUCT_JUMPGATE"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ConstructJumpgate(Behaviour):
@@ -61,6 +61,12 @@ class ConstructJumpgate(Behaviour):
         self._run()
         self.end()
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+
+        return return_obj
+
     def _run(self):
         st = self.st
         ship = self.ship
@@ -74,25 +80,23 @@ class ConstructJumpgate(Behaviour):
                 self.target_waypoint = wayp.symbol
             else:
                 self.logger.error("No jumpgate found")
-                time.sleep(SAFETY_PADDING)
+                self.st.sleep(SAFETY_PADDING)
                 return
 
-        jumpgate = st.waypoints_view_one(
-            waypoint_slicer(self.target_waypoint), self.target_waypoint, True
-        )
+        jumpgate = st.waypoints_view_one(self.target_waypoint, True)
         if jumpgate.type != "JUMP_GATE":
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint is not a jumpgate")
             self.end("Target waypoint is not a jumpgate")
 
         if not jumpgate.under_construction:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint is complete!")
             self.end("Target waypoint is complete!")
 
         j_construction_site = st.system_construction(jumpgate)
         if not j_construction_site:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("Target waypoint has no construction site!")
             self.end("Target waypoint has no construction site!")
 
@@ -105,7 +109,7 @@ class ConstructJumpgate(Behaviour):
                 r.symbol, highest_tradevolume=True
             )
             for market in markets:
-                wp = st.waypoints_view_one(waypoint_slicer(market), market)
+                wp = st.waypoints_view_one(market)
                 mkt = st.system_market(wp)
                 # if we're specifying markets, they won't all sell all the exports.
                 tg = mkt.get_tradegood(r.symbol)
@@ -138,10 +142,27 @@ class ConstructJumpgate(Behaviour):
                 break
 
         if not have_cargo_already:
-            # self.ship_extrasolar(buy_wp.symbol)
+            target_tg = self.get_market(buy_wp.symbol).get_tradegood(tradegood)
+            if target_tg:
+                # we want to ensure there's at least double what we're buying in the bank afterwards.
+                available_credits = (
+                    self.agent.credits
+                    - (target_tg.purchase_price * target_tg.trade_volume) * 2
+                )
+                quantity = min(
+                    available_credits // target_tg.purchase_price,
+                    target_tg.trade_volume,
+                )
+                if quantity <= 0:
+                    self.logger.warning(
+                        "Not enough credits to safely buy anything - sleeping"
+                    )
+                    self.st.sleep(SAFETY_PADDING)
+                    return
+            self.ship_extrasolar_jump(waypoint_slicer(buy_wp.symbol))
             self.ship_intrasolar(buy_wp.symbol)
             self.buy_cargo(tradegood, quantity)
-        # self.ship_extrasolar(build_wp.symbol)
+        self.ship_extrasolar_jump(waypoint_slicer(build_wp.symbol))
         self.ship_intrasolar(build_wp.symbol)
 
         cargo = [ci for ci in self.ship.cargo_inventory if ci.symbol == tradegood]
@@ -152,7 +173,7 @@ class ConstructJumpgate(Behaviour):
             )
             if not resp:
                 self.logger.error("Failed to supply construction site")
-                time.sleep(SAFETY_PADDING)
+                self.st.sleep(SAFETY_PADDING)
 
     def find_markets_that_export(self, target_tradegood, highest_tradevolume=True):
         # find the market in the system with the highest tradevolume (or lowest)
@@ -189,9 +210,7 @@ class ConstructJumpgate(Behaviour):
 
     def get_market(self, market_symbol: str) -> "Market":
         if market_symbol not in self.markets:
-            wp = self.st.waypoints_view_one(
-                waypoint_slicer(market_symbol), market_symbol
-            )
+            wp = self.st.waypoints_view_one(market_symbol)
             self.markets[market_symbol] = self.st.system_market(wp)
         return self.markets[market_symbol]
 
@@ -201,7 +220,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1A"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
@@ -212,6 +231,6 @@ if __name__ == "__main__":
 
     bhvr = ConstructJumpgate(agent, ship, behaviour_params or {})
 
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

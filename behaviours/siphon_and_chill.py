@@ -11,6 +11,7 @@ from behaviours.generic_behaviour import Behaviour
 import time
 
 BEHAVIOUR_NAME = "SIPHON_AND_CHILL"
+SAFETY_PADDING = 180
 
 
 class SiphonAndChill(Behaviour):
@@ -35,9 +36,30 @@ class SiphonAndChill(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.cargo_to_target = self.behaviour_params.get("cargo_to_transfer", None)
         self.cargo_to_jettison = self.behaviour_params.get("cargo_to_jettison", [])
+        self.asteroid_wp = self.behaviour_params.get("asteroid_wp", None)
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["cargo_to_transfer"] = ["*"]
+        return_obj["cargo_to_jettison"] = []
+        return_obj["asteroid_wp"] = "X1-PK16-C4"
+
+        return return_obj
 
     def run(self):
         super().run()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self.sleep_until_ready()
+
+        self._run()
+        self.end()
+
+    def _run(self):
         # all  threads should have this.
 
         starting_credts = self.agent.credits
@@ -50,12 +72,9 @@ class SiphonAndChill(Behaviour):
             return
         # move ship to a waypoint in its system with
 
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
         if ship.cargo_space_remaining == 0:
             self.logger.info("Ship is full. resting.")
-            time.sleep(60)
+            time.sleep(SAFETY_PADDING)
         try:
             target_wp_sym = self.behaviour_params.get("asteroid_wp", None)
             if not target_wp_sym:
@@ -65,7 +84,7 @@ class SiphonAndChill(Behaviour):
 
                 target_wp_sym = target_wp.symbol
             else:
-                target_wp = st.waypoints_view_one(ship.nav.system_symbol, target_wp_sym)
+                target_wp = st.waypoints_view_one(target_wp_sym)
 
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
@@ -74,7 +93,7 @@ class SiphonAndChill(Behaviour):
             return
 
         # in a circumstance where the ship isn't in the specified system, it will go.
-        self.ship_extrasolar(st.systems_view_one(waypoint_slicer(target_wp_sym)))
+        self.ship_extrasolar_jump(waypoint_slicer(target_wp_sym))
         self.ship_intrasolar(target_wp_sym)
         self.sleep_until_ready()
 
@@ -112,7 +131,7 @@ if __name__ == "__main__":
     set_logging(logging.DEBUG)
     behaviour_params = {"asteroid_wp": "X1-YG29-C39", "cargo_to_transfer": ["*"]}
     bhvr = SiphonAndChill(agent, ship, behaviour_params)
-    lock_ship(ship, "MANUAL", bhvr.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
     bhvr.run()
-    lock_ship(ship, "", bhvr.connection, duration=0)
+    lock_ship(ship, "", duration=0)

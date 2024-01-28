@@ -8,6 +8,7 @@ import time
 from straders_sdk.utils import set_logging, waypoint_slicer
 
 BEHAVIOUR_NAME = "EXTRACT_AND_TRANSFER_OR_SELL_8"
+SAFETY_PADDING = 180
 
 
 class ExtractAndTransfer_8(Behaviour):
@@ -36,9 +37,28 @@ class ExtractAndTransfer_8(Behaviour):
         )
         self.logger = logging.getLogger("bhvr_extract_and_transfer")
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+        return_obj["cargo_to_transfer"] = ["*"]
+
+        return return_obj
+
     def run(self):
         super().run()
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
 
+        self._run()
+        self.end()
+
+    def _run(self):
         starting_credts = self.st.view_my_self().credits
         # self.logger.info("NEEDLESS REQUEST - get inventory into DB")
 
@@ -75,7 +95,7 @@ class ExtractAndTransfer_8(Behaviour):
                     "Asteroid WP not set, no fallback asteroid fields found in current system"
                 )
             target_sys_sym = waypoint_slicer(target_wp_sym)
-            target_wp = st.waypoints_view_one(target_sys_sym, target_wp_sym)
+            target_wp = st.waypoints_view_one(target_wp_sym)
         except AttributeError as e:
             self.logger.error("could not find waypoints because %s", e)
             self.logger.info("Triggering waypoint cache refresh. Rerun behaviour.")
@@ -83,7 +103,7 @@ class ExtractAndTransfer_8(Behaviour):
             return
 
         self.sleep_until_ready()
-        self.ship_extrasolar(st.systems_view_one(target_sys_sym))
+        self.ship_extrasolar_jump(target_sys_sym)
         self.ship_intrasolar(target_wp_sym)
 
         #
@@ -115,7 +135,7 @@ class ExtractAndTransfer_8(Behaviour):
                 agent.credits,
                 agent.credits - starting_credts,
             )
-            time.sleep(60)
+            self.st.sleep(SAFETY_PADDING)
             return
 
         cutoff_cargo_limit = None
@@ -172,7 +192,7 @@ class ExtractAndTransfer_8(Behaviour):
             self.logger.info(
                 "Ship unable to do anything, sleeping for 1 minute - hoping for a transport."
             )
-            time.sleep(60)
+            self.st.sleep(SAFETY_PADDING)
 
         #
         # end of script.

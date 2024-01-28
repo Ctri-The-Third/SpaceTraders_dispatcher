@@ -9,7 +9,7 @@ from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
 from straders_sdk.models import Waypoint, System
 
 BEHAVIOUR_NAME = "CHILL_AND_SURVEY"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ChillAndSurvey(Behaviour):
@@ -32,30 +32,41 @@ class ChillAndSurvey(Behaviour):
             session,
             connection,
         )
-        self.target_wp_s = behaviour_params["asteroid_wp"]
+        self.target_wp_s = behaviour_params.get("asteroid_wp", None)
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["asteroid_wp"] = "X1-TEST-AB12"
+
+        return return_obj
 
     def run(self):
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self._run()
+        self.end()
+
+    def _run(self):
         st = self.st
         ship = self.ship
         agent = st.view_my_self()
-        st.logging_client.log_beginning(
-            BEHAVIOUR_NAME, ship.name, agent.credits, self.behaviour_params
-        )
-
-        target_sys = st.systems_view_one(waypoint_slicer(self.target_wp_s))
-        target_wp = st.waypoints_view_one(
-            waypoint_slicer(self.target_wp_s), self.target_wp_s
-        )
+        target_wp = st.waypoints_view_one(self.target_wp_s)
         if not target_wp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
-        self.ship_extrasolar(target_sys)
+        self.ship_extrasolar_jump(target_wp.system_symbol)
         self.ship_intrasolar(target_wp.symbol)
         self.sleep_until_ready()
         resp = st.ship_survey(ship)
         if not resp:
-            time.sleep(SAFETY_PADDING)
+            self.st.sleep(SAFETY_PADDING)
             self.end()
             return
         self.end()
@@ -70,6 +81,6 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {"asteroid_wp": "X1-RV57-69965Z"}
     bhvr = ChillAndSurvey(agent, ship, behaviour_params or {})
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship_number, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)

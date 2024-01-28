@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "SELL_OR_JETTISON_ALL_CARGO"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class SellOrDitch(Behaviour):
@@ -45,6 +45,11 @@ class SellOrDitch(Behaviour):
 
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+
+        return return_obj
+
     def run(self):
         super().run()
         self.sleep_until_ready()
@@ -62,11 +67,17 @@ class SellOrDitch(Behaviour):
         ship = self.ship = st.ships_view_one(self.ship_name, True)
         ship: Ship
         agent = st.view_my_self()
-
-        markets = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-        markets = [
-            st.system_market(m) for m in markets if m.symbol != ship.nav.waypoint_symbol
-        ]
+        current_location = st.waypoints_view_one(ship.nav.waypoint_symbol)
+        waypoints = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
+        waypoints_d = {w.symbol: w for w in waypoints}
+        if waypoints:
+            markets = [
+                st.system_market(m)
+                for m in waypoints
+                if m.symbol != ship.nav.waypoint_symbol
+            ]
+        else:
+            markets = []
         for cargo in ship.cargo_inventory:
             best_market = None
             best_value = 0
@@ -74,13 +85,26 @@ class SellOrDitch(Behaviour):
                 tg = m.get_tradegood(cargo.symbol)
                 if not tg:
                     continue
-                if tg.sell_price > best_value:
+                wp = waypoints_d[m.symbol]
+                distance = (
+                    self.pathfinder.calc_distance_between(current_location, wp) + 15
+                )
+
+                if tg.sell_price / distance > best_value:
                     best_market = m
-                    best_value = tg.sell_price
+                    best_value = tg.sell_price / distance
             if best_market:
+                tg = best_market.get_tradegood(cargo.symbol)
                 self.ship_intrasolar(best_market.symbol)
                 st.ship_dock(ship)
-                st.ship_sell(ship, cargo.symbol, cargo.units)
+                resp = st.ship_sell(
+                    ship, cargo.symbol, min(cargo.units, tg.trade_volume)
+                )
+                if not resp:
+                    self.logger.error(
+                        f"Failed to sell {cargo.symbol} because {resp.error}"
+                    )
+                    continue
             else:
                 st.ship_jettison_cargo(ship, cargo.symbol, cargo.units)
 
@@ -90,7 +114,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "11"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
@@ -98,6 +122,6 @@ if __name__ == "__main__":
 
     bhvr = SellOrDitch(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship, "MANUAL", 0)

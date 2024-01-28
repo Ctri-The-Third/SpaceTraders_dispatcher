@@ -21,7 +21,7 @@ from straders_sdk.constants import SUPPLY_LEVELS
 import math
 
 BEHAVIOUR_NAME = "REFUEL_STRANDED"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class ConstructJumpgate(Behaviour):
@@ -46,15 +46,24 @@ class ConstructJumpgate(Behaviour):
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
         self.target_ships = self.behaviour_params.get("target_ships", [])
 
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return_obj["target_ships"] = [
+            "AGENT-1",
+        ]
+
+        return return_obj
+
     def run(self):
         super().run()
-        self.sleep_until_ready()
         self.st.logging_client.log_beginning(
             BEHAVIOUR_NAME,
             self.ship.name,
             self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
+        self.sleep_until_ready()
+
         self._run()
         self.end()
 
@@ -83,13 +92,11 @@ class ConstructJumpgate(Behaviour):
         # can we buy fuel locally?
         # if so - buy and continue
         all_markets = st.find_waypoints_by_trait(ship.nav.system_symbol, "MARKETPLACE")
-        start_wp = st.waypoints_view_one(
-            ship.nav.system_symbol, ship.nav.waypoint_symbol
-        )
+        start_wp = st.waypoints_view_one(ship.nav.waypoint_symbol)
         fuel_market = None
         closest_distance = float("inf")
         for waypoint in waypoints_with_stranded_ships:
-            start_wp = st.waypoints_view_one(ship.nav.system_symbol, waypoint)
+            start_wp = st.waypoints_view_one(waypoint)
             for market_wp in all_markets:
                 market_wp: Waypoint
                 if market_wp.symbol == waypoint:
@@ -165,6 +172,6 @@ if __name__ == "__main__":
 
     bhvr = ConstructJumpgate(agent, ship, behaviour_params or {})
 
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 60 * 24)
+    lock_ship(ship_number, "MANUAL", 60 * 24)
     bhvr.run()
-    lock_ship(ship_number, "MANUAL", bhvr.st.db_client.connection, 0)
+    lock_ship(ship_number, "MANUAL", 0)

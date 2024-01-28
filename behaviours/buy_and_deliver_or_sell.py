@@ -15,7 +15,7 @@ from straders_sdk.local_response import LocalSpaceTradersRespose
 from straders_sdk.client_api import SpaceTradersApiClient as SpaceTraders
 
 BEHAVIOUR_NAME = "BUY_AND_DELIVER_OR_SELL"
-SAFETY_PADDING = 60
+SAFETY_PADDING = 180
 
 
 class BuyAndDeliverOrSell_6(Behaviour):
@@ -38,7 +38,6 @@ class BuyAndDeliverOrSell_6(Behaviour):
         behaviour_params: dict = ...,
         config_file_name="user.json",
         session=None,
-        connection=None,
     ) -> None:
         super().__init__(
             agent_name,
@@ -46,12 +45,34 @@ class BuyAndDeliverOrSell_6(Behaviour):
             behaviour_params,
             config_file_name,
             session,
-            connection,
         )
         self.logger = logging.getLogger("bhvr_receive_and_fulfill")
 
     def run(self):
         super().run()
+        self.ship = self.st.ships_view_one(self.ship_name)
+        self.sleep_until_ready()
+        self.st.logging_client.log_beginning(
+            BEHAVIOUR_NAME,
+            self.ship.name,
+            self.agent.credits,
+            behaviour_params=self.behaviour_params,
+        )
+        self._run()
+        self.end()
+
+    def end(self):
+        if self.ship:
+            self.st.logging_client.log_ending(
+                BEHAVIOUR_NAME, self.ship_name, self.st.view_my_self().credits
+            )
+        super().end()
+
+    def default_params_obj(self):
+        return_obj = super().default_params_obj()
+        return return_obj
+
+    def _run(self):
         st = self.st
         ship = self.ship
         agent = self.agent
@@ -64,7 +85,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
         #
 
         if "tradegood" not in self.behaviour_params:
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("No tradegood specified for ship %s", ship.name)
             raise ValueError("No tradegood specified for ship %s" % ship.name)
         target_tradegood = self.behaviour_params["tradegood"]
@@ -84,18 +106,16 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 self.behaviour_params["buy_wp"],
             ]
             source_wp = st.waypoints_view_one(
-                waypoint_slicer(self.behaviour_params["buy_wp"]),
                 self.behaviour_params["buy_wp"],
             )
+            source_system = st.systems_view_one(source_wp.system_symbol)
             source_market = st.system_market(source_wp)
             source_listing = source_market.get_tradegood(target_tradegood)
         else:
             target_waypoints = self.find_cheapest_markets_for_good(target_tradegood)
             best_jumps = math.inf
             for target_waypoint in target_waypoints:
-                potential_wp = st.waypoints_view_one(
-                    waypoint_slicer(target_waypoint), target_waypoint
-                )
+                potential_wp = st.waypoints_view_one(target_waypoint)
                 source_system = st.systems_view_one(potential_wp.system_symbol)
                 route = self.pathfinder.astar(start_system, source_system)
                 if route and route.jumps < best_jumps:
@@ -108,24 +128,18 @@ class BuyAndDeliverOrSell_6(Behaviour):
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["sell_wp"])
             )
-            end_waypoint = st.waypoints_view_one(
-                end_system.symbol, self.behaviour_params["sell_wp"]
-            )
+            end_waypoint = st.waypoints_view_one(self.behaviour_params["sell_wp"])
             end_market = st.system_market(end_waypoint)
             end_listing = end_market.get_tradegood(target_tradegood)
         if "fulfil_wp" in self.behaviour_params:
             end_system = st.systems_view_one(
                 waypoint_slicer(self.behaviour_params["fulfil_wp"])
             )
-            end_waypoint = st.waypoints_view_one(
-                end_system.symbol, self.behaviour_params["fulfil_wp"]
-            )
+            end_waypoint = st.waypoints_view_one(self.behaviour_params["fulfil_wp"])
         if "transfer_ship" in self.behaviour_params:
             receive_ship = st.ships_view_one(self.behaviour_params["transfer_ship"])
             end_system = st.systems_view_one(receive_ship.nav.system_symbol)
-            end_waypoint = st.waypoints_view_one(
-                end_system.symbol, receive_ship.nav.waypoint_symbol
-            )
+            end_waypoint = st.waypoints_view_one(receive_ship.nav.waypoint_symbol)
 
         #
         # if we've not been given specific instructions about where to sell, sell it at the best price, regardless of distance.
@@ -144,9 +158,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 ):
                     best_potench = potench
                     best_cpd = sell_price / min(route.jumps, 0.01)
-            end_waypoint = st.waypoints_view_one(
-                best_potench[1].symbol, best_potench[0]
-            )
+            end_waypoint = st.waypoints_view_one(best_potench[0])
             end_system = best_potench[1]
 
         if "safety_profit_threshold" in self.behaviour_params:
@@ -174,7 +186,8 @@ class BuyAndDeliverOrSell_6(Behaviour):
                     return
 
         if not target_waypoints:
-            time.sleep(SAFETY_PADDING)
+            self.st.release_connection()
+            self.st.sleep(SAFETY_PADDING)
             self.logger.error("No waypoint found for tradegood %s", target_tradegood)
             raise ValueError("No waypoint found for tradegood %s" % target_tradegood)
 
@@ -192,25 +205,25 @@ class BuyAndDeliverOrSell_6(Behaviour):
                 quantity = ship_inventory_item.units
 
         if quantity > 0 and end_waypoint is not None:
-            resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
+            resp = self.go_and_sell_or_fulfill(
+                target_tradegood, target_waypoint, end_system
+            )
         else:
-            resp = self.fetch_half(
-                None,
-                start_system,
-                source_wp,
-                [],
-                max_to_buy,
-                target_tradegood,
+            resp = self.go_and_buy(
+                target_tradegood, source_wp, source_system, max_to_buy=max_to_buy
             )
             if not resp:
-                time.sleep(SAFETY_PADDING)
+                self.st.release_connection()
+                self.st.sleep(SAFETY_PADDING)
                 self.logger.error(
                     "Couldn't fetch any %s from %s, because %s",
                     target_tradegood,
                     ship.name,
                     resp.error,
                 )
-            resp = self.deliver_half(end_system, end_waypoint, target_tradegood)
+            resp = self.go_and_sell_or_fulfill(
+                target_tradegood, target_waypoint, end_system
+            )
         self.jettison_all_cargo([target_tradegood])
         st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, agent.credits)
         self.end()
@@ -219,7 +232,7 @@ class BuyAndDeliverOrSell_6(Behaviour):
         sql = """select market_symbol from market_tradegood_listings
 where trade_symbol = %s
 order by purchase_price asc """
-        wayps = try_execute_select(self.connection, sql, (tradegood_sym,))
+        wayps = try_execute_select(sql, (tradegood_sym,))
 
         if not wayps:
             self.logger.error(
@@ -227,77 +240,6 @@ order by purchase_price asc """
             )
             return wayps
         return [wayp[0] for wayp in wayps]
-
-    def fetch_half(
-        self,
-        local_jumpgate,
-        target_system: "System",
-        target_waypoint: "Waypoint",
-        path: list,
-        max_to_buy: int,
-        target_tradegood: str,
-    ) -> LocalSpaceTradersRespose:
-        #
-        # this needs to validate that we're going to make a profit with current prices.
-        # if we're not, sleep for 15 minutes, and return false. By the time it picks up, either the market goods will have shuffled (hopefully) or there'll be a new contract assigned.
-        #
-        ship = self.ship
-        st = self.st
-        current_market = st.system_market(target_waypoint)
-        if ship.nav.system_symbol != target_system.symbol:
-            self.ship_intrasolar(local_jumpgate.symbol)
-            self.ship_extrasolar(target_waypoint, path)
-        self.ship_intrasolar(target_waypoint.symbol, flight_mode="CRUISE")
-
-        st.ship_dock(ship)
-        if not current_market:
-            self.logger.error(
-                "No market found at waypoint %s", ship.nav.waypoint_symbol
-            )
-            time.sleep(SAFETY_PADDING)
-            return current_market
-
-        # empty anything that's not the goal.
-
-        resp = self.purchase_what_you_can(
-            target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
-        )
-        if not resp:
-            self.st.view_my_self(True)
-            resp = self.purchase_what_you_can(
-                target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
-            )
-        if not resp:
-            self.logger.error(
-                "Couldn't purchase %s at %s, because %s",
-                target_tradegood,
-                ship.name,
-                resp.error,
-            )
-            return resp
-        return LocalSpaceTradersRespose(None, 0, None, url=f"{__name__}.fetch_half")
-
-    def deliver_half(
-        self, target_system, target_waypoint: "Waypoint", target_tradegood: str
-    ):
-        resp = self.ship_extrasolar(target_system)
-        if not resp:
-            return False
-        resp = self.ship_intrasolar(target_waypoint, flight_mode="CRUISE")
-        if not resp and resp.error_code != 4204:
-            return False
-        # now that we're here, decide what to do. Options are:
-        # transfer (skip for now, throw in a warning)
-        # fulfill
-        # sell
-        self.st.ship_dock(self.ship)
-        if "fulfil_wp" in self.behaviour_params:
-            resp = self.fulfil_any_relevant()
-        # elif "sell_wp" in self.behaviour_params:
-        else:
-            resp = self.sell_all_cargo()
-
-        return resp
 
     def check_traderoute_validity(
         self, origin_market: str, destination_market: str, tradegood: str
@@ -313,7 +255,6 @@ select sell_price from market_tradegood_listings
 	) 	
 	select *, (sell_price - purchase_price) as profit_per_unit, (sell_price - purchase_price) > 0 as still_good  from pp join sp on true """
         results = try_execute_select(
-            self.connection,
             sql,
             (
                 origin_market,
@@ -346,8 +287,8 @@ if __name__ == "__main__":
         # "safety_profit_threshold": 1107,
     }
     bhvr = BuyAndDeliverOrSell_6(agent, ship, behaviour_params=params)
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=120)
+    lock_ship(ship, "MANUAL", duration=120)
     set_logging(logging.DEBUG)
     bhvr.st.view_my_self(True)
     bhvr.run()
-    lock_ship(ship, "MANUAL", bhvr.st.db_client.connection, duration=0)
+    lock_ship(ship, "MANUAL", duration=0)
