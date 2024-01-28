@@ -205,14 +205,15 @@ class BuyAndSellDripfeed(Behaviour):
             self.sell_cargo(self.target_tradegood, amount_to_sell, sell_market_mkt)
 
     def end(self, error=None):
-        super().end()
-        self.st.logging_client.log_ending(
-            BEHAVIOUR_NAME, self.ship.name, self.agent.credits
-        )
+        if self.ship:
+            self.st.logging_client.log_ending(
+                BEHAVIOUR_NAME, self.ship.name, self.agent.credits
+            )
         if error:
             self.logger.error(error)
             self.st.release_connection()
             self.st.sleep(SAFETY_PADDING)
+        super().end()
 
     def find_cheapest_markets_for_good(self, tradegood_sym: str) -> list[str]:
         sql = """select market_symbol from market_tradegood_listings

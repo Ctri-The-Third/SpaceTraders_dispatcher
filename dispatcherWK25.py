@@ -430,11 +430,13 @@ class dispatcher:
     def upload_behaviour_definitions(self):
         for behaviour_id, bhvr_class in behaviours_and_classes.items():
             bhvr_obj = bhvr_class("", "", {})
+
             bhvr_obj: Behaviour
 
             params = json.dumps(bhvr_obj.default_params_obj())
             sql = "insert into behaviour_definitions (behaviour_id, default_params) values (%s, %s) on conflict (behaviour_id) do update set default_params = EXCLUDED.default_params;"
             try_execute_upsert(sql, (behaviour_id, params), self.connection)
+            bhvr_obj.end()
         pass
 
     def maybe_scan_all_systems(self):

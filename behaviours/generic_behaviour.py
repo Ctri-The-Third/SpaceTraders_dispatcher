@@ -589,6 +589,7 @@ class Behaviour:
 
         if self.ship.nav.status != "DOCKED":
             self.st.ship_dock(self.ship)
+        matching_items = None
         for cargo in self.ship.cargo_inventory:
             matching_items = [item for item in items if item.symbol == cargo.symbol]
         if not matching_items:
