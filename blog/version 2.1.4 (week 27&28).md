@@ -46,3 +46,18 @@ We're at the point where we want to be able to make instructions via the UI.
 * Node U 
   * Crashed itself buying too many ships, performing high-volume low-marketdepth trades, and keeping the jump gate constructor on whilst ramping.
   * is relocating probes every hour. Why? it shouldn't relocate them at all.
+
+
+  
+| stat              | Node U (exp) | node V (21) | 
+| ---               | ------------ | ----------  |
+| total uptime      | 257.29       | 354.16      | 
+| total ships       | 84           | 22          | 
+| contracts         | 257          | 2           | 
+| contract_earnings | 22,025,637   | 0           | 
+| trade_earnings    | 148,474,606  | 2,692,372   | 
+| total_earnings    | 170,500,243  | 2,692,372   |
+| requests          | 1,218,532    | 392,857     |
+| average delay     | 9.01         | 0.5         | 
+| CPH               | 662,677.30   | 7,602.134   |
+| CPR               | 139.922      | 6.85        |
