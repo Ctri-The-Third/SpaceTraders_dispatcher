@@ -103,7 +103,7 @@ class ConstructJumpgate(Behaviour):
         requirements = [
             m for m in j_construction_site.materials if m.fulfilled < m.required
         ]
-
+        found_something = False
         for r in requirements:
             markets = self.source_markets or self.find_markets_that_export(
                 r.symbol, highest_tradevolume=True
@@ -116,9 +116,14 @@ class ConstructJumpgate(Behaviour):
                 if not tg:
                     continue
                 if SUPPLY_LEVELS[tg.supply] >= 3:
+                    found_something = True
                     self.go_fetch_something(
                         r.symbol, wp, jumpgate, r.required - r.fulfilled
                     )
+        if not found_something:
+            self.logger.error("No markets found with sufficient supply")
+            time.sleep(SAFETY_PADDING)
+            self.end("No markets found with sufficient supply")
 
         # ✅ step 1 - assess if any work needs doing
         ## ✅ waypoint model needs an "isUnderConstruction"

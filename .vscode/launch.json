@@ -32,14 +32,14 @@
             ]
         },
         {
-            "name": "dispatcher -V",
+            "name": "dispatcher -W",
             "type": "python",
             "request": "launch",
             "program": "dispatcherWK25.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "CTRI-V-"
+                "CTRI-W-"
             ]
         },
         {

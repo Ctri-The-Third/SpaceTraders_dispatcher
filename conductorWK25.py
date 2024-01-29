@@ -403,7 +403,10 @@ class BehaviourConductor:
         probe_jobs = 0
         if system.probes_to_monitor_shipyards:
             # find each distinct coordinate
-            shipyards = list(set([w for w in system.ship_type_shipyards.values()]))
+            shipyards = sorted(
+                list(set([w for w in system.ship_type_shipyards.values()]))
+            )
+
             if "SHIP_PROBE" in system.ship_type_shipyards:
                 target_waypoint = system.ship_type_shipyards["SHIP_PROBE"]
                 shipyards.remove(target_waypoint)
@@ -431,7 +434,7 @@ class BehaviourConductor:
             market_symbols = [w for w in system.tradegoods_exported.values()]
             market_symbols.extend([w for w in system.tradegoods_imported.values()])
             market_symbols = [item for list in market_symbols for item in list]
-            market_symbols = set(market_symbols)
+            market_symbols = sorted(list(set(market_symbols)))
             coords = {}
             for symbol in market_symbols:
                 wp = self.st.waypoints_view_one(symbol)
@@ -454,9 +457,7 @@ class BehaviourConductor:
             + system.haulers_chain_trading
             + system.haulers_doing_missions
             + system.haulers_evolving_markets
-            + (1
-            if system.construct_jump_gate
-            else 0)
+            + (1 if system.construct_jump_gate else 0)
         )
         # set up the haulers to go to the markets and buy stuff
         # chain trade 3

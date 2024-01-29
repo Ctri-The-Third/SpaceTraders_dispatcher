@@ -221,7 +221,7 @@ class Behaviour:
                 and (ship.fuel_capacity > 0 or ship.fuel_current <= 5)
                 and fuel_cost < ship.fuel_capacity
                 and attempts < 5
-            ) or (ship.fuel_capacity > 0 and ship.fuel_current <= 5):
+            ) or (ship.fuel_capacity > 0 and ship.fuel_current <= 5 and attempts < 5):
                 # need to refuel (note that satelites don't have a fuel tank, and don't need to refuel.)
                 attempts += 1
                 resp = self.refuel_locally()
