@@ -703,8 +703,16 @@ order by 1 desc """
 
         # situation - when loading the waypoints, we get the systemWaypoint aggregate that doesn't have traits or other info.
         # QUESTION
-        st.waypoints_view(current_system_sym, True)
-        target_wayps = []
+        wayps = st.waypoints_view(current_system_sym, True)
+
+        interesting_wayps = [
+            p
+            for sym, p in wayps.items()
+            if p.type in ("PLANET", "MOON", "ORBITAL_STATION", "JUMP_GATE")
+        ]
+        target_wayps = [
+            w for w in interesting_wayps if "UNCHARTED" in [t.symbol for t in w.traits]
+        ]
         if ship.seconds_until_cooldown < 60:
             wayps = st.ship_scan_waypoints(ship)
             if wayps:
@@ -720,15 +728,6 @@ order by 1 desc """
         shipyards = st.find_waypoints_by_trait(current_system_sym, "SHIPYARD") or []
 
         gate = st.find_waypoints_by_type_one(current_system_sym, "JUMP_GATE")
-        uncharted_planets = st.find_waypoints_by_trait(
-            ship.nav.system_symbol, "UNCHARTED"
-        )
-        if uncharted_planets:
-            target_wayps.extend(
-                p
-                for p in uncharted_planets
-                if p.type in ("PLANET", "MOON", "ORBITAL_STATION")
-            )
         target_wayps.extend(marketplaces)
         target_wayps.extend(shipyards)
         target_wayps.append(gate)
@@ -745,21 +744,20 @@ order by 1 desc """
             self.ship_intrasolar(wayp_sym)
             self.sleep_until_arrived()
             trait_symbols = [trait.symbol for trait in waypoint.traits]
-            should_chart = False
-            if "UNCHARTED" in trait_symbols:
-                if len(trait_symbols) == 1:
-                    self.sleep_until_ready()
-                    wayps = st.ship_scan_waypoints(ship)
-                    if wayps:
-                        wayps = [w for w in wayps if w.symbol == waypoint.symbol]
-                        waypoint = wayps[0]
-                should_chart = True
+            if "UNCHARTED" in trait_symbols or not waypoint.is_charted:
+                self.sleep_until_ready()
+                wayps = st.ship_scan_waypoints(ship)
+                if wayps:
+                    wayps = [w for w in wayps if w.symbol == waypoint.symbol]
+                    waypoint = wayps[0]
+
+                st.ship_create_chart(ship)
+                st.waypoints_view_one(wayp_sym, True)
+                # chart the waypoint, refresh the waypoint and trait_symbols
             if "MARKETPLACE" in trait_symbols:
                 market = st.system_market(waypoint, True)
                 if market:
                     for listing in market.listings:
-                        if listing.symbol in ("VALUABLES"):
-                            should_chart = False
                         print(
                             f"item: {listing.symbol}, buy: {listing.purchase_price} sell: {listing.sell_price} - supply available {listing.supply}"
                         )
@@ -768,11 +766,9 @@ order by 1 desc """
                 if shipyard:
                     for ship_type in shipyard.ship_types:
                         print(ship_type)
-                        if ship_type in ("VALUABLES"):
-                            should_chart = False
             if waypoint.type == "JUMP_GATE":
-                jump_gate = st.system_jumpgate(waypoint, True)
-                self.pathfinder._graph = self.pathfinder.load_jump_graph_from_db()
+                st.system_jumpgate(waypoint, True)
+                self.pathfinder._jump_graph = self.pathfinder.load_jump_graph_from_db()
                 self.pathfinder.save_graph()
 
     def ship_extrasolar_jump(self, dest_sys_sym: str, route: JumpGateRoute = None):
@@ -1081,3 +1077,15 @@ if __name__ == "__main__":
     self = bhvr
     st = self.st
     ship = self.ship
+
+    current_system = st.systems_view_one(ship.nav.system_symbol)
+
+    factions = bhvr.st.list_factions()
+    for faction in factions:
+        if not faction.is_recruiting:
+            continue
+        target_system = st.systems_view_one(faction.headquarters)
+        route = bhvr.pathfinder.astar(current_system, target_system)
+        if not route:
+            continue
+        print(faction.headquarters)

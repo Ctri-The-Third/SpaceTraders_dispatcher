@@ -5,6 +5,7 @@ from behaviours.generic_behaviour import Behaviour
 from straders_sdk import SpaceTraders
 from straders_sdk.ship import Ship
 from straders_sdk.models import Waypoint, System
+from straders_sdk.pathfinder import JumpGateRoute
 import math
 import logging
 from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
@@ -77,40 +78,24 @@ class ExploreSystem(Behaviour):
             st.system_jumpgate(jg, True)
             path = self.pathfinder.astar(o_sys, d_sys, force_recalc=True)
         else:
-            d_sys = self.route_to_unexplored_jumpgate()
-            if d_sys:
-                d_sys = st.systems_view_one(d_sys)
-                if not d_sys:
-                    self.logger.error("Couldn't find system %s", d_sys)
-                    self.end()
-                    self.st.logging_client.log_ending(
-                        BEHAVIOUR_NAME, ship.name, agent.credits
-                    )
-                    return
-                path = self.pathfinder.astar(o_sys, d_sys, True)
+            path, next_step = self.route_to_uncharted_jumpgate()
+            path: JumpGateRoute
+            if path:
+                d_sys = path.end_system
             else:
-                tar_sys_sql = """SELECT w1.system_symbol, j.x, j.y, last_updated, jump_gate_waypoint
-                    FROM public.mkt_shpyrds_systems_last_updated_jumpgates j
-                    JOIN waypoints w1 on j.waypoint_symbol = w1.waypoint_symbol
-                    order by last_updated, random()"""
-                resp = try_execute_select(self.connection, tar_sys_sql, ())
-
-                if not resp:
-                    self.logger.error(
-                        "Couldn't find any systems with jump gates! sleeping  10 mins then exiting!"
-                    )
-                    self.st.sleep(600)
-                    return
-                target = resp[0]
-
-                # target = try_execute_select(self.connection, tar_sys_sql, ())[0]
-                d_sys = System(target[0], "", "", target[1], target[2], [])
-                path = self.pathfinder.astar(o_sys, d_sys, bypass_check=True)
+                d_sys = o_sys
             self.logger.debug("Random destination selected: target %s", d_sys.symbol)
 
         arrived = True
-        if ship.nav.system_symbol != d_sys.symbol:
-            arrived = self.ship_extrasolar_jump(d_sys.symbol, path)
+        if d_sys.symbol != o_sys.symbol:
+            if ship.nav.system_symbol != d_sys.symbol:
+                arrived = self.ship_extrasolar_jump(d_sys.symbol, path)
+            else:
+                local_gates = st.find_waypoints_by_type(d_sys.symbol, "JUMP_GATE")
+                if local_gates:
+                    self.ship_intrasolar(local_gates[0].symbol)
+                    arrived = self.st.ship_jump(ship, next_step)
+
         if arrived:
             self.scan_local_system()
         else:
@@ -121,16 +106,32 @@ class ExploreSystem(Behaviour):
         # travel to target system
         # scan target system
 
-    def route_to_unexplored_jumpgate(self):
+    def route_to_uncharted_jumpgate(
+        self,
+    ) -> tuple["JumpRoute", Waypoint]:
         source = self.st.find_waypoints_by_type(self.o_sys.symbol, "JUMP_GATE")
         if not source:
             self.st.sleep(SAFETY_PADDING)
             return None
 
-        gate = self.st.system_jumpgate(source[0], True)
-        for connected_system in gate.connected_waypoints:
-            # print(connection)\
             pass
+
+        source = self.st.waypoints_view_one(source[0].symbol, True)
+        if not source.is_charted:
+            return (None, source)
+        gate = self.st.system_jumpgate(source)
+        for connected_waypoint in gate.connected_waypoints:
+            wayp = self.st.waypoints_view_one(connected_waypoint)
+            if (
+                "UNCHARTED" in [t.symbol for t in wayp.traits] and not wayp.is_charted
+            ) and not wayp.under_construction:
+                route = self.pathfinder.astar(
+                    self.o_sys, self.st.systems_view_one(wayp.system_symbol)
+                )
+                if route:
+                    return (route, connected_waypoint)
+            print(connected_waypoint)
+        return (None, None)
 
 
 if __name__ == "__main__":
