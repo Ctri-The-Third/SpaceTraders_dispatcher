@@ -111,10 +111,10 @@ class EvolveSupplyChain(Behaviour):
                 if (
                     tg
                     and tg.trade_volume < max_import_tv
-                    and SUPPLY_LEVELS[tg.supply] <= 4
+                    and SUPPLY_LEVELS[tg.supply] <= 3
                 ):
                     while (
-                        SUPPLY_LEVELS[tg.supply] < 5
+                        SUPPLY_LEVELS[tg.supply] < 4
                         and not self.termination_event.is_set()
                     ):
                         possible_sources = self.find_markets_that_trade(
@@ -152,9 +152,9 @@ class EvolveSupplyChain(Behaviour):
                         tg = main_market.get_tradegood(i)
 
             tg = main_market.get_tradegood(target_link.export_symbol)
-            if tg and tg.trade_volume < max_export_tv and SUPPLY_LEVELS[tg.supply] >= 2:
+            if tg and tg.trade_volume < max_export_tv and SUPPLY_LEVELS[tg.supply] >= 3:
                 while (
-                    SUPPLY_LEVELS[tg.supply] > 1 and not self.termination_event.is_set()
+                    SUPPLY_LEVELS[tg.supply] > 2 and not self.termination_event.is_set()
                 ):
                     if target_link.parent_link:
                         possible_destination = target_link.parent_link.market_symbol
