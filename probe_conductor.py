@@ -148,60 +148,19 @@ class BehaviourConductor:
             logging.info(
                 f"Conductor is running - Q{self.next_quarterly_update.strftime('%H:%M:%S')}, H{self.next_hourly_update.strftime('%H:%M:%S')}, D{self.next_daily_update.strftime('%H:%M:%S')}"
             )
-            self.st.view_my_self()
-            ships = list(self.st.ships_view().values())
-            ships.sort(key=lambda ship: ship.index)
+            ship, agent = self.st.ships_purchase("SHIP_PROBE", "X1-DM68-C47")
+            if not ship:
+                self.st.sleep(3600)
 
-            if self.next_daily_update < datetime.now() or starting_run:
-                self.next_daily_update = datetime.now() + timedelta(days=1)
-                # daily tasks like DB maintenance
-                self.global_daily_update()
-
-            if self.next_hourly_update < datetime.now() or starting_run:
-                self.global_hourly_update()
-            reset_quarterly = False
-            reset_hourly = False
-            reset_daily = False
-            for system in self.managed_systems:
-                self.populate_ships(ships, system)
-                # daily reset uncharted waypoints.
-                # hourly set ship behaviours
-                # quarterly set ship tasks
-                # minutely try and buy new ships
-
-                if self.next_daily_update < datetime.now():
-                    reset_daily = True
-                    # daily tasks like DB maintenance
-                    self.global_daily_update()
-
-                if self.next_hourly_update < datetime.now():
-                    reset_hourly = True
-                    self.system_hourly_update(system)
-                    # hourly tasks - for setting behaviours and such
-
-                if self.next_quarterly_update < datetime.now():
-                    reset_quarterly = True
-                    self.system_quarterly_update(system)
-                    # quartrly tasks - doesn't do anything presently
-
-                if starting_run:
-                    self.system_daily_update(system)
-                    self.system_hourly_update(system)
-                    self.system_quarterly_update(system)
-                self.system_minutely_update(system)
-
-            if reset_quarterly:
-                self.next_quarterly_update = datetime.now() + timedelta(minutes=15)
-            if reset_hourly:
-                self.next_hourly_update = datetime.now() + timedelta(hours=1)
-            if reset_daily:
-                self.next_daily_update = datetime.now() + timedelta(days=1)
-            starting_run = False
-            # here for testing purposes only - remove this
-
-            # minutely tasks, for scaling ships if possible.
-
-            self.st.sleep(60)
+                continue
+            ship: Ship
+            set_behaviour(
+                ship.name,
+                bhvr.BHVR_EXPLORE_JUMP_GATE_NETWORK,
+                {"priority": 5},
+                self.st.connection,
+            )
+            self.st.sleep(3600)
 
     def global_daily_update(self):
         """Reset uncharted waypoints and refresh materialised views."""

@@ -39,6 +39,7 @@ class TradeBestInSystem(Behaviour):
             session,
         )
         self.agent = self.st.view_my_self()
+        self.target_sys = self.behaviour_params.get("target_sys")
         self.logger = logging.getLogger(BEHAVIOUR_NAME)
 
     def default_params_obj(self):
@@ -53,6 +54,7 @@ class TradeBestInSystem(Behaviour):
             self.agent.credits,
             behaviour_params=self.behaviour_params,
         )
+
         self.sleep_until_ready()
 
         self._run()
@@ -63,6 +65,13 @@ class TradeBestInSystem(Behaviour):
         ship = self.ship  # = st.ships_view_one(self.ship_name, True)
         ship: Ship
         agent = self.agent
+
+        if self.ship.nav.system_symbol != self.target_sys:
+            arrived = self.ship_extrasolar_jump(self.target_sys)
+            if not arrived:
+                self.logger.info(f"Failed to jump to {self.target_sys}")
+                self.st.sleep(SAFETY_PADDING)
+                return
         self.sleep_until_arrived()
         best_trade = self.get_best_trade()
         if not best_trade:
@@ -123,10 +132,11 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "11"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
+        "target_sys": "X1-DM68",
     }
 
     bhvr = TradeBestInSystem(agent, ship, behaviour_params or {})

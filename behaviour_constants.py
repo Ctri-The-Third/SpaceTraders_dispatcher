@@ -123,6 +123,11 @@ from behaviours.evolve_supply_chain import (
     BEHAVIOUR_NAME as BHVR_EVOLVE_SUPPLY_CHAIN,
 )
 
+from behaviours.explore_jumpgate_network import (
+    ExploreJumpgates,
+    BEHAVIOUR_NAME as BHVR_EXPLORE_JUMP_GATE_NETWORK,
+)
+
 behaviours_and_classes = {
     BHVR_EXTRACT_AND_GO_SELL: ExtractAndGoSell,
     BHVR_RECEIVE_AND_FULFILL: ReceiveAndFulfillOrSell_3,
@@ -154,4 +159,5 @@ behaviours_and_classes = {
     BHVR_WARP_TO_SYSTEM: WarpToSystem,
     BHVR_TRADE_BEST_INTRASOLAR: TradeBestInSystem,
     BHVR_EVOLVE_SUPPLY_CHAIN: EvolveSupplyChain,
+    BHVR_EXPLORE_JUMP_GATE_NETWORK: ExploreJumpgates,
 }
