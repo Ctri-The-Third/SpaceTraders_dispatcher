@@ -353,7 +353,7 @@ class BehaviourConductor:
                     len(system.haulers) * 50000 + 150000,
                 )
                 if resp:
-                    self.haulers.append(resp)
+                    system.haulers.append(resp)
                     self.set_hauler_tasks(system)
                 else:
                     system._next_ship_to_buy = hauler_type
@@ -366,7 +366,7 @@ class BehaviourConductor:
                 len(system.haulers) * 50000 + 150000,
             )
             if resp:
-                self.extractors.append(resp)
+                system.extractors.append(resp)
                 self.set_extractor_tasks(system)
             else:
                 system._next_ship_to_buy = system.extractor_type_to_use
@@ -378,7 +378,7 @@ class BehaviourConductor:
                 len(system.haulers) * 50000 + 150000,
             )
             if resp:
-                self.siphoners.append(resp)
+                system.siphoners.append(resp)
                 self.set_siphoner_tasks(system)
             else:
                 system._next_ship_to_buy = "SHIP_SIPHON_DRONE"
@@ -392,7 +392,7 @@ class BehaviourConductor:
                     len(system.haulers) * 50000,
                 )
                 if resp:
-                    self.satellites.append(resp)
+                    system.satellites.append(resp)
                     self.set_probe_tasks(system)
                 else:
                     system._next_ship_to_buy = "SHIP_PROBE"
@@ -415,7 +415,7 @@ class BehaviourConductor:
                 set_behaviour(
                     probe.name,
                     BHVR_MONITOR_SPECIFIC_LOCATION,
-                    {"waypoint": target_waypoint},
+                    {"waypoint": target_waypoint, "priority": 5},
                 )
             for shipyard in shipyards:
                 if len(satellites) == 0:
@@ -424,7 +424,7 @@ class BehaviourConductor:
                 set_behaviour(
                     probe.name,
                     BHVR_MONITOR_SPECIFIC_LOCATION,
-                    {"waypoint": shipyard},
+                    {"waypoint": shipyard, "priority": 5},
                 )
             probe_jobs += len(shipyards) + 1
 
@@ -456,8 +456,9 @@ class BehaviourConductor:
             + system.haulers_chain_trading
             + system.haulers_doing_missions
             + system.haulers_evolving_markets
-            + (1 if system.construct_jump_gate else 0)
+            + system.haulers_constructing_jump_gate
         )
+
         # set up the haulers to go to the markets and buy stuff
         # chain trade 3
         # manage supply chain 4
@@ -513,7 +514,7 @@ class BehaviourConductor:
                 bhvr.BHVR_EXECUTE_CONTRACTS,
                 {"priority": 3},
             )
-        if system.construct_jump_gate:
+        for i in range(system.haulers_constructing_jump_gate):
             if len(ships) == 0:
                 return hauler_jobs
             hauler = ships.pop(0)
@@ -652,7 +653,7 @@ class BehaviourConductor:
             gate: Waypoint
             gate_complete = not gate.under_construction
             if gate.under_construction:
-                start_system.construct_jump_gate = True
+                start_system.haulers_constructing_jump_gate = 1
                 start_system.commander_trades = True
             else:
                 start_system.commander_trades = False
@@ -668,7 +669,7 @@ class BehaviourConductor:
             start_system.mining_sites = [w.symbol for w in e]
 
         if gate_complete:
-            start_system.construct_jump_gate = False
+            start_system.haulers_constructing_jump_gate = 0
             # we need populate the next HQ system - starting with our own.
             factions = st.list_factions()
             # sort them by distance to our location
@@ -710,7 +711,7 @@ class BehaviourConductor:
             next_system.siphoners_per_gas_giant = 0
             next_system.commander_trades = True
         else:
-            start_system.construct_jump_gate = True
+            start_system.haulers_constructing_jump_gate = 1
 
         self._save_game_plan("game_plan.json")
 
@@ -793,7 +794,7 @@ class ConductorSystem:
     probes_to_monitor_markets: bool = False
     probes_to_monitor_shipyards: bool = False
     use_explorers_as_haulers: bool = False
-    construct_jump_gate: bool = False
+    haulers_constructing_jump_gate: int = 0
     mining_sites: list[str] = []
 
     hauler_tradechain_maintain_goods: int = []
@@ -856,7 +857,7 @@ class ConductorSystem:
             "haulers_evolving_markets": self.haulers_evolving_markets,
             "hauler_tradechain_evolve_prioity": self.hauler_tradechain_evolve_prioity,
             "haulers_doing_missions": self.haulers_doing_missions,
-            "construct_jump_gate": self.construct_jump_gate,
+            "haulers_constructing_jump_gate": self.haulers_constructing_jump_gate,
             "siphoners_per_gas_giant": self.siphoners_per_gas_giant,
         }
 

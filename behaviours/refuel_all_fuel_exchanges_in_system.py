@@ -6,6 +6,7 @@ sys.path.append(".")
 from behaviours.generic_behaviour import Behaviour
 import logging
 from straders_sdk.utils import try_execute_select, set_logging, waypoint_slicer
+from straders_sdk.constants import SUPPLY_LEVELS
 from straders_sdk.models import Waypoint, System, Market, MarketTradeGoodListing
 
 BEHAVIOUR_NAME = "REFUEL_ALL_IN_SYSTEM"
@@ -115,7 +116,7 @@ class RefuelAnExchange(Behaviour):
         m = self.st.system_market(w)
         fuel = m.get_tradegood("FUEL")
         trips = 0
-        while (fuel.supply != "ABUNDANT" and trips < 5) and self.still_profitable(
+        while (fuel.supply != "ABUNDANT" and trips < 5) and self.should_still_trade(
             fuel_market, m
         ):
             self.ship_intrasolar(fuel_market.symbol)
@@ -141,14 +142,20 @@ class RefuelAnExchange(Behaviour):
         self.end()
         self.st.logging_client.log_ending(BEHAVIOUR_NAME, ship.name, self.agent.credits)
 
-    def still_profitable(
+    def should_still_trade(
         self, fuel_market_wp: Waypoint, dest_market_wp: Waypoint
     ) -> bool:
         fuel_market = self.st.system_market(fuel_market_wp)
         dest_market = self.st.system_market(dest_market_wp)
 
-        fuel_price = fuel_market.get_tradegood("FUEL").purchase_price
+        source_tg = fuel_market.get_tradegood("FUEL")
+        fuel_price = source_tg.purchase_price
         dest_price = dest_market.get_tradegood("FUEL").sell_price
+
+        if source_tg.activity == "STRONG" and SUPPLY_LEVELS[source_tg.supply] < 4:
+            return False
+        elif SUPPLY_LEVELS[source_tg.supply] < 3:
+            return False
 
         return dest_price > fuel_price
 
@@ -158,11 +165,13 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "3"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "2B"
     ship = f"{agent}-{ship_number}"
-    bhvr = RefuelAnExchange(agent, ship, {})
 
-    lock_ship(ship_number, "MANUAL", 60 * 24)
+    while True:
+        bhvr = RefuelAnExchange(agent, ship, {})
+        lock_ship(ship_number, "MANUAL", 60 * 24)
 
-    bhvr.run()
-    lock_ship(ship_number, "MANUAL", 0)
+        bhvr.run()
+        bhvr.sleep_until_arrived()
+        lock_ship(ship_number, "MANUAL", 0)

@@ -8,8 +8,12 @@ Once that's completed, a mechanism by which the user token can be used to instan
 
 ## performance
 
-* Node U (exp) - Didn't do initial exploration - why?
+* Node U (exp 29-30) - Didn't do initial exploration - why?
+  * The evolution behaviour appears to be buying goods when it's at the end of the chain and there's no profitable location - so it ends up selling them at a loss next time around.
+  
 * Node C (27-28) - Didn't do initial exploration - why?
+  * It actually did in the end!
+  * But jump gate building wasn't on by default - it should be.
 * Node V (26-27) - Didn't do initial exploration - why?
 
  
