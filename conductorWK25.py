@@ -95,6 +95,7 @@ class BehaviourConductor:
         self.safety_margin = 0
 
         self.managed_systems: list[ConductorSystem] = []
+        self.galaxy_probes = 0
 
         # * progress missions
         hq = self.st.view_my_self().headquarters
@@ -230,7 +231,40 @@ class BehaviourConductor:
     def global_hourly_update(self):
         """Set ship behaviours and tasks"""
         self._refresh_game_plan(self.game_plan_path)
+        # for each probe that's not in a managed system, set it to explore the galaxy
+        ships = list(self.st.ships_view().values())
+        behaviour_sql = """
+        select s.ship_symbol, behaviour_id from ships s left join ship_behaviours sb on s.ship_symbol = sb.ship_symbol
+        where s.agent_name = 'CTRI-U-'        
+        """
+        results = try_execute_select(behaviour_sql, ())
+        behaviours = {r[0]: r[1] for r in results}
 
+        probes = [ship for ship in ships if ship.role == "SATELLITE"]
+        global_probes = []
+        for probe in probes:
+            probe: Ship
+            if not behaviours.get(probe.name):
+                global_probes.append(probe)
+            elif probe.nav.system_symbol not in [
+                s.system_symbol for s in self.managed_systems
+            ]:
+                global_probes.append(probe)
+
+        if len(global_probes) < self.galaxy_probes:
+            ship = maybe_buy_ship_sys2(
+                self.st,
+                self.managed_systems[0],
+                "SHIP_PROBE",
+                self.safety_margin,
+            )
+            if ship:
+                global_probes.append(ship)
+
+            for probe in global_probes:
+                set_behaviour(
+                    probe.name, bhvr.BHVR_EXPLORE_JUMP_GATE_NETWORK, {"priority": 5}
+                )
         pass
 
     def system_hourly_update(self, system: "ConductorSystem"):
@@ -623,6 +657,7 @@ class BehaviourConductor:
         # STARTING SYSTEM
         #
         systems_being_managed = [s.system_symbol for s in self.managed_systems]
+
         start_system_s = waypoint_slicer(st.view_my_self().headquarters)
         start_system_obj = st.systems_view_one(waypoint_slicer(start_system_s))
 
@@ -656,6 +691,7 @@ class BehaviourConductor:
                 start_system.haulers_constructing_jump_gate = 1
                 start_system.commander_trades = True
             else:
+                self.galaxy_probes = 30
                 start_system.commander_trades = False
                 # reset this so the commander can be used to seed the system.
                 for l_system in self.managed_systems:

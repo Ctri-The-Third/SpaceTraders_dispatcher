@@ -80,16 +80,17 @@ class ExploreJumpgates(Behaviour):
         starting_gate, next_gate = self.find_uncharted_waypoints([current_gate.symbol])
         starting_gate_sys = self.st.systems_view_one(waypoint_slicer(starting_gate))
 
-        arrived = self.ship_extrasolar_jump(starting_gate_sys.symbol)
-        if not arrived:
-            self.logger.error(f"Failed to jump to {starting_gate_sys.symbol}")
-            st.sleep(SAFETY_PADDING)
-            return
-        arrived = self.ship_intrasolar(starting_gate)
-        if not arrived:
-            self.logger.error(f"Failed to navigate to {starting_gate}")
-            st.sleep(SAFETY_PADDING)
-            return
+        if ship.nav.waypoint_symbol != starting_gate:
+            arrived = self.ship_extrasolar_jump(starting_gate_sys.symbol)
+            if not arrived:
+                self.logger.error(f"Failed to jump to {starting_gate_sys.symbol}")
+                st.sleep(SAFETY_PADDING)
+                return
+            arrived = self.ship_intrasolar(starting_gate)
+            if not arrived:
+                self.logger.error(f"Failed to navigate to {starting_gate}")
+                st.sleep(SAFETY_PADDING)
+                return
         self.st.ship_jump(ship, next_gate)
         self.st.ship_create_chart(ship)
         self.pathfinder.validate_and_refresh_jump_graph(starting_gate_sys, next_gate)
@@ -114,7 +115,6 @@ class ExploreJumpgates(Behaviour):
                 destination_wayp = self.st.waypoints_view_one(connected_jumpgate)
                 # skip gates being built, we can't go there
                 if destination_wayp.under_construction:
-
                     checked_symbols.append(connected_jumpgate)
                     continue
                 destination = self.st.system_jumpgate(destination_wayp)
