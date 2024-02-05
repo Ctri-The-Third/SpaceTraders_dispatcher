@@ -43,7 +43,14 @@ class Behaviour:
             )
         saved_data = json.load(open(config_file_name, "r+"))
         token = None
-        self.priority = self.behaviour_params.get("priority", 5)
+        try:
+            self.priority = int(self.behaviour_params.get("priority", 5))
+        except ValueError:
+            self.priority = 5
+            self.logger.error(
+                "priority value is invalid, defaulting to 5. Value was %s",
+                self.behaviour_params.get("priority", 5),
+            )
         for agent in saved_data["agents"]:
             if agent.get("username", "") == agent_name:
                 token = agent["token"]

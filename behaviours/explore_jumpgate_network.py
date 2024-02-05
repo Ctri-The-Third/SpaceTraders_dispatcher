@@ -94,6 +94,7 @@ class ExploreJumpgates(Behaviour):
         self.st.ship_jump(ship, next_gate)
         self.st.ship_create_chart(ship)
         self.pathfinder.validate_and_refresh_jump_graph(starting_gate_sys, next_gate)
+        self.sleep_until_ready()
         # find the jumpgate in the system
 
         # your code goes here
