@@ -109,6 +109,7 @@ class dispatcher:
 
     def run(self):
         print(f"-----  DISPATCHER [{self.lock_id}] ACTIVATED ------")
+
         self.consumer.start()
         ships_and_threads: dict[str : threading.Thread] = {}
 

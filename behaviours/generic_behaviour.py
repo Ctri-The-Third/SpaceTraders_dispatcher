@@ -1076,7 +1076,7 @@ if __name__ == "__main__":
 
     set_logging(level=logging.DEBUG)
     agent = sys.argv[1] if len(sys.argv) > 2 else "CTRI-U-"
-    ship_number = sys.argv[2] if len(sys.argv) > 2 else "1"
+    ship_number = sys.argv[2] if len(sys.argv) > 2 else "44"
     ship = f"{agent}-{ship_number}"
     bhvr = Behaviour(agent, ship, {})
     bhvr.ship = bhvr.st.ships_view_one(ship, True)
@@ -1086,13 +1086,3 @@ if __name__ == "__main__":
     ship = self.ship
 
     current_system = st.systems_view_one(ship.nav.system_symbol)
-
-    factions = bhvr.st.list_factions()
-    for faction in factions:
-        if not faction.is_recruiting:
-            continue
-        target_system = st.systems_view_one(faction.headquarters)
-        route = bhvr.pathfinder.astar(current_system, target_system)
-        if not route:
-            continue
-        print(faction.headquarters)
