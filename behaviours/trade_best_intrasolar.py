@@ -66,6 +66,9 @@ class TradeBestInSystem(Behaviour):
         ship: Ship
         agent = self.agent
 
+        if not self.target_sys:
+            self.target_sys = ship.nav.system_symbol
+
         if self.ship.nav.system_symbol != self.target_sys:
             arrived = self.ship_extrasolar_jump(self.target_sys)
             if not arrived:
