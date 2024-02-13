@@ -126,12 +126,12 @@ class dispatcher:
         # ships_and_threads["scan_thread"].start()
         startime = datetime.now()
         while not self.exit_flag:
-            self._the_big_loop(ships_and_threads)
-        #            try:
-        #                self._the_big_loop(ships_and_threads)
-        #            except Exception as err:
-        #                self.logger.error("Error in the big loop: %s", err)
-        #                self.st.sleep(30)
+            # self._the_big_loop(ships_and_threads)
+            try:
+                self._the_big_loop(ships_and_threads)
+            except Exception as err:
+                self.logger.error("Error in the big loop: %s", err)
+                self.st.sleep(30)
 
         last_exec = False
         while (
