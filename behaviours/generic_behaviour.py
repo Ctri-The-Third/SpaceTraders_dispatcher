@@ -41,8 +41,6 @@ class Behaviour:
             self.logger.warning(
                 "you're passing the connection in again, shouldn't be doing that. "
             )
-        saved_data = json.load(open(config_file_name, "r+"))
-        token = None
         try:
             self.priority = int(self.behaviour_params.get("priority", 5))
         except ValueError:
@@ -51,13 +49,7 @@ class Behaviour:
                 "priority value is invalid, defaulting to 5. Value was %s",
                 self.behaviour_params.get("priority", 5),
             )
-        for agent in saved_data["agents"]:
-            if agent.get("username", "") == agent_name:
-                token = agent["token"]
-                break
-        if not token:
-            # register the user
-            pass
+        token = os.environ.get("ST_TOKEN", None)
         db_host = os.environ.get("ST_DB_HOST", None)
         db_port = os.environ.get("ST_DB_PORT", None)
         db_name = os.environ.get("ST_DB_NAME", None)
@@ -906,6 +898,7 @@ order by 1 desc """
         if not resp:
             self.st.view_my_self(True)
             self.st.ships_view_one(ship.name, True)
+            self.log_market_changes(ship.nav.waypoint_symbol)
             resp = self.purchase_what_you_can(
                 target_tradegood, min(max_to_buy, ship.cargo_space_remaining)
             )
@@ -1084,7 +1077,7 @@ if __name__ == "__main__":
     self = bhvr
     st = self.st
     ship = self.ship
-
+    bhvr.sell_all_cargo()
     current_system = st.systems_view_one(ship.nav.system_symbol)
     factions = st.list_factions()
     for faction in factions:

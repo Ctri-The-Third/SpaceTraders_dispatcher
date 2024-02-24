@@ -140,3 +140,5 @@ behaviours/Z_repro_pathfinder_issue
 game_plan.json
 custom_game_plan.json
 custom_game_plan.json
+scripts/PRD-build_push_and_run_dispatcher_container.bat
+scripts/PRD-build-push-and-run-compose.bat

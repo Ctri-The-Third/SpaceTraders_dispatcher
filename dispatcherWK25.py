@@ -16,7 +16,7 @@ from straders_sdk.request_consumer import RequestConsumer
 from straders_sdk.pg_connection_pool import PGConnectionPool
 from straders_sdk.models import Waypoint
 from straders_sdk.utils import set_logging, waypoint_slicer, get_and_validate
-from straders_sdk.utils import get_name_from_token
+from straders_sdk.utils import get_name_from_token, get_reset_date_from_token
 
 from behaviours.scan_behaviour import ScanInBackground
 from behaviours.generic_behaviour import Behaviour
@@ -58,6 +58,7 @@ class dispatcher:
         )
         self.pathfinder = PathFinder()
         self.logger = logging.getLogger("dispatcher")
+        self.logger.debug("Dispatcher created with lock_id %s", self.lock_id)
         self.agents = agents
 
         self.consumer = RequestConsumer(False)
@@ -76,9 +77,22 @@ class dispatcher:
             self._connection = self.connection_pool.get_connection()
         return self._connection
 
+    def close_all_connections(self):
+        self.connection_pool.close_all()
+        self._connection = None
+
     def set_exit_flag(self, signum, frame):
-        self.exit_flag = True
-        self.logger.warning("Dispatcher received SIGINT, shutting down gracefully.")
+        if not self.exit_flag:
+            self.exit_flag = True
+            self.logger.warning(
+                "Dispatcher received SIGINT or SIGTERM, shutting down gracefully."
+            )
+            self.logger.info("Send again to force exit.")
+        else:
+            self.logger.warning(
+                "Force exist request, terminating with extreme predujice."
+            )
+            exit()
 
     def get_unlocked_ships(self, current_agent_symbol: str) -> list[dict]:
         sql = """select s.ship_symbol, behaviour_id, locked_by, locked_until, behaviour_params
@@ -114,6 +128,9 @@ class dispatcher:
         ships_and_threads: dict[str : threading.Thread] = {}
 
         self.client: SpaceTraders
+        self.logger.critical(self.agents)
+        self.logger.critical(os.environ)
+
         self.client.set_current_agent(self.agents[0][1], self.agents[0][0])
         self.client.ships_view(force=True)
 
@@ -131,7 +148,8 @@ class dispatcher:
                 self._the_big_loop(ships_and_threads)
             except Exception as err:
                 self.logger.error("Error in the big loop: %s", err)
-                self.st.sleep(30)
+                self.close_all_connections()
+                self.client.sleep(30)
 
         last_exec = False
         while (
@@ -172,110 +190,106 @@ class dispatcher:
         if not self.connection or self.connection.closed > 0:
             self.connection_pool.return_connection(self.connection)
             self.connection = self.connection_pool.get_connection()
-        for token, agent_symbol in self.agents:
-            self.client.current_agent_symbol = agent_symbol
-            self.client.set_current_agent(agent_symbol, token)
-            if (
-                agents_and_last_checkeds.get(
-                    agent_symbol, datetime.now() - (check_frequency * 2)
-                )
-                + check_frequency
-                < datetime.now()
-            ):
-                agents_and_unlocked_ships[agent_symbol] = self.get_unlocked_ships(
-                    agent_symbol
-                )
-                agents_and_last_checkeds[agent_symbol] = datetime.now()
-                unlocked_ships = agents_and_unlocked_ships[agent_symbol]
-                active_ships = sum(
-                    [1 for t in ships_and_threads.values() if t.is_alive()]
-                )
+        agent_symbol = self.client.current_agent_symbol
+        if (
+            agents_and_last_checkeds.get(
+                agent_symbol, datetime.now() - (check_frequency * 2)
+            )
+            + check_frequency
+            < datetime.now()
+        ):
+            agents_and_unlocked_ships[agent_symbol] = self.get_unlocked_ships(
+                agent_symbol
+            )
+            agents_and_last_checkeds[agent_symbol] = datetime.now()
+            unlocked_ships = agents_and_unlocked_ships[agent_symbol]
+            active_ships = sum([1 for t in ships_and_threads.values() if t.is_alive()])
 
-                logging.info(
-                    "dispatcher %s found %d unlocked ships for agent %s - %s active (%s%%). Request consumer is_alive? %s",
-                    self.lock_id,
-                    len(unlocked_ships),
-                    agent_symbol,
-                    active_ships,
-                    round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
-                    self.consumer._consumer_thread.is_alive(),
-                )
-                if False:
-                    if len(unlocked_ships) > 10:
-                        set_logging(level=logging.INFO)
-                        consumer_logger = logging.getLogger("RequestConsumer")
-                        consumer_logger.setLevel(logging.CRITICAL)
-                        api_logger = logging.getLogger("API-Client")
-                        api_logger.setLevel(logging.CRITICAL)
-                        self.logger.level = logging.INFO
-                        logging.getLogger().setLevel(logging.INFO)
-                        pass
-                # if we're running a ship and the lock has expired during execution, what do we do?
-                # do we relock the ship whilst we're running it, or terminate the thread
-                # I say terminate.
+            logging.info(
+                "dispatcher %s found %d unlocked ships for agent %s - %s active (%s%%). Request consumer is_alive? %s",
+                self.lock_id,
+                len(unlocked_ships),
+                agent_symbol,
+                active_ships,
+                round(active_ships / max(len(unlocked_ships), 1) * 100, 2),
+                self.consumer._consumer_thread.is_alive(),
+            )
+            if False:
+                if len(unlocked_ships) > 10:
+                    set_logging(level=logging.INFO)
+                    consumer_logger = logging.getLogger("RequestConsumer")
+                    consumer_logger.setLevel(logging.CRITICAL)
+                    api_logger = logging.getLogger("API-Client")
+                    api_logger.setLevel(logging.CRITICAL)
+                    self.logger.level = logging.INFO
+                    logging.getLogger().setLevel(logging.INFO)
+                    pass
+            # if we're running a ship and the lock has expired during execution, what do we do?
+            # do we relock the ship whilst we're running it, or terminate the thread
+            # I say terminate.
+
+        #
+        # check if we have idle ships whose behaviours we can execute.
+        #
+
+        for ship_and_behaviour in unlocked_ships:
+            ship_name = ship_and_behaviour["name"]
+            if ship_name in ships_and_threads:
+                thread = ships_and_threads[ship_name]
+                thread: threading.Thread
+                if thread.is_alive():
+                    continue
+                else:
+                    del ships_and_threads[ship_name]
 
             #
-            # check if we have idle ships whose behaviours we can execute.
+            # is there a task the ship can execute? if not, go to behaviour scripts instead.
             #
+            task = self.get_task_for_ships(self.client, ship_name)
+            if task:
+                if task["claimed_by"] is None or task["claimed_by"] == "":
+                    self.claim_task(task["task_hash"], ship_name)
+                task["behaviour_params"]["task_hash"] = task["task_hash"]
 
-            for ship_and_behaviour in unlocked_ships:
-                ship_name = ship_and_behaviour["name"]
-                if ship_name in ships_and_threads:
-                    thread = ships_and_threads[ship_name]
-                    thread: threading.Thread
-                    if thread.is_alive():
-                        continue
-                    else:
-                        del ships_and_threads[ship_name]
-
-                #
-                # is there a task the ship can execute? if not, go to behaviour scripts instead.
-                #
-                task = self.get_task_for_ships(self.client, ship_name)
-                if task:
-                    if task["claimed_by"] is None or task["claimed_by"] == "":
-                        self.claim_task(task["task_hash"], ship_name)
-                    task["behaviour_params"]["task_hash"] = task["task_hash"]
-
-                    bhvr = self.map_behaviour_to_class(
-                        task["behaviour_id"],
-                        ship_name,
-                        task["behaviour_params"],
-                        agent_symbol,
-                    )
-                    doing_task = self.lock_and_execute(
-                        ships_and_threads,
-                        ship_name,
-                        bhvr,
-                        task["behaviour_id"],
-                    )
-
-                    if doing_task:
-                        continue
-
-                #
-                # Instead, fallback behaviour.
-                #
-
-                # first time we've seen this ship - create a thread
-                bhvr = None
                 bhvr = self.map_behaviour_to_class(
-                    ship_and_behaviour["behaviour_id"],
+                    task["behaviour_id"],
                     ship_name,
-                    ship_and_behaviour["behaviour_params"],
+                    task["behaviour_params"],
                     agent_symbol,
                 )
-
-                self.lock_and_execute(
+                doing_task = self.lock_and_execute(
                     ships_and_threads,
                     ship_name,
                     bhvr,
-                    ship_and_behaviour["behaviour_id"],
+                    task["behaviour_id"],
                 )
-                # self.client.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
-                pass
 
-            self.client.sleep(1)
+                if doing_task:
+                    continue
+
+            #
+            # Instead, fallback behaviour.
+            #
+
+            # first time we've seen this ship - create a thread
+            bhvr = None
+            bhvr = self.map_behaviour_to_class(
+                ship_and_behaviour["behaviour_id"],
+                ship_name,
+                ship_and_behaviour["behaviour_params"],
+                agent_symbol,
+            )
+
+            self.lock_and_execute(
+                ships_and_threads,
+                ship_name,
+                bhvr,
+                ship_and_behaviour["behaviour_id"],
+            )
+            # self.client.sleep(min(10, 50 / len(ships_and_threads)))  # stagger ships
+            pass
+
+        self.client.sleep(1)
 
     def lock_and_execute(
         self, ships_and_threads: dict, ship_symbol: str, bhvr: Behaviour, bhvr_id
@@ -528,36 +542,39 @@ def register_and_store_user(username) -> str:
 
 
 def load_users(username=None) -> list[tuple]:
-    try:
-        user = json.load(open("user.json", "r"))
-    except FileNotFoundError:
-        register_and_store_user(username)
-        return
 
+    user = {}
+    email = os.environ.get("ST_EMAIL", "")
+    if email:
+        user["email"] = email
+
+    target_faction = os.environ.get("ST_FACTION", "COSMIC")
+    user["faction"] = target_faction
+
+    reset_date = os.environ.get("ST_RESET_DATE", None)
+    if reset_date:
+        user["reset_date"] = reset_date
+
+    token = os.environ.get("ST_TOKEN", None)
+    token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiQ1RSSS1VLSIsInZlcnNpb24iOiJ2Mi4xLjUiLCJyZXNldF9kYXRlIjoiMjAyNC0wMi0xMSIsImlhdCI6MTcwNzY3Njc4NCwic3ViIjoiYWdlbnQtdG9rZW4ifQ.bkhOCVMeuyiy0gv_Q6nQD7Nm6mIUIB0GA-A2ILSvyxflUxQFfKMRYk918HbjNvWssqiPPktC9JkSHEoa-xdp_7z9k5jjUDH6iKigMAIJemrKeG9ejH-UPZ-Mx0ZQTFD4CrvZOdbD7gOMFcC_wCMK1j5Ld2iNyaQHkOaPcn46IPqYJSesDvmYXwoUktZYp_6KpA70JEh8gtPV-ZxdFQ0HC-94eXmJAz76Xvofpy5_fw-kjrk6MiITJx8VtXnDEGX2h1MBMOFalHPBKcW3dm9K2nlXS8mHqtqLtSyznVcxh9nDzHzm3eNHwvmSyMueomuPVKky9bjNNFPFpj1U_V251w"
+    if not token:
+        logging.error("env variable ST_TOKEN is not set. Exiting.")
+        exit()
+    user["token"] = token
+    user["agent_symbol"] = get_name_from_token(token)
+    user["reset_date"] = get_reset_date_from_token(token)
     wait_until_reset("https://api.spacetraders.io/v2/", user)
 
-    if username:
-        for agent in user["agents"]:
-            if agent["username"] == username:
-                return [(agent["token"], agent["username"])]
-        resp = register_and_store_user(username)
-
-        if resp:
-            return load_users(username)
-    else:
-        resp_obj = []
-        for agent in user["agents"]:
-            if "token" in agent and "username" in agent:
-                resp_obj.append((agent["token"], agent["username"]))
-        return resp_obj
-
-    logging.error("Could neither load nor register user %s", username)
+    return user
+    # logging.error("Could neither load nor register user %s", username)
 
 
 def wait_until_reset(url, user_file: dict):
-    target_date = user_file["reset_date"]
+    target_date = user_file.get("reset_date", None)
+    if not target_date:
+        return
     current_reset_date = "1990-01-01"
-    while target_date != current_reset_date:
+    while target_date > current_reset_date:
         response = get_and_validate(url)
         try:
             if (
@@ -576,6 +593,9 @@ def wait_until_reset(url, user_file: dict):
             logging.error("Error %s", err)
         finally:
             time.sleep(5)
+    if target_date < current_reset_date:
+        logging.info("Token is for previous reset - you need to reregister! Exiting")
+        exit(2)
 
 
 def lock_ship(ship_symbol, lock_id, duration=60, connection=None):
@@ -590,7 +610,32 @@ def lock_ship(ship_symbol, lock_id, duration=60, connection=None):
     )
 
 
+def wait_for_connection(
+    host, port, dbname, user, password, max_attempts, sleep_time, timeout
+):
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            conn = psycopg2.connect(
+                host=host,
+                port=port,
+                dbname=dbname,
+                user=user,
+                password=password,
+                connect_timeout=timeout,
+            )
+            conn.close()
+            return
+        except Exception as err:
+            logging.getLogger("connection-tester").error("Error %s", err)
+            attempts += 1
+            time.sleep(sleep_time)
+    logging.error("Could not connect to DB after %s attempts. Exiting.", max_attempts)
+    exit(1)
+
+
 if __name__ == "__main__":
+
     target_user = None
     if len(sys.argv) >= 2:
         # no username provided, dispatch for all locally saved agents. (TERRIBLE IDEA GENERALLY)
@@ -598,6 +643,9 @@ if __name__ == "__main__":
         users = load_users(target_user)
 
     set_logging(level=logging.DEBUG)
+    logging.info("Starting up dispatcher - sleeping to allow DB init")
+    time.sleep(5)
+
     if not target_user:
         # no username provided, check for a token in the environment variables
         token = os.environ.get("ST_TOKEN", None)
@@ -608,16 +656,18 @@ if __name__ == "__main__":
         user = get_name_from_token(token)
         if user:
             users = [(token, user)]
+    db_host = os.environ.get("ST_DB_HOST", "ST_DB_HOST_not_set")
+    db_port = os.environ.get("ST_DB_PORT", None)
+    db_name = os.environ.get("ST_DB_NAME", "ST_DB_NAME_not_set")
+    db_user = os.environ.get("ST_DB_USER", "ST_DB_USER_not_set")
+    db_pass = os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set")
+
+    wait_for_connection(db_host, db_port, db_name, db_user, db_pass, 10, 10, 10)
+
     try:
-        dips = dispatcher(
-            users,
-            os.environ.get("ST_DB_HOST", "ST_DB_HOST_not_set"),
-            os.environ.get("ST_DB_PORT", None),
-            os.environ.get("ST_DB_NAME", "ST_DB_NAME_not_set"),
-            os.environ.get("ST_DB_USER", "ST_DB_USER_not_set"),
-            os.environ.get("ST_DB_PASSWORD", "DB_PASSWORD_not_set"),
-        )
+        dips = dispatcher(users, db_host, db_port, db_name, db_user, db_pass)
         signal.signal(signal.SIGINT, dips.set_exit_flag)
+        signal.signal(signal.SIGTERM, dips.set_exit_flag)
     except Exception as err:
         logging.error("%s", err)
         time.sleep(60 * 10)

@@ -139,7 +139,6 @@ if __name__ == "__main__":
     ship = f"{agent}-{ship_number}"
     behaviour_params = {
         "priority": 3,
-        "target_sys": "X1-DM68",
     }
 
     bhvr = TradeBestInSystem(agent, ship, behaviour_params or {})
